@@ -1,0 +1,24 @@
+image: ubuntu:16.04
+pipelines:
+  default:
+    - step:
+        script:
+          #  Install dependencies
+          - apt-get update -qq
+          - apt-get install cmake assimp-utils clang libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev -y
+          #cmake file
+          - mv TEST_CMakeLists.txt CMakeLists.txt
+          - cd tests
+          # Call the CMake.
+          - cmake ..
+          # Build the project.
+          - make
+          #Run CI Test
+          - chmod +x ci_test
+          - ./ci_test
+          - cd ../
+          - cat RefCMakeLists.txt > CMakeLists.txt
+          - mkdir Make
+          - cd Make
+          - cmake ../
+          - make

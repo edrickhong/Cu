@@ -1,0 +1,54 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(tests)
+
+set(CMAKE_C_COMPILER /usr/bin/clang)
+set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+
+set(PLATFORM_INCLUDES
+  "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
+  )
+
+# Include Directory
+include_directories(
+  "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
+  "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
+  "${CMAKE_BINARY_DIR}/../include"
+  "${CMAKE_BINARY_DIR}/../src/engine"
+  ${PLATFORM_INCLUDES}
+  "${CMAKE_BINARY_DIR}/../tests/include"
+  "${CMAKE_BINARY_DIR}/../tests/include/vulkan/"
+  )
+include_directories(
+  "include"
+  "src/main/"
+  ${PLATFORM_INCLUDES}
+  )
+
+#-fno-omit-frame-pointer is for profiling
+set(OPT_FLAGS "-O0 -march=x86-64 -fno-omit-frame-pointer -fno-fast-math -fno-exceptions -fno-rtti")
+set(STRICT_FLAGS "")
+
+set(FLAGS "-g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
+
+#output with debug info
+set(CMAKE_CXX_FLAGS  ${FLAGS})
+
+file(GLOB CU_STD src/cu_std/cu/main.cpp)
+
+set(ASSIMP_LIB "libassimp.so")
+
+set(DL_LIB "libdl.so")
+
+set(PTHREAD_LIB "libpthread.so")
+
+set(PLATFORM_LIBS ${DL_LIB} ${PTHREAD_LIB})
+
+file(GLOB TESTS "tests/main.cpp")
+
+add_executable(ci_test ${TESTS})
+
+
+add_library(cu_std STATIC ${CU_STD})
+
+target_link_libraries(ci_test ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
