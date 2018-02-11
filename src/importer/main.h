@@ -1,0 +1,1468 @@
+#ifndef _WIN32
+#pragma GCC diagnostic warning "-Wextra-semi"
+#pragma GCC diagnostic error "-Wextra-semi"
+#pragma GCC diagnostic ignored "-Wextra-semi"
+
+#pragma GCC diagnostic warning "-Wcast-align"
+#pragma GCC diagnostic error "-Wcast-align"
+#pragma GCC diagnostic ignored "-Wcast-align"
+
+#pragma GCC diagnostic warning "-Wshadow"
+#pragma GCC diagnostic error "-Wshadow"
+#pragma GCC diagnostic ignored "-Wshadow"
+
+#endif
+
+
+#include "string.h"
+#include "mode.h"
+#include "ttype.h"
+
+#include "ffileio.h"
+#include "ccontainer.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#define STB_DXT_IMPLEMENTATION
+
+#include "stb/stb_image.h"
+#include "stb/stb_image_resize.h"
+#include "stb/stb_dxt.h"
+
+#include "aassettools.h"
+
+#include "pparse.h"
+
+
+#define _hash(a,b,c) (a * 1) + (b * 2) + (c * 3)
+#define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
+
+void WriteBMP(void* data,u32 w,u32 h,const s8* outputfile){
+    
+  struct BMPFileHeader{
+    u16 type;
+    u32 size;
+    u16 r1;
+    u16 r2;
+    u32 offset;
+  } _packed;
+    
+  struct BMPImageHeader{
+    u32 this_size;
+    u32 width;
+    u32 height;
+    u16 plane;
+    u16 bpp;
+    u32 comp_type;
+    u32 image_size;
+    u32 pixelspermeter_x;
+    u32 pixelspermeter_y;
+    u32 colormap_entries;
+    u32 sigcolors;
+  } _packed;
+    
+  u32 tsize = sizeof(BMPFileHeader) + sizeof(BMPImageHeader) * w * h * 4;
+  auto ptr = (s8*)alloc(tsize);
+    
+  auto header = (BMPFileHeader*)ptr;
+    
+  auto imageheader = (BMPImageHeader*)(ptr + sizeof(BMPFileHeader));
+    
+  auto imagedata = ptr + sizeof(BMPFileHeader) + sizeof(BMPImageHeader);
+    
+  header->type = 'B' | ('M' << 8);
+  header->size = tsize;
+  header->r1 = 0;
+  header->r2 = 0;
+  header->offset = sizeof(BMPFileHeader) + sizeof(BMPImageHeader);
+    
+    
+  imageheader->this_size = sizeof(BMPImageHeader);
+  imageheader->width = w;
+  imageheader->height = h;
+  imageheader->plane = 1;
+  imageheader->bpp = 32;
+  imageheader->comp_type = 0;
+  imageheader->image_size = 0;
+  imageheader->pixelspermeter_x = 0;
+  imageheader->pixelspermeter_y = 0;
+  imageheader->colormap_entries = 0;
+  imageheader->sigcolors = 0;
+    
+  struct Pixel{
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+  };
+    
+  u32 at = 0;
+    
+  for(s32 y = (h - 1); y > -1; y--){
+        
+    for(u32 x = 0; x < w; x++){
+            
+      u32 i = (y * w) + x;
+            
+      auto dst_pix = (u32*)imagedata;
+      auto src_pix = (u32*)data;
+            
+      auto pix = *((Pixel*)&src_pix[i]);
+            
+            
+      dst_pix[at] = pix.r << 16 | pix.g << 8 | pix.b;
+            
+      at++;
+    }
+        
+  }
+    
+  auto file = FOpenFile(outputfile,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			F_FLAG_TRUNCATE);
+    
+  FWrite(file,ptr,tsize);
+    
+  FCloseFile(file);
+    
+  unalloc(ptr);
+}
+
+
+//TODO: handle non pow2, non uniform sizes
+void NextMipDim(u32* w,u32* h){
+  (*w) >>= 1;
+  (*h) >>= 1;
+}
+
+void GenerateMipMaps(u8* indata,u8* outdata,u32 w,u32 h,u32 maxmip){
+    
+  u32 offset = w * h * 4;
+    
+  memcpy(outdata,indata,offset);
+    
+  u32 nw = w;
+  u32 nh = h;
+    
+  for(u32 i = 0; i < (maxmip - 1); i++){
+        
+    NextMipDim(&nw,&nh);
+        
+    stbir_resize_uint8(indata,w,h ,0,(outdata + offset),nw,nh, 0, 4);
+        
+    offset += nw * nh * 4;
+  }
+    
+  nw = w;
+  nh = h;
+  offset = 0;
+    
+#if 0
+    
+  for(u32 i = 0; i < (maxmip); i++){
+        
+    s8 string[100] = {};
+    sprintf(string,"test_%d.bmp",i);
+    WriteBMP((outdata + offset),nw,nh,string);
+        
+    offset += nw * nh * 4;
+        
+    NextMipDim(&nw,&nh);
+  }
+    
+#endif
+    
+}
+
+
+void InternalExtractTile(void* indata,void* outdata,u32 w,u32 tx,u32 ty){
+    
+  auto px = tx << 7;
+  auto py = ty << 7;
+    
+  auto src = (u32*)indata;
+    
+  auto dst = (u32*)outdata;
+  auto cur = dst;
+    
+  for(u32 y = py; y < (py + 128); y++){
+        
+    for(u32 x = px; x < (px + 128); x++){
+      *cur = src[(y * w) + x];
+      cur++;
+    }
+        
+  }
+    
+}
+
+void InternalExtractBlock(void* indata,void* outdata,u32 w,u32 b_x,
+                          u32 b_y){
+  auto px = b_x << 2;
+  auto py = b_y << 2;
+    
+  auto src = (u32*)indata;
+    
+  auto dst = (u32*)outdata;
+  auto cur = dst;
+    
+  for(u32 y = py; y < (py + 4); y++){
+        
+    for(u32 x = px; x < (px + 4); x++){
+      *cur = src[(y * w) + x];
+      cur++;
+    }
+        
+  }
+}
+
+void CompressBlockBC1(void* indata,void* outdata,u32 w,u32 h){
+    
+  auto cur = (u8*)outdata;
+    
+  u32 b_w = w >> 2;
+  u32 b_h = h >> 2;
+    
+  for(u32 b_y = 0; b_y < b_h;b_y++){
+        
+    for(u32 b_x = 0; b_x < b_w;b_x++){
+            
+      u32 tbuffer[16];
+            
+      InternalExtractBlock(indata,tbuffer,w,b_x,b_y);
+            
+      stb_compress_dxt_block(cur,(u8*)tbuffer,0,STB_DXT_HIGHQUAL);
+            
+      cur += 8;
+    }
+  }
+    
+}
+
+
+void* ArrangeImageToTiles(void* data,u32 w,u32 h,TexFormat format,
+                          u32* size){
+    
+  auto src = (u32*)data;
+    
+  auto bpp = GetBPP(format);
+    
+  u32 tile_size = (u32)(128 * 128 * bpp);
+  *size = (u32)(w * h * bpp);
+    
+  auto ret_data = (s8*)alloc(*size);
+  auto cur = ret_data;
+    
+  auto tw = w >> 7;
+  auto th = h >> 7;
+    
+  for(u32 ty = 0; ty < th;ty++){
+        
+    for(u32 tx = 0; tx < tw;tx++){
+            
+      u32 tbuffer[128 * 128];
+            
+            
+      InternalExtractTile(data,tbuffer,w,tx,ty);
+            
+      if(format == Format_RGBA){
+	memcpy(cur,tbuffer,sizeof(tbuffer));
+      }
+            
+      if(format == Format_BC1){
+	CompressBlockBC1(tbuffer,cur,128,128);
+      }
+            
+      cur += tile_size;
+    }
+        
+  }
+    
+  return ret_data;
+}
+
+void WriteTDF(void* data,u32 w,u32 h,u32 size,u32 mips,TexFormat format,
+              const s8* writefilepath){
+    
+  u32 tsize = size + sizeof(TDFHeader);
+    
+  auto buffer = (s8*)alloc(tsize);
+    
+  auto header = (TDFHeader*)buffer;
+  auto tdata = (buffer + sizeof(TDFHeader));
+    
+  f32 bpp = GetBPP(format);
+    
+  header->tag = _encode('T','D','F',' ');
+  header->w = w;
+  header->h = h;
+  header->bpp = bpp;
+  header->mips = mips;
+  header->format = format;
+    
+  memcpy(tdata,data,size);
+    
+  auto writefile = FOpenFile(writefilepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			     F_FLAG_TRUNCATE);
+    
+  FWrite(writefile,buffer,tsize);
+    
+  FCloseFile(writefile);
+    
+  unalloc(buffer);
+}
+
+
+
+void CreateTextureAssetTDF(const s8* inputfile,const s8* outputfile,TexFormat format,
+                           logic gen_mips,logic is_vt = 1){
+    
+  /*
+    writeData is always called to write 128 bytes at the start. Is this redundant?
+  */
+    
+  s32 w,h,comp;
+    
+  auto imagedata = stbi_load(inputfile,&w,&h,&comp,4);
+    
+  u32 maxmip = (u32)-1;
+    
+  struct Dimensions{
+    u32 w;
+    u32 h;
+  };
+    
+  if(is_vt){
+        
+    _kill("we do not support non square images for now\n", w != h);
+        
+    _kill("not in units of 128 pixels\n", (w % 128));
+        
+    gen_mips = is_vt;
+        
+    maxmip = 0;
+        
+    for(u32 dim = w; dim >= 128; dim >>= 1 ){
+      maxmip++;
+    }
+  }
+    
+  u32 tsize = 0;
+    
+  {
+    u32 tw = w;
+    u32 th = h;
+        
+    for(u32 i = 0; i < maxmip; i++){
+      tsize += tw * th * 4;
+      NextMipDim(&tw,&th);
+    }    
+  }
+    
+    
+    
+  printf("w %d h %d mips %d\n",w,h,maxmip);
+    
+  auto mipdata = (u8*)alloc(tsize);
+    
+  if(gen_mips){
+    GenerateMipMaps(imagedata,mipdata,w,h,maxmip);
+  }
+    
+  BufferRegion region;
+    
+  region.Init();
+    
+  if(is_vt){
+        
+    u32 tw = w;
+    u32 th = h;
+        
+    u32 offset = 0;//offset to the next mip map
+        
+    for(u32 i = 0; i < maxmip; i++){
+            
+      u32 size;
+            
+      auto  tdata = 
+	ArrangeImageToTiles((mipdata + offset),tw,th,format,&size);
+            
+      offset += tw * th * 4;
+            
+      region.Write(tdata,size);
+            
+      NextMipDim(&tw,&th);
+            
+      free(tdata);
+    }
+        
+  }
+    
+  WriteTDF(region.container,w,h,region.count,maxmip,format,outputfile);
+    
+#if 0
+    
+  {
+        
+    u32 ty = w >> 7;
+    u32 tx = h >> 7;
+        
+    auto file = FOpenFile(outputfile,F_FLAG_READONLY);
+        
+    for(u32 y = 0; y < ty; y++){
+            
+      for(u32 x = 0; x < tx; x++){
+                
+	u32 data[128 * 128] = {};
+                
+	// GetTileDataTDF(file,w,h,x,y,0,4.0f,data);
+	TestGetTileData(file,w,h,x,y,0,4.0f,data);
+                
+	s8 string[100] = {};
+                
+	sprintf(string,"dst/test_y%d_x%d_%d.bmp",y,x,0);
+	WriteBMP(data,128,128,string);
+      }
+            
+    }
+        
+    FCloseFile(file);
+        
+    exit(0); 
+  }
+    
+#endif
+    
+#if 0
+  {
+    printf("total write %d\n",region.count);
+        
+    u32 offset = 84 * 128 * 128;
+    auto ptr = ((u32*)region.container) + offset;
+        
+    WriteBMP(ptr,128,128,"tile.bmp");
+  }
+    
+#if 0
+  {
+        
+    u32 buffer[128 * 128];
+        
+    auto file = FOpenFile(outputfile,F_FLAG_READONLY);
+        
+    // TestGetTileData(file,128 * 128 * 4,buffer);
+        
+    TestGetTileData(file,1024,1024,2,5,5,4.0f,buffer);
+        
+    FCloseFile(file);
+        
+    WriteBMP(buffer,128,128,"fetch.bmp");
+  }
+#endif
+    
+    
+#endif
+    
+  stbi_image_free(imagedata);
+  free(mipdata);
+  region.Destroy();
+}
+
+u32 isModel(s8 a,s8 b,s8 c){
+  return (_hash(a,b,c) == _hash('d','a','e')) || (_hash(a,b,c) == _hash('o','b','j')) ||
+    (_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x'));
+}
+
+u32 isAudio(s8 a,s8 b,s8 c){
+  return (_hash(a,b,c) == _hash('w','a','v'));
+}
+
+u32 isImage(s8 a,s8 b,s8 c){
+  return (_hash(a,b,c) == _hash('j','p','g')) || (_hash(a,b,c) == _hash('p','n','g')) ||
+    (_hash(a,b,c) == _hash('b','m','p')) || (_hash(a,b,c) == _hash('t','g','a'));
+}
+
+
+#define _riffcode(a,b,c,d)  (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
+
+enum WavChunkID{
+  CHUNK_FMT = _riffcode('f','m','t',' '),
+  CHUNK_RIFF = _riffcode('R','I','F','F'),
+  CHUNK_WAVE = _riffcode('W','A','V','E'),
+  CHUNK_DATA = _riffcode('d','a','t','a'),
+};
+
+struct WavHeader{
+  u32 riff_id;
+  u32 size;
+  u32 wave_id;
+};
+
+struct WavChunk{
+  u32 id;
+  u32 size;
+};
+
+
+struct WavFormat{
+  u16 format_tag;
+  u16 channels;
+  u32 samplespersecond;
+  u32 avgbytespersample;
+  u16 blockalign;
+  u16 bitspersample;
+  u16 size;
+  u16 validbitspersample;
+  u32 channelmask;
+  u8 subformat[16];
+};
+
+struct WavIterator{
+  u8* at;
+  u8* stop;
+};
+
+
+
+u32 WavGetType(WavIterator iter){
+    
+  WavChunk* chunk = (WavChunk*)iter.at;
+    
+  return chunk->id;
+}
+
+
+WavIterator WavNextChunk(WavIterator iter){
+    
+  WavChunk* chunk = (WavChunk*)iter.at;
+    
+  u32 size = (chunk->size + 1) & ~1;
+    
+  iter.at += sizeof(WavChunk) + size;
+    
+  return iter;
+}
+
+void* WavGetChunkData(WavIterator iter){
+    
+  return (iter.at + sizeof(WavChunk));
+}
+
+u32 WavGetChunkDataSize(WavIterator iter){
+    
+  WavChunk* chunk = (WavChunk*)iter.at;
+    
+  return (chunk->size);
+}
+
+void WavLoadSound(void* filedata,void** data,u32* size){
+    
+  WavHeader* header = (WavHeader*)filedata;
+    
+  _kill("",header->riff_id != CHUNK_RIFF);
+  _kill("",header->wave_id != CHUNK_WAVE);
+    
+  for(WavIterator iter = {(u8*)(header + 1),(((u8*)(header + 1)) + (header->size - 4))};
+      iter.at < iter.stop; iter = WavNextChunk(iter)){
+        
+        
+    switch(WavGetType(iter)){
+            
+    case CHUNK_FMT:{
+      WavFormat* fmt = (WavFormat*)WavGetChunkData(iter);
+                
+                
+      _kill("",fmt->channels > 2);
+      _kill("",fmt->bitspersample != 16);
+      _kill("",fmt->samplespersecond != 48000);
+                
+      //MARK:we should resample this to the appropriate format. Should we though?
+    }break;
+            
+    case CHUNK_DATA:{
+                
+      *size = WavGetChunkDataSize(iter);
+      *data = alloc(*size);
+                
+      memcpy(*data,WavGetChunkData(iter),*size);
+    }break;
+            
+    }
+        
+        
+  }
+    
+}
+
+
+void WavWriteADF(const s8* filepath,const s8* writefilepath){
+    
+  FileHandle file = FOpenFile(filepath,F_FLAG_READONLY);
+    
+  void* filedata = FReadFileToBuffer(file,0);
+    
+  FCloseFile(file);
+    
+  void* audio_data;
+  u32 size;
+    
+  WavLoadSound(filedata,&audio_data,&size);
+    
+  FileHandle writefile = FOpenFile(writefilepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+				   F_FLAG_TRUNCATE);
+    
+  /*ADF format. u32 (ADF'') u32(Compression type) (DATA)*/
+    
+  u32 write_int = TAG_ADF;
+    
+  FWrite(writefile,&write_int,sizeof(write_int));
+    
+  write_int = TAG_UNCOMPRESSED;
+    
+  FWrite(writefile,&write_int,sizeof(write_int));
+    
+  FWrite(writefile,audio_data,size);
+    
+  FCloseFile(writefile);
+    
+  unalloc(filedata);
+    
+  unalloc(audio_data);
+}
+
+
+#include <assimp/Importer.hpp> 
+#include <assimp/scene.h>     
+#include <assimp/postprocess.h>
+#include <assimp/cimport.h>
+
+_declare_list(VertexBoneDataList,VertexBoneData);
+
+//FIXME:  realloc should never be called for this. replace w regular array?
+_declare_list(BonenodeList,AssimpBoneNode);
+_declare_list(AssimpAnimationList,AssimpAnimation);
+
+void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
+    
+  list->Init();
+    
+  for(u32 i = 0; i < scene->mNumAnimations;i++){
+        
+    AssimpAnimation animation;
+    aiAnimation* anim = scene->mAnimations[i];
+        
+    animation.data_count = anim->mNumChannels;
+    animation.duration = anim->mDuration;
+    animation.tps = anim->mTicksPerSecond;
+        
+    // printf("Total animation channels %d\n",anim->mNumChannels);
+        
+    u32 len = strlen(anim->mName.data);
+        
+    animation.name = (s8*)alloc(len);
+        
+    memcpy(animation.name,anim->mName.data,len);
+        
+    animation.data =
+      (AssimpAnimationData*)alloc(anim->mNumChannels * sizeof(AssimpAnimationData));
+        
+    for(u32 j = 0; j < anim->mNumChannels;j++){
+            
+      aiNodeAnim* node = anim->mChannels[j];
+            
+      AssimpAnimationData data;
+      data.bone_hash = PHashString(node->mNodeName.data);
+
+      _kill("too large\n",node->mNumPositionKeys >
+	    _unsigned_max(AAnimationData::positionkey_count));
+      
+      _kill("too large\n",node->mNumRotationKeys >
+	    _unsigned_max(AAnimationData::rotationkey_count));
+      
+      _kill("too large\n",node->mNumScalingKeys >
+	    _unsigned_max(AAnimationData::scalekey_count));
+      
+      data.positionkey_count = node->mNumPositionKeys;
+      data.rotationkey_count = node->mNumRotationKeys;
+      data.scalekey_count = node->mNumScalingKeys;
+            
+      data. positionkey_array =
+	(AnimationKey*)alloc(sizeof(AnimationKey) *
+			     (node->mNumPositionKeys + node->mNumRotationKeys +
+			      node->mNumScalingKeys));
+            
+      data. rotationkey_array = data. positionkey_array + node->mNumPositionKeys;
+      data. scalekey_array = data. rotationkey_array + node->mNumRotationKeys;
+            
+      data.prestate = (AnimationBehaviour)node->mPreState;
+      data.poststate = (AnimationBehaviour)node->mPostState;
+            
+      for(u32 k = 0; k < node->mNumPositionKeys;k++){
+                
+	aiVectorKey vec = node->mPositionKeys[k];
+	AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+                
+	memcpy(data.positionkey_array + k,&key,sizeof(AnimationKey));
+      }
+            
+      for(u32 k = 0; k < node->mNumRotationKeys;k++){
+                
+	aiQuatKey q = node->mRotationKeys[k];
+	AnimationKey key =
+	  {(f32)q.mTime,{q.mValue.w,q.mValue.x,q.mValue.y,q.mValue.z}};
+                
+	memcpy(data.rotationkey_array + k,&key,sizeof(AnimationKey));
+      }
+            
+      for(u32 k = 0; k < node->mNumScalingKeys;k++){
+	aiVectorKey vec = node->mScalingKeys[k];
+	AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+                
+	memcpy(data.scalekey_array + k,&key,sizeof(AnimationKey));
+      }
+            
+      memcpy(animation.data + j,&data,sizeof(AssimpAnimationData));
+    }
+        
+    list->PushBack(animation);
+        
+  }
+    
+}
+
+void DestroyAssimpData(AssimpData data){
+    
+  unalloc(data.vertex_array);
+  unalloc(data.texcoord_array);
+  unalloc(data.normal_array);
+  unalloc(data.index_array);
+  unalloc(data.vertexbonedata_array);
+  unalloc(data.bone_array);
+    
+  for(u32 i = 0; i < data.animation_count;i++){
+        
+    for(u32 j = 0; j < data.animation_array[i].data_count;j++){
+      unalloc(data.animation_array[i].data[j].positionkey_array);
+    }
+        
+    unalloc(data.animation_array[i].data);
+        
+  }
+    
+  unalloc(data.animation_array);
+    
+}
+
+void AssimpAddBoneData(VertexBoneData* bonedata,u32 index,f32 weight){
+    
+    
+  for(u32 i = 0; i < 4;i++){
+        
+    if(bonedata->bone_weight[i] == 0.0f){
+      bonedata->bone_weight[i] = weight;
+      bonedata->bone_index[i] = index;
+      /* printf("bindex:%d\n",index); */
+      return;
+    }
+        
+  }
+#if 0
+  printf("Vertice is influenced by more than 4 bones\n");
+#endif
+    
+  // _kill("Vertice is influenced by more than 4 bones\n",1);
+}
+
+#define _checkduplicate 0
+
+void AssimpLoadBones(aiMesh* mesh,VertexBoneDataList* bonedatalist,
+                     BonenodeList* bonenodelist){
+    
+#if _checkduplicate
+    
+  _declare_list(HashList,u32);
+  HashList list;
+  list.Init(100);
+#endif
+    
+  _kill("too many bones\n",mesh->mNumBones > 64);
+    
+  bonenodelist->Init(mesh->mNumBones + 64);
+    
+  bonedatalist->Init(mesh->mNumVertices);
+  bonedatalist->count = mesh->mNumVertices;
+  memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
+    
+  for(u32 i = 0; i < mesh->mNumBones;i++){
+        
+    aiBone* bone = mesh->mBones[i];
+        
+#if _checkduplicate
+    {
+      const s8* name = bone->mName.data;
+            
+      for(u32 i = 0; i < list.count;i++){
+                
+	if(PHashString(name,strlen(name)) == list[i]){
+	  _kill("There are duplicate bone nodes\n",1);
+	  break;
+	}
+      }
+            
+      list.PushBack(PHashString(name,strlen(name)));
+            
+      printf("bone name %s\n",name);
+    }
+#endif
+        
+    AssimpBoneNode bonenode;
+        
+    aiMatrix4x4 translationmatrix = bone->mOffsetMatrix;//Assimp combines the bone and the offset
+    memcpy(&bonenode.offset,&translationmatrix,sizeof(Matrix4b4));
+        
+#if 1
+    bonenode.name = (s8*)alloc(strlen(bone->mName.data) + 1);
+    memcpy((void*)bonenode.name,bone->mName.data,strlen(bone->mName.data));
+    bonenode.name[strlen(bone->mName.data)] = 0;
+#endif
+        
+        
+        
+    bonenode.bone_hash = PHashString(bone->mName.data);
+        
+    //matrix containing essentially the bone but we want to translate this to a quaternion & vec3
+    bonenodelist->PushBack(bonenode);
+        
+    //basically skinning (Associating the bone with a vertex)
+    for(u32 j = 0; j < bone->mNumWeights;j++){
+            
+      u32 vertexid = bone->mWeights[j].mVertexId;//which vertex it influences
+            
+      AssimpAddBoneData(&((*bonedatalist)[vertexid]),i,bone->mWeights[j].mWeight);
+            
+      // printf("vertexindex %d boneindex %d weight %f\n",vertexid,i,bone->mWeights[j].mWeight);
+    }
+        
+  }
+}
+
+u32 FindChildIndex(u32 hash,BonenodeList bonenodelist){
+    
+  for(u32 i = 0; i < bonenodelist.count;i++){
+        
+    if(bonenodelist[i].bone_hash == hash){
+      return i;
+    }
+  }
+    
+  return -1;
+}
+
+void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist,
+                         AssimpBoneNode* bonenode){
+    
+  bonenode->children_count = 0;
+    
+  for(u32 i = 0; i < node->mNumChildren;i++){
+        
+    u32 hash = PHashString(node->mChildren[i]->mName.data);
+        
+    u32 index = FindChildIndex(hash,*bonenodelist);
+        
+    if(index != (u32)-1){
+            
+      bonenode->childrenindex_array[bonenode->children_count] = index;
+      bonenode->children_count++;
+            
+      _kill("bone has more than 10 children\n",bonenode->children_count > 10);
+            
+      AssimpBuildSkeleton(node->mChildren[i],bonenodelist,&(*bonenodelist)[index]);
+            
+    }
+        
+    else{
+            
+      if(node->mChildren[i]->mNumChildren){
+                
+	AssimpBoneNode newbone;
+                
+#if 1
+	newbone.name = (s8*)alloc(strlen(node->mChildren[i]->mName.data) + 1);
+                
+	memcpy((void*)newbone.name,node->mChildren[i]->mName.data,
+	       strlen(node->mChildren[i]->mName.data));
+                
+	newbone.name[strlen(node->mChildren[i]->mName.data)] = 0;
+#endif
+                
+	newbone.bone_hash = hash;
+	// newbone.offset = IdentityMatrix4b4();
+                
+	memcpy(&(newbone.offset),&(node->mChildren[i]->mTransformation),sizeof(Matrix4b4));
+                
+	//newbone.children_count = 0;
+                
+	bonenodelist->PushBack(newbone);
+                
+	index = bonenodelist->count -1;
+
+	bonenode->childrenindex_array[bonenode->children_count] = index;
+	bonenode->children_count++;
+                
+#if 1
+	printf("added fake bone %s index %d\n",node->mChildren[i]->mName.data,index);
+#endif
+                
+	AssimpBuildSkeleton(node->mChildren[i],bonenodelist,&(*bonenodelist)[index]);
+      }
+            
+    }
+        
+  }
+    
+}
+
+void PrintNodeHeirarchy(aiNode* node){
+    
+  printf("Node hash %s %d\n",node->mName.data,
+	 (u32)PHashString(node->mName.data));
+  printf("Node num children %d\n",node->mNumChildren);
+    
+  for(u32 i = 0; i < node->mNumChildren;i++){
+    PrintNodeHeirarchy(node->mChildren[i]);
+  }
+    
+}
+
+void PrintNodeHeirarchy(AssimpBoneNode bonenode,BonenodeList bonenodelist){
+    
+  printf("Node hash %s %d\n",bonenode.name,bonenode.bone_hash);
+  printf("Node num children %d\n",bonenode.children_count);
+    
+  for(u32 i = 0; i < bonenode.children_count;i++){
+        
+    u32 index = bonenode.childrenindex_array[i];
+        
+    AssimpBoneNode next = bonenodelist[index];
+        
+    PrintNodeHeirarchy(next,bonenodelist);
+  }
+    
+}
+
+void AssimpRemapBones(AssimpBoneNode* dst,AssimpBoneNode* src,
+		      AssimpBoneNode node,u32* skinindexmap,u32* curindex){
+
+  /* printf("read index %d\n",*curindex); */
+    
+  dst[*curindex] = node;
+  u32 oldindex;
+    
+  for(u32 i = 0;;i++){
+    if(node.bone_hash == src[i].bone_hash){
+      oldindex = i;
+      break;
+    }
+  }
+    
+  skinindexmap[oldindex] = *curindex;
+  *curindex = (*curindex) + 1;
+
+  /* printf("added index %d\n",skinindexmap[oldindex]); */
+    
+  for(u32 i = 0; i < node.children_count;i++){
+        
+    AssimpBoneNode child = src[node.childrenindex_array[i]];
+    AssimpRemapBones(dst,src,child,skinindexmap,curindex);
+        
+  }
+    
+}
+
+
+AssimpData AssimpLoad(const s8* filepath){
+    
+  AssimpData data = {};
+    
+  _declare_list(Vector4List,Vector4);
+  _declare_list(Vector2List,Vector2);
+  _declare_list(U32List,u32);
+    
+  Vector4List pos_list;
+  Vector4List normal_list;
+  Vector2List texcoord_list;
+  U32List index_list;
+    
+  pos_list.Init();
+  normal_list.Init();
+  texcoord_list.Init();
+  index_list.Init();
+    
+  Assimp::Importer importer;
+    
+  aiScene* scene =
+    (aiScene*)importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals
+				| aiProcess_OptimizeMeshes);
+    
+  printf("num meshes %d\n",scene->mNumMeshes);
+    
+  aiMesh* mesh = scene->mMeshes[0];
+    
+  printf("Total vertices %d\n",mesh->mNumVertices);
+  printf("Total indices %d\n",mesh->mNumFaces * 3);
+  printf("Total bones %d\n",mesh->mNumBones);
+  printf("Total animations %d\n",scene->mNumAnimations);
+    
+  for(u32 i = 0; i < mesh->mNumVertices;i++){
+        
+    aiVector3D pos = mesh->mVertices[i];
+    aiVector3D normal = mesh->mNormals[i];
+        
+    aiVector3D texcoord = {};
+        
+    if(mesh->HasTextureCoords(0)){
+      texcoord = mesh->mTextureCoords[0][i];
+    }
+        
+    pos_list.PushBack({pos.x,pos.y,pos.z,1.0f});
+    normal_list.PushBack({normal.x,normal.y,normal.z,1.0f});
+    texcoord_list.PushBack({texcoord.x,texcoord.y});
+    // printf("%f %f\n",texcoord.x,texcoord.y);
+  }
+    
+  for(u32 i = 0; i < mesh->mNumFaces;i++){
+        
+    aiFace face = mesh->mFaces[i];
+        
+    _kill("face is not triangle\n",face.mNumIndices != 3);
+        
+    index_list.PushBack(face.mIndices[0]);
+    index_list.PushBack(face.mIndices[1]);
+    index_list.PushBack(face.mIndices[2]);
+        
+  }
+    
+  VertexBoneDataList bonedatalist;
+  BonenodeList bonenodelist;
+  AssimpAnimationList animationlist;
+    
+  if(mesh->mNumBones){
+        
+    AssimpLoadBones(mesh,&bonedatalist,&bonenodelist);
+        
+    //get animation data
+    animationlist.Init(1);
+    AssimpLoadAnimations(scene,&animationlist);
+        
+    //build skeleton from the bones
+    AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,&data.root_bonenode);
+        
+    data.root_bonenode.name = (s8*)"root";
+        
+    data.root_bonenode.offset = IdentityMatrix4b4();
+        
+    bonenodelist.PushBack(data.root_bonenode);
+  }
+    
+  //MARK: Testing the remapping
+#if  1
+  if(mesh->mNumBones){
+    
+    AssimpBoneNode* bones =
+      (AssimpBoneNode*)alloc(sizeof(AssimpBoneNode) * bonenodelist.count * 2);
+        
+    u32* skinindexmap = (u32*)alloc(sizeof(u32) * index_list.count);
+    u32 ind = 0;
+
+    //FIXME: when using wolf.dae, we will overflow
+    AssimpRemapBones(bones,bonenodelist.container,data.root_bonenode,skinindexmap,&ind);
+        
+        
+        
+    unalloc(bonenodelist.container);
+    bonenodelist.container = bones;
+        
+    //reskin
+    for(u32 i = 0; i < bonedatalist.count;i++){
+            
+      u32 index;
+            
+      index = bonedatalist[i].bone_index[0];
+      bonedatalist[i].bone_index[0] = skinindexmap[index];
+            
+      index = bonedatalist[i].bone_index[1];
+      bonedatalist[i].bone_index[1] = skinindexmap[index];
+            
+      index = bonedatalist[i].bone_index[2];
+      bonedatalist[i].bone_index[2] = skinindexmap[index];
+            
+      index = bonedatalist[i].bone_index[3];
+      bonedatalist[i].bone_index[3] = skinindexmap[index];
+    }
+        
+    //remap children
+    for(u32 i = 0; i < bonenodelist.count;i++){
+      AssimpBoneNode* node = bonenodelist.container + i;
+            
+      for(u32 j = 0; j < node->children_count;j++){
+	u32 index = node->childrenindex_array[j];
+	node->childrenindex_array[j] = skinindexmap[index];
+      }
+    }
+        
+    data.root_bonenode = bonenodelist[0];
+
+    unalloc(skinindexmap);
+  }
+#endif
+    
+  {
+    data.vertex_array = pos_list.container;
+    data.vertex_count = pos_list.count;
+        
+    data.texcoord_array = texcoord_list.container;
+    data.texcoord_count = texcoord_list.count;
+    data.normal_array = normal_list.container;
+    data.normal_count = normal_list.count;
+        
+    data.index_array = index_list.container;
+    data.index_count = index_list.count;
+        
+    data.vertexbonedata_array = bonedatalist.container;
+    data.vertexbonedata_count = bonedatalist.count;
+    data.bone_array = bonenodelist.container;
+    data.bone_count = bonenodelist.count;
+        
+    data.animation_array = animationlist.container;
+    data.animation_count = animationlist.count;
+  }
+  
+  return data;
+}
+
+void _ainline PtrCopy(s8** ptr,void* data,u32 size){
+  memcpy(*ptr,data,size);
+  *ptr += size;
+}
+
+u32 AnimBoneSize(AssimpData data,AssimpBoneNode* bones){
+    
+  u32 size = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
+    
+  for(u32 i = 0; i < data.bone_count;i++){
+        
+    size = _align16(size);
+        
+    auto bone = bones[i];
+        
+    size += sizeof(ALinearBone);
+    size += bone.children_count * sizeof(u32);
+    size += sizeof(AAnimationData);
+        
+    AssimpAnimationData array[100];
+    u32 array_count = 0;
+        
+    for(u32 j = 0; j < data.animation_count; j++){
+      AssimpAnimation set = data.animation_array[j];
+            
+      for(u32 k = 0; k < set.data_count; k++){
+	AssimpAnimationData keydata = set.data[k];
+                
+	if(keydata.bone_hash == bone.bone_hash){
+	  array[array_count] = keydata;
+	  array_count++;
+	  _kill("",array_count > 100);
+	  break;
+	}
+      }
+    }
+        
+    size += sizeof(MDFKeyCount) * data.animation_count;
+        
+    for(u32 b = 0; b < array_count;b++){
+      auto anim = array[b];
+            
+      size += sizeof(AAnimationKey) * anim.positionkey_count;
+      size += sizeof(AAnimationKey) * anim.rotationkey_count;
+      size += sizeof(AAnimationKey) * anim.scalekey_count;
+    }
+  }
+    
+  return _align16(size);
+}
+
+
+
+//TODO: Consider compressing the data
+
+//smaller footprint
+void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
+		       AnimationBlendType blendtype = BLEND_LINEAR){
+    
+  s8* buffer = (s8*)alloc(_megabytes(30));
+  memset(buffer,0,_megabytes(30));
+    
+  s8* ptr = buffer;
+    
+  AssimpBoneNode* bones = 0;
+    
+  //write the header and vertex component
+  {
+    u32 header = TAG_MDF;
+    PtrCopy(&ptr,&header,sizeof(header));
+        
+    //Vertex Model Version
+    header = 0;
+    PtrCopy(&ptr,&header,sizeof(header));
+  }
+    
+  //write vertex data
+  {
+        
+    _kill("Model has no vertex positions\n",data.vertex_count == 0);
+        
+    //figure out the vertex components
+    {
+      u16 vertex_component = 0;
+            
+      if(data.normal_count){
+	vertex_component |= VERTEX_NORMAL;
+      }
+            
+      if(data.texcoord_count){
+	vertex_component |= VERTEX_TEXCOORD;
+      }
+            
+      if(data.vertexbonedata_count){
+	vertex_component |= VERTEX_BONEID_WEIGHT;
+                
+	//rearrange the bones and skinning data to be cpu optimal
+	bones =
+	  (AssimpBoneNode*)alloc(sizeof(AssimpBoneNode) * (data.bone_count + 120));
+                
+	{
+	  u32* skinindexmap = (u32*)alloc(sizeof(u32) * data.index_count);
+	  u32 ind = 0;
+                    
+	  AssimpRemapBones(bones,data.bone_array,data.root_bonenode,skinindexmap,&ind);
+                    
+	  //remap skin indices
+	  for(u32 i = 0; i < data.vertexbonedata_count;i++){
+                        
+	    u32 index;
+                        
+	    index = data.vertexbonedata_array[i].bone_index[0];
+	    data.vertexbonedata_array[i].bone_index[0] = skinindexmap[index];
+                        
+	    index = data.vertexbonedata_array[i].bone_index[1];
+	    data.vertexbonedata_array[i].bone_index[1] = skinindexmap[index];
+                        
+	    index = data.vertexbonedata_array[i].bone_index[2];
+	    data.vertexbonedata_array[i].bone_index[2] = skinindexmap[index];
+                        
+	    index = data.vertexbonedata_array[i].bone_index[3];
+	    data.vertexbonedata_array[i].bone_index[3] = skinindexmap[index];
+	  }
+                    
+	  //remap children
+	  for(u32 i = 0; i < data.bone_count;i++){
+	    AssimpBoneNode* node = data.bone_array + i;
+                        
+	    for(u32 j = 0; j < node->children_count;j++){
+	      u32 index = node->childrenindex_array[j];
+	      node->childrenindex_array[j] = skinindexmap[index];
+	    }
+	  }
+
+	  unalloc(skinindexmap);
+	}
+      }
+            
+      PtrCopy(&ptr,&vertex_component,sizeof(u16));
+            
+      u32 indversize = (data.vertex_count * sizeof(AVector3)) +
+	(data.texcoord_count * sizeof(Vector2)) +
+	(data.normal_count * sizeof(AVector3)) +
+	(data.vertexbonedata_count * sizeof(VertexBoneData)) +
+	data.index_count * sizeof(u32);
+            
+      u32 animbonesize = AnimBoneSize(data,bones);
+            
+      printf("animbone size %d\n",(animbonesize));//MARK:Not exact but will do
+      printf("vertindex size %d\n",(indversize));//MARK:Not exact but will do
+            
+      PtrCopy(&ptr,&indversize,sizeof(indversize));
+      PtrCopy(&ptr,&animbonesize,sizeof(animbonesize));
+    }
+        
+    u32 header = TAG_VERTEX;
+    u32 datasize =
+      (data.vertex_count * sizeof(AVector3)) + //positions
+      (data.texcoord_count * sizeof(Vector2)) + //texcoords
+      (data.normal_count * sizeof(AVector3)) + //normals
+      (data.vertexbonedata_count * sizeof(VertexBoneData)); //boneid and weight
+        
+    PtrCopy(&ptr,&header,sizeof(header));
+    PtrCopy(&ptr,&datasize,sizeof(u32));
+        
+    //write vertex data
+    for(u32 i = 0; i < data.vertex_count;i++){
+            
+      PtrCopy(&ptr,&data.vertex_array[i],sizeof(AVector3));
+            
+      if(data.normal_count){
+	PtrCopy(&ptr,&data.normal_array[i],sizeof(AVector3));
+      }
+            
+      if(data.texcoord_count){
+	PtrCopy(&ptr,&data.texcoord_array[i],sizeof(Vector2));
+	//MARK:
+	// printf("texcoord%f %f\n",data.texcoord_array[i].x,data.texcoord_array[i].y);
+      }
+            
+      if(data.vertexbonedata_count){
+	PtrCopy(&ptr,&data.vertexbonedata_array[i],sizeof(VertexBoneData));
+      }
+            
+    }
+  }
+    
+  //write indices
+  {
+    u32 header = TAG_INDEX;
+    u32 datasize = data.index_count * sizeof(u32);
+    PtrCopy(&ptr,&header,sizeof(header));
+    PtrCopy(&ptr,&datasize,sizeof(u32));
+    PtrCopy(&ptr,data.index_array,datasize);
+  }
+    
+  //write skeleton and animation data if any
+  {
+        
+    if(bones){
+            
+      u32 header;
+      u32 datasize;
+            
+      //animations
+      {
+	header = TAG_ANIM;
+	datasize = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
+                
+	PtrCopy(&ptr,&header,sizeof(header));
+	PtrCopy(&ptr,&datasize,sizeof(u32));
+                
+	for(u32 i = 0; i < data.animation_count;i++){
+	  AssimpAnimation set = data.animation_array[i];
+                    
+	  PtrCopy(&ptr,&set.data_count,sizeof(u32));
+	  PtrCopy(&ptr,&set.duration,sizeof(f32));
+	  PtrCopy(&ptr,&set.tps,sizeof(f32));
+	}
+                
+      }
+            
+            
+      //skeleton
+      if(blendtype == BLEND_LINEAR){
+	header = _encode('B','L','I','N');
+	datasize = data.bone_count;
+	PtrCopy(&ptr,&header,sizeof(header));
+	PtrCopy(&ptr,&datasize,sizeof(datasize));
+                
+	for(u32 i = 0; i < data.bone_count;i++){
+	  AssimpBoneNode bone = bones[i];
+                    
+	  MDFLinearBoneData lbd = {bone.bone_hash,bone.children_count,bone.offset};
+	  PtrCopy(&ptr,&lbd,sizeof(MDFLinearBoneData));
+                    
+	  PtrCopy(&ptr,bone.childrenindex_array,sizeof(u32) * bone.children_count);
+                    
+	  AssimpAnimationData array[100] = {};
+	  u32 array_count = 0;
+                    
+	  //write keys
+	  for(u32 j = 0; j < data.animation_count; j++){
+	    AssimpAnimation set = data.animation_array[j];
+                        
+	    for(u32 k = 0; k < set.data_count; k++){
+	      AssimpAnimationData keydata = set.data[k];
+                            
+	      if(keydata.bone_hash == bone.bone_hash){
+		array[array_count] = keydata;
+		array_count++;
+		_kill("",array_count > 100);
+		break;
+	      }
+                            
+	    }
+	    
+	  }
+                    
+	  if(!array_count){
+	    for(u32 b = 0; b < data.animation_count;b++){
+	      MDFKeyCount keycount = {};
+	      PtrCopy(&ptr,&keycount,sizeof(MDFKeyCount));    
+	    }
+                        
+	  }
+                    
+	  else{
+	    for(u32 b = 0; b < data.animation_count;b++){
+	      auto anim = array[b];
+	      MDFKeyCount keycount = {anim.positionkey_count,anim.rotationkey_count,
+				      anim.scalekey_count};
+	      PtrCopy(&ptr,&keycount,sizeof(MDFKeyCount));    
+	    }
+                        
+	    for(u32 b = 0; b < data.animation_count;b++){
+	      auto anim = array[b];
+                            
+	      PtrCopy(&ptr,anim.positionkey_array,sizeof(AAnimationKey) * anim.positionkey_count);
+	      PtrCopy(&ptr,anim.rotationkey_array,sizeof(AAnimationKey) * anim.rotationkey_count);
+	      PtrCopy(&ptr,anim.scalekey_array,sizeof(AAnimationKey) * anim.scalekey_count);    
+	    }
+                        
+	  }
+                    
+	}
+                
+      }
+            
+      else{
+	_kill("not supported yet\n",1)
+	  }
+            
+      unalloc(bones);
+    }
+  }
+    
+    
+    
+  //write material data if any
+    
+  //write texture data if any
+
+  *out_buffer = buffer;
+  *out_buffer_size = (((s8*)ptr) - ((s8*)buffer));
+}
+
+
+
+//smaller footprint
+void AssimpWriteMDF(AssimpData data,const s8* filepath,
+		    AnimationBlendType blendtype){
+
+  s8* buffer;
+  u32 buffer_size;
+
+  CreateAssimpToMDF((void**)&buffer,&buffer_size,data,blendtype);
+    
+    
+  FileHandle file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			      F_FLAG_TRUNCATE);
+    
+  FWrite(file,buffer,buffer_size);
+    
+  unalloc(buffer);
+}
+

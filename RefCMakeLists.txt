@@ -1,0 +1,126 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(copper)
+
+if(UNIX)
+
+  set(CMAKE_C_COMPILER /usr/bin/clang)
+  set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+
+  # set(CMAKE_C_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang)
+  # set(CMAKE_CXX_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang++)
+
+  set(PLATFORM_INCLUDES
+    "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
+    )
+
+  #set(CLANG_DEBUG "-fsanitize=address,memory,undefined,safe-stack,thread")
+  set(CLANG_DEBUG "") #break here __asan::ReportGenericError
+
+  set(OPT_FLAGS "-O0 -march=x86-64 -fno-omit-frame-pointer -fno-fast-math -fno-exceptions -fno-rtti")
+
+  set(STRICT_FLAGS "-Werror -Wall -Wextra -pedantic -Wcast-align  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self  -Wmissing-include-dirs   -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo  -Wstrict-overflow=5 -Wundef -Wno-unused -Wno-variadic-macros -Wno-parentheses -Wunused-function -Wunused-label -Wunused-value -Wunused-variable -fdiagnostics-show-option -Wno-missing-field-initializers -Wno-missing-braces")
+
+  set(FLAGS "-g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
+
+  set(ASSIMP_LIB "libassimp.so")
+  set(DL_LIB "dl")
+  set(PTHREAD_LIB "pthread")
+  
+  set(PLATFORM_LIBS ${DL_LIB} ${PTHREAD_LIB})
+  
+else(UNIX)
+
+  set(PLATFORM_INCLUDES
+    "${CMAKE_BINARY_DIR}/../src/cu_std/win32"
+    )
+
+    set(ASSIMP_LIB "../extlib/assimp-vc140-mt")
+    set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib" "xaudio2.lib")
+
+set(STRICT_FLAGS "/W3 /WX")
+set(OPT_FLAGS "/Od /EHsc")
+
+    set(FLAGS "/Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
+  
+endif(UNIX)
+
+  set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+  set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
+
+set(CMAKE_CXX_FLAGS  ${FLAGS})
+
+# Output Directory Variables
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+
+# Include Directory 
+include_directories(
+  "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
+  "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
+  "${CMAKE_BINARY_DIR}/../include"
+  "${CMAKE_BINARY_DIR}/../src/engine"
+  ${PLATFORM_INCLUDES}
+  "${CMAKE_BINARY_DIR}/../src/game"
+  )
+
+file(GLOB IMPORTER src/importer/main.cpp)
+file(GLOB GLSLPARSER src/glslparser/main.cpp)
+file(GLOB CPARSER src/cparser/main.cpp)
+file(GLOB ENGINE src/engine/main.cpp)
+file(GLOB ASSETPACKER src/assetpacker/main.cpp)
+file(GLOB GAME src/game/game.cpp)
+file(GLOB CU_STD src/cu_std/cu/main.cpp)
+
+#we should separate these two
+add_library(cu_std STATIC ${CU_STD})
+
+add_executable(assetpacker ${ASSETPACKER})
+add_executable(cparser ${CPARSER})
+add_executable(importer ${IMPORTER})
+add_executable(glslparser ${GLSLPARSER})
+
+#we shouldn't have to link platform libs (the only thing we shoud have to link to is libdl)
+target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
+target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
+target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
+target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
+
+#for these we do not want to have stdc++
+add_executable(cu_engine ${ENGINE})
+
+if(UNIX)
+  
+  add_library(game SHARED ${GAME})
+  set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
+  
+  target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS} m)
+  set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
+  
+else(UNIX)
+
+target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
+set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
+
+add_library(game MODULE ${GAME})
+target_link_libraries(game cu_std ${PLATFORM_LIBS})
+
+string(TIMESTAMP VERSION "%Y_%m_%d_%H_%M_%S")
+
+set_target_properties(game PROPERTIES
+PDB_NAME "game_${VERSION}"
+)
+  
+endif(UNIX)
+
+#files that include things that require dependencies
+
+
+# src/cu_std/cu/debugtimer.h:#include "tthread.h"
+# src/cu_std/cu/vvulkan.h:#include "tthreadx.h"
+
+
+# src/cu_std/cu/vvulkan.cpp:#include "libload.h"
+# src/cu_std/linux/aaudio.cpp:#include "libload.h"
+# src/cu_std/linux/wwindow.cpp:#include "libload.h"
