@@ -1,0 +1,20 @@
+language: c++
+sudo: required
+dist: trusty
+compiler: clang
+script:
+  - apt-get update -qq
+  - apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev -y
+  - mv TEST_CMakeLists.txt CMakeLists.txt
+  - cd tests
+  - cmake ..
+  - make
+  - chmod +x ci_test
+  - ./ci_test
+  - cd ../
+  - cat RefCMakeLists.txt > CMakeLists.txt
+  - mkdir Make
+  - cmake ..
+  - make
+      
+ 
