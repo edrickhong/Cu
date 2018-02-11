@@ -15,5 +15,4 @@ before_build:
    - cmake -G "Visual Studio 15 2017 Win64" ..
 
 build:
-   - ps: echo %cd%
-project: Make\ALL_BUILD.vcxproj
+   project: Make\ALL_BUILD.vcxproj
