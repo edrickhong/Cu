@@ -4,6 +4,9 @@ project(copper)
 
 if(UNIX)
 
+  # set(CMAKE_C_COMPILER /usr/bin/clang)
+  # set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+
   # set(CMAKE_C_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang)
   # set(CMAKE_CXX_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang++)
 
