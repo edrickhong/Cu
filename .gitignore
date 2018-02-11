@@ -1,0 +1,8 @@
+rsrc/*
+bin/*
+Make/
+CMakeLists.txt
+FIXME.txt
+MARK.txt
+NOTE.txt
+TODO.txt
