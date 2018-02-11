@@ -208,51 +208,51 @@ _persist TIMESTAMP global_timestamp = 0xFFFFFFFF;
   }
 #define _DAllocateFromOccupiedBlockFn(type,state) void AllocateFromOccupiedBlock##type(	\
 										       type* a,u32 size){ \
-													 _kill("0 size allocation\n",!size); \
-													 _kill("insufficient blocksize\n",(a->size < size)); \
-													 if(a->size == size){ \
-															     _allocprint("exact alloc%s\n","");	\
-															     return; \
-															     } \
-													 type* b = AddBlocks##type(); \
-													 *b = {a->ptr + size,a->size - size,a->higherblock,a}; \
-													 a->size = size; \
-													 a->higherblock = b; \
-													 _allocprint("Added %p to free %llu\n",(void*)b,b->size); \
-													 AddBlock##type(state.free_array,&state.free_count,b); \
-													 }
-#define _DAllocateBlockFn(type,state) type* AllocateBlock##type(u32 size){ \
-    for(u32 i = 0; i < state.free_count; i++){				\
-      auto block = state.free_array[i];					\
-      if(block->size >= size){						\
-	AllocateFromFreeBlock##type(block,size);			\
-	return block;							\
-      }									\
+    _kill("0 size allocation\n",!size);					\
+    _kill("insufficient blocksize\n",(a->size < size));			\
+    if(a->size == size){						\
+      _allocprint("exact alloc%s\n","");				\
+      return;								\
     }									\
-    return 0;								\
+    type* b = AddBlocks##type();					\
+    *b = {a->ptr + size,a->size - size,a->higherblock,a};		\
+    a->size = size;							\
+    a->higherblock = b;							\
+    _allocprint("Added %p to free %llu\n",(void*)b,b->size);		\
+    AddBlock##type(state.free_array,&state.free_count,b);		\
   }
+#define _DAllocateBlockFn(type,state) type* AllocateBlock##type(u32 size){ \
+									  for(u32 i = 0; i < state.free_count; i++){ \
+														    auto block = state.free_array[i]; \
+														    if(block->size >= size){ \
+																	    AllocateFromFreeBlock##type(block,size); \
+																	    return block; \
+																	    } \
+														    } \
+									  return 0; \
+									  }
 
 #define _DIsInListFn(slot_type,block_type) logic IsInList##block_type(slot_type* list,u32 count, \
-								      block_type* block){ \
-    for(u32 i = 0; i < count; i++){					\
-      if(block == list[i].block){					\
-	return 1;							\
-      }									\
-    }									\
-    return 0;								\
-  }									\
+									block_type* block){ \
+											   for(u32 i = 0; i < count; i++){ \
+															  if(block == list[i].block){ \
+																		     return 1; \
+																		     } \
+															  } \
+											   return 0; \
+											   } \
   logic IsInList##block_type(block_type** list,u32 count,block_type* block){ \
-    for(u32 i = 0; i < count; i++){					\
-      if(block == list[i]){						\
-	return 1;							\
-      }									\
-    }									\
-    return 0;								\
-  }
+									    for(u32 i = 0; i < count; i++){ \
+													   if(block == list[i]){ \
+																return 1; \
+																} \
+													   } \
+									    return 0; \
+									    }
 
 #define _DMergeBlockFn(type) logic MergeBlock##type(type* a,type* b){	\
     if(b->lowerblock != a){						\
-      return 0;								\
+			   return 0;					\
     }									\
     a->size += b->size;							\
     a->higherblock = b->higherblock;					\
@@ -1300,7 +1300,6 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
   }
 #endif
 
-#if _enable_vt
   {
     
     //MARK:
@@ -1328,7 +1327,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     threadtexturefetch_array = (VTReadbackPixelFormat*)alloc(w * h *
 							     sizeof(VTReadbackPixelFormat));
   }
-#endif
+
 
 
   for(u32 i = 0; i < _arraycount(fetch_pool); i++){
