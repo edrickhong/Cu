@@ -1,0 +1,77 @@
+
+layout (constant_id = 0) const uint phys_width = 16 * 1024;
+layout (constant_id = 1) const uint phys_height = 8 * 1024;
+
+struct PagerState{
+  uint page_count;
+
+  uint freepage_count;
+  uint freepage_array[phys_width * phys_height];
+};
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConst{
+  uint blocksize;
+}pushconst;
+
+layout (set = 0,binding = 0, rgba8) uniform readonly image2D ref_image;
+
+layout (set = 0,binding = 1) buffer StateBuffer{
+  uint fetchentry_count;
+  uint pad0[3];
+  uvec4 fetchentry_array[]; 
+}statebuffer;
+
+uint GetIndex(){
+  
+  bool test = true;
+
+  uint expected_index;
+
+  while(test){
+      
+    expected_index = statebuffer.fetchentry_count;
+    uint actual_index = atomicCompSwap(statebuffer.fetchentry_count,
+				       expected_index,expected_index + 1);
+    
+    test = expected_index != actual_index;
+  }
+
+  return expected_index;
+}
+
+void main(){
+
+  uint blocksize = pushconst.blocksize;
+  ivec2 startpos = ivec2(gl_WorkGroupID.xy * blocksize);
+  vec4 total = vec4(0,0,0,0);
+
+  for(uint y =0; y < blocksize; y++){
+    
+    for(uint x =0; x < blocksize; x++){
+      ivec2 readpos = startpos + ivec2(x,y);
+      total += imageLoad(ref_image,readpos);
+      
+    }
+    
+  }
+
+  if(total.x > 0.0f){
+    
+    uint index = GetIndex();
+
+    if(index == uint(-1)){
+      statebuffer.fetchentry_count = index;
+      return;
+    }
+
+    statebuffer.fetchentry_array[index] = uvec4(gl_WorkGroupID.xy,3,4);
+  }
+  
+}
+
+  /* 
+     decided to move page management here. we will populate a list later to tell the 
+     host to copy to these regions
+  */
