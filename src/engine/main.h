@@ -649,9 +649,8 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
   VStartCommandBuffer(cmdbuffer,0);
 
-#if _enable_vt
+
   VTStart(cmdbuffer);
-#endif
   
 
   GameDrawGUI(context,&pdata->drawcmdbuffer,2);
@@ -715,9 +714,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
   VEndRenderPass(cmdbuffer);
 
-#if _enable_vt
   VTEnd(cmdbuffer);  
-#endif
   
 }
 
@@ -1031,15 +1028,12 @@ void PresentBuffer(PlatformData* pdata){
       vkResetFences(pdata->vdevice.device,1,&fence);  
     }
 
-#if _enable_vt
-
     auto fetch_cmdbuffer =
       GenerateTextureFetchRequests(&pdata->fetchqueue,pdata->worker_sem);
 
     if(fetch_cmdbuffer){
       vkCmdExecuteCommands(cmdbuffer,1,&fetch_cmdbuffer);    
     }
-#endif
     
   }
   
@@ -1539,7 +1533,6 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
 			      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			      &image_info[1]);
 
-#if  _enable_vt
 
   VkDescriptorImageInfo vt_readbackbufferinfo = {
     0,
@@ -1550,7 +1543,6 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
   VDescPushBackWriteSpecImage(&writespec,pdata->vt_descriptorset,
   			      2,0,1,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
   			      &vt_readbackbufferinfo);
-#endif
 	    
             
   VUpdateDescriptorSets(&pdata->vdevice,writespec);
