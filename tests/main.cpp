@@ -47,10 +47,7 @@ u32 MDFTests(){
 
   const s8* test_files[] = {
     "goblin.dae",
-    "shark.dae",
     "teapot.dae",
-    "monkey.obj",
-    "skel.dae"
   };
 
   for(u32 i = 0; i < _arraycount(test_files); i++){
