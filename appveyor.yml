@@ -6,10 +6,10 @@ platform:
   - x64
  
 configuration:
-  - Release
   - Debug
 
 before_build:
+   - type RefCMakeLists.txt > CMakeLists.txt
    - mkdir Make
    - cd Make
    - cmake -G "Visual Studio 15 2017 Win64" ..
