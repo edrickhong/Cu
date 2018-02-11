@@ -3,7 +3,7 @@ sudo: required
 dist: trusty
 compiler: clang
 script:
-  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev -y
+  - sudo apt-get install clang assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev -y
   - mv TEST_CMakeLists.txt CMakeLists.txt
   - cd tests
   - cmake ..
