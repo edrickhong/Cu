@@ -11,9 +11,8 @@ configuration:
 before_build:
    - type RefCMakeLists.txt > CMakeLists.txt
    - mkdir Make
-   - cd Make
+   - ps: cd Make
    - cmake -G "Visual Studio 15 2017 Win64" ..
 
 build:
-  - cd Make
-  project: ALL_BUILD.vcxproj
+   project: ALL_BUILD.vcxproj
