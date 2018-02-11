@@ -12,13 +12,13 @@ before_install:
   - sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main"
   - sudo apt-get update -qq
 
-install: 
+install:
+  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev
   - sudo apt-get install --allow-unauthenticated -qq clang++-4.0
   - export CXX="clang++-4.0"
 
   
 script:
-  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev -y
   - mv TEST_CMakeLists.txt CMakeLists.txt
   - cd tests
   - cmake ..
