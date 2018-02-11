@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(tests)
 
-set(CMAKE_C_COMPILER /usr/bin/clang)
-set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+# set(CMAKE_C_COMPILER /usr/bin/clang)
+# set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
 set(PLATFORM_INCLUDES
   "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
