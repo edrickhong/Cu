@@ -13,6 +13,10 @@ install:
 
 before_build:
    - wget --no-check-certificate "\"https://drive.google.com/uc?export=download&id=1V7ootcrlyJ8TpX_freUOeqpIYxWkirhP\""
+   - set filename=cu_additional.zip
+   - set fileid=1V7ootcrlyJ8TpX_freUOeqpIYxWkirhP
+   -set query=`curl -c ./cookie.txt -s -L "https://drive.google.com/uc?export=download&id=%fileid%}" | pup 'a#uc-download-link attr{href}' | sed -e 's/amp;//g'`
+   - curl -b ./cookie.txt -L -o %filename% "https://drive.google.com%query%"
    - 7z e cu_additional.zip
    - cd cu_additional
    - move rsrc ..
