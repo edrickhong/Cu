@@ -9,6 +9,12 @@ configuration:
   - Debug
 
 before_build:
+   - wget https://drive.google.com/open?id=1V7ootcrlyJ8TpX_freUOeqpIYxWkirhP
+   - 7zip e cu_additional.zip
+   - cd cu_additional
+   - move rsrc ..
+   - move extlib ..
+   - cd ..
    - type RefCMakeLists.txt > CMakeLists.txt
    - mkdir Make
    - cd Make
