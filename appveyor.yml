@@ -9,7 +9,7 @@ configuration:
   - Debug
 
 before_build:
-   - wget https://drive.google.com/open?id=1V7ootcrlyJ8TpX_freUOeqpIYxWkirhP
+   - curl https://drive.google.com/open?id=1V7ootcrlyJ8TpX_freUOeqpIYxWkirhP --output cu_additional.zip
    - 7zip e cu_additional.zip
    - cd cu_additional
    - move rsrc ..
