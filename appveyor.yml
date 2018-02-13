@@ -10,7 +10,7 @@ configuration:
 
 before_build:
    - curl https://drive.google.com/open?id=1V7ootcrlyJ8TpX_freUOeqpIYxWkirhP --output cu_additional.zip
-   - 7zip e cu_additional.zip
+   - 7z e cu_additional.zip
    - cd cu_additional
    - move rsrc ..
    - move extlib ..
