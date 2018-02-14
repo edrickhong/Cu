@@ -12,7 +12,7 @@ install:
 
 before_build:
    - curl -L https://downloads.sourceforge.net/project/assimp/assimp-3.1/assimp-3.1.1-win-binaries.zip > assimp.zip
-   - 7z e assimp.zip
+   - 7z e assimp.zip -n
    - mkdir extlib
    - cd assimp\assimp-3.1.1-win-binaries\lib64\
    - move assimp.lib ..\..\..\extlib\
