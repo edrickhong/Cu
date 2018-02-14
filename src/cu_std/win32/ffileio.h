@@ -36,22 +36,20 @@ struct FileInfo{
 
 FileHandle _ainline FOpenFile(const s8* filepath,u32 flags){
 
-  u32 exflags = OPEN_ALWAYS;
+  u32 exflags = OPEN_EXISTING;
+
+  if(flags & F_FLAG_CREATE){
+    exflags = OPEN_ALWAYS;
+    flags ^= F_FLAG_CREATE;
+  }
 
   if(flags & F_FLAG_TRUNCATE){
-    exflags = exflags | TRUNCATE_EXISTING;
+    exflags = TRUNCATE_EXISTING;
+    flags ^= F_FLAG_TRUNCATE;
   }
 
   FileHandle filehandle =
     CreateFile(filepath,flags,FILE_SHARE_READ,NULL,exflags,FILE_ATTRIBUTE_NORMAL,NULL);
-
-  if(filehandle == INVALID_HANDLE_VALUE && flags & F_FLAG_TRUNCATE){
-    
-    exflags ^= 1;
-    filehandle = CreateFile(filepath,flags,FILE_SHARE_READ,NULL,exflags,FILE_ATTRIBUTE_NORMAL,
-			    NULL);
-    
-  }
   
   return filehandle;
 }
@@ -64,6 +62,13 @@ FileHandle _ainline FOpenFileDebug(const s8* filepath,u32 flags){
 
 void _ainline FCloseFile(FileHandle filehandle){
   CloseHandle(filehandle);
+}
+
+logic _ainline FIsFileExists(const s8* filepath){
+  auto file = FOpenFile(filepath,F_FLAG_READONLY);
+  logic ret = file != F_FILE_INVALID;
+  FCloseFile(file);
+  return ret;
 }
 
 void _ainline FRead(FileHandle filehandle,void* buffer,ptrsize size){

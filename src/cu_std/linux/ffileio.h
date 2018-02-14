@@ -45,6 +45,13 @@ void _ainline FCloseFile(FileHandle filehandle){
   close(filehandle);
 }
 
+logic _ainline FIsFileExists(const s8* filepath){
+  auto file = FOpenFile(filepath,F_FLAG_READONLY);
+  logic ret = file != F_FILE_INVALID;
+  FCloseFile(file);
+  return ret;
+}
+
 void _ainline FRead(FileHandle filehandle,void* buffer,ptrsize size){
   read(filehandle,buffer,size);
 }
