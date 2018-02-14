@@ -35,7 +35,7 @@ else(UNIX)
     "${CMAKE_BINARY_DIR}/../src/cu_std/win32"
     )
 
-    set(ASSIMP_LIB "../extlib/assimp-vc140-mt")
+    set(ASSIMP_LIB "../extlib/assimp")
     set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib" "xaudio2.lib")
 
 set(STRICT_FLAGS "/W3 /WX")
