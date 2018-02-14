@@ -232,6 +232,10 @@ void KeyboardInput(SceneContext* context){
 }
 
 void ComponentRead(ComponentStruct* components,SceneContext* context){
+
+  if(!FIsFileExists(_COMPFILE)){
+    return;
+  }
   
   auto file = FOpenFile(_COMPFILE,F_FLAG_READONLY);
 
