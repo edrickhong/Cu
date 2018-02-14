@@ -49,5 +49,3 @@ void ADestroyAudioDevice(AAudioContext audio_context);
 void APlayAudioDevice(AAudioContext audio_context,void* data,u32 write_frames);
 
 u32 AAudioDeviceWriteAvailable(AAudioContext audiocontext);
-
-AAudioBuffer ACreateAudioBufferFromWav(const s8* filepath);

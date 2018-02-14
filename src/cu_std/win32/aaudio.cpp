@@ -83,39 +83,39 @@ void APlayAudioDevice(AAudioContext audio_context,
 		      void* data,
 		      u32 write_frames){
 
-      // Sample Size -> sizeof(s16)
-      u32 write_size = write_frames * audio_context.channels * sizeof(s16);
+  // Sample Size -> sizeof(s16)
+  u32 write_size = write_frames * audio_context.channels * sizeof(s16);
 		
-      _kill("Write size larger than max buffer bytes", write_size > XAUDIO2_MAX_BUFFER_BYTES);
+  _kill("Write size larger than max buffer bytes", write_size > XAUDIO2_MAX_BUFFER_BYTES);
 
-      // Check if offset is larger than the buffer size
-      if (*(audio_context.buffer_offset) + write_size > audio_context.buffer_size)
-	{
-	  *(audio_context.buffer_offset) = 0;
-	}
+  // Check if offset is larger than the buffer size
+  if (*(audio_context.buffer_offset) + write_size > audio_context.buffer_size)
+    {
+      *(audio_context.buffer_offset) = 0;
+    }
 
-      s8* play_data = audio_context.buffer + *(audio_context.buffer_offset);
+  s8* play_data = audio_context.buffer + *(audio_context.buffer_offset);
 
-      memcpy(play_data, data, write_size);
-      *(audio_context.buffer_offset) += write_size;
+  memcpy(play_data, data, write_size);
+  *(audio_context.buffer_offset) += write_size;
 
-      XAUDIO2_BUFFER xaudio2_buffer =
-	{
-	  0,
-	  write_size,
-	  (const BYTE*) play_data,
-	  0,
-	  0,
-	  0,
-	  0,
-	  0,
-	  play_data
-	};
+  XAUDIO2_BUFFER xaudio2_buffer =
+    {
+      0,
+      write_size,
+      (const BYTE*) play_data,
+      0,
+      0,
+      0,
+      0,
+      0,
+      play_data
+    };
 
-      HRESULT hr;
+  HRESULT hr;
 
-      hr = (audio_context.source_voice)->SubmitSourceBuffer(&xaudio2_buffer);
-      _kill("Unable to submit source buffer", hr);
+  hr = (audio_context.source_voice)->SubmitSourceBuffer(&xaudio2_buffer);
+  _kill("Unable to submit source buffer", hr);
 }
 
 
@@ -128,4 +128,37 @@ u32 AAudioDeviceWriteAvailable(AAudioContext audiocontext){
     return (u32)-1;  
   }
   return 0;
+}
+
+
+#define COBJMACROS
+#include "mmdeviceapi.h"
+#include "audioclient.h"
+
+void TestWASAPI(){
+  
+  auto res = CoInitialize(0);
+  
+  _kill("",res != S_OK);
+
+  CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
+  IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
+  IMMDeviceEnumerator* device_enum = 0;
+
+  res = CoCreateInstance(CLSID_MMDeviceEnumerator,0,CLSCTX_INPROC_SERVER,
+			 CLSID_MMDeviceEnumerator,(LPVOID*)device_enum);
+
+  _kill("",res != S_OK);
+
+  IMMDevice* device = 0;
+
+  auto hr = device_enum->GetDefaultAudioEndpoint(eRender,eMultimedia,&device);
+
+  _kill("",res != S_OK);
+
+  IAudioClient* audioclient = 0;
+
+  device->Activate(__uuidof(IAudioClient),CLSCTX_ALL,0,(void**)&audioclient);
+
+  //it looks like wasapi requires us to do our own format conversion
 }
