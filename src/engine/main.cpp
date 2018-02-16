@@ -117,7 +117,8 @@ s32 main(s32 argc,s8** argv){
       
   pdata->audio =
     ACreateAudioDevice(A_DEVICE_DEFAULT,48000,2,A_FORMAT_S16LE);
-    
+
+  InitSceneContext(pdata,transfercmdbuffer,pdata->transfer_queue);
     
   //Kickoff worker threads
   {
@@ -145,9 +146,6 @@ s32 main(s32 argc,s8** argv){
   pdata->rendercmdbuffer_array =
     CreatePrimaryRenderCommandbuffer(&pdata->vdevice,
 				     pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
-
-  
-  InitSceneContext(pdata,transfercmdbuffer,pdata->transfer_queue);
 
   GUIInit(&pdata->vdevice,&pdata->window,pdata->renderpass,pdata->transfer_queue,
 	  transfercmdbuffer);
