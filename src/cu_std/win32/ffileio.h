@@ -44,7 +44,7 @@ FileHandle _ainline FOpenFile(const s8* filepath,u32 flags){
   }
 
   if(flags & F_FLAG_TRUNCATE){
-    exflags = TRUNCATE_EXISTING;
+    exflags = CREATE_ALWAYS;
     flags ^= F_FLAG_TRUNCATE;
   }
 
@@ -123,3 +123,5 @@ void DebugDumpOpenFiles();
 #define FCloseFile(filehandle) DebugFCloseFile(filehandle)
 
 #endif
+
+#define FOpenFile FOpenFileDebug

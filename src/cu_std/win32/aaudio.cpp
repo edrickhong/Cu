@@ -142,27 +142,40 @@ u32 AAudioDeviceWriteAvailable(AAudioContext audiocontext){
 #include "audioclient.h"
 
 #define _buffersize 880000
+#define _max_s16 (1 << 15)
 //signed 16 bit range -32,768 to 32,767
 
-u32 Convert_SLE16_TO_F32(void* dst,void* src,u32 frame_count) {
-  _kill("do actual coversion TODO: need the channel count as well",1);
+u32 Convert_SLE16_TO_F32(void* dst,void* src,u32 sample_count) {
+
+  auto sample_array = (s16*)src;
+  auto out_sample_array = (f32*)dst;
+
+  for(u32 i = 0; i < sample_count; i++){
+    out_sample_array[i] = (f32)(sample_array[i])/((f32)_max_s16);
+  }
+  
   return sizeof(f32);
 }
 
-u32 Convert_F32_TO_SLE16(void* dst,void* src,u32 frame_count) {
-  _kill("do actual coversion TODO: need the channel count as well",1);
+u32 Convert_F32_TO_SLE16(void* dst,void* src,u32 sample_count) {
+
+  auto sample_array = (f32*)src;
+  auto out_sample_array = (s16*)dst;
+
+  for(u32 i = 0; i < sample_count; i++){
+    out_sample_array[i] = (s16)(sample_array[i] * ((f32)_max_s16));
+  }
+  
   return sizeof(s16);
 }
 
-u32 Convert_NONE_SLE16(void* dst,void* src,u32 frame_count) {
-  _kill("do actual coversion TODO: need the channel count as well",1);
-  memcpy(dst, src, frame_count * sizeof(s16));
+u32 Convert_NONE_SLE16(void* dst,void* src,u32 sample_count) {
+  memcpy(dst, src, sample_count * sizeof(s16));
   return sizeof(s16);
 }
 
-u32 Convert_NONE_F32(void* dst, void* src, u32 frame_count) {
-  _kill("do actual coversion TODO: need the channel count as well",1);
-  memcpy(dst, src, frame_count * sizeof(f32));
+u32 Convert_NONE_F32(void* dst, void* src, u32 sample_count) {
+  memcpy(dst, src, sample_count * sizeof(f32));
   return sizeof(f32);
 } 
 
@@ -172,7 +185,7 @@ static IMMDeviceEnumerator* device_enum = 0;
 AAudioContext ACreateAudioDevice(const s8* device_name,u32 frequency,u32 channels,
 				 u32 format){
 
-	AAudioContext context = {};
+  AAudioContext context = {};
 
   HRESULT res = 0;
 
@@ -284,11 +297,14 @@ void ConvertAndWrite(AAudioContext* context, void* data, u32 frame_count, void* 
 
 #define _reserved_frames (u32)_48ms2frames(36)
 
+  auto sample_count = frame_count * context->channels;
+
   u32 conversion_buffer[sizeof(u32) * _reserved_frames] = {};
   _kill("exceeded conversion reserved conversion buffer\n", frame_count > _reserved_frames);
 
-  auto samplesize = context->conversion_function(data, conversion_buffer, frame_count);
-  memcpy(dst_buffer, conversion_buffer, (samplesize * context->channels) * frame_count);
+  auto samplesize = context->conversion_function(data,conversion_buffer,sample_count);
+  
+  memcpy(dst_buffer, conversion_buffer, samplesize * sample_count);
 }
 
 void APlayAudioDevice(AAudioContext context,void* data,u32 write_frames){
