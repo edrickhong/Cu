@@ -3,7 +3,7 @@
 #include "mode.h"
 #include "ttype.h"
 
-#define _use_xaudio 1
+#define _use_xaudio 0
 
 #if _use_xaudio
 
