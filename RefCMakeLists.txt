@@ -36,7 +36,7 @@ else(UNIX)
     )
 
     set(ASSIMP_LIB "../extlib/assimp")
-    set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib" "xaudio2.lib")
+    set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib") #"xaudio2.lib"
 
 set(STRICT_FLAGS "/W3 /WX")
 set(OPT_FLAGS "/Od /EHsc")
