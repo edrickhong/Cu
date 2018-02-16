@@ -1109,7 +1109,7 @@ void EditorGUI(SceneContext* context){
 
   {
     static GUIVec2 pos = {-1.0f,1.0f};
-    static GUIDim2 dim = {GUIDEFAULT_W * 1.6f,GUIDEFAULT_H * 0.2f};
+    static GUIDim2 dim = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
     
     GUIBeginWindow("Control Panel",&pos,&dim);
 
