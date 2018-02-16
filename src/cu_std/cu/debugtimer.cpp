@@ -54,7 +54,7 @@ _persist u32 is_paused = 0;
 void BuildGraph(logic to_draw){
 
   static GUIVec2 pos = {-1.0f,0.898333f};
-  static GUIDim2 dim = {GUIDEFAULT_W * 2.5f,GUIDEFAULT_H};
+  static GUIDim2 dim = {GUIDEFAULT_W * 2.5f,GUIDEFAULT_H * 1.4f};
 
   static u32 frame_index = 0;
 
@@ -64,6 +64,7 @@ void BuildGraph(logic to_draw){
   static u32 cur_frame_count = 0;
 
   if (to_draw){
+    
     GUIBeginWindow("Profile View",&pos,&dim);
 
     const DebugRecord* masterblock =
