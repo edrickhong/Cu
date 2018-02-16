@@ -145,19 +145,23 @@ u32 AAudioDeviceWriteAvailable(AAudioContext audiocontext){
 //signed 16 bit range -32,768 to 32,767
 
 u32 Convert_SLE16_TO_F32(void* dst,void* src,u32 frame_count) {
+  _kill("do actual coversion TODO: need the channel count as well",1);
   return sizeof(f32);
 }
 
 u32 Convert_F32_TO_SLE16(void* dst,void* src,u32 frame_count) {
+  _kill("do actual coversion TODO: need the channel count as well",1);
   return sizeof(s16);
 }
 
 u32 Convert_NONE_SLE16(void* dst,void* src,u32 frame_count) {
+  _kill("do actual coversion TODO: need the channel count as well",1);
   memcpy(dst, src, frame_count * sizeof(s16));
   return sizeof(s16);
 }
 
 u32 Convert_NONE_F32(void* dst, void* src, u32 frame_count) {
+  _kill("do actual coversion TODO: need the channel count as well",1);
   memcpy(dst, src, frame_count * sizeof(f32));
   return sizeof(f32);
 } 
