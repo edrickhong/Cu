@@ -389,9 +389,9 @@ f32 Vec3::Magnitude(Vector3 vec){
 //TODO: Could be better (Use shuffle)
 Vector3 Vec3::Cross(Vector3 vec1,Vector3 vec2){
   /* a(x,y,z) b(x,y,z)
-     cx = aybz − azby
-     cy = azbx − axbz
-     cz = axby − aybx
+     cx = aybz - azby
+     cy = azbx - axbz
+     cz = axby - aybx
 
   */
 
