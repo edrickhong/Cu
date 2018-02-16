@@ -302,7 +302,7 @@ void ConvertAndWrite(AAudioContext* context, void* data, u32 frame_count, void* 
   u32 conversion_buffer[sizeof(u32) * _reserved_frames] = {};
   _kill("exceeded conversion reserved conversion buffer\n", frame_count > _reserved_frames);
 
-  auto samplesize = context->conversion_function(data,conversion_buffer,sample_count);
+  auto samplesize = context->conversion_function(conversion_buffer,data,sample_count);
   
   memcpy(dst_buffer, conversion_buffer, samplesize * sample_count);
 }
@@ -312,7 +312,7 @@ void APlayAudioDevice(AAudioContext context,void* data,u32 write_frames){
   s8* dst_buffer = 0;
   context.renderclient->GetBuffer(write_frames, (BYTE**)&dst_buffer);
 
-  ConvertAndWrite(&context, data, write_frames, dst_buffer);
+  ConvertAndWrite(&context,data,write_frames,dst_buffer);
 
   context.renderclient->ReleaseBuffer(write_frames, 0);
 }
