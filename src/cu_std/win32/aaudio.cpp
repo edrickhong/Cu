@@ -14,8 +14,63 @@ _persist bool audio_initialized;
 _persist IXAudio2* xaudio2;
 _persist VoiceCallback* voice_callback;
 
+
+#define COBJMACROS
+#include "mmdeviceapi.h"
+#include "audioclient.h"
+
+#define _buffersize 880000
+
+void TestWASAPI(){
+
+  auto res = CoInitialize(0);
+
+  _kill("", res != S_OK);
+
+  CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
+  IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
+  IMMDeviceEnumerator* device_enum = 0;
+
+  res = CoCreateInstance(
+			 CLSID_MMDeviceEnumerator,0,
+			 CLSCTX_INPROC_SERVER, IID_IMMDeviceEnumerator,
+			 (void**)&device_enum);
+
+  _kill("", res != S_OK);
+
+  IMMDevice* device = 0;
+
+  res = device_enum->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+
+  _kill("", res != S_OK);
+
+  IAudioClient* audioclient = 0;
+
+  res = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, 0, (void**)&audioclient);
+
+  _kill("", res != S_OK);
+
+  WAVEFORMATEX* format = 0;
+
+  res = audioclient->GetMixFormat(&format);
+
+  _kill("", res != S_OK);
+
+  //AUDCLNT_STREAMFLAGS_RATEADJUST  must be in shared mode only. lets you set the sample rate
+  //AUDCLNT_SHAREMODE_EXCLUSIVE Windows only
+  res =audioclient->Initialize(AUDCLNT_SHAREMODE_SHARED,0, _buffersize,
+			       0,//period size in - 100 nanoseconds. cannot be 0 in exclusive mode
+			       format,0);
+
+  _kill("", res != S_OK);
+
+  //it looks like wasapi requires us to do our own format conversion
+  _kill("", 1);
+}
+
 AAudioContext ACreateAudioDevice(const s8* device_name, u32 frequency, u32 channels,
 				 u32 format){
+
   // Create AAudioContext
   AAudioContext audio_context = {};
   audio_context.channels = channels;
@@ -130,35 +185,3 @@ u32 AAudioDeviceWriteAvailable(AAudioContext audiocontext){
   return 0;
 }
 
-
-#define COBJMACROS
-#include "mmdeviceapi.h"
-#include "audioclient.h"
-
-void TestWASAPI(){
-  
-  auto res = CoInitialize(0);
-  
-  _kill("",res != S_OK);
-
-  CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
-  IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
-  IMMDeviceEnumerator* device_enum = 0;
-
-  res = CoCreateInstance(CLSID_MMDeviceEnumerator,0,CLSCTX_INPROC_SERVER,
-			 CLSID_MMDeviceEnumerator,(LPVOID*)device_enum);
-
-  _kill("",res != S_OK);
-
-  IMMDevice* device = 0;
-
-  auto hr = device_enum->GetDefaultAudioEndpoint(eRender,eMultimedia,&device);
-
-  _kill("",res != S_OK);
-
-  IAudioClient* audioclient = 0;
-
-  device->Activate(__uuidof(IAudioClient),CLSCTX_ALL,0,(void**)&audioclient);
-
-  //it looks like wasapi requires us to do our own format conversion
-}
