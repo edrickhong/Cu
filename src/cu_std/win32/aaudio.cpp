@@ -20,32 +20,53 @@ _persist VoiceCallback* voice_callback;
 #include "audioclient.h"
 
 #define _buffersize 880000
+//signed 16 bit range -32,768 to 32,767
 
-void Resample(s8* in_sample_buffer,u32 in_sample_rate,u32 in_sample_count,u32 target_sample_rate,
-		 s8* out_sample_buffer,u32* out_sample_count){
+void Convert_SLE16_TO_F32(){}
+void Convert_F32_TO_SLE16(){}
+
+struct WASAPIDevice{
   
-}
+};
 
-void TestWASAPI(){
+static IMMDeviceEnumerator* device_enum = 0;
 
-  auto res = CoInitialize(0);
+//WASAPI allows us to change the sample rate of a stream but not the stream format
+WASAPIDevice TestCreateAudioDevice(const char* device_name,int frequency,int channels,
+				   int format) {
 
-  _kill("", res != S_OK);
+  WASAPIDevice context = {};
 
-  CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
-  IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
-  IMMDeviceEnumerator* device_enum = 0;
+  HRESULT res = 0;
 
-  res = CoCreateInstance(
-			 CLSID_MMDeviceEnumerator,0,
-			 CLSCTX_INPROC_SERVER, IID_IMMDeviceEnumerator,
-			 (void**)&device_enum);
+  if (!audio_initialized) {
 
-  _kill("", res != S_OK);
+    res = CoInitialize(0);
+    _kill("", res != S_OK);
+
+    CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
+    IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
+
+    res = CoCreateInstance(
+			   CLSID_MMDeviceEnumerator, 0,
+			   CLSCTX_INPROC_SERVER, IID_IMMDeviceEnumerator,
+			   (void**)&device_enum);
+
+    _kill("", res != S_OK);
+
+
+    audio_initialized = true;
+  }
 
   IMMDevice* device = 0;
 
-  res = device_enum->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+  if (device_name) {
+    _kill("we do not suppor this case yet\n", 1);
+  }
+
+  else {
+    res = device_enum->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+  }
 
   _kill("", res != S_OK);
 
@@ -55,22 +76,51 @@ void TestWASAPI(){
 
   _kill("", res != S_OK);
 
-  WAVEFORMATEX* format = 0;
+  WAVEFORMATEX* wv_format = 0;
+  audioclient->GetMixFormat(&wv_format);
 
-  res = audioclient->GetMixFormat(&format);
+
+  {
+
+    _kill("do not support this format\n", (((WAVEFORMATEXTENSIBLE*)wv_format)->SubFormat != KSDATAFORMAT_SUBTYPE_PCM) && ((WAVEFORMATEXTENSIBLE*)wv_format)->SubFormat != KSDATAFORMAT_SUBTYPE_IEEE_FLOAT);
+  }
 
   _kill("", res != S_OK);
 
   //AUDCLNT_STREAMFLAGS_RATEADJUST  must be in shared mode only. lets you set the sample rate
   //AUDCLNT_SHAREMODE_EXCLUSIVE Windows only
-  res =audioclient->Initialize(AUDCLNT_SHAREMODE_SHARED,0, _buffersize,
-			       0,//period size in - 100 nanoseconds. cannot be 0 in exclusive mode
-			       format,0);
+  res = audioclient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_RATEADJUST, _buffersize,
+				0,//period size in - 100 nanoseconds. cannot be 0 in exclusive mode
+				wv_format, 0);
 
+  _kill("", res != S_OK);
+
+  if (wv_format->nSamplesPerSec != frequency) {
+    IAudioClockAdjustment* clockadj = 0;
+    IID IID_IAudioClockAdjustment = __uuidof(IAudioClockAdjustment);
+
+    res = audioclient->GetService(IID_IAudioClockAdjustment, (void**)&clockadj);
+    _kill("", res != S_OK);
+
+    res = clockadj->SetSampleRate(frequency);
+    _kill("", res != S_OK);
+  }
+
+  IAudioRenderClient* renderclient = 0;
+  IID IID_IAudioRenderClient = __uuidof(IAudioRenderClient);
+
+  res = audioclient->GetService(IID_IAudioRenderClient, (void**)&renderclient);
+  _kill("", res != S_OK);
+
+
+  //maybe we should start only after we do our first submission
+  res = audioclient->Start();
   _kill("", res != S_OK);
 
   //it looks like wasapi requires us to do our own format conversion
   _kill("", 1);
+
+  return context;
 }
 
 AAudioContext ACreateAudioDevice(const s8* device_name, u32 frequency, u32 channels,
