@@ -21,6 +21,11 @@ _persist VoiceCallback* voice_callback;
 
 #define _buffersize 880000
 
+void Resample(s8* in_sample_buffer,u32 in_sample_rate,u32 in_sample_count,u32 target_sample_rate,
+		 s8* out_sample_buffer,u32* out_sample_count){
+  
+}
+
 void TestWASAPI(){
 
   auto res = CoInitialize(0);
