@@ -2079,6 +2079,8 @@ logic GUIHistogram(const s8* label_x,const s8* label_y,GUIVec2* data_array,u32 d
     highest_value = *max;
   }
 
+  logic set_active = false;
+
   for(u32 i = 0; i < data_count; i++){
     
     if(highest_value < data_array[i].y){
@@ -2107,10 +2109,9 @@ logic GUIHistogram(const s8* label_x,const s8* label_y,GUIVec2* data_array,u32 d
     }
 
     if(InternalIsWithinBounds(InternalPushBounds(x,(-1.0f + bar_height),bar_width,bar_height))){
-      
-      barcolor = gui->graph_bar_select_color;
 
-      InternalSetActiveState(token);
+      set_active = true;
+      barcolor = gui->graph_bar_select_color;
 
       if(gui->internal_active_state == token){
 	gui->graph_hover = GUITYPE_HISTOGRAM;
@@ -2135,6 +2136,14 @@ logic GUIHistogram(const s8* label_x,const s8* label_y,GUIVec2* data_array,u32 d
 
   if(max){
     *max = highest_value;
+  }
+
+  if(set_active){
+    InternalSetActiveState(token);
+  }
+
+  else if(gui->internal_active_state == token || GUIMouseClickL()){
+    gui->internal_active_state = 0;
   }
 
   return ret;
@@ -2220,6 +2229,8 @@ logic GUIProfileView(const s8* profilename,const DebugTable* table,
 
   auto start_time = table->timestamp;
 
+  logic set_active = false;
+
   for(u32 i = 0; i < table->thread_count; i++){
 
     StackEntry stack_array[16];
@@ -2248,7 +2259,7 @@ logic GUIProfileView(const s8* profilename,const DebugTable* table,
 
       if(InternalIsWithinBounds(InternalPushBounds(start_x,y,bar_width,bar_height))){
 
-	InternalSetActiveState(token);
+	set_active = true;
 
 	if(gui->internal_active_state == token){
 	  gui->graph_hover = GUITYPE_PROFILER;
@@ -2264,6 +2275,15 @@ logic GUIProfileView(const s8* profilename,const DebugTable* table,
 
     start_y -= (bar_height * stack_count);
   }
+  
+  if(set_active){
+    InternalSetActiveState(token);  
+  }
+
+  else if(gui->internal_active_state == token  || GUIMouseClickL()){
+    gui->internal_active_state = 0;
+  }
+  
 
   return ret;
 }
