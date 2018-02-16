@@ -1,4 +1,4 @@
-
+ 
 #include "aaudio.h"
 #include "aallocator.h"
 
@@ -11,12 +11,48 @@ _persist bool audio_initialized;
 
 #if _use_xaudio
 
+#include "libload.h"
+
 class VoiceCallback;
 
 // Global Flags
 
 _persist IXAudio2* xaudio2;
 _persist VoiceCallback* voice_callback;
+
+_persist LibHandle xaudiolib = 0;
+_persist void* xaudio2create_ptr = 0;
+
+#define XAudio2Create ((HRESULT (*)(IXAudio2**,UINT32,XAUDIO2_PROCESSOR))xaudio2create_ptr)
+
+void LoadXAudio2Lib(){
+
+  if(xaudiolib){
+    return;
+  }
+  
+  const s8* xaudiolib_array[] = {
+    "xaudio2_9",
+    "xaudio2_8",
+    "xaudio2_7",
+  };
+
+
+  for(u32 i = 0; i < _arraycount(xaudiolib_array); i++){
+    
+    xaudiolib = LLoadLibrary(xaudiolib_array[i]);
+
+    if(xaudiolib){
+      break;
+    }
+  }
+
+  _kill("Failed to load xaudio2 backend\n",!xaudiolib);
+
+
+  xaudio2create_ptr = LGetLibFunction(xaudiolib,"XAudio2Create");
+  
+}
 
 
 AAudioContext ACreateAudioDevice(const s8* device_name, u32 frequency, u32 channels,
@@ -28,18 +64,20 @@ AAudioContext ACreateAudioDevice(const s8* device_name, u32 frequency, u32 chann
 
   HRESULT hr;
 
-  if (!audio_initialized)
-    {
-      CoInitializeEx(NULL, COINIT_MULTITHREADED);
+  if (!audio_initialized){
 
-      hr = XAudio2Create(&xaudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+    LoadXAudio2Lib();
+      
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
-      // Create XAudio2 Engine
-      _kill("Audio Engine creation failed.",FAILED(hr));
+    hr = XAudio2Create(&xaudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 
-      // Set creation flag
-      audio_initialized = true;
-    }
+    // Create XAudio2 Engine
+    _kill("Audio Engine creation failed.",FAILED(hr));
+
+    // Set creation flag
+    audio_initialized = true;
+  }
 
 
   hr	= xaudio2->CreateMasteringVoice(&audio_context.handle,
@@ -191,7 +229,7 @@ AAudioContext ACreateAudioDevice(const s8* device_name,u32 frequency,u32 channel
 
   if (!audio_initialized) {
 
-    res = CoInitialize(0);
+    res = CoInitializeEx(0,COINIT_MULTITHREADED);
     _kill("", res != S_OK);
 
     CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
