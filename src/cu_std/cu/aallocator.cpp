@@ -214,15 +214,17 @@ void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line){
 }
 
 
-void Cu_InitInternalAllocator(u32 size){
+void InitTAlloc(u32 size){
+  context->frame_ptr = (s8*)alloc(size);
+  context->maxframe_count = size;
+}
+
+void InitInternalAllocator(){
 
   _kill("already allocated\n",context);
   
   context = (AAllocatorContext*)alloc(sizeof(AAllocatorContext));
   memset(context,0,sizeof(AAllocatorContext));
-  
-  context->frame_ptr = (s8*)alloc(size);
-  context->maxframe_count = size;
 }
 
 void ResetTAlloc(){
