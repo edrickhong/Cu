@@ -57,7 +57,8 @@ s32 main(s32 argc,s8** argv){
 
   //init code
 
-  Cu_InitInternalAllocator(_megabytes(32));
+  InitInternalAllocator();
+  InitTAlloc(_megabytes(32));
     
   SetupData((void**)&pdata,(void**)&gdata);
 
@@ -180,21 +181,12 @@ s32 main(s32 argc,s8** argv){
 
       Clear(&pdata->rendercontext);
 
-      //TODO: 3d stuff not gonna work now
       GUIUpdate(&pdata->window,&pdata->keyboardstate,&pdata->mousestate,
 		pdata->view,pdata->proj);
 
       GUIBegin();
 
       BUILDGUIGRAPH(gdata->draw_profiler);
-
-      //light pos
-#if 1
-      {
-	auto pos = TranslateWorldSpaceToClipSpace(pdata->lightpos);
-	//TODO: draw the light
-      }
-#endif
             
       TimeSpec start,end;
 
@@ -206,10 +198,15 @@ s32 main(s32 argc,s8** argv){
 	      
 	EXECTIMEBLOCK(Black);
 
-	vkAcquireNextImageKHR(pdata->vdevice.device,
-			      pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
-			      pdata->waitacquireimage_semaphore,
-			      0,(u32*)&pdata->swapchain.image_index);
+	{
+	  TIMEBLOCKTAGGED("AcquireImage",Orange);
+	  vkAcquireNextImageKHR(pdata->vdevice.device,
+				pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
+				pdata->waitacquireimage_semaphore,
+				0,(u32*)&pdata->swapchain.image_index);  
+	}
+
+	
 
 	UpdateAllocatorTimeStamp();
 	Clear(&pdata->threadqueue);
@@ -308,6 +305,7 @@ s32 main(s32 argc,s8** argv){
             
             
       if(sleeptime > 0 ){
+	TIMEBLOCKTAGGED("Sleep",DarkGray);
 	SleepMS(sleeptime);
       }
             
