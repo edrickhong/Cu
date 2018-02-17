@@ -8,7 +8,9 @@ TODO: We should log and do bounds checking for our regular mallocs as well
 
 void* TAlloc(u32 size);
 
-void Cu_InitInternalAllocator(u32 talloc_size);
+void InitInternalAllocator();
+
+void InitTAlloc(u32 size);
 
 void ResetTAlloc();
 
