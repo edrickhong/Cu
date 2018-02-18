@@ -237,7 +237,7 @@ s32 main(s32 argc,s8** argv){
 	  CompileAllPipelines(pdata);
 	}
                 
-	auto blendres_array = TAlloc(ThreadLinearBlendRes,24);
+	ThreadLinearBlendRes blendres_array[24] = {};
 	u32 linearblend_count = 0;
 	u32 audio_count = 0;
 	EntityAudioData* audio_data;
@@ -328,4 +328,18 @@ s32 main(s32 argc,s8** argv){
   Support drawing multiple objects off a single buffer(use vert & index buffer offsets into buffer)
   implement quaternion double cover
   Implement Dual quaternion blending in MDF
+
+  FIXME:
+  TAlloc calls. I think there are some corruption issues caused by these calls
+
+  src/engine/aassetmanager.cpp:  vertindex->ptr = TAlloc(s8,vertindex_size);
+  src/engine/aassetmanager.cpp:  vertindex.ptr = TAlloc(s8,vertindex_size);
+  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
+  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
+  src/engine/main.h:  auto cmdbuffers = TAlloc(VkCommandBuffer,count);
+  src/engine/main.h:  auto pushconst = TAlloc(PushConst,1);
+  src/engine/main.h:    TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
+  src/engine/main.h:  auto orientation = TAlloc(Matrix4b4,1);
+  src/engine/main.h:  auto blend = TAlloc(ThreadLinearBlendRes,1);
+  src/engine/main.h:  blend->result = TAlloc(Matrix4b4,anim_handle->bone_count);
 */

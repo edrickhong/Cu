@@ -849,7 +849,7 @@ u32 InspectorHandleOpaqueTypes(u32 type_hash,u32 selected_id,u32 obj_id,
     auto mat_count = context->materialasset_count;
     s8* mat_options[16] = {};
     
-    s8* mat_buffer = TAlloc(s8,16 * 16);
+    s8 mat_buffer[16 * 16] = {};
     memset(mat_buffer,0,16 * 16 * sizeof(s8));
     
     for(u32 i = 0; i < mat_count; i++){
