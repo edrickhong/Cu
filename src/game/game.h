@@ -43,6 +43,7 @@ struct InstData{
 };
 
 struct ThreadLinearBlendRes{
+  u32 id;
   f32 time;
   u32 bone_count;
   u32 animation_index;
