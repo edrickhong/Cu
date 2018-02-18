@@ -31,7 +31,7 @@ void DebugPrintMallocEntry(u32 i);
 
 
 #define _enable_allocboundscheck 1
-#define _enable_boundscheck_warning 1
+#define _enable_boundscheck_warning 0
 
 void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line);
 
@@ -56,7 +56,7 @@ struct DebugAllocedPtr{
 
   DebugAllocedPtr(u32 f_alloc_size,s8* file,s8* function,u32 line){
     ptr = (T*)DebugTAlloc(f_alloc_size,file,function,line);
-    forward_size = f_alloc_size;
+    forward_size = f_alloc_size - sizeof(T);
     backward_size = 0;
     this->file = file;
     this->function = function;
@@ -78,6 +78,15 @@ struct DebugAllocedPtr{
     return n_dbg_ptr;
   }
 
+  DebugAllocedPtr operator+= (u32 count){
+
+    return operator+ (count);
+  }
+
+  DebugAllocedPtr operator++(){
+    return operator+ (1);
+  }
+
   DebugAllocedPtr operator- (u32 count){
 
     u32 minus_size = (count * sizeof(T));
@@ -91,6 +100,15 @@ struct DebugAllocedPtr{
     n_dbg_ptr.backward_size -= minus_size;
 
     return n_dbg_ptr;
+  }
+
+  DebugAllocedPtr operator-= (u32 count){
+
+    return operator- (count);
+  }
+
+  DebugAllocedPtr operator--(){
+    return operator- (1);
   }
 
   T& operator[] (u32 index){
@@ -149,18 +167,18 @@ void memset(DebugAllocedPtr<T> dst,int c,u32 size){
 }
 
 
-#define TAlloc(type,count) MakeDebugPtr<type>(sizeof(type) * count,(s8*)__FILE__,(s8*)__FUNCTION__,__LINE__)
+#define TAlloc(type,count) MakeDebugPtr<type>(sizeof(type) * (count),(s8*)__FILE__,(s8*)__FUNCTION__,__LINE__)
 
 
 #else
 
-#define TAlloc(type,count) (type*)DebugTAlloc(sizeof(type) * count,__FILE__,__FUNCTION__,__LINE__)
+#define TAlloc(type,count) (type*)DebugTAlloc(sizeof(type) * (count),__FILE__,__FUNCTION__,__LINE__)
 
 #endif
 
 #else
 
-#define TAlloc(type,count) (type*)TAlloc(sizeof(type) * count)
+#define TAlloc(type,count) (type*)TAlloc(sizeof(type) * (count))
 #define alloc malloc
 #define unalloc free
 
