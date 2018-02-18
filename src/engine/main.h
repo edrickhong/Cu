@@ -487,7 +487,6 @@ struct ObjUpdateEntry{
 };
 
 struct ThreadLinearBlendRes{
-  u32 id;
   f32 time;
   u32 bone_count;
   u32 animation_index;
@@ -1017,8 +1016,6 @@ void ThreadLinearBlend(void* args,void*){
   ThreadLinearBlendRes* data = (ThreadLinearBlendRes*)args;
   
   ALinearBlend(data->time,data->animation_index,data->set_array,data->root,data->result);
-
-  PushUpdateEntry(data->id,offsetof(SkelUBO,bone_array),data->bone_count * sizeof(Matrix4b4),data->result);
 }
 
 _persist u32 is_first_present = true;
@@ -1599,17 +1596,21 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
   CommitAnimated(anim_handle);
 
   auto blend = TAlloc(ThreadLinearBlendRes,1);
-  blend->result = TAlloc(Matrix4b4,anim_handle->bone_count);
 
-  blend->id = anim->id;
   blend->time = anim->animationtime;
   blend->bone_count = anim_handle->bone_count;
   blend->animation_index = anim->animationindex;
   blend->set_array = anim_handle->animationset_array;
   blend->root = anim_handle->rootbone;
 
+  blend->result = TAlloc(Matrix4b4,blend->bone_count + 1);
+  blend->result = blend->result + 1;
+
   PushThreadWorkQueue(&pdata->threadqueue,
 		      ThreadLinearBlend,(void*)blend,pdata->worker_sem);
+
+  PushUpdateEntry(anim->id,offsetof(SkelUBO,bone_array),
+		  anim_handle->bone_count * sizeof(Matrix4b4),blend->result);
 }
 
 void _ainline ProcessDrawList(){
