@@ -31,7 +31,7 @@ void DebugPrintMallocEntry(u32 i);
 
 
 #define _enable_allocboundscheck 1
-#define _enable_boundscheck_warning 0
+#define _enable_boundscheck_warning 1
 
 void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line);
 
@@ -137,6 +137,15 @@ void memcpy(DebugAllocedPtr<T> dst,DebugAllocedPtr<T> src,u32 size){
   _kill("over reach\n",(size > dst.forward_size) || (size > src.forward_size));
 
   memcpy(dst.ptr,src.ptr,size);
+}
+
+
+template <class T>
+void memset(DebugAllocedPtr<T> dst,int c,u32 size){
+  
+  _kill("over reach\n",(size > dst.forward_size));
+
+  memset(dst.ptr,c,size);
 }
 
 
