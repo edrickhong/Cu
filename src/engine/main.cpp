@@ -266,25 +266,11 @@ s32 main(s32 argc,s8** argv){
                 
 	if(frames >= pdata->submit_audiobuffer.size_frames){
                     
-	  TIMEBLOCKTAGGED("PLAYAUDIO",DarkOrange);
-                    
 	  MixAudioLayout args = {&pdata->submit_audiobuffer,audio_data,audio_count};
                     
 	  PushThreadWorkQueue(&pdata->threadqueue,
 			      MixAudio,(void*)&args,pdata->worker_sem);
-                    
-	  MainThreadDoWorkQueue(&pdata->threadqueue,0);
-
-	  //TODO: no reason why this isn't threaded either
-	  APlayAudioDevice(pdata->audio,pdata->submit_audiobuffer.data,
-			   pdata->submit_audiobuffer.size_frames);
-	}
-                
-	{
-	  TIMEBLOCKTAGGED("Update ubo",HotPink);
-                    
-	  PushThreadWorkQueue(&pdata->threadqueue,
-			      ThreadUpdateUniformBuffer,0,pdata->worker_sem);
+	  
 	}
 
 	GUIEnd();
@@ -292,6 +278,8 @@ s32 main(s32 argc,s8** argv){
 	BuildRenderCommandBuffer(pdata);
                 
 	MainThreadDoWorkQueue(&pdata->threadqueue,0);
+
+	ProcessObjUpdateList();
                 
 	PresentBuffer(pdata);
       }
