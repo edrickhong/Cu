@@ -486,6 +486,16 @@ struct ObjUpdateEntry{
   void* data;
 };
 
+struct ThreadLinearBlendRes{
+  u32 id;
+  f32 time;
+  u32 bone_count;
+  u32 animation_index;
+  AAnimationSet* set_array;
+  ALinearBone* root;
+  DEBUGPTR(Matrix4b4) result;//filled by the platform
+};
+
 struct PlatformData{
   
   WWindowContext window;

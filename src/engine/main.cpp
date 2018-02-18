@@ -251,8 +251,6 @@ s32 main(s32 argc,s8** argv){
 	  context->mousestate = &pdata->mousestate;
 	  context->audiocontext = &audio_data;
 	  context->audiocontext_count = &audio_count;
-	  context->animationcontext = blendres_array;
-	  context->animationcontext_count = &linearblend_count;
                     
 	  auto ptr =
 	    (void (*)(SceneContext*))pdata->lib.updaterender;
@@ -345,10 +343,6 @@ s32 main(s32 argc,s8** argv){
   
   main(from game):  
   src/engine/main.h:  auto orientation = TAlloc(Matrix4b4,1);
-
-
-
-
 
 
 

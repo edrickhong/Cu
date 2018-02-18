@@ -42,16 +42,6 @@ struct InstData{
   u32 world;
 };
 
-struct ThreadLinearBlendRes{
-  u32 id;
-  f32 time;
-  u32 bone_count;
-  u32 animation_index;
-  AAnimationSet* set_array;
-  ALinearBone* root;
-  Matrix4b4* result;//filled by the platform
-};
-
 enum PipelineType{
   PSKEL = 0,
   PSTATIC= 1,
@@ -117,9 +107,6 @@ struct SceneContext{
 
   EntityAudioData** audiocontext;
   u32* audiocontext_count;
-
-  ThreadLinearBlendRes* animationcontext;
-  u32*animationcontext_count;
   
   //asset data - animation should be bound to animation
   ModelAssetHandle modelasset_array[_max_components];
