@@ -7,7 +7,7 @@
 
 volatile  struct AAllocatorContext{
   
-  s8* frame_ptr = 0;
+  const s8* frame_ptr = 0;
   u32 curframe_count = 0;
 
 #if _debug
@@ -183,7 +183,7 @@ void DebugPrintMallocEntry(u32 i){
 
 void* TAlloc(u32 size){
     
-  size = _align16(size);
+  auto aligned_size = _align16(size);
     
   u32 expected_curframe_count;
   u32 actual_curframe_count;
@@ -193,12 +193,12 @@ void* TAlloc(u32 size){
   do{
     
     expected_curframe_count = context->curframe_count;
-    new_curframe_count = context->curframe_count + size;
+    new_curframe_count = context->curframe_count + aligned_size;
 
     actual_curframe_count = LockedCmpXchg(&context->curframe_count,expected_curframe_count,
 					  new_curframe_count);
 
-    ptr = context->frame_ptr + actual_curframe_count;
+    ptr = (s8*)context->frame_ptr + actual_curframe_count;
     
   }while(expected_curframe_count != actual_curframe_count);
 
@@ -211,7 +211,11 @@ void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line){
 
   auto ptr = TAlloc(size);
 
-  DebugSubmitTAlloc(ptr,size,file,function,line);
+  auto aligned_size = _align16(size);
+
+  memset(ptr,(s8)-1,aligned_size);
+
+  DebugSubmitTAlloc(ptr,aligned_size,file,function,line);
 
   return ptr;
 }
@@ -231,7 +235,20 @@ void InitInternalAllocator(){
 }
 
 void ResetTAlloc(){
-  context->curframe_count = 0;
+
+  u32 expected_curframe_count;
+  u32 actual_curframe_count;
+  u32 new_curframe_count;
+
+  do{
+    
+    expected_curframe_count = context->curframe_count;
+    new_curframe_count = 0;
+
+    actual_curframe_count = LockedCmpXchg(&context->curframe_count,expected_curframe_count,
+					  new_curframe_count);
+    
+  }while(expected_curframe_count != actual_curframe_count);
 
 #if _debug
   context->alloc_count = 0;
