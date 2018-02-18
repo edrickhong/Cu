@@ -184,6 +184,8 @@ void DebugPrintMallocEntry(u32 i){
 void* TAlloc(u32 size){
     
   auto aligned_size = _align16(size);
+
+  _kill("this happened for some reason\n",aligned_size < size);
     
   u32 expected_curframe_count;
   u32 actual_curframe_count;

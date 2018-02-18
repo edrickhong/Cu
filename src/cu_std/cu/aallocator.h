@@ -16,6 +16,8 @@ void ResetTAlloc();
 
 #if _debug
 
+#define DEBUGPTR(type) DebugAllocedPtr<type>
+
 #define alloc(size) DebugMalloc(size,__FILE__,__FUNCTION__,__LINE__)
 #define unalloc DebugFree
 
@@ -152,6 +154,9 @@ void memcpy(DebugAllocedPtr<T> dst,DebugAllocedPtr<T> src,u32 size){
 #define TAlloc(type,count) (type*)TAlloc(sizeof(type) * count)
 #define alloc malloc
 #define unalloc free
+
+
+#define DEBUGPTR(type) type*
 
 #endif
 
