@@ -2,6 +2,21 @@
 #include "ccontainer.h"
 #include "mmath.h"
 
+#define _using_TAlloc 1 
+
+#if _using_TAlloc
+
+
+#include "aallocator.h"
+
+#define DBGPTR(A) DEBUGPTR(A)
+
+#else
+
+#define DBGPTR(A) A*
+
+#endif
+
 //TODO: We will use the skeleton to store the final result
 
 enum AAnimationBehaviour{
@@ -55,7 +70,7 @@ struct ADQBone{
 
 
 void ALinearBlend(f32 time_ms,u32 animation_index,AAnimationSet* animation_array,
-		  ALinearBone* root,Matrix4b4* result);
+		  ALinearBone* root,DBGPTR(Matrix4b4) result);
 
 void ADualQuaternionBlend(f32 time_ms,ADQBone* root,AAnimationSet animation);
 
