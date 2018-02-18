@@ -1589,6 +1589,7 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
   CommitAnimated(anim_handle);
 
   auto blend = TAlloc(ThreadLinearBlendRes,1);
+  blend->result = TAlloc(Matrix4b4,anim_handle->bone_count);
 
   blend->id = anim->id;
   blend->time = anim->animationtime;
@@ -1596,10 +1597,6 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
   blend->animation_index = anim->animationindex;
   blend->set_array = anim_handle->animationset_array;
   blend->root = anim_handle->rootbone;
-
-  u32 tsize = sizeof(Matrix4b4) * blend->bone_count;
-
-   blend->result = TAlloc(Matrix4b4,blend->bone_count);
 
   PushThreadWorkQueue(&pdata->threadqueue,
 		      ThreadLinearBlend,(void*)blend,pdata->worker_sem);
