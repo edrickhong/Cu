@@ -16,6 +16,9 @@ void ResetTAlloc();
 
 #if _debug
 
+#define alloc(size) DebugMalloc(size,__FILE__,__FUNCTION__,__LINE__)
+#define unalloc DebugFree
+
 void* DebugMalloc(size_t size,const s8* file,const s8* function,u32 line);
 void DebugFree(void* ptr);
 
@@ -147,7 +150,8 @@ void memcpy(DebugAllocedPtr<T> dst,DebugAllocedPtr<T> src,u32 size){
 #else
 
 #define TAlloc(type,count) (type*)TAlloc(sizeof(type) * count)
-
+#define alloc malloc
+#define unalloc free
 
 #endif
 
@@ -156,17 +160,3 @@ struct AAllocatorContext;
 
 AAllocatorContext* GetAAllocatorContext();
 void SetAAllocatorContext(AAllocatorContext* context);
-
-
-
-#if _debug
-
-#define alloc(size) DebugMalloc(size,__FILE__,__FUNCTION__,__LINE__)
-#define unalloc DebugFree
-
-#else
-
-#define alloc malloc
-#define unalloc free
-
-#endif
