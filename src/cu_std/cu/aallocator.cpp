@@ -5,10 +5,10 @@
 #undef TAlloc
 #endif
 
-struct AAllocatorContext{
+volatile  struct AAllocatorContext{
   
   s8* frame_ptr = 0;
-  volatile u32 curframe_count = 0;
+  u32 curframe_count = 0;
 
 #if _debug
   
@@ -50,6 +50,10 @@ void DebugSubmitTAlloc(void* base_ptr,u32 size,const s8* file,const s8* function
     actual_count = LockedCmpXchg(&context->alloc_count,expected_count,expected_count + 1);
     
   }while(expected_count != actual_count);
+
+  for(u32 i = 0; i < actual_count; i++){
+    _kill("duplicate submission\n",context->alloc_array[i].ptr == base_ptr);
+  }
 
   context->alloc_array[actual_count] = {base_ptr,TGetThisThreadID(),size,file,function,line};
   
@@ -177,7 +181,6 @@ void DebugPrintMallocEntry(u32 i){
 #endif
 
 
-//FIXME: sometimes TAlloc resubmits an already allocated pointer
 void* TAlloc(u32 size){
     
   size = _align16(size);
@@ -195,7 +198,7 @@ void* TAlloc(u32 size){
     actual_curframe_count = LockedCmpXchg(&context->curframe_count,expected_curframe_count,
 					  new_curframe_count);
 
-    ptr = context->frame_ptr + expected_curframe_count;
+    ptr = context->frame_ptr + actual_curframe_count;
     
   }while(expected_curframe_count != actual_curframe_count);
 
