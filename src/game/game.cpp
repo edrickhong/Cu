@@ -667,9 +667,6 @@ extern "C" {
   }
 
   _dllexport void GameUpdateRender(SceneContext* context){
-
-    _kill("gui context is 0\n",!GetGUIContext());
-    _kill("allocator context is 0\n",!GetAAllocatorContext());
         
     TIMEBLOCK(LimeGreen);
 
@@ -849,8 +846,9 @@ u32 InspectorHandleOpaqueTypes(u32 type_hash,u32 selected_id,u32 obj_id,
     auto mat_count = context->materialasset_count;
     s8* mat_options[16] = {};
     
-    s8 mat_buffer[16 * 16] = {};
-    memset(mat_buffer,0,16 * 16 * sizeof(s8));
+    // s8 mat_buffer[16 * 16] = {};
+    auto mat_buffer = TAlloc(s8,16 * 16);
+    memset(&mat_buffer[0],0,16 * 16 * sizeof(s8));
     
     for(u32 i = 0; i < mat_count; i++){
       sprintf(&mat_buffer[i * 16],"%d",i);

@@ -71,7 +71,8 @@ s32 main(s32 argc,s8** argv){
     
   pdata->vdevice = VCreateDeviceContext(&pdata->window);
     
-  pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,VSYNC_NORMAL);
+  pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
+					     VSYNC_NORMAL);
 
   InitAssetAllocator(_gigabytes(1),_megabytes(500),&pdata->vdevice,
 		     &pdata->swapchain);
@@ -277,7 +278,8 @@ s32 main(s32 argc,s8** argv){
                 
 	MainThreadDoWorkQueue(&pdata->threadqueue,0);
 
-	//FIXME: if there is corruption, it is either because: 1. Flush is too slow, 2. MainThreadDoWorkQueue is not synced
+	//FIXME: if there is corruption, it is either because: 1. Flush is too slow,
+	//2. MainThreadDoWorkQueue is not synced
 	//3. Someone is writing into another person's data
 	ProcessObjUpdateList();
                 
