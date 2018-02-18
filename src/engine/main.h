@@ -899,7 +899,12 @@ void MixAudio(void* data,void*){
     memcpy(tcpy,(tcpy + submitbuffer->size),(audio->audioasset.avail_size));
   }
 
-  //TODO: play audio here
+  {
+    TIMEBLOCKTAGGED("PlayAudio",Red);
+    APlayAudioDevice(pdata->audio,pdata->submit_audiobuffer.data,
+		     pdata->submit_audiobuffer.size_frames);  
+  }
+  
 }
 
 
@@ -941,6 +946,8 @@ void FillAudioBuffers(void* args){
 
 void ProcessObjUpdateList(){
 
+  TIMEBLOCK(Purple);
+
   if(!pdata->objupdate_count){
     return;
   }
@@ -979,7 +986,11 @@ void ProcessObjUpdateList(){
     
   }
 
-  vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,range_array);
+  {
+    TIMEBLOCKTAGGED("vkFlush",Green);
+    vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,range_array);
+  }
+  
 }
 
 void ThreadUpdateUniformBuffer(void*,void*){
