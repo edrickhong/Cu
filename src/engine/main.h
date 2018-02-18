@@ -1603,8 +1603,7 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
   blend->set_array = anim_handle->animationset_array;
   blend->root = anim_handle->rootbone;
 
-  blend->result = TAlloc(Matrix4b4,blend->bone_count + 1);
-  blend->result = blend->result + 1;
+  blend->result = TAlloc(Matrix4b4,blend->bone_count);
 
   PushThreadWorkQueue(&pdata->threadqueue,
 		      ThreadLinearBlend,(void*)blend,pdata->worker_sem);
