@@ -150,7 +150,7 @@ Quaternion _ainline  AInterpolateAnimationQuaternion(AAnimationKey* key_array,u3
 
 void ALinearTransformLinearSkeleton(u32 animation_index,f32 animationtime,
 					     ALinearBone* _restrict node,Matrix4b4 parent_matrix,
-					     Matrix4b4* _restrict result,
+					     DBGPTR(Matrix4b4) result,
 					     u32* _restrict result_count){
 
   //hand optimize this. the compiler has no idea wtf it's doing
@@ -199,7 +199,7 @@ void ALinearTransformLinearSkeleton(u32 animation_index,f32 animationtime,
 
 
 void ALinearBlend(f32 time_ms,u32 animation_index,AAnimationSet* animation_array,
-		  ALinearBone* root,Matrix4b4* result){
+		  ALinearBone* root,DBGPTR(Matrix4b4) result){
 
   TIMEBLOCK(DarkViolet);
 
