@@ -279,6 +279,8 @@ s32 main(s32 argc,s8** argv){
                 
 	MainThreadDoWorkQueue(&pdata->threadqueue,0);
 
+	//FIXME: if there is corruption, it is either because: 1. Flush is too slow, 2. MainThreadDoWorkQueue is not synced
+	//3. Someone is writing into another person's data
 	ProcessObjUpdateList();
                 
 	PresentBuffer(pdata);
@@ -332,14 +334,30 @@ s32 main(s32 argc,s8** argv){
   FIXME:
   TAlloc calls. I think there are some corruption issues caused by these calls
 
-  src/engine/aassetmanager.cpp:  vertindex->ptr = TAlloc(s8,vertindex_size);
-  src/engine/aassetmanager.cpp:  vertindex.ptr = TAlloc(s8,vertindex_size);
-  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
-  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
-  src/engine/main.h:  auto cmdbuffers = TAlloc(VkCommandBuffer,count);
+  main:
   src/engine/main.h:  auto pushconst = TAlloc(PushConst,1);
+  src/engine/main.h:  auto cmdbuffers = TAlloc(VkCommandBuffer,count);
+  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
+  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
   src/engine/main.h:    TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
-  src/engine/main.h:  auto orientation = TAlloc(Matrix4b4,1);
   src/engine/main.h:  auto blend = TAlloc(ThreadLinearBlendRes,1);
   src/engine/main.h:  blend->result = TAlloc(Matrix4b4,anim_handle->bone_count);
+  
+  main(from game):  
+  src/engine/main.h:  auto orientation = TAlloc(Matrix4b4,1);
+
+
+
+
+
+
+
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h SetObjectOrientation 1282
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h DispatchSkelLinearBlend 1592
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h DispatchSkelLinearBlend 1591
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h BuildRenderCommandBuffer 624
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h DispatchRenderContext 418
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h GetCmdBufferArray 453
+WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h ProcessObjUpdateList 968
+  
 */
