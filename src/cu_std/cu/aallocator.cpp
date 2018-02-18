@@ -5,10 +5,10 @@
 #undef TAlloc
 #endif
 
-volatile  struct AAllocatorContext{
+struct AAllocatorContext{
   
   const s8* frame_ptr = 0;
-  u32 curframe_count = 0;
+  volatile u32 curframe_count = 0;
 
 #if _debug
   
@@ -24,10 +24,10 @@ volatile  struct AAllocatorContext{
   u32 maxframe_count = 0;
 
   DebugAllocEntry alloc_array[1024] = {};
-  u32 alloc_count = 0;
+  volatile u32 alloc_count = 0;
 
   DebugAllocEntry malloc_array[1024] = {};
-  u32 malloc_count = 0;
+  volatile u32 malloc_count = 0;
   
 #endif
 };
