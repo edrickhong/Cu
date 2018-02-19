@@ -649,7 +649,12 @@ void InternalPixelCoordToNormalizedCoord(f32 r_w,f32 r_h,f32 p_x,f32 p_y,
 void InternalSetActiveState(const s8* string){
     
     u64 token = PHashString(string);
+    
+#if _debug
+    
     gui->internal_state_string = string;
+    
+#endif
     
     if((!gui->combobox_options_count) &&
        gui->internal_active_state != PHashString("GUI3DTranslate")){
