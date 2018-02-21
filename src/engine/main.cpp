@@ -1,6 +1,5 @@
 #include "main.h"
 
-
 #define _targetframerate 16.0f//33.33f
 #define _ms2s(ms)  ((f32)ms/1000.0f)
 
