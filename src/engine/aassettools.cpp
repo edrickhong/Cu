@@ -17,150 +17,150 @@
 
 
 struct MDFChunk{
-  u32 tag;
-  u32 size;
+    u32 tag;
+    u32 size;
 };
 
 void MDFPrintSkeleton(ALinearBone* bone){
-  printf("count %d\n",bone->children_count);
+    printf("count %d\n",bone->children_count);
     
-  for(u32 i = 0; i < bone->children_count;i++){
-    MDFPrintSkeleton(bone->children_array[i]);
-  }
+    for(u32 i = 0; i < bone->children_count;i++){
+        MDFPrintSkeleton(bone->children_array[i]);
+    }
 }
 void DestroyVertexMDFData(MDFData* data){
     
-  unalloc(data->vertex_data);
-  unalloc(data->index_data);
+    unalloc(data->vertex_data);
+    unalloc(data->index_data);
     
-  data->vertex_data = 0;
-  data->index_data = 0;  
+    data->vertex_data = 0;
+    data->index_data = 0;  
 }
 
 void DestroyMDFVertexData(MDFData* data){
     
-  unalloc(data->vertex_data);
-  unalloc(data->index_data);
+    unalloc(data->vertex_data);
+    unalloc(data->index_data);
     
-  data->vertex_data = 0;
-  data->index_data = 0;  
+    data->vertex_data = 0;
+    data->index_data = 0;  
 }
 
 void DestroyMDFAnimBoneData(MDFData* data){
-  unalloc(data->animationset_array);
+    unalloc(data->animationset_array);
 }
 
 void DestroyMDF(MDFData* data){
-  DestroyMDFAnimBoneData(data);
-  DestroyMDFVertexData(data);
+    DestroyMDFAnimBoneData(data);
+    DestroyMDFVertexData(data);
 }
 
 void FileReadAnimation(FileHandle file,void* data,u32* count,u32 animcount){
-  FRead(file,data,animcount * sizeof(AAnimationSet));
-  (*count) += animcount * sizeof(AAnimationSet);
+    FRead(file,data,animcount * sizeof(AAnimationSet));
+    (*count) += animcount * sizeof(AAnimationSet);
 }
 
 void FileReadAnimBoneLinear(FileHandle file,void* data,u32* count,u32 bonecount,
                             u32 animsetcount,ALinearBone** root_linearskeleton,
                             u32* bone_count){//MARK:the last bone count seems redundant
     
-  auto data_count = *count;
-  auto data_ptr = (s8*)data;
+    auto data_count = *count;
+    auto data_ptr = (s8*)data;
     
-  u32 childrenindex_array[300];
-  u32 childrenindex_count = 0;
+    u32 childrenindex_array[300];
+    u32 childrenindex_count = 0;
     
-  ALinearBone* tree[64];
-  u32 tree_count = 0;
+    ALinearBone* tree[64];
+    u32 tree_count = 0;
     
-  for(u32 i = 0; i < bonecount;i++){
+    for(u32 i = 0; i < bonecount;i++){
         
-    data_count = _align16(data_count);
+        data_count = _align16(data_count);
         
-    auto bone = (ALinearBone*)(data_ptr + data_count);
-    tree[tree_count] = bone;
-    tree_count++;
+        auto bone = (ALinearBone*)(data_ptr + data_count);
+        tree[tree_count] = bone;
+        tree_count++;
         
-    MDFLinearBoneData bonedata;
-    FRead(file,&bonedata,sizeof(MDFLinearBoneData));
+        MDFLinearBoneData bonedata;
+        FRead(file,&bonedata,sizeof(MDFLinearBoneData));
         
-    bone->offset = bonedata.matrix;
-    bone->children_count = bonedata.count;
-    data_count += sizeof(ALinearBone);
+        bone->offset = bonedata.matrix;
+        bone->children_count = bonedata.count;
+        data_count += sizeof(ALinearBone);
         
         
         
-    FRead(file,(childrenindex_array + childrenindex_count),sizeof(u32) * bone->children_count);
-    childrenindex_count+= bone->children_count;
+        FRead(file,(childrenindex_array + childrenindex_count),sizeof(u32) * bone->children_count);
+        childrenindex_count+= bone->children_count;
         
-    u32 animcount = animsetcount;
+        u32 animcount = animsetcount;
         
-    bone->animationdata_array = (AAnimationData*)(data_ptr + data_count);
-    data_count += animcount * sizeof(AAnimationData);
+        bone->animationdata_array = (AAnimationData*)(data_ptr + data_count);
+        data_count += animcount * sizeof(AAnimationData);
         
-    for(u32 j = 0; j < animcount; j++){
+        for(u32 j = 0; j < animcount; j++){
             
-      MDFKeyCount keydata;
-      FRead(file,&keydata,sizeof(MDFKeyCount));
+            MDFKeyCount keydata;
+            FRead(file,&keydata,sizeof(MDFKeyCount));
             
-      bone->animationdata_array[j].positionkey_count = keydata.pos;
-      bone->animationdata_array[j].rotationkey_count = keydata.rot;
-      bone->animationdata_array[j].scalekey_count = keydata.scale;
-    }
-    for(u32 j = 0; j < animcount; j++){
+            bone->animationdata_array[j].positionkey_count = keydata.pos;
+            bone->animationdata_array[j].rotationkey_count = keydata.rot;
+            bone->animationdata_array[j].scalekey_count = keydata.scale;
+        }
+        for(u32 j = 0; j < animcount; j++){
             
-      auto anim = &bone->animationdata_array[j];
+            auto anim = &bone->animationdata_array[j];
             
-      if(anim->positionkey_count){
+            if(anim->positionkey_count){
                 
-	data_count = _align16((ptrsize)(data_ptr + data_count)) - (ptrsize)data_ptr;
+                data_count = _align16((ptrsize)(data_ptr + data_count)) - (ptrsize)data_ptr;
                 
-	anim->positionkey_array = (AAnimationKey*)(data_ptr + data_count);
-	FRead(file,anim->positionkey_array,anim->positionkey_count * sizeof(AAnimationKey));
-	data_count += anim->positionkey_count * sizeof(AAnimationKey);
+                anim->positionkey_array = (AAnimationKey*)(data_ptr + data_count);
+                FRead(file,anim->positionkey_array,anim->positionkey_count * sizeof(AAnimationKey));
+                data_count += anim->positionkey_count * sizeof(AAnimationKey);
                 
                 
-	anim->rotationkey_array = (AAnimationKey*)(data_ptr + data_count);
-	FRead(file,anim->rotationkey_array,anim->rotationkey_count * sizeof(AAnimationKey));
-	data_count += anim->rotationkey_count * sizeof(AAnimationKey);
+                anim->rotationkey_array = (AAnimationKey*)(data_ptr + data_count);
+                FRead(file,anim->rotationkey_array,anim->rotationkey_count * sizeof(AAnimationKey));
+                data_count += anim->rotationkey_count * sizeof(AAnimationKey);
                 
-	anim->scalekey_array = (AAnimationKey*)(data_ptr + data_count);
-	FRead(file,anim->scalekey_array,anim->scalekey_count * sizeof(AAnimationKey));
-	data_count += anim->scalekey_count * sizeof(AAnimationKey);
+                anim->scalekey_array = (AAnimationKey*)(data_ptr + data_count);
+                FRead(file,anim->scalekey_array,anim->scalekey_count * sizeof(AAnimationKey));
+                data_count += anim->scalekey_count * sizeof(AAnimationKey);
                 
-      }
+            }
             
-      else{
-	data_count -= animcount * sizeof(AAnimationData);
-	bone->animationdata_array = 0;
-	break;
-      }
+            else{
+                data_count -= animcount * sizeof(AAnimationData);
+                bone->animationdata_array = 0;
+                break;
+            }
             
-    }
-        
-    bone->children_array = (ALinearBone**)(data_ptr + data_count);
-    data_count += bone->children_count * sizeof(ALinearBone**);
-  }
-    
-  u32 index = 0;
-    
-  //construct skeleton
-  for(u32 i = 0; i < bonecount;i++){
-        
-    ALinearBone* bone = tree[i];
-        
-    for(u32 j = 0; j < bone->children_count; j++){
-      bone->children_array[j] = tree[childrenindex_array[index]];
-      index++;
-      _kill("array overflow\n",index >= 500)
         }
         
-  }
+        bone->children_array = (ALinearBone**)(data_ptr + data_count);
+        data_count += bone->children_count * sizeof(ALinearBone**);
+    }
     
-  *root_linearskeleton = tree[0];
-  *bone_count = bonecount;
+    u32 index = 0;
     
-  (*count) = data_count;
+    //construct skeleton
+    for(u32 i = 0; i < bonecount;i++){
+        
+        ALinearBone* bone = tree[i];
+        
+        for(u32 j = 0; j < bone->children_count; j++){
+            bone->children_array[j] = tree[childrenindex_array[index]];
+            index++;
+            _kill("array overflow\n",index >= 500)
+        }
+        
+    }
+    
+    *root_linearskeleton = tree[0];
+    *bone_count = bonecount;
+    
+    (*count) = data_count;
 }
 
 
@@ -168,409 +168,428 @@ void FileReadAnimBoneLinear(FileHandle file,void* data,u32* count,u32 bonecount,
 MDFData LoadMDF(const s8* filepath,void* vertindex,void* animbone,u32* vertindex_size,
                 u32* animbone_size){
     
-  MDFData data_mdf;
+    MDFData data_mdf;
     
-  auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
     
-  ptrsize end = FGetFileSize(file);
+    ptrsize end = FGetFileSize(file);
     
-  s8 tbuffer[100];
+    s8 tbuffer[100];
     
-  FRead(file,tbuffer,sizeof(u32));
+    FRead(file,tbuffer,sizeof(u32));
     
-  _kill("not an mdf file\n",*((u32*)&tbuffer[0]) != TAG_MDF);
+    _kill("not an mdf file\n",*((u32*)&tbuffer[0]) != TAG_MDF);
     
-  FRead(file,tbuffer,sizeof(u32));
+    FRead(file,tbuffer,sizeof(u32));
     
-  _kill("Not Vertex Model 0\n",*((u32*)&tbuffer[0]) != 0);
+    _kill("Not Vertex Model 0\n",*((u32*)&tbuffer[0]) != 0);
     
-  FRead(file,&data_mdf.vertex_component,sizeof(data_mdf.vertex_component));
+    FRead(file,&data_mdf.vertex_component,sizeof(data_mdf.vertex_component));
     
-  if(!(vertindex)){
-    FRead(file,vertindex_size,sizeof(u32));
-    FRead(file,animbone_size,sizeof(u32));
+    if(!(vertindex)){
+        FRead(file,vertindex_size,sizeof(u32));
+        FRead(file,animbone_size,sizeof(u32));
         
+        FCloseFile(file);
+        return {};
+    }
+    
+    u32 t;
+    
+    FRead(file,&t,sizeof(u32));
+    FRead(file,&t,sizeof(u32));
+    
+    auto data_ptr = (s8*)animbone;
+    u32 data_count = 0;
+    
+    while(FCurFilePosition(file) < end){
+        
+        auto chunk = (MDFChunk*)tbuffer;
+        
+        FRead(file,chunk,sizeof(MDFChunk));
+        
+        switch(chunk->tag){
+            
+            case TAG_VERTEX:{
+                data_mdf.vertexdata_offset = FCurFilePosition(file);
+                data_mdf.vertex_size = chunk->size;
+                data_mdf.vertex_data = vertindex;
+                FRead(file,data_mdf.vertex_data,chunk->size);
+            }
+            break;
+            
+            case TAG_INDEX:{
+                data_mdf.indexdata_offset = FCurFilePosition(file);
+                data_mdf.index_size = chunk->size;
+                data_mdf.index_data = (u32*)(((s8*)(data_mdf.vertex_data)) + data_mdf.vertex_size);
+                
+                FRead(file,data_mdf.index_data,chunk->size);
+            }
+            break;
+            
+            case TAG_ANIM:{
+                data_mdf.animdata_offset = FCurFilePosition(file);
+                data_mdf.animationset_array = (AAnimationSet*)data_ptr;
+                data_mdf.animationset_count = chunk->size/sizeof(AAnimationSet);
+                
+                FileReadAnimation(file,data_mdf.animationset_array,&data_count,
+                                  data_mdf.animationset_count);
+            }
+            break;
+            
+            case TAG_BLEND_LINEAR:{
+                data_mdf.bonedata_offset = FCurFilePosition(file);
+                
+                FileReadAnimBoneLinear(file,data_ptr,&data_count,chunk->size,
+                                       data_mdf.animationset_count,&data_mdf.root_linearskeleton,
+                                       &data_mdf.bone_count);
+                
+                // printf("wrote %d\n",data_count);
+            }
+            break;
+            
+            //TODO: Need read and write for dq
+            case TAG_BLEND_DQ:{
+                goto skipall;
+            }
+            break;
+            
+            default:{
+                goto skipall;
+            }
+            
+        }
+        
+    }
+    
+    skipall:
+    
     FCloseFile(file);
-    return {};
-  }
     
-  u32 t;
-    
-  FRead(file,&t,sizeof(u32));
-  FRead(file,&t,sizeof(u32));
-    
-  auto data_ptr = (s8*)animbone;
-  u32 data_count = 0;
-    
-  while(FCurFilePosition(file) < end){
-        
-    auto chunk = (MDFChunk*)tbuffer;
-        
-    FRead(file,chunk,sizeof(MDFChunk));
-        
-    switch(chunk->tag){
-            
-    case TAG_VERTEX:{
-      data_mdf.vertexdata_offset = FCurFilePosition(file);
-      data_mdf.vertex_size = chunk->size;
-      data_mdf.vertex_data = vertindex;
-      FRead(file,data_mdf.vertex_data,chunk->size);
-    }
-      break;
-            
-    case TAG_INDEX:{
-      data_mdf.indexdata_offset = FCurFilePosition(file);
-      data_mdf.index_size = chunk->size;
-      data_mdf.index_data = (u32*)(((s8*)(data_mdf.vertex_data)) + data_mdf.vertex_size);
-                
-      FRead(file,data_mdf.index_data,chunk->size);
-    }
-      break;
-            
-    case TAG_ANIM:{
-      data_mdf.animdata_offset = FCurFilePosition(file);
-      data_mdf.animationset_array = (AAnimationSet*)data_ptr;
-      data_mdf.animationset_count = chunk->size/sizeof(AAnimationSet);
-                
-      FileReadAnimation(file,data_mdf.animationset_array,&data_count,
-			data_mdf.animationset_count);
-    }
-      break;
-            
-    case TAG_BLEND_LINEAR:{
-      data_mdf.bonedata_offset = FCurFilePosition(file);
-                
-      FileReadAnimBoneLinear(file,data_ptr,&data_count,chunk->size,
-			     data_mdf.animationset_count,&data_mdf.root_linearskeleton,
-			     &data_mdf.bone_count);
-                
-      // printf("wrote %d\n",data_count);
-    }
-      break;
-            
-      //TODO: Need read and write for dq
-    case TAG_BLEND_DQ:{
-      goto skipall;
-    }
-      break;
-            
-    default:{
-      goto skipall;
-    }
-            
-    }
-        
-  }
-    
- skipall:
-    
-  FCloseFile(file);
-    
-  return data_mdf;
+    return data_mdf;
 }
 
 
 void ADFGetInfo(const s8* filepath,u16* compression_type,u32* data_size){
     
-  auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
     
-  u32 read_int;
+    u32 read_int;
     
-  FRead(file,&read_int,sizeof(read_int));
+    FRead(file,&read_int,sizeof(read_int));
     
-  _kill("Not an ADF file\n",read_int != TAG_ADF);
+    _kill("Not an ADF file\n",read_int != TAG_ADF);
     
-  FRead(file,compression_type,sizeof(*compression_type));
+    FRead(file,compression_type,sizeof(*compression_type));
     
-  auto curpos = FCurFilePosition(file);
+    auto curpos = FCurFilePosition(file);
     
-  *data_size = (u32)(FSeekFile(file,0,F_METHOD_END) - curpos);
+    *data_size = (u32)(FSeekFile(file,0,F_METHOD_END) - curpos);
     
-  FCloseFile(file);
+    FCloseFile(file);
 }
 
 
 //TODO: We might want to wrap around or not wrap or whatever
 void ADFGetData(const s8* filepath,void* data,u32* offset,u32 size){
     
-  //TODO: Why not just keep the file open
+    //TODO: Why not just keep the file open
     
 #ifndef IS_IMPORTER
     
-  TIMEBLOCK(GhostWhite);
+    TIMEBLOCK(GhostWhite);
     
 #endif
     
-  FileHandle file;
-  {
+    FileHandle file;
+    {
 #ifndef IS_IMPORTER
-    TIMEBLOCKTAGGED("FOPEN",Crimson);
+        TIMEBLOCKTAGGED("FOPEN",Crimson);
 #endif
-    file = FOpenFile(filepath,F_FLAG_READONLY); 
-  }
+        file = FOpenFile(filepath,F_FLAG_READONLY); 
+    }
     
-  u32 offset_t = *offset;
+    u32 offset_t = *offset;
     
-  offset_t += 8;
+    offset_t += 8;
     
-  {
+    {
 #ifndef IS_IMPORTER
-    TIMEBLOCKTAGGED("FSEEK",Yellow);
+        TIMEBLOCKTAGGED("FSEEK",Yellow);
 #endif
-    FSeekFile(file,offset_t,F_METHOD_START);
-  }
+        FSeekFile(file,offset_t,F_METHOD_START);
+    }
     
-  {
+    {
 #ifndef IS_IMPORTER
-    TIMEBLOCKTAGGED("FREAD",Salmon);
+        TIMEBLOCKTAGGED("FREAD",Salmon);
 #endif
-    FRead(file,data,size);
-  }
+        FRead(file,data,size);
+    }
     
-  *offset = offset_t - 8 + size;
+    *offset = offset_t - 8 + size;
     
-  FCloseFile(file);
+    FCloseFile(file);
 }
 
 
 void WriteBMP(void* data,u32 w,u32 h,const s8* outputfile){
     
-  struct BMPFileHeader{
-    u16 type;
-    u32 size;
-    u16 r1;
-    u16 r2;
-    u32 offset;
-  } _packed;
+    struct BMPFileHeader{
+        u16 type;
+        u32 size;
+        u16 r1;
+        u16 r2;
+        u32 offset;
+    } _packed;
     
-  struct BMPImageHeader{
-    u32 this_size;
-    u32 width;
-    u32 height;
-    u16 plane;
-    u16 bpp;
-    u32 comp_type;
-    u32 image_size;
-    u32 pixelspermeter_x;
-    u32 pixelspermeter_y;
-    u32 colormap_entries;
-    u32 sigcolors;
-  } _packed;
+    struct BMPImageHeader{
+        u32 this_size;
+        u32 width;
+        u32 height;
+        u16 plane;
+        u16 bpp;
+        u32 comp_type;
+        u32 image_size;
+        u32 pixelspermeter_x;
+        u32 pixelspermeter_y;
+        u32 colormap_entries;
+        u32 sigcolors;
+    } _packed;
     
-  u32 tsize = sizeof(BMPFileHeader) + sizeof(BMPImageHeader) * w * h * 4;
-  auto ptr = (s8*)alloc(tsize);
+    u32 tsize = sizeof(BMPFileHeader) + sizeof(BMPImageHeader) * w * h * 4;
+    auto ptr = (s8*)alloc(tsize);
     
-  auto header = (BMPFileHeader*)ptr;
+    auto header = (BMPFileHeader*)ptr;
     
-  auto imageheader = (BMPImageHeader*)(ptr + sizeof(BMPFileHeader));
+    auto imageheader = (BMPImageHeader*)(ptr + sizeof(BMPFileHeader));
     
-  auto imagedata = ptr + sizeof(BMPFileHeader) + sizeof(BMPImageHeader);
+    auto imagedata = ptr + sizeof(BMPFileHeader) + sizeof(BMPImageHeader);
     
-  header->type = 'B' | ('M' << 8);
-  header->size = tsize;
-  header->r1 = 0;
-  header->r2 = 0;
-  header->offset = sizeof(BMPFileHeader) + sizeof(BMPImageHeader);
+    header->type = 'B' | ('M' << 8);
+    header->size = tsize;
+    header->r1 = 0;
+    header->r2 = 0;
+    header->offset = sizeof(BMPFileHeader) + sizeof(BMPImageHeader);
     
     
-  imageheader->this_size = sizeof(BMPImageHeader);
-  imageheader->width = w;
-  imageheader->height = h;
-  imageheader->plane = 1;
-  imageheader->bpp = 32;
-  imageheader->comp_type = 0;
-  imageheader->image_size = 0;
-  imageheader->pixelspermeter_x = 0;
-  imageheader->pixelspermeter_y = 0;
-  imageheader->colormap_entries = 0;
-  imageheader->sigcolors = 0;
+    imageheader->this_size = sizeof(BMPImageHeader);
+    imageheader->width = w;
+    imageheader->height = h;
+    imageheader->plane = 1;
+    imageheader->bpp = 32;
+    imageheader->comp_type = 0;
+    imageheader->image_size = 0;
+    imageheader->pixelspermeter_x = 0;
+    imageheader->pixelspermeter_y = 0;
+    imageheader->colormap_entries = 0;
+    imageheader->sigcolors = 0;
     
-  struct Pixel{
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 a;
-  };
+    struct Pixel{
+        u8 r;
+        u8 g;
+        u8 b;
+        u8 a;
+    };
     
-  u32 at = 0;
+    u32 at = 0;
     
-  for(s32 y = (h - 1); y > -1; y--){
+    for(s32 y = (h - 1); y > -1; y--){
         
-    for(u32 x = 0; x < w; x++){
+        for(u32 x = 0; x < w; x++){
             
-      u32 i = (y * w) + x;
+            u32 i = (y * w) + x;
             
-      auto dst_pix = (u32*)imagedata;
-      auto src_pix = (u32*)data;
+            auto dst_pix = (u32*)imagedata;
+            auto src_pix = (u32*)data;
             
-      auto pix = *((Pixel*)&src_pix[i]);
+            auto pix = *((Pixel*)&src_pix[i]);
             
             
-      dst_pix[at] = pix.r << 16 | pix.g << 8 | pix.b;
+            dst_pix[at] = pix.r << 16 | pix.g << 8 | pix.b;
             
-      at++;
+            at++;
+        }
+        
     }
-        
-  }
     
-  auto file = FOpenFile(outputfile,F_FLAG_WRITEONLY | F_FLAG_CREATE |
-			F_FLAG_TRUNCATE);
+    auto file = FOpenFile(outputfile,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+                          F_FLAG_TRUNCATE);
     
-  FWrite(file,ptr,tsize);
+    FWrite(file,ptr,tsize);
     
-  FCloseFile(file);
+    FCloseFile(file);
     
-  unalloc(ptr);
+    unalloc(ptr);
 }
 
 TDFHeader GetHeaderInfoTDF(const s8* filepath){
     
-  TDFHeader header = {};
+    TDFHeader header = {};
     
-  auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
     
-  FRead(file,&header,sizeof(TDFHeader));
+    FRead(file,&header,sizeof(TDFHeader));
     
-  FCloseFile(file);
+    FCloseFile(file);
     
-  return header;
+    return header;
 }
 
 void InternalGetTileData(FileHandle file,u32 offset,f32 bpp,void* data){
     
-  u32 pos = offset + sizeof(TDFHeader);
+    u32 pos = offset + sizeof(TDFHeader);
     
-  FSeekFile(file,pos,F_METHOD_START);
+    FSeekFile(file,pos,F_METHOD_START);
     
-  FRead(file,data,128 * 128 * bpp);
+    FRead(file,data,128 * 128 * bpp);
 }
 
 
 void GetTileDataTDF(FileHandle file,u32 w,u32 h,u32 t_x,u32 t_y,u32 mip,f32 bpp,void* data){
     
-  u32 t_w = w >> 7;
-  u32 t_h = h >> 7;
+    u32 t_w = w >> 7;
+    u32 t_h = h >> 7;
     
-  u32 pos = 0;
+    u32 pos = 0;
     
-  for(u32 i = 0; i < mip; i++){
-    pos += t_w * t_h;
+    for(u32 i = 0; i < mip; i++){
+        pos += t_w * t_h;
         
-    t_h >>= 1;
-    t_w >>= 1;
-  }
+        t_h >>= 1;
+        t_w >>= 1;
+    }
     
-  pos += (t_y * t_w) + t_x;
-  pos *= 128 * 128 * bpp;
+    pos += (t_y * t_w) + t_x;
+    pos *= 128 * 128 * bpp;
     
-  InternalGetTileData(file,pos,bpp,data);
+    InternalGetTileData(file,pos,bpp,data);
 }
 
 /* MARK:These are from glslparser::main.cpp::GenerateShaderTable */
 enum LayoutType : u32{
-  LayoutType_IN = PHashString("in"),
+    LayoutType_IN = PHashString("in"),
     LayoutType_DESC = PHashString("set"),
     LayoutType_PUSHCONST = PHashString("push_constant"),
     LayoutType_SPV = (u32)-1,
-    };
+};
 
 SPXData LoadSPX(const s8* filepath){
-
-  SPXData data = {};
-
-  auto spx = FOpenFile(filepath,F_FLAG_READONLY);
-  auto spx_size = FGetFileSize(spx);
-
-  u32 tag;
-
-  FRead(spx,&tag,sizeof(tag));
-
-  _kill("This is not an SPX file\n",tag != _encode('S','P','X',' '));
-
-  FRead(spx,&data.type,sizeof(data.type));
-
-  u32 vertparsed_count = 0;// this is a hack. I am lazy to make a new tag for inst vertices
-
-  while(FCurFilePosition(spx) < spx_size){
-
-    LayoutType ltype;
-    FRead(spx,&ltype,sizeof(ltype));
-
-    switch(ltype){
-      
-    case LayoutType_IN:{
-
-      if(!vertparsed_count){
-	FRead(spx,&data.vlayout.size,sizeof(data.vlayout.size));
-
-	FRead(spx,&data.vlayout.entry_count,sizeof(data.vlayout.entry_count));
-
-	for(u32 i = 0; i < data.vlayout.entry_count; i++){
-	  FRead(spx,&data.vlayout.entry_array[i],sizeof(data.vlayout.entry_array[0]));	
-	}
-
-	vertparsed_count++;
-	
-      }
-
-      else{
-	FRead(spx,&data.instlayout.size,sizeof(data.instlayout.size));
-
-	FRead(spx,&data.instlayout.entry_count,sizeof(data.instlayout.entry_count));
-
-	for(u32 i = 0; i < data.instlayout.entry_count; i++){
-	  FRead(spx,&data.instlayout.entry_array[i],sizeof(data.instlayout.entry_array[0]));	
-	}
-
-	vertparsed_count++;	
-      }
-      
-    }break;
     
-    case LayoutType_DESC:{
-
-      FRead(spx,&data.dlayout.entry_count,sizeof(data.dlayout.entry_count));
-
-      for(u32 i = 0; i < data.dlayout.entry_count; i++){
-	FRead(spx,&data.dlayout.entry_array[i],sizeof(data.dlayout.entry_array[0]));	
-      }
-      
-    }break;
+    SPXData data = {};
     
-    case LayoutType_PUSHCONST:{
-      
-      FRead(spx,&data.playout.size,sizeof(data.playout.size));
-
-      FRead(spx,&data.playout.entry_count,sizeof(data.playout.entry_count));
-
-      for(u32 i = 0; i < data.playout.entry_count; i++){
-	FRead(spx,&data.playout.entry_array[i],sizeof(data.playout.entry_array[0]));	
-      }
-      
-    }break;
-
-    case LayoutType_SPV:{
-      
-      ptrsize spvsize;
-      FRead(spx,&spvsize,sizeof(spvsize));
-
-      data.spv_size = (u32)spvsize;
-
-      data.spv = TAlloc(s8,spvsize);
-
-      
-      FRead(spx,data.spv,spvsize);
-      
-      goto exit_loop;
-    }break;
+    auto spx = FOpenFile(filepath,F_FLAG_READONLY);
+    auto spx_size = FGetFileSize(spx);
     
+    u32 tag;
+    
+    FRead(spx,&tag,sizeof(tag));
+    
+    _kill("This is not an SPX file\n",tag != _encode('S','P','X',' '));
+    
+    FRead(spx,&data.type,sizeof(data.type));
+    
+    u32 vertparsed_count = 0;// this is a hack. I am lazy to make a new tag for inst vertices
+    
+    while(FCurFilePosition(spx) < spx_size){
+        
+        LayoutType ltype;
+        FRead(spx,&ltype,sizeof(ltype));
+        
+        switch(ltype){
+            
+            case LayoutType_IN:{
+                
+                if(!vertparsed_count){
+                    FRead(spx,&data.vlayout.size,sizeof(data.vlayout.size));
+                    
+                    FRead(spx,&data.vlayout.entry_count,sizeof(data.vlayout.entry_count));
+                    
+                    for(u32 i = 0; i < data.vlayout.entry_count; i++){
+                        FRead(spx,&data.vlayout.entry_array[i],sizeof(data.vlayout.entry_array[0]));	
+                    }
+                    
+                    vertparsed_count++;
+                    
+                }
+                
+                else{
+                    FRead(spx,&data.instlayout.size,sizeof(data.instlayout.size));
+                    
+                    FRead(spx,&data.instlayout.entry_count,sizeof(data.instlayout.entry_count));
+                    
+                    for(u32 i = 0; i < data.instlayout.entry_count; i++){
+                        FRead(spx,&data.instlayout.entry_array[i],sizeof(data.instlayout.entry_array[0]));	
+                    }
+                    
+                    vertparsed_count++;	
+                }
+                
+            }break;
+            
+            case LayoutType_DESC:{
+                
+                FRead(spx,&data.dlayout.entry_count,sizeof(data.dlayout.entry_count));
+                
+                for(u32 i = 0; i < data.dlayout.entry_count; i++){
+                    FRead(spx,&data.dlayout.entry_array[i],sizeof(data.dlayout.entry_array[0]));	
+                }
+                
+            }break;
+            
+            case LayoutType_PUSHCONST:{
+                
+                FRead(spx,&data.playout.size,sizeof(data.playout.size));
+                
+                FRead(spx,&data.playout.entry_count,sizeof(data.playout.entry_count));
+                
+                for(u32 i = 0; i < data.playout.entry_count; i++){
+                    FRead(spx,&data.playout.entry_array[i],sizeof(data.playout.entry_array[0]));	
+                }
+                
+            }break;
+            
+            case LayoutType_SPV:{
+                
+                ptrsize spvsize;
+                FRead(spx,&spvsize,sizeof(spvsize));
+                
+                data.spv_size = (u32)spvsize;
+                
+                data.spv = TAlloc(s8,spvsize);
+                
+                
+                FRead(spx,data.spv,spvsize);
+                
+                goto exit_loop;
+            }break;
+            
+        }
+        
     }
     
-  }
+    exit_loop:
+    
+    FCloseFile(spx);
+    
+    return data;
+}
 
- exit_loop:
 
-  FCloseFile(spx);
-
-  return data;
+SPX_ShaderObject MakeShaderObjectSPX(SPXData* spx_array,u32 spx_count){
+    
+    SPX_ShaderObject obj = {};
+    
+    for(u32 i = 0; i < spx_count; i++){
+        
+        auto spx = &spx_array[i];
+        
+        if(spx->type == VK_SHADER_STAGE_VERTEX_BIT){
+            
+        }
+    }
+    
+    _kill("vertex shader not found\n",!obj.attrib_count);
+    
+    return obj;
 }
