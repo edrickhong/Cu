@@ -15,36 +15,36 @@ layout (location = 4) in vec4 inWeight;
 #endif
 
 struct Light{
-  vec3 pos;
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;
+    vec3 pos;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
 };
 
 struct Material{
-  vec3 ambient;
-  vec3 diffuse; // basically the texture
-  vec3 specular;// basically the texture
-  float shine;
+    vec3 ambient;
+    vec3 diffuse; // basically the texture
+    vec3 specular;// basically the texture
+    float shine;
 };
 
 
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
-  
-  mat4 world;
-  mat4 bone_array[64];
-  uint texture_id[16];
-  
+    
+    mat4 world;
+    mat4 bone_array[64];
+    uint texture_id[16];
+    
 }ubo;
 
 #define _Diffuse_ID 0
 
 layout(push_constant) uniform PushConsts{		
-  mat4 viewproj;//TODO: we can separate proj to a specialization const since it never changes
-  vec4 camerapos;
-  vec4 lightpos;
-  vec4 ambient_color;
-  float ambient_intensity;
+    mat4 viewproj;//TODO: we can separate proj to a specialization const since it never changes
+    vec4 camerapos;
+    vec4 lightpos;
+    vec4 ambient_color;
+    float ambient_intensity;
 }pushconst;
 
 
@@ -57,59 +57,59 @@ layout (location = 5) out vec2 outTexcoord;
 layout (location = 6) flat out uint outTextureIndex;
 
 out gl_PerVertex {
-  
-  vec4 gl_Position;
-  
+    
+    vec4 gl_Position;
+    
 };
 
 #define _specpower 32.0f
 #define _specintensity 0.5f
 
 void main(){
-
+    
 #ifdef USE_SKEL
-  
-  mat4 bonetransform;
-  
-  uvec4 boneindex = inBoneIndex;
-  
-  bonetransform = ubo.bone_array[boneindex.x] * inWeight.x;
-
-  bonetransform += ubo.bone_array[boneindex.y] * inWeight.y;
-  
-  bonetransform += ubo.bone_array[boneindex.z] * inWeight.z;
-  
-  bonetransform += ubo.bone_array[boneindex.w] * inWeight.w;
-
+    
+    mat4 bonetransform;
+    
+    uvec4 boneindex = inBoneIndex;
+    
+    bonetransform = ubo.bone_array[boneindex.x] * inWeight.x;
+    
+    bonetransform += ubo.bone_array[boneindex.y] * inWeight.y;
+    
+    bonetransform += ubo.bone_array[boneindex.z] * inWeight.z;
+    
+    bonetransform += ubo.bone_array[boneindex.w] * inWeight.w;
+    
 #endif
-
-  mat4 world = ubo.world;
-
-  mat4 viewproj = pushconst.viewproj;
-
-  //NOTE: normal will be wrong for non-uniform scaling
-  
+    
+    mat4 world = ubo.world;
+    
+    mat4 viewproj = pushconst.viewproj;
+    
+    //NOTE: normal will be wrong for non-uniform scaling
+    
 #ifdef USE_SKEL
-
-  vec4 vertexposition = world * bonetransform * vec4(inPos.xyz,1.0f);
-  vec3 normal  = normalize(mat3(world) * mat3(bonetransform) * vec3(inNormal.xyz));
-
+    
+    vec4 vertexposition = world * bonetransform * vec4(inPos.xyz,1.0f);
+    vec3 normal  = normalize(mat3(world) * mat3(bonetransform) * vec3(inNormal.xyz));
+    
 #else
-
-  vec4 vertexposition = world * vec4(inPos.xyz,1.0f);
-  vec3 normal  = normalize(mat3(world) * vec3(inNormal.xyz));
-  
+    
+    vec4 vertexposition = world * vec4(inPos.xyz,1.0f);
+    vec3 normal  = normalize(mat3(world) * vec3(inNormal.xyz));
+    
 #endif
-
-  gl_Position = viewproj * vertexposition;
-  outPos = vec3(vertexposition);
-  outNormal = normal;
-  outEyePos = vec3(pushconst.camerapos);
-  outLightPos = vec3(pushconst.lightpos);
-  outAmbientColor = vec3(pushconst.ambient_color * pushconst.ambient_intensity);
-  outTexcoord = inTexcoord;
-  outTextureIndex = ubo.texture_id[_Diffuse_ID];
-  
+    
+    gl_Position = viewproj * vertexposition;
+    outPos = vec3(vertexposition);
+    outNormal = normal;
+    outEyePos = vec3(pushconst.camerapos);
+    outLightPos = vec3(pushconst.lightpos);
+    outAmbientColor = vec3(pushconst.ambient_color * pushconst.ambient_intensity);
+    outTexcoord = inTexcoord;
+    outTextureIndex = ubo.texture_id[_Diffuse_ID];
+    
 }
 
 
