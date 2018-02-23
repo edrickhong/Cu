@@ -297,13 +297,6 @@ struct SPXData{
     u32 spv_size;
 };
 
-struct SPX_ShaderObject{
-    VkVertexInputAttributeDescription vert_attrib[16];
-    u32 attrib_count = 0;
-};
-
-SPX_ShaderObject MakeShaderObjectSPX(SPXData* spx_array,u32 spx_count);
-
 
 SPXData LoadSPX(const s8* filepath);
 
