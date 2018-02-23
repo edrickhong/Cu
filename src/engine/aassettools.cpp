@@ -574,22 +574,3 @@ SPXData LoadSPX(const s8* filepath){
     
     return data;
 }
-
-
-SPX_ShaderObject MakeShaderObjectSPX(SPXData* spx_array,u32 spx_count){
-    
-    SPX_ShaderObject obj = {};
-    
-    for(u32 i = 0; i < spx_count; i++){
-        
-        auto spx = &spx_array[i];
-        
-        if(spx->type == VK_SHADER_STAGE_VERTEX_BIT){
-            
-        }
-    }
-    
-    _kill("vertex shader not found\n",!obj.attrib_count);
-    
-    return obj;
-}
