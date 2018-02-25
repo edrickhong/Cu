@@ -356,10 +356,76 @@ SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,
         
     }
     
+    //sort descset elements
+    
+    for(u32 i = 0; i < obj.descset_count; i++){
+        
+        auto set = &obj.descset_array[i];
+        
+        qsort(set->element_array,set->element_count,sizeof(SPX_GraphicsShaderObject::DescSetElement),[](const void * a, const void* b) ->s32 {
+              
+              auto entry_a = (SPX_GraphicsShaderObject::DescSetElement*)a;
+              auto entry_b = (SPX_GraphicsShaderObject::DescSetElement*)b;
+              
+              return entry_a->binding_no - entry_b->binding_no;
+              });
+    }
+    
     _kill("no vertex shader found\n",!obj.vert_hash);
     return obj;
 }
 
 void VPushBackDescriptorPoolX(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject* obj,u32 descset_count,u32 desc_set){
     
+    _kill("desc count cannot be 0\n",!descset_count);
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        
+        auto set = &obj->descset_array[i];
+        
+        if(set->set_no == desc_set || desc_set == (u32)-1){
+            
+            for(u32 j = 0; j < set->element_count; j++){
+                
+                auto element = &set->element_array[j];
+                
+                VDescPushBackPoolSpec(spec,element->type,element->array_count * descset_count);
+            }
+        }
+    }
+    
+    if(descset_count > spec->desc_count){
+        spec->desc_count = descset_count;
+    }
+    
+}
+
+VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,u32 descset_no){
+    
+    SPX_GraphicsShaderObject::DescSetEntry* set = 0;
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        
+        auto dset = &obj->descset_array[i];
+        
+        if(dset->set_no == descset_no){
+            set = dset;
+            break;
+        }
+    }
+    
+    VDescriptorBindingSpec bindingspec = {};
+    
+    for(u32 i = 0; i < set->element_count; i++){
+        
+        auto element = &set->element_array[i];
+        
+        VDescPushBackBindingSpec(&bindingspec,element->type,
+                                 element->array_count,set->shader_stage);
+    }
+    
+    
+    _kill("set not found\n",!set);
+    
+    return VCreateDescriptorSetLayout(vdevice,bindingspec);
 }
