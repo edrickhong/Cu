@@ -939,7 +939,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                         ptrsize data_size,logic isdevice_local = true);
 
 
-u32 _ainline VPipelineVertHash(VkFormat* format_array,u32 count){
+u32 _ainline VFormatHash(VkFormat* format_array,u32 count){
     
     u32 hash = 0;
     
