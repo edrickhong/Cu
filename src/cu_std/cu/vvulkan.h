@@ -845,7 +845,7 @@ u32 VGetMemoryTypeIndex(VkPhysicalDeviceMemoryProperties properties,
 
 VkShaderModule VCreateShaderModule(VkDevice device,void* data,
                                    ptrsize size,
-                                   VkShaderModuleCreateFlags flags);
+                                   VkShaderModuleCreateFlags flags = 0);
 
 enum VFilter{
     VFILTER_NONE,

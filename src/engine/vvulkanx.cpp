@@ -275,9 +275,20 @@ void ConstructPushConsts(SPX_GraphicsShaderObject* _restrict obj,SPXData* _restr
 
 
 SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,
-                                             u32 spx_count,u32 vert_binding_no,u32 inst_binding_no){
+                                             u32 spx_count,VkSpecializationInfo* spec_array,
+                                             u32 spec_count,u32 vert_binding_no,u32 inst_binding_no){
+    
+    _kill("max possible shaders reached\n",spx_count > 5);
+    
+    _kill("each specialization entry has to correspond to a shader\n",!spx_count && spec_count != spx_count);
     
     SPX_GraphicsShaderObject obj = {};
+    
+    if(spec_count){
+        
+        memcpy(&obj.spec_array[0],&spec_array[0],sizeof(VkSpecializationInfo) * spec_count);
+        obj.spec_count = spec_count;
+    }
     
     for(u32 i = 0; i < spx_count; i++){
         
@@ -287,6 +298,11 @@ SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,
         
         ConstructDescSets(&obj,spx);
         ConstructPushConsts(&obj,spx);
+        
+        obj.shaderstage_array[obj.shader_count] = spx->type;
+        obj.shader_data_array[obj.shader_count] = spx->spv;
+        obj.spv_size_array[obj.shader_count] = spx->spv_size;
+        obj.shader_count++;
     }
     
     //sort descset elements
@@ -368,4 +384,233 @@ VkPipelineLayout VCreatePipelineLayoutX(const  VDeviceContext* _restrict vdevice
     
     return VCreatePipelineLayout(vdevice,descriptorset_array,descriptorset_count,obj->range_array,
                                  obj->range_count);
+}
+
+GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,VkPipelineLayout layout,
+                                                       VkRenderPass renderpass,u32 subpass_index,VSwapchainContext* swap,u32 colorattachment_count,VkPipelineCreateFlags flags,
+                                                       VkPipeline parent_pipeline,s32 parentpipeline_index){
+    
+    GraphicsPipelineSpecObject spec = {};
+    
+    if(obj->spec_count){
+        
+        memcpy(&spec.spec_array[0],&obj->spec_array[0],sizeof(VkSpecializationInfo) * obj->spec_count);
+    }
+    
+    
+    
+    spec.subpass_index = subpass_index;
+    spec.flags = flags;
+    spec.layout = layout;
+    spec.cur = &spec.buffer[0];
+    spec.renderpass = renderpass;
+    spec.parent_pipeline = parent_pipeline;
+    spec.parentpipeline_index = parentpipeline_index;
+    
+    spec.vertexinput = {
+        
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        0,
+        0,
+        obj->vert_desc_count,
+        &obj->vert_desc_array[0],
+        obj->vert_attrib_count,
+        &obj->vert_attrib_array[0]
+    };
+    
+    spec.assembly = {
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        0,
+        0,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_FALSE //restart assembly of primitives for indexed draw if index(MAX_INT) is reached
+    };
+    
+    spec.raster = {
+        
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        0,
+        0,
+        VK_FALSE,
+        VK_FALSE,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        VK_FRONT_FACE_CLOCKWISE,
+        VK_FALSE,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f
+    };
+    
+    spec.viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    
+    if(swap){
+        
+        auto width = swap->width;
+        auto height = swap->height;
+        
+        VkViewport viewport = {0.0f,0.0f,(f32)width,(f32)height,0.0f,1.0f};
+        VkRect2D scissor = {width,height};
+        
+        spec.viewport.viewportCount = 1;
+        spec.viewport.pViewports = &viewport;
+        spec.viewport.scissorCount = 1;
+        spec.viewport.pScissors = &scissor;
+    }
+    
+    spec.multisample.sType =VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    
+    spec.multisample.pNext = 0;
+    spec.multisample.flags = 0;
+    spec.multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    spec.multisample.sampleShadingEnable = VK_FALSE;
+    spec.multisample.minSampleShading = 1.0f;
+    spec.multisample.pSampleMask= 0;
+    spec.multisample.alphaToCoverageEnable = VK_FALSE;
+    spec.multisample.alphaToOneEnable = VK_FALSE;
+    
+    
+    //MARK: this is disabled by default
+    spec.depthstencil.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    
+    spec.depthstencil.pNext = 0;
+    spec.depthstencil.flags = 0;
+    spec.depthstencil.depthTestEnable = VK_FALSE;
+    spec.depthstencil.depthWriteEnable = VK_FALSE;
+    spec.depthstencil.depthCompareOp = VK_COMPARE_OP_NEVER;
+    spec.depthstencil.depthBoundsTestEnable = VK_FALSE;
+    spec.depthstencil.stencilTestEnable = VK_FALSE;
+    spec.depthstencil.front = {};
+    spec.depthstencil.back = {};
+    spec.depthstencil.minDepthBounds = 0.0f;
+    spec.depthstencil.maxDepthBounds = 1.0f;
+    
+    
+    
+    
+    _kill("we do not support this many color attachments\n",
+          colorattachment_count > _arraycount(spec.colorattachment_array));
+    
+    for(u32 i = 0; i < colorattachment_count; i++){
+        
+        spec.colorattachment_array[i] = {
+            VK_FALSE,
+            VK_BLEND_FACTOR_SRC_ALPHA,
+            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            VK_BLEND_OP_ADD,
+            VK_BLEND_FACTOR_ONE,
+            VK_BLEND_FACTOR_ZERO,
+            VK_BLEND_OP_ADD,0xf
+        };
+    }
+    
+    spec.colorblendstate.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    
+    spec.colorblendstate.pNext = 0;
+    spec.colorblendstate.flags = 0;
+    spec.colorblendstate.logicOpEnable = VK_FALSE;
+    spec.colorblendstate.logicOp = VK_LOGIC_OP_CLEAR;
+    spec.colorblendstate.attachmentCount = colorattachment_count;
+    spec.colorblendstate.pAttachments = &spec.colorattachment_array[0];
+    
+    memset(spec.colorblendstate.blendConstants,0,sizeof(f32) * 4);
+    
+    spec.shadermodule_count = obj->shader_count;
+    
+    for(u32 i = 0; i < obj->shader_count; i++){
+        
+        auto data = obj->shader_data_array[i];
+        auto size = obj->spv_size_array[i];
+        
+        spec.shadermodule_array[i] = VCreateShaderModule(vdevice->device,data,size);
+    }
+    
+    for(u32 i = 0; i < obj->shader_count; i++){
+        
+        VkSpecializationInfo* info = 0;
+        
+        if(spec.spec_array[i].mapEntryCount){
+            info = &spec.spec_array[i];
+        }
+        
+        spec.shaderinfo_array[i] = {
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            0,
+            0,
+            obj->shaderstage_array[i],
+            spec.shadermodule_array[i],
+            "main",
+            info
+        };
+    }
+    
+    return spec;
+}
+
+void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,GraphicsPipelineSpecObject* spec_array,u32 spec_count,VkPipeline* pipeline_array,VkPipelineCache cache){
+    
+    VkGraphicsPipelineCreateInfo info_array[16] = {};
+    
+    _kill("too many specs\n",spec_count > _arraycount(info_array));
+    
+    for(u32 i = 0; i < spec_count; i++){
+        
+        auto spec = &spec_array[i];
+        
+        VkPipelineTessellationStateCreateInfo* tessalationstate = 0;
+        VkPipelineDynamicStateCreateInfo* dynamicstate = 0;
+        
+        if(spec->tessalationstate.sType){
+            tessalationstate = &spec->tessalationstate;
+        }
+        
+        if(spec->dynamicstate.sType){
+            dynamicstate= &spec->dynamicstate;
+        }
+        
+        info_array[i] = {
+            VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            0,
+            spec->flags,
+            spec->shadermodule_count,
+            &spec->shaderinfo_array[0],
+            &spec->vertexinput,
+            &spec->assembly,
+            
+            tessalationstate,
+            
+            &spec->viewport,
+            &spec->raster,
+            &spec->multisample,
+            &spec->depthstencil,
+            &spec->colorblendstate,
+            
+            dynamicstate,
+            
+            spec->layout,
+            spec->renderpass,
+            spec->subpass_index,
+            spec->parent_pipeline,
+            spec->parentpipeline_index
+        };
+        
+    }
+    
+    //MARK: pass the global allocator and use vktest
+    vkCreateGraphicsPipelines(vdevice->device,cache,spec_count,&info_array[0],0,
+                              pipeline_array);
+    
+    //destroy all modules
+    for(u32 i = 0; i < spec_count; i++){
+        
+        auto spec = &spec_array[i];
+        
+        for(u32 j = 0; j < spec->shadermodule_count; j++){
+            //MARK: pass the global allocator
+            vkDestroyShaderModule(vdevice->device,spec->shadermodule_array[j],0);
+        }
+    }
 }
