@@ -100,12 +100,15 @@ void InternalPushBackVertexAttrib(SPX_GraphicsShaderObject* obj,u32 binding_no,V
     
     for(u32 i = 0; i < obj->vert_attrib_count; i++){
         
-        if(binding_no == obj->vert_attrib_array[i].format){
+        if(binding_no == obj->vert_attrib_array[i].binding){
             offset += obj->vert_attrib_size_array[i];
         }
     }
     
-    obj->vert_attrib_array[obj->vert_attrib_count] = {obj->vert_attrib_count,binding_no,format,offset};
+    obj->vert_attrib_array[obj->vert_attrib_count] = {obj->vert_attrib_count,binding_no,format,offset
+    };
+    
+    obj->vert_attrib_size_array[obj->vert_attrib_count] = attrib_size;
     obj->vert_attrib_count++;
     
 }
@@ -386,6 +389,141 @@ VkPipelineLayout VCreatePipelineLayoutX(const  VDeviceContext* _restrict vdevice
                                  obj->range_count);
 }
 
+//
+void VSetFixedViewportGraphicsPipelineSpec(GraphicsPipelineSpecObject* spec,
+                                           VkViewport* viewport,u32 viewport_count,VkRect2D* scissor,
+                                           u32 scissor_count){
+    
+    memcpy(&spec->viewport_array[0],viewport,sizeof(VkViewport) * viewport_count);
+    
+    memcpy(&spec->scissor_array[0],scissor,sizeof(VkRect2D) * scissor_count);
+    
+    spec->viewport.viewportCount = viewport_count;
+    spec->viewport.pViewports = &spec->viewport_array[0];
+    spec->viewport.scissorCount = scissor_count;
+    spec->viewport.pScissors = &spec->scissor_array[0];
+    
+}
+
+void VSetFixedViewportGraphicsPipelineSpec(GraphicsPipelineSpecObject* spec,
+                                           u16 width,u16 height){
+    
+    VkViewport viewport = {0.0f,0.0f,(f32)width,(f32)height,0.0f,1.0f};
+    VkRect2D scissor = {{},width,height};
+    
+    VSetFixedViewportGraphicsPipelineSpec(spec,
+                                          &viewport,1,&scissor,
+                                          1);
+}
+
+void VSetMultisampleGraphicsPipelineSpec(GraphicsPipelineSpecObject* spec,
+                                         VkSampleCountFlagBits samplecount_bits,
+                                         VkBool32 is_persample_perfragment,//true = sample,else frag
+                                         f32 minsampleshading,
+                                         VkSampleMask* samplemask,
+                                         VkBool32 enable_alpha_to_coverage,
+                                         VkBool32 enable_alpha_to_one){
+    spec->multisample.sType =VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    
+    spec->multisample.pNext = 0;
+    spec->multisample.flags = 0;
+    spec->multisample.rasterizationSamples = samplecount_bits;
+    spec->multisample.sampleShadingEnable = is_persample_perfragment;
+    spec->multisample.minSampleShading = minsampleshading;
+    spec->multisample.pSampleMask= samplemask;
+    spec->multisample.alphaToCoverageEnable = enable_alpha_to_coverage;
+    spec->multisample.alphaToOneEnable = enable_alpha_to_one;
+}
+
+
+void VSetDepthStencilGraphicsPipelineSpec(GraphicsPipelineSpecObject* spec,
+                                          VkBool32 depthtest_enable,
+                                          VkBool32 depthwrite_enable,VkCompareOp depthtest_op,
+                                          VkBool32 depthboundstest_enable,
+                                          f32 min_depthbounds,
+                                          f32 max_depthbounds,
+                                          VkBool32 stencil_enable,
+                                          VkStencilOpState front,
+                                          VkStencilOpState back){
+    spec->depthstencil.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    
+    spec->depthstencil.pNext = 0;
+    spec->depthstencil.flags = 0;
+    spec->depthstencil.depthTestEnable = depthtest_enable;
+    spec->depthstencil.depthWriteEnable = depthwrite_enable;
+    spec->depthstencil.depthCompareOp = depthtest_op;
+    spec->depthstencil.depthBoundsTestEnable = depthboundstest_enable;
+    spec->depthstencil.stencilTestEnable = stencil_enable;
+    spec->depthstencil.front = front;
+    spec->depthstencil.back = back;
+    spec->depthstencil.minDepthBounds = min_depthbounds;
+    spec->depthstencil.maxDepthBounds = max_depthbounds;
+}
+
+void VSetColorBlend(GraphicsPipelineSpecObject* spec,
+                    VkPipelineColorBlendAttachmentState* attachment_array,u32 attachment_count,
+                    VkBool32 logicop_enable,VkLogicOp logic_op,
+                    f32 blendconstants[4]){
+    
+    _kill("we do not support this many color attachments\n",
+          attachment_count > _arraycount(spec->colorattachment_array));
+    
+    memcpy(&spec->colorattachment_array[0],&attachment_array[0],attachment_count * sizeof(VkPipelineColorBlendAttachmentState));
+    
+    spec->colorblendstate.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    
+    spec->colorblendstate.pNext = 0;
+    spec->colorblendstate.flags = 0;
+    spec->colorblendstate.logicOpEnable = logicop_enable;
+    spec->colorblendstate.logicOp = logic_op;
+    spec->colorblendstate.attachmentCount = attachment_count;
+    spec->colorblendstate.pAttachments = &spec->colorattachment_array[0];
+    
+}
+
+void VEnableColorBlendTransparency(GraphicsPipelineSpecObject* spec,
+                                   u32 colorattachment_bitmask,
+                                   VkBlendFactor srccolor_blendfactor,
+                                   VkBlendFactor dstcolor_blendfactor,
+                                   VkBlendOp colorblend_op,
+                                   VkBlendFactor srcalpha_blendfactor,
+                                   VkBlendFactor dst_alphablendfactor,
+                                   VkBlendOp alphablend_op,
+                                   VkColorComponentFlags colorWriteMask){
+    
+    auto count = spec->colorblendstate.attachmentCount;
+    
+    for(u32 i = 0; i < count; i++){
+        
+        if((1 << i) & colorattachment_bitmask){
+            
+            spec->colorattachment_array[i] = {
+                VK_TRUE,srccolor_blendfactor,dstcolor_blendfactor,colorblend_op,
+                srcalpha_blendfactor,
+                dst_alphablendfactor,alphablend_op,colorWriteMask,
+            };
+        }
+    }
+}
+
+void VEnableDynamicStateGraphicsPipelineSpec(GraphicsPipelineSpecObject* spec,
+                                             VkDynamicState* dynamic_array,u32 dynamic_count){
+    
+    _kill("max possible dynamic statues set\n",dynamic_count > 9);
+    
+    memcpy(&spec->dynamic_array[0],dynamic_array,sizeof(VkDynamicState) * dynamic_count);
+    
+    spec->dynamicstate.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    spec->dynamicstate.pNext = 0;
+    spec->dynamicstate.flags = 0;
+    spec->dynamicstate.dynamicStateCount = dynamic_count;
+    spec->dynamicstate.pDynamicStates = &spec->dynamic_array[0];
+}
+
+//
+
 GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,VkPipelineLayout layout,
                                                        VkRenderPass renderpass,u32 subpass_index,VSwapchainContext* swap,u32 colorattachment_count,VkPipelineCreateFlags flags,
                                                        VkPipeline parent_pipeline,s32 parentpipeline_index){
@@ -402,10 +540,13 @@ GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(const  VDeviceContext* vd
     spec.subpass_index = subpass_index;
     spec.flags = flags;
     spec.layout = layout;
-    spec.cur = &spec.buffer[0];
     spec.renderpass = renderpass;
     spec.parent_pipeline = parent_pipeline;
     spec.parentpipeline_index = parentpipeline_index;
+    
+    memcpy(&spec.vert_desc_array[0],&obj->vert_desc_array[0],obj->vert_desc_count * sizeof(VkVertexInputBindingDescription));
+    
+    memcpy(&spec.vert_attrib_array[0],&obj->vert_attrib_array[0],obj->vert_attrib_count * sizeof(VkVertexInputAttributeDescription));
     
     spec.vertexinput = {
         
@@ -413,9 +554,9 @@ GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(const  VDeviceContext* vd
         0,
         0,
         obj->vert_desc_count,
-        &obj->vert_desc_array[0],
+        &spec.vert_desc_array[0],
         obj->vert_attrib_count,
-        &obj->vert_attrib_array[0]
+        &spec.vert_attrib_array[0]
     };
     
     spec.assembly = {
@@ -447,55 +588,24 @@ GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(const  VDeviceContext* vd
     
     if(swap){
         
-        auto width = swap->width;
-        auto height = swap->height;
-        
-        VkViewport viewport = {0.0f,0.0f,(f32)width,(f32)height,0.0f,1.0f};
-        VkRect2D scissor = {width,height};
-        
-        spec.viewport.viewportCount = 1;
-        spec.viewport.pViewports = &viewport;
-        spec.viewport.scissorCount = 1;
-        spec.viewport.pScissors = &scissor;
+        VSetFixedViewportGraphicsPipelineSpec(&spec,swap->width,swap->height);
     }
     
-    spec.multisample.sType =VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    
-    spec.multisample.pNext = 0;
-    spec.multisample.flags = 0;
-    spec.multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    spec.multisample.sampleShadingEnable = VK_FALSE;
-    spec.multisample.minSampleShading = 1.0f;
-    spec.multisample.pSampleMask= 0;
-    spec.multisample.alphaToCoverageEnable = VK_FALSE;
-    spec.multisample.alphaToOneEnable = VK_FALSE;
+    VSetMultisampleGraphicsPipelineSpec(&spec);
     
     
     //MARK: this is disabled by default
-    spec.depthstencil.sType =
-        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    
-    spec.depthstencil.pNext = 0;
-    spec.depthstencil.flags = 0;
-    spec.depthstencil.depthTestEnable = VK_FALSE;
-    spec.depthstencil.depthWriteEnable = VK_FALSE;
-    spec.depthstencil.depthCompareOp = VK_COMPARE_OP_NEVER;
-    spec.depthstencil.depthBoundsTestEnable = VK_FALSE;
-    spec.depthstencil.stencilTestEnable = VK_FALSE;
-    spec.depthstencil.front = {};
-    spec.depthstencil.back = {};
-    spec.depthstencil.minDepthBounds = 0.0f;
-    spec.depthstencil.maxDepthBounds = 1.0f;
-    
-    
+    VSetDepthStencilGraphicsPipelineSpec(&spec);
     
     
     _kill("we do not support this many color attachments\n",
           colorattachment_count > _arraycount(spec.colorattachment_array));
     
+    VkPipelineColorBlendAttachmentState attachment_array[16] = {};
+    
     for(u32 i = 0; i < colorattachment_count; i++){
         
-        spec.colorattachment_array[i] = {
+        attachment_array[i] = {
             VK_FALSE,
             VK_BLEND_FACTOR_SRC_ALPHA,
             VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -506,17 +616,7 @@ GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(const  VDeviceContext* vd
         };
     }
     
-    spec.colorblendstate.sType =
-        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    
-    spec.colorblendstate.pNext = 0;
-    spec.colorblendstate.flags = 0;
-    spec.colorblendstate.logicOpEnable = VK_FALSE;
-    spec.colorblendstate.logicOp = VK_LOGIC_OP_CLEAR;
-    spec.colorblendstate.attachmentCount = colorattachment_count;
-    spec.colorblendstate.pAttachments = &spec.colorattachment_array[0];
-    
-    memset(spec.colorblendstate.blendConstants,0,sizeof(f32) * 4);
+    VSetColorBlend(&spec,&attachment_array[0],colorattachment_count);
     
     spec.shadermodule_count = obj->shader_count;
     
@@ -600,8 +700,13 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,Graph
     }
     
     //MARK: pass the global allocator and use vktest
-    vkCreateGraphicsPipelines(vdevice->device,cache,spec_count,&info_array[0],0,
-                              pipeline_array);
+    auto result = vkCreateGraphicsPipelines(vdevice->device,cache,spec_count,&info_array[0],0,
+                                            pipeline_array);
+    
+    //_kill("",1);
+    
+    
+    _kill("failed to create pipeline\n",result != VK_SUCCESS);
     
     //destroy all modules
     for(u32 i = 0; i < spec_count; i++){
@@ -613,4 +718,5 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,Graph
             vkDestroyShaderModule(vdevice->device,spec->shadermodule_array[j],0);
         }
     }
+    
 }

@@ -1326,6 +1326,9 @@ void CompileAllPipelines(PlatformData* pdata){
     };
     
     {
+        
+#if 0
+        
         VGraphicsPipelineSpec pipelinespec;
         
         VPushBackShaderPipelineSpecX(&pipelinespec,&shader_data[0]);
@@ -1344,6 +1347,32 @@ void CompileAllPipelines(PlatformData* pdata){
         
         VCreateGraphicsPipelineArray(&pdata->vdevice,0,&pipelinespec,1,
                                      &pdata->pipeline_array[PSKEL]);
+        
+        _kill("",1);
+        
+#else
+        
+        VkSpecializationInfo info[] = {
+            {},
+            VTFragmentShaderSpecConst()
+        };
+        
+        
+        auto shaderobj = MakeShaderObjectSPX(&shader_data[0],2,&info[0],_arraycount(info));
+        
+        auto pipelinespec = MakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
+        
+        VSetDepthStencilGraphicsPipelineSpec(&pipelinespec,
+                                             VK_TRUE,
+                                             VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
+                                             VK_TRUE);
+        
+        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSKEL]);
+        
+        //TODO: do a comparison between the two create info in the pipeline
+        //creation to make sure our new implementation works
+        
+#endif
     }
     
     
