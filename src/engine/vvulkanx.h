@@ -49,6 +49,10 @@ struct SPX_GraphicsShaderObject{
     u8 vert_attrib_count = 0;
     u8 descset_count;
     u8 range_count = 0;
+    u16 shader_count = 0;
+    u16 spec_count = 0;
+    u32 range_hash_array[16];
+    u32 spv_size_array[8];
     
     VkVertexInputBindingDescription vert_desc_array[4];
     VkVertexInputAttributeDescription vert_attrib_array[16];
@@ -71,7 +75,11 @@ struct SPX_GraphicsShaderObject{
     
     DescSetEntry descset_array[16];
     VkPushConstantRange range_array[16];
-    u32 range_hash_array[16];
+    
+    void* shader_data_array[8];
+    VkShaderStageFlagBits shaderstage_array[8];
+    VkSpecializationInfo spec_array[8];
+    
 };
 
 struct GraphicsPipelineSpecObject{
@@ -91,12 +99,6 @@ struct GraphicsPipelineSpecObject{
     VkPipelineTessellationStateCreateInfo tessalationstate;
     VkPipelineDynamicStateCreateInfo dynamicstate;
     
-    void* shaderdata_array[6];
-    u32 shaderdatasize_array[6];
-    VkShaderStageFlagBits shaderstage_array[6];
-    VkSpecializationInfo shaderspecialization_array[6];
-    u32 shaderdata_count = 0;
-    
     VkPipelineCreateFlags flags;
     
     VkPipelineLayout layout;
@@ -106,12 +108,19 @@ struct GraphicsPipelineSpecObject{
     VkPipeline parent_pipeline;
     s32 parentpipeline_index;
     
+    VkPipelineColorBlendAttachmentState colorattachment_array[16] = {};
+    
     s8 buffer[_kilobytes(4)];
     
     s8* cur;
+    
+    VkPipelineShaderStageCreateInfo shaderinfo_array[8];
+    VkSpecializationInfo spec_array[8];
+    VkShaderModule shadermodule_array[8];
+    u32 shadermodule_count = 0;
 };
 
-SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,u32 spx_count,u32 vert_binding_no = 0,u32 inst_binding_no = 1);
+SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,u32 spx_count,VkSpecializationInfo* spec_array = 0,u32 spec_count = 0,u32 vert_binding_no = 0,u32 inst_binding_no = 1);
 
 void VDescPushBackPoolSpecX(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);
 
@@ -124,5 +133,8 @@ VkPipelineLayout VCreatePipelineLayoutX(const  VDeviceContext* _restrict vdevice
 
 u32 VGetDescriptorSetLayoutHash(SPX_GraphicsShaderObject* obj,u32 descset_no);
 
-GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(SPX_GraphicsShaderObject* obj);
+GraphicsPipelineSpecObject MakeGraphicsPipelineSpecObj(SPX_GraphicsShaderObject* obj,VkPipelineLayout layout,
+                                                       VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
+                                                       VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
 
+void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,GraphicsPipelineSpecObject* spec_array,u32 spec_count,VkPipeline* pipeline_array,VkPipelineCache cache = 0);
