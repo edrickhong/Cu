@@ -62,121 +62,12 @@ u32 VPushBackShaderPipelineSpecX(VGraphicsPipelineSpec* spec,const SPXData* spx,
             }
         }
         
-        hash = VPipelineVertHash(format_array,format_count);
+        hash = VFormatHash(format_array,format_count);
     }
     
     VPushBackShaderPipelineSpec(spec,spx->spv,spx->spv_size,spx->type,specialization);
     
     return hash;
-}
-
-
-void VDescPushBackPoolSpecX(VDescriptorPoolSpec* spec,const SPXData* spx_array,
-                            u32 spx_count,u32 descset_count){
-    
-    _kill("can't be 0\n",!descset_count);
-    
-    for(u32 i = 0; i < spx_count; i++){
-        
-        const auto spx = &spx_array[i];
-        
-        for(u32 j = 0; j < spx->dlayout.entry_count; j++){
-            
-            const auto entry = &spx->dlayout.entry_array[j];
-            
-            VDescPushBackPoolSpec(spec,entry->type,entry->array_count * descset_count);
-            
-        }
-        
-    }
-    
-    spec->desc_count += descset_count;
-    
-}
-
-VkDescriptorSetLayout VCreateDescriptorSetLayoutX(
-const  VDeviceContext* _restrict vdevice,
-SPXData* spx_array,u32 spx_count,u32 descset_no){
-    
-    struct DescEntryX : DescEntry{
-        VkShaderStageFlags stage_flags;
-    };
-    
-    DescEntryX entry_array[16];
-    u32 entry_count = 0;
-    
-    for(u32 i = 0; i < spx_count; i++){
-        
-        const auto spx = &spx_array[i];
-        
-        for(u32 j = 0; j < spx->dlayout.entry_count; j++){
-            
-            const auto entry = &spx->dlayout.entry_array[j];
-            
-            if(entry->set == descset_no){
-                
-                entry_array[entry_count].type = entry->type;
-                entry_array[entry_count].set = entry->set;
-                entry_array[entry_count].bind = entry->bind;
-                entry_array[entry_count].array_count = entry->array_count;
-                entry_array[entry_count].stage_flags = spx->type;
-                
-                entry_count++;
-                
-            }
-            
-        }
-        
-    }
-    
-    qsort(entry_array,entry_count,sizeof(DescEntryX),[](const void * a, const void* b)->s32 {
-          
-          auto entry_a = (DescEntryX*)a;
-          auto entry_b = (DescEntryX*)b;
-          
-          return entry_a->bind - entry_b->bind;
-          });
-    
-    VDescriptorBindingSpec bindingspec;
-    
-    for(u32 i = 0; i < entry_count;i++){
-        
-        const auto entry = &entry_array[i];
-        
-        VDescPushBackBindingSpec(&bindingspec,entry->type,
-                                 entry->array_count,entry->stage_flags);
-    }
-    
-    return VCreateDescriptorSetLayout(vdevice,bindingspec);
-}
-
-
-VkPipelineLayout VCreatePipelineLayoutX(const  VDeviceContext* _restrict vdevice,
-                                        VkDescriptorSetLayout* descriptorset_array,
-                                        u32 descriptorset_count,
-                                        SPXData* spx_array,
-                                        u32 spx_count){
-    
-    VkPushConstantRange range_array[7];
-    u32 range_count = 0;
-    
-    for(u32 i = 0; i < spx_count;i++){
-        const auto spx = &spx_array[i];
-        
-        if(spx->playout.size){
-            
-            //MARK: should offset always be 0?
-            range_array[range_count] = {(VkShaderStageFlags)spx->type,0,spx->playout.size};
-            range_count++;
-            
-        }
-        
-    }
-    
-    
-    
-    return VCreatePipelineLayout(vdevice,descriptorset_array,descriptorset_count,range_array,
-                                 range_count);  
 }
 
 
@@ -269,7 +160,7 @@ void InternalHandleVertexBuilding(SPX_GraphicsShaderObject* obj,SPXData* spx,u32
         
     }
     
-    vert_hash = VPipelineVertHash(format_array,format_count);
+    vert_hash = VFormatHash(format_array,format_count);
     
     obj->vert_hash = vert_hash;
 }
@@ -312,6 +203,8 @@ SPX_GraphicsShaderObject::DescSetEntry* GetDescSet(SPX_GraphicsShaderObject* obj
     auto entry = &obj->descset_array[obj->descset_count];
     obj->descset_count++;
     
+    entry->set_no = set_no;
+    
     return entry;
 }
 
@@ -340,6 +233,46 @@ void ConstructDescSets(SPX_GraphicsShaderObject* obj,SPXData* spx){
     
 }
 
+void ConstructPushConsts(SPX_GraphicsShaderObject* _restrict obj,SPXData* _restrict spx){
+    
+    if(!spx->playout.size){
+        return;
+    }
+    
+    PushConstLayout* layout = &spx->playout;
+    
+    VkFormat format_array[16] = {};
+    
+    for(u32 i = 0; i < layout->entry_count; i++){
+        format_array[i] = layout->entry_array[i].format;
+    }
+    
+    auto hash = VFormatHash(&format_array[0],layout->entry_count);
+    
+    VkPushConstantRange* range = 0;
+    
+    for(u32 i = 0; i < obj->range_count; i++){
+        
+        if(obj->range_hash_array[i] == hash){
+            range = &obj->range_array[i];
+            break;
+        }
+    }
+    
+    if(!range){
+        obj->range_hash_array[obj->range_count] = hash;
+        range = &obj->range_array[obj->range_count];
+        obj->range_count++;
+        
+        //MARK: for now we assume the offset is always 0
+        range->offset = 0;
+        range->size = layout->size;
+    }
+    
+    range->stageFlags |= spx->type;
+    
+}
+
 
 SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,
                                              u32 spx_count,u32 vert_binding_no,u32 inst_binding_no){
@@ -353,7 +286,7 @@ SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,
         InternalHandleVertexBuilding(&obj,spx,vert_binding_no,inst_binding_no);
         
         ConstructDescSets(&obj,spx);
-        
+        ConstructPushConsts(&obj,spx);
     }
     
     //sort descset elements
@@ -372,10 +305,11 @@ SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,
     }
     
     _kill("no vertex shader found\n",!obj.vert_hash);
+    
     return obj;
 }
 
-void VPushBackDescriptorPoolX(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject* obj,u32 descset_count,u32 desc_set){
+void VDescPushBackPoolSpecX(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject* obj,u32 descset_count,u32 desc_set){
     
     _kill("desc count cannot be 0\n",!descset_count);
     
@@ -400,7 +334,7 @@ void VPushBackDescriptorPoolX(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject
     
 }
 
-VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,u32 descset_no){
+VkDescriptorSetLayout VCreateDescriptorSetLayoutX(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,u32 descset_no){
     
     SPX_GraphicsShaderObject::DescSetEntry* set = 0;
     
@@ -414,6 +348,9 @@ VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,
         }
     }
     
+    _kill("set not found\n",!set);
+    
+    
     VDescriptorBindingSpec bindingspec = {};
     
     for(u32 i = 0; i < set->element_count; i++){
@@ -424,8 +361,11 @@ VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,
                                  element->array_count,set->shader_stage);
     }
     
-    
-    _kill("set not found\n",!set);
-    
     return VCreateDescriptorSetLayout(vdevice,bindingspec);
+}
+
+VkPipelineLayout VCreatePipelineLayoutX(const  VDeviceContext* _restrict vdevice,VkDescriptorSetLayout* descriptorset_array,u32 descriptorset_count,SPX_GraphicsShaderObject* obj){
+    
+    return VCreatePipelineLayout(vdevice,descriptorset_array,descriptorset_count,obj->range_array,
+                                 obj->range_count);
 }
