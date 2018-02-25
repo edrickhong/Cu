@@ -1482,19 +1482,23 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
         LoadSPX(SHADER_PATH(vt_generic.frag.spx))
     };
     
+    auto shader_obj = MakeShaderObjectSPX(shader_data,_arraycount(shader_data));
+    
+    
+    
     VDescriptorPoolSpec poolspec;
     
-    VDescPushBackPoolSpecX(&poolspec,shader_data,_arraycount(shader_data),2);
+    VDescPushBackPoolSpecX(&poolspec,&shader_obj,2);
     
     pdata->descriptorpool = VCreateDescriptorPoolX(&pdata->vdevice,poolspec);
     
+    
     pdata->dynuniform_descriptorlayout =
-        VCreateDescriptorSetLayoutX(&pdata->vdevice,shader_data,
-                                    _arraycount(shader_data),0);
+        VCreateDescriptorSetLayoutX(&pdata->vdevice,&shader_obj,0);
+    
     
     pdata->vt_descriptorlayout =
-        VCreateDescriptorSetLayoutX(&pdata->vdevice,shader_data,
-                                    _arraycount(shader_data),1);
+        VCreateDescriptorSetLayoutX(&pdata->vdevice,&shader_obj,1);
     
     VkDescriptorSetLayout desclayout_array[] = {
         pdata->dynuniform_descriptorlayout,
@@ -1517,8 +1521,7 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     
     pdata->pipelinelayout = VCreatePipelineLayoutX(&pdata->vdevice,
-                                                   &desc_layout[0],2,shader_data,
-                                                   _arraycount(shader_data));
+                                                   &desc_layout[0],2,&shader_obj);
     
     VDescriptorWriteSpec writespec;
     
