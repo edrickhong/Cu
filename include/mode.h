@@ -5,6 +5,7 @@
 
 #ifdef _WIN32
 
+
 #define _FileSlash '\\'
 
 #pragma warning(disable:4996)
@@ -17,6 +18,8 @@
 #pragma warning(disable:4530) // from xlocale (Windows)
 
 #define _restrict __restrict
+
+#define _deprecated __declspec(deprecated)
 
 #define _optnone
 
@@ -48,6 +51,8 @@
 #define _dllexport __declspec(dllexport)
 
 #else
+
+#define _deprecated __attribute__ ((deprecated))
 
 #define _FileSlash '/'
 
