@@ -11,10 +11,6 @@ layout (location = 4) in vec3 inAmbientColor;
 layout (location = 5) in vec2 inTexcoord;
 layout (location = 6) flat in uint inTextureIndex;
 
-layout (set = 1,binding = 0) uniform sampler2D samplerColor;//we should separate this
-layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should separate this
-
-
 //layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
 //    
 //    mat4 world;
@@ -22,6 +18,9 @@ layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should sep
 //    uint texture_id[16];
 //    
 //}ubo;
+
+layout (set = 1,binding = 0) uniform sampler2D samplerColor;//we should separate this
+layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should separate this
 
 layout (set = 1,binding = 2, rgba8) uniform restrict writeonly image2D vt_feedback;
 
