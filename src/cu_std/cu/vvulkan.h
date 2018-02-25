@@ -393,7 +393,7 @@ struct VSkeletalModel{
 };
 
 struct VDescriptorPoolSpec{
-    VkDescriptorPoolSize container[11];
+    VkDescriptorPoolSize container[16];
     u32 count = 0;
     u32 desc_count = 0;
 };
