@@ -1428,7 +1428,7 @@ void GUIInternalEndWindow(){
     
 #else
     
-    _kill("TODO: implement this\n",1);
+    //    _kill("TODO: implement this\n",1);
     
 #endif
     
