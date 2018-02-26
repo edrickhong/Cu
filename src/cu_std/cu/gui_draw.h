@@ -89,8 +89,6 @@ logic GUIButton(const s8* title);
 logic GUIComboBox(const s8* label,const s8** options_array,u32 options_count,u32* index,
                   logic fill_w = true);
 
-void GUIString(const s8* string);
-
 void GUISlider();
 
 void GUI3DTranslate(f32* x,f32* y,f32* z);
@@ -102,7 +100,7 @@ logic GUIHistogram(const s8* label_x,const s8* label_y,GUIVec2* data_array,u32 d
 
 
 
-logic GUIProfileView(const s8* profilename,const DebugTable* table,u32* out_entry_index,
+logic GUIProfileView(const s8* profilename,const DebugTable* table,
                      GUIDim2 dim = {0.5f,0.5f});
 
 logic GUIIsElementActive(const s8* element_name);

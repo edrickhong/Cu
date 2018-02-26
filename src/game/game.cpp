@@ -199,7 +199,7 @@ void RemoveObject(u32 obj_id,SceneContext* context){
 void KeyboardInput(SceneContext* context){
     
     KeyboardState* keyboardstate = context->keyboardstate;
-    f32 delta_time = context->prev_frametime;
+    //f32 delta_time = context->prev_frametime;
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_ESC)){
         data->running = false;
@@ -225,7 +225,7 @@ void KeyboardInput(SceneContext* context){
         auto q3 = rot * data->orientation.rot[2];
         
         context->SetObjectOrientation(0,pos1,q1,data->orientation.scale[0]);
-        context->SetObjectOrientation(1,pos2,q1,data->orientation.scale[1]);
+        context->SetObjectOrientation(1,pos2,q2,data->orientation.scale[1]);
         context->SetObjectOrientation(2,pos3,q3,data->orientation.scale[2]); 
     }
     
@@ -654,8 +654,6 @@ extern "C" {
     
     _dllexport void GameInit(GameInitData* initdata){
         
-        auto context = initdata->context;
-        
         data = (GameData*)initdata->memory;
         
         data->running = true;
@@ -711,8 +709,8 @@ extern "C" {
         
         ComponentRead((ComponentStruct*)data->components,reloaddata->context);
         
-        auto token = QueueAudio(reloaddata->context,
-                                AUDIO_PATH(The_Entertainer_Scott_Joplin.adf),true,-1);
+        QueueAudio(reloaddata->context,
+                   AUDIO_PATH(The_Entertainer_Scott_Joplin.adf),true,-1);
     }
     
 }
@@ -1199,10 +1197,10 @@ void EditorGUI(SceneContext* context){
     //component editor view
     if(show_object_editor){
         
-        static GUIVec2 pos = {0.4f,GUIDEFAULT_Y};
-        static GUIDim2 dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+        static GUIVec2 w_pos = {0.4f,GUIDEFAULT_Y};
+        static GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
         
-        GUIBeginWindow("Object Editor",&pos,&dim);
+        GUIBeginWindow("Object Editor",&w_pos,&w_dim);
         
 #define _pos_width 0.345f
         
