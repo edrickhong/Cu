@@ -77,41 +77,41 @@ typedef __m64 simd2f;
 //MARK:Linear Algebra
 
 struct Vector2{
-  f32 x,y;
+    f32 x,y;
 };
 
 union Vector4{
-  
-  simd4f simd;
-
-  struct{
-    f32 x,y,z,w;
-  };
-
-  Vector2 vec2[2];
-
-  f32 floats[4];
-
+    
+    simd4f simd;
+    
+    struct{
+        f32 x,y,z,w;
+    };
+    
+    Vector2 vec2[2];
+    
+    f32 floats[4];
+    
 }_align(16);
 
 struct Vector4SOA{
-  ptrsize count;
-  union{
-    struct{//refers to 4 floats at a time
-      simd4f* simd_x;
-      simd4f* simd_y;
-      simd4f* simd_z;
-      simd4f* simd_w;  
+    ptrsize count;
+    union{
+        struct{//refers to 4 floats at a time
+            simd4f* simd_x;
+            simd4f* simd_y;
+            simd4f* simd_z;
+            simd4f* simd_w;  
+        };
+        
+        struct{//refers to 1 floats at a time
+            f32* x;
+            f32* y;
+            f32* z;
+            f32* w;  
+        };
     };
-
-    struct{//refers to 1 floats at a time
-      f32* x;
-      f32* y;
-      f32* z;
-      f32* w;  
-    };
-  };
-  
+    
 };
 
 typedef Vector4 Vector3;
@@ -119,20 +119,20 @@ typedef Vector4 Vector3;
 typedef Vector3 EuelerAngle;
 
 union Matrix4b4{
-  f32 container[16];
-  simd4f simd[4];
-
-  f32& operator[](u32 index){
-    return container[index];
-  }
+    f32 container[16];
+    simd4f simd[4];
+    
+    f32& operator[](u32 index){
+        return container[index];
+    }
 }_align(16);
 
 struct Matrix3b3{
-  f32 container[9];
-
-  f32& operator[](u32 index){
-    return container[index];
-  }
+    f32 container[9];
+    
+    f32& operator[](u32 index){
+        return container[index];
+    }
 };
 
 typedef Vector4 Point4;
@@ -140,24 +140,24 @@ typedef Vector3 Point3;
 typedef Vector2 Point2;
 
 struct Line3{
-  Point3 pos;
-  Vector3 dir;
+    Point3 pos;
+    Vector3 dir;
 };
 
 struct Plane{
-  Point3 pos;
-  Vector3 norm;
+    Point3 pos;
+    Vector3 norm;
 };
 
 struct Line2{
-  Point2 pos;
-  Vector2 dir;
+    Point2 pos;
+    Vector2 dir;
 };
 
 enum IntersectType : u8{
-  INTERSECT_FALSE = 0,
-  INTERSECT_FINITE = 1,
-  INTERSECT_INFINITE = 2,
+    INTERSECT_FALSE = 0,
+    INTERSECT_FINITE = 1,
+    INTERSECT_INFINITE = 2,
 };
 
 logic Intersect(Line2 a,Line2 b);
@@ -167,45 +167,45 @@ logic Intersect(Line2 a,Line2 b,Point2* out_point);
 logic TypedIntersect(Line2 a,Line2 b);
 
 namespace Vec3{
-  
-  f32 Magnitude(Vector3 vec);
-  Vector3 Cross(Vector3 vec1,Vector3 vec2);
-  f32 Dot(Vector3 vec1,Vector3 vec2);
-  f32 cosf(Vector3 vec1,Vector3 vec2);
-  Vector3 Normalize(Vector3 vec);
-  Vector3 GetVectorRotation(Vector3 lookat);
-
-  Vector3 Vec3(f32 x,f32 y,f32 z);
-
-  f32 Component(Vector3 a,Vector3 b);
-
-  Vector3 ProjectOnto(Vector3 a,Vector3 b);
-
-  Vector3 ProjectVectorOntoPlane(Vector3 vec,Plane plane);
-
-  //line intersections
-
-  logic Intersect(Line3 a,Line3 b);
-
-  logic Intersect(Line3 a,Line3 b,Point3* out_point);
-
-  logic TypedIntersect(Line3 a,Line3 b);
-
-
-  //plane intersections
-
-  logic Intersect(Line3 a,Plane b);
-
-  logic TypedIntersect(Line3 a,Plane b);
-
-  logic Intersect(Line3 a,Plane b,Point3* out_point);
+    
+    f32 Magnitude(Vector3 vec);
+    Vector3 Cross(Vector3 vec1,Vector3 vec2);
+    f32 Dot(Vector3 vec1,Vector3 vec2);
+    f32 cosf(Vector3 vec1,Vector3 vec2);
+    Vector3 Normalize(Vector3 vec);
+    Vector3 GetVectorRotation(Vector3 lookat);
+    
+    Vector3 Vec3(f32 x,f32 y,f32 z);
+    
+    f32 Component(Vector3 a,Vector3 b);
+    
+    Vector3 ProjectOnto(Vector3 a,Vector3 b);
+    
+    Vector3 ProjectVectorOntoPlane(Vector3 vec,Plane plane);
+    
+    //line intersections
+    
+    logic Intersect(Line3 a,Line3 b);
+    
+    logic Intersect(Line3 a,Line3 b,Point3* out_point);
+    
+    logic TypedIntersect(Line3 a,Line3 b);
+    
+    
+    //plane intersections
+    
+    logic Intersect(Line3 a,Plane b);
+    
+    logic TypedIntersect(Line3 a,Plane b);
+    
+    logic Intersect(Line3 a,Plane b,Point3* out_point);
 };
 
 namespace Vec4{
-  Vector4 Normalize(Vector4 vec);
-  f32 Magnitude(Vector4 vec);
-  f32 Dot(Vector4 vec1,Vector4 vec2);
-  Vector4 VectorComponentMul(Vector4 a,Vector4 b);
+    Vector4 Normalize(Vector4 vec);
+    f32 Magnitude(Vector4 vec);
+    f32 Dot(Vector4 vec1,Vector4 vec2);
+    Vector4 VectorComponentMul(Vector4 a,Vector4 b);
 };
 
 Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs);
@@ -251,64 +251,64 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectration,f32 nearz,f32 farz);
 
 
 Matrix4b4 _ainline PositionMatrix(Vector4 position){
-
-  Matrix4b4 matrix = {
-    {1,0,0,position.x,
-     0,1,0,position.y,
-     0,0,1,position.z,
-     0,0,0,1}
-  };
-
-  return matrix;
+    
+    Matrix4b4 matrix = {
+        {1,0,0,position.x,
+            0,1,0,position.y,
+            0,0,1,position.z,
+            0,0,0,1}
+    };
+    
+    return matrix;
 }
 
 Matrix4b4 _ainline RotationMatrix(EuelerAngle rotation){
-
-  f32 cosv = cosf(rotation.x);
-  f32 sinv = sinf(rotation.x);
-
-  Matrix4b4 rotationx_matrix4b4 = {
-    {1,0,0,0,
-     0,cosv,-sinv,0,
-     0,sinv,cosv,0,
-     0,0,0,1}
-  };
-
-  cosv = cosf(rotation.y);
-  sinv = sinf(rotation.y);
-
-  Matrix4b4 rotationy_matrix4b4 = {
-    {cosv,0,sinv,0,
-     0,1,0,0,
-     -sinv,0,cosv,0,
-     0,0,0,1}
-  };
-
-  cosv = cosf(rotation.z);
-  sinv = sinf(rotation.z);
-
-  Matrix4b4 rotationz_matrix4b4 = {
-    {cosv,-sinv,0,0,
-     sinv,cosv,0,0,
-     0,0,1,0,
-     0,0,0,1}
-  };
-
-  return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
+    
+    f32 cosv = cosf(rotation.x);
+    f32 sinv = sinf(rotation.x);
+    
+    Matrix4b4 rotationx_matrix4b4 = {
+        {1,0,0,0,
+            0,cosv,-sinv,0,
+            0,sinv,cosv,0,
+            0,0,0,1}
+    };
+    
+    cosv = cosf(rotation.y);
+    sinv = sinf(rotation.y);
+    
+    Matrix4b4 rotationy_matrix4b4 = {
+        {cosv,0,sinv,0,
+            0,1,0,0,
+            -sinv,0,cosv,0,
+            0,0,0,1}
+    };
+    
+    cosv = cosf(rotation.z);
+    sinv = sinf(rotation.z);
+    
+    Matrix4b4 rotationz_matrix4b4 = {
+        {cosv,-sinv,0,0,
+            sinv,cosv,0,0,
+            0,0,1,0,
+            0,0,0,1}
+    };
+    
+    return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
 }
 
 
 
 Matrix4b4 _ainline ScaleMatrix(Vector4 scale){
-
-  Matrix4b4 matrix = {
-    {scale.x,0,0,0,
-     0,scale.y,0,0,
-     0,0,scale.z,0,
-     0,0,0,1}
-  };
-
-  return matrix;
+    
+    Matrix4b4 matrix = {
+        {scale.x,0,0,0,
+            0,scale.y,0,0,
+            0,0,scale.z,0,
+            0,0,0,1}
+    };
+    
+    return matrix;
 }
 
 
@@ -327,23 +327,23 @@ Matrix4b4 Inverse(Matrix4b4 matrix);
 Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs);
 
 struct Triangle{
-  Point3 a;
-  Point3 b;
-  Point3 c;
+    Point3 a;
+    Point3 b;
+    Point3 c;
 };
 
 //?
 struct Teathedron{
-  
+    
 };
 
 struct Polygon{
-  Point3* point_array;
-  ptrsize count;
-
-  Point3& operator[](u32 index){
-    return point_array[index];
-  }
+    Point3* point_array;
+    ptrsize count;
+    
+    Point3& operator[](u32 index){
+        return point_array[index];
+    }
 };
 
 void MinkowskiAddition(Point3* a,ptrsize a_count,Point3* b,ptrsize b_count,Point3** ret);
@@ -354,18 +354,18 @@ void MinkowskiDifference(Point3* a,ptrsize a_count,Point3* b,ptrsize b_count,Poi
 typedef Vector4SOA PolygonSOA;
 
 union Quaternion{
-  simd4f simd;
-
-  struct{
-    f32 w,x,y,z;
-  };
-
+    simd4f simd;
+    
+    struct{
+        f32 w,x,y,z;
+    };
+    
 }_align(16);
 
 namespace Quat{
-  Quaternion Normalize(Quaternion a);
-  f32 Magnitude(Quaternion a);
-  f32 Dot(Quaternion a,Quaternion b);
+    Quaternion Normalize(Quaternion a);
+    f32 Magnitude(Quaternion a);
+    f32 Dot(Quaternion a,Quaternion b);
 };
 
 
@@ -394,68 +394,68 @@ Quaternion MatrixToQuaternion(Matrix4b4 matrix);
 Matrix4b4 WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale);
 
 Quaternion _ainline MQuaternionIdentity(){
-  return {1.0f,0.0f,0.0f,0.0f};
+    return {1.0f,0.0f,0.0f,0.0f};
 }
 
 Quaternion _ainline AQuaternionIdentity(){
-  return {0.0f,0.0f,0.0f,0.0f};
+    return {0.0f,0.0f,0.0f,0.0f};
 }
 
 void PrintQuaternion(Quaternion quat);
 
 
 Quaternion _ainline CastVectorToQuaternion(Vector4 vector){
-
-  Quaternion q;
-
-  q.w = vector.x;
-  q.x = vector.y;
-  q.y = vector.z;
-  q.z = vector.w;
-
-  return q;
+    
+    Quaternion q;
+    
+    q.w = vector.x;
+    q.x = vector.y;
+    q.y = vector.z;
+    q.z = vector.w;
+    
+    return q;
 }
 
 Vector4 _ainline CastQuaternionToVector(Quaternion quaternion){
-
-  Vector4 v;
-
-  v.x = quaternion.w;
-  v.y = quaternion.x;
-  v.z = quaternion.y;
-  v.w = quaternion.z;
-
-  return v;
+    
+    Vector4 v;
+    
+    v.x = quaternion.w;
+    v.y = quaternion.x;
+    v.z = quaternion.y;
+    v.w = quaternion.z;
+    
+    return v;
 }
 
 
 Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
-
-  return {matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2),1.0f};
+    
+    return {matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2),1.0f};
 }
 
 Vector4 _ainline InterpolateVector(Vector4 a,Vector4 b,f32 step){
-
-  Vector4 vec = b - a;
-  vec = vec * step;
-  vec = a + vec;
-  
-  return vec;
+    
+    Vector4 vec = b - a;
+    vec = vec * step;
+    vec = a + vec;
+    
+    return vec;
 }
 
 
 Quaternion _ainline InterpolateQuaternion(Quaternion a,Quaternion b,f32 step){
-
-  Quaternion q = b - a;
-  q = q * step;
-  q = a + q;
-  
-  return q;
+    
+    Quaternion q = b - a;
+    q = q * step;
+    q = a + q;
+    
+    return q;
 }
 
 f32 _ainline Interpolate(f32 a,f32 b,f32 step){
-
-  return  (a + (step * (b - a)));
+    
+    return  (a + (step * (b - a)));
 }
 
 Quaternion NLerp(Quaternion a,Quaternion b,f32 step);
@@ -463,7 +463,7 @@ Quaternion NLerp(Quaternion a,Quaternion b,f32 step);
 Quaternion SLerp(Quaternion a,Quaternion b,f32 step);
 
 struct DualQuaternion{
-  Quaternion q1,q2;
+    Quaternion q1,q2;
 };
 
 DualQuaternion ConstructDualQuaternion(Quaternion rotation,Vector3 translation);
@@ -478,8 +478,6 @@ DualQuaternion operator*(DualQuaternion lhs,f32 rhs);
 
 DualQuaternion Normalize(DualQuaternion d);
 Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
-
-Matrix4b4 Inverse(Matrix4b4 matrix);
 
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj);

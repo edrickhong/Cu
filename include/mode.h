@@ -198,6 +198,7 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #pragma GCC diagnostic error "-Wcast-align"
 #pragma GCC diagnostic ignored "-Wcast-align"
 
+
 #pragma GCC diagnostic warning "-Wshadow"
 #pragma GCC diagnostic error "-Wshadow"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -241,7 +242,7 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #include "string.h"
 
 
-#define _kill(string,condition) if((condition)) {printf("%s %s %d\n",__FUNCTION__,__FILE__,__LINE__);fprintf(stderr,string);*(int *)0 = 0;}
+#define _kill(string,condition) if((condition)) {printf("%s %s %d\n",__FUNCTION__,__FILE__,__LINE__);*(int *)0 = 0;}
 #define _dprint(string, ...) printf(string, __VA_ARGS__);
 
 

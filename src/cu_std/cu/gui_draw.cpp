@@ -399,10 +399,6 @@ void GUIGenFontFile(const s8* filepath,const s8* writepath,f32 fontsize){
     
     WriteBMP(fontimage_data,width,height,"font_render.bmp");
     
-#else
-    
-    // _kill("TODO: need to update this first\n",1);
-    
 #endif
     
     FCloseFile(writefile);
@@ -884,8 +880,6 @@ GUIFont GUICreateFontFromFile(const s8* filepath,VkCommandBuffer cmdbuffer,
     
     GUIFont font = {};
     
-#if 0
-    
     auto file = FOpenFile(filepath,F_FLAG_READONLY);
     
     u32 t_width,t_height;
@@ -902,25 +896,27 @@ GUIFont GUICreateFontFromFile(const s8* filepath,VkCommandBuffer cmdbuffer,
     
     //Create texture
     font.texture =
-        VCreateImage(vdevice,image_data,font.width,font.height,cmdbuffer,queue);
+        VCreateTextureImage(vdevice,image_data,font.width,font.height,cmdbuffer,queue);
     
     unalloc(image_data);
-    
-    SPXData shader_data[] = {
-        LoadSPX(SHADER_PATH(m_gui.vert.spx)),
-        LoadSPX(SHADER_PATH(m_gui.frag.spx))
-    };
     
     if(!gui->desclayout){
         
         VDescriptorPoolSpec poolspec;
         
-        VDescPushBackPoolSpecX(&poolspec,shader_data,_arraycount(shader_data),16);
+        VDescPushBackPoolSpec(&poolspec,
+                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4);
         
-        gui->pool = VCreateDescriptorPoolX(vdevice,poolspec,0);
+        gui->pool = VCreateDescriptorPool(vdevice,poolspec,0,4);
         
-        gui->desclayout = VCreateDescriptorSetLayoutX(vdevice,shader_data,
-                                                      _arraycount(shader_data),0);
+        VDescriptorBindingSpec bindingspec;
+        
+        VDescPushBackBindingSpec(&bindingspec,
+                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,
+                                 VK_SHADER_STAGE_FRAGMENT_BIT);
+        
+        
+        gui->desclayout = VCreateDescriptorSetLayout(vdevice,bindingspec);
         
     }
     
@@ -942,18 +938,11 @@ GUIFont GUICreateFontFromFile(const s8* filepath,VkCommandBuffer cmdbuffer,
     
     FCloseFile(file);
     
-#else
-    
-    _kill("TODO: need to update this first\n",1);
-    
-#endif
-    
     return font;
 }
 
 void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
-                            VkRenderPass renderpass,u32 vertexbinding_no,
-                            GUIFont* fonthandle){
+                            VkRenderPass renderpass,u32 vertexbinding_no){
     
     if(gui->pipeline_array[0]){
         return;
@@ -978,16 +967,16 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
         VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_frag_spv[0],
                                     sizeof(m_gui_frag_spv),VK_SHADER_STAGE_FRAGMENT_BIT);
         
-        VPushBackVertexSpecDesc(&pipelinespec,0,sizeof(GUIVertex),
+        VPushBackVertexSpecDesc(&pipelinespec,vertexbinding_no,sizeof(GUIVertex),
                                 VK_VERTEX_INPUT_RATE_VERTEX);
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32B32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,
                                   sizeof(GUIVertex::pos));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,
                                   sizeof(GUIVertex::uv));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32B32A32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,
                                   sizeof(GUIVertex::color));
         
         VGenerateGraphicsPipelineSpec(&pipelinespec,
@@ -1013,16 +1002,16 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
         VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_frag_spv[0],
                                     sizeof(m_gui_frag_spv),VK_SHADER_STAGE_FRAGMENT_BIT);
         
-        VPushBackVertexSpecDesc(&pipelinespec,0,sizeof(GUIVertex),
+        VPushBackVertexSpecDesc(&pipelinespec,vertexbinding_no,sizeof(GUIVertex),
                                 VK_VERTEX_INPUT_RATE_VERTEX);
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32B32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,
                                   sizeof(GUIVertex::pos));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,
                                   sizeof(GUIVertex::uv));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32B32A32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,
                                   sizeof(GUIVertex::color));
         
         
@@ -1049,16 +1038,16 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
         VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_tex_frag_spv[0],
                                     sizeof(m_gui_tex_frag_spv),VK_SHADER_STAGE_FRAGMENT_BIT);
         
-        VPushBackVertexSpecDesc(&pipelinespec,0,sizeof(GUIVertex),
+        VPushBackVertexSpecDesc(&pipelinespec,vertexbinding_no,sizeof(GUIVertex),
                                 VK_VERTEX_INPUT_RATE_VERTEX);
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32B32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,
                                   sizeof(GUIVertex::pos));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,
                                   sizeof(GUIVertex::uv));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,0,VK_FORMAT_R32G32B32A32_SFLOAT,
+        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,
                                   sizeof(GUIVertex::color));
         
         VGenerateGraphicsPipelineSpec(&pipelinespec,
@@ -1122,7 +1111,7 @@ void GUIInit(VDeviceContext* vdevice,WWindowContext* window,
         fonthandle = gui->default_font;
     }
     
-    InitInternalComponents(vdevice,window,renderpass,vertexbinding_no,fonthandle);
+    InitInternalComponents(vdevice,window,renderpass,vertexbinding_no);
     
     
     gui->vert_buffer =
@@ -1305,7 +1294,6 @@ void InternalDrawString(const s8* string,f32 x,f32 y,f32 scale,GUIFont* font,Col
     InternalGetTextDim(font,&width,&height,scale);
     
     auto o_x = x;
-    auto o_y = y;
     
     for(u32 i = 0; i < strlen(string);i++){
         
@@ -1434,7 +1422,15 @@ void GUIString(const s8* string){
 
 void GUIInternalEndWindow(){
     
+#if 0
+    
     auto sub = &gui->submit_array[gui->submit_count - 1];
+    
+#else
+    
+    _kill("TODO: implement this\n",1);
+    
+#endif
     
     //TODO: resize as needed
 }
@@ -2211,8 +2207,7 @@ f32 InternalGUIGetStackPositionY(StackEntry* array,u32* count,
     return start_y;
 }
 
-logic GUIProfileView(const s8* profilename,const DebugTable* table,
-                     u32* out_entry_index,GUIDim2 dim){
+logic GUIProfileView(const s8* profilename,const DebugTable* table,GUIDim2 dim){
     
     gui->graph_hover = GUITYPE_NONE;
     
