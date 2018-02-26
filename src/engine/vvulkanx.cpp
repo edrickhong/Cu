@@ -92,7 +92,7 @@ VkDescriptorPool VCreateDescriptorPoolX(VDeviceContext* _in_ vdevice,
     return VCreateDescriptorPool(vdevice,poolspec,flags,poolspec.desc_count);
 }
 
-void InternalPushBackVertexAttrib(SPX_GraphicsShaderObject* obj,u32 binding_no,VkFormat format,u32 attrib_size){
+void VPushBackVertexAttrib(SPX_GraphicsShaderObject* obj,u32 binding_no,VkFormat format,u32 attrib_size){
     
     _kill("cannot push more vert attrib\n",obj->vert_attrib_count >= _arraycount(obj->vert_attrib_array));
     
@@ -113,7 +113,7 @@ void InternalPushBackVertexAttrib(SPX_GraphicsShaderObject* obj,u32 binding_no,V
     
 }
 
-void InternalPushBackVertexDesc(SPX_GraphicsShaderObject* obj,u32 binding_no,u32 vert_size,VkVertexInputRate inputrate){
+void VPushBackVertexDesc(SPX_GraphicsShaderObject* obj,u32 binding_no,u32 vert_size,VkVertexInputRate inputrate){
     
     _kill("cannot push more vert desc\n",obj->vert_desc_count >= _arraycount(obj->vert_desc_array));
     
@@ -133,13 +133,13 @@ void InternalHandleVertexBuilding(SPX_GraphicsShaderObject* obj,SPXData* spx,u32
     u64 vert_hash = 0;
     
     
-    InternalPushBackVertexDesc(obj,vert_binding_no,spx->vlayout.size,VK_VERTEX_INPUT_RATE_VERTEX);
+    VPushBackVertexDesc(obj,vert_binding_no,spx->vlayout.size,VK_VERTEX_INPUT_RATE_VERTEX);
     
     for(u32 j = 0; j < spx->vlayout.entry_count; j++){
         
         const auto entry = &spx->vlayout.entry_array[j];
         
-        InternalPushBackVertexAttrib(obj,vert_binding_no,entry->format,entry->size);
+        VPushBackVertexAttrib(obj,vert_binding_no,entry->format,entry->size);
         
         format_array[format_count] = entry->format;
         format_count++;
@@ -148,13 +148,13 @@ void InternalHandleVertexBuilding(SPX_GraphicsShaderObject* obj,SPXData* spx,u32
     
     if(spx->instlayout.size){
         
-        InternalPushBackVertexDesc(obj,inst_binding_no,spx->instlayout.size,VK_VERTEX_INPUT_RATE_INSTANCE);
+        VPushBackVertexDesc(obj,inst_binding_no,spx->instlayout.size,VK_VERTEX_INPUT_RATE_INSTANCE);
         
         for(u32 j = 0; j < spx->instlayout.entry_count; j++){
             
             const auto entry = &spx->instlayout.entry_array[j];
             
-            InternalPushBackVertexAttrib(obj,inst_binding_no,entry->format,entry->size);
+            VPushBackVertexAttrib(obj,inst_binding_no,entry->format,entry->size);
             
             format_array[format_count] = entry->format;
             format_count++;
