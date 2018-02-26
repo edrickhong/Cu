@@ -435,6 +435,8 @@ struct VSubmitBatch{
 };
 
 
+
+//TODO: remove this
 struct VGraphicsPipelineSpec{
     
     VkVertexInputBindingDescription desc_container[4];
