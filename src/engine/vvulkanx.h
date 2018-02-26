@@ -23,16 +23,6 @@ void _ainline VSetComputePipelineSpecShader(VComputePipelineSpec* spec,const s8*
     FCloseFile(file);
 }
 
-//MARK: remove
-u32 VPushBackShaderPipelineSpecX(VGraphicsPipelineSpec* spec,const SPXData* spx,
-                                 VkSpecializationInfo specialization = {},
-                                 u32 vert_bindingno = 0,u32 inst_bindingno = 1);
-
-//MARK: remove
-void VPushBackShaderArrayPipelineSpecX(VGraphicsPipelineSpec* spec,
-                                       SPXData* spx_array,u32 spx_count,
-                                       u32 vert_bindingno = 0,u32 inst_bindingno = 1);
-
 
 
 VkDescriptorPool VCreateDescriptorPoolX(VDeviceContext* _in_ vdevice,
@@ -125,14 +115,14 @@ struct GraphicsPipelineSpecObject{
 
 SPX_GraphicsShaderObject MakeShaderObjectSPX(SPXData* spx_array,u32 spx_count,VkSpecializationInfo* spec_array = 0,u32 spec_count = 0,u32 vert_binding_no = 0,u32 inst_binding_no = 1);
 
-void VDescPushBackPoolSpecX(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);
+void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,SPX_GraphicsShaderObject* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);
 
-VkDescriptorSetLayout VCreateDescriptorSetLayoutX(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,u32 descset_no);
+VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,SPX_GraphicsShaderObject* obj,u32 descset_no);
 
-VkPipelineLayout VCreatePipelineLayoutX(const  VDeviceContext* _restrict vdevice,
-                                        VkDescriptorSetLayout* descriptorset_array,
-                                        u32 descriptorset_count,
-                                        SPX_GraphicsShaderObject* obj);
+VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
+                                       VkDescriptorSetLayout* descriptorset_array,
+                                       u32 descriptorset_count,
+                                       SPX_GraphicsShaderObject* obj);
 
 u32 VGetDescriptorSetLayoutHash(SPX_GraphicsShaderObject* obj,u32 descset_no);
 
@@ -186,3 +176,13 @@ void VEnableColorBlendTransparency(GraphicsPipelineSpecObject* spec,
 
 void VEnableDynamicStateGraphicsPipelineSpec(GraphicsPipelineSpecObject* spec,
                                              VkDynamicState* dynamic_array,u32 dynamic_count);
+
+
+//To remove
+u32 VPushBackShaderPipelineSpecX(VGraphicsPipelineSpec* spec,const SPXData* spx,
+                                 VkSpecializationInfo specialization = {},
+                                 u32 vert_bindingno = 0,u32 inst_bindingno = 1);
+
+void VPushBackShaderArrayPipelineSpecX(VGraphicsPipelineSpec* spec,
+                                       SPXData* spx_array,u32 spx_count,
+                                       u32 vert_bindingno = 0,u32 inst_bindingno = 1);

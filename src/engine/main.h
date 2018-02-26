@@ -1517,17 +1517,17 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     VDescriptorPoolSpec poolspec;
     
-    VDescPushBackPoolSpecX(&poolspec,&shader_obj,2);
+    VDescPushBackPoolSpec(&poolspec,&shader_obj,2);
     
     pdata->descriptorpool = VCreateDescriptorPoolX(&pdata->vdevice,poolspec);
     
     
     pdata->dynuniform_descriptorlayout =
-        VCreateDescriptorSetLayoutX(&pdata->vdevice,&shader_obj,0);
+        VCreateDescriptorSetLayout(&pdata->vdevice,&shader_obj,0);
     
     
     pdata->vt_descriptorlayout =
-        VCreateDescriptorSetLayoutX(&pdata->vdevice,&shader_obj,1);
+        VCreateDescriptorSetLayout(&pdata->vdevice,&shader_obj,1);
     
     VkDescriptorSetLayout desclayout_array[] = {
         pdata->dynuniform_descriptorlayout,
@@ -1549,8 +1549,8 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     
     
-    pdata->pipelinelayout = VCreatePipelineLayoutX(&pdata->vdevice,
-                                                   &desc_layout[0],2,&shader_obj);
+    pdata->pipelinelayout = VCreatePipelineLayout(&pdata->vdevice,
+                                                  &desc_layout[0],2,&shader_obj);
     
     VDescriptorWriteSpec writespec;
     
