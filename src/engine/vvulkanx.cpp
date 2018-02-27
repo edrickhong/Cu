@@ -133,8 +133,8 @@ void ConstructPushConsts(VShaderObj* _restrict obj,SPXData* _restrict spx){
 
 
 VShaderObj VMakeShaderObjSPX(SPXData* spx_array,
-                                  u32 spx_count,VkSpecializationInfo* spec_array,
-                                  u32 spec_count,u32 vert_binding_no,u32 inst_binding_no){
+                             u32 spx_count,VkSpecializationInfo* spec_array,
+                             u32 spec_count,u32 vert_binding_no,u32 inst_binding_no){
     
     _kill("each specialization entry has to correspond to a shader\n",!spx_count && spec_count != spx_count);
     
@@ -177,69 +177,4 @@ VShaderObj VMakeShaderObjSPX(SPXData* spx_array,
     _kill("no vertex shader found\n",!obj.vert_hash);
     
     return obj;
-}
-
-//To remove
-u32 VPushBackShaderPipelineSpecX(VGraphicsPipelineSpec* spec,const SPXData* spx,
-                                 VkSpecializationInfo specialization,u32 vert_bindingno,u32 inst_bindingno){
-    
-    u32 hash = 0;
-    
-    if(spx->type == VK_SHADER_STAGE_VERTEX_BIT){
-        
-        VkFormat format_array[32] = {};
-        u32 format_count = 0;
-        
-        VPushBackVertexSpecDesc(spec,vert_bindingno,spx->vlayout.size,
-                                VK_VERTEX_INPUT_RATE_VERTEX);
-        
-        for(u32 i = 0; i < spx->vlayout.entry_count; i++){
-            
-            const auto entry = &spx->vlayout.entry_array[i];
-            
-            VPushBackVertexSpecAttrib(spec,vert_bindingno,
-                                      entry->format,entry->size);
-            
-            format_array[format_count] = entry->format;
-            format_count++;
-            _kill("not enough space\n",format_count >= _arraycount(format_array));
-        }
-        
-        if(spx->instlayout.size){
-            
-            VPushBackVertexSpecDesc(spec,inst_bindingno,spx->instlayout.size,
-                                    VK_VERTEX_INPUT_RATE_INSTANCE);
-            
-            for(u32 i = 0; i < spx->instlayout.entry_count; i++){
-                
-                const auto entry = &spx->instlayout.entry_array[i];
-                
-                VPushBackVertexSpecAttrib(spec,inst_bindingno,
-                                          entry->format,entry->size);
-                
-                format_array[format_count] = entry->format;
-                format_count++;
-                _kill("not enough space\n",format_count >= _arraycount(format_array));
-            }
-        }
-        
-        hash = VFormatHash(format_array,format_count);
-    }
-    
-    VPushBackShaderPipelineSpec(spec,spx->spv,spx->spv_size,spx->type,specialization);
-    
-    return hash;
-}
-
-void VPushBackShaderArrayPipelineSpecX(VGraphicsPipelineSpec* spec,
-                                       SPXData* spx_array,u32 spx_count,
-                                       u32 vert_bindingno,u32 inst_bindingno){
-    
-    for(u32 i = 0; i < spx_count; i++){
-        
-        auto spx = &spx_array[i];
-        
-        VPushBackShaderPipelineSpecX(spec,spx,{},vert_bindingno,inst_bindingno);    
-    }
-    
 }
