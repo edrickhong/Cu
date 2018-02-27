@@ -436,50 +436,7 @@ struct VSubmitBatch{
 
 
 
-//TODO: remove this
-struct VGraphicsPipelineSpec{
-    
-    VkVertexInputBindingDescription desc_container[4];
-    u32 desc_count = 0;
-    VkVertexInputAttributeDescription attrib_container[10];
-    u32 attrib_count = 0;
-    u32 offset = 0;//vertex data offset
-    u32 inst_offset = 0;//instance data offset
-    
-    VkPipelineVertexInputStateCreateInfo vertexinput;
-    VkPipelineInputAssemblyStateCreateInfo assembly;
-    VkPipelineRasterizationStateCreateInfo raster;
-    
-    
-    VkPipelineViewportStateCreateInfo viewport;
-    VkPipelineMultisampleStateCreateInfo multisample;
-    VkPipelineDepthStencilStateCreateInfo depthstencil;
-    VkPipelineColorBlendStateCreateInfo colorblendstate;
-    
-    VkPipelineTessellationStateCreateInfo* tessalationstate = 0;
-    VkPipelineDynamicStateCreateInfo* dynamicstate = 0;
-    
-    void* shaderdata_array[6];
-    u32 shaderdatasize_array[6];
-    VkShaderStageFlagBits shaderstage_array[6];
-    VkSpecializationInfo shaderspecialization_array[6];
-    u32 shaderdata_count = 0;
-    
-    VkPipelineCreateFlags flags;//controls if pipeline has parent for now
-    
-    VkPipelineLayout layout;
-    VkRenderPass renderpass;
-    u32 subpass_index;
-    
-    VkPipeline parent_pipeline;
-    s32 parentpipeline_index;
-    
-    s8 buffer[sizeof(VkPipelineTessellationStateCreateInfo) + sizeof(VkPipelineDynamicStateCreateInfo)
-            + 1024];
-    
-    s8* cur;
-    VkPipelineColorBlendAttachmentState* colorattachment_array = 0;
-};
+
 
 void VDescPushBackPoolSpec(VDescriptorPoolSpec* poolspec,VkDescriptorType type,u32 count);
 
@@ -574,83 +531,12 @@ VkRenderPass VCreateRenderPass(const  VDeviceContext* _restrict vdevice,
                                VSubpassDescriptionSpec subpassdescspec,
                                VSubpassDependencySpec subpassdepspec);
 
-void VPushBackVertexSpecDesc(VGraphicsPipelineSpec* spec,u32 bind_no,u32 unit_size,
-                             VkVertexInputRate inputrate);
-
-void VPushBackVertexSpecAttrib(VGraphicsPipelineSpec* spec,u32 bind_no,
-                               VkFormat format,u32 attrib_size);
-
-void VPushBackInstanceSpecAttrib(VGraphicsPipelineSpec* spec,u32 bind_no,VkFormat format,
-                                 u32 attrib_size);
-
-void VPushBackShaderPipelineSpec(VGraphicsPipelineSpec* spec,void* shader_data,
-                                 u32 shader_size,VkShaderStageFlagBits stage,
-                                 VkSpecializationInfo specialization = {});
-
-
-
-//TODO: remove order dependency. We can resolve things upon pipeline creation
-//Right now, we HAVE to have vertex spec and attrib specified first
-//MARK: For now it assumes only one attachment
-void VGenerateGraphicsPipelineSpec(VGraphicsPipelineSpec* spec,
-                                   VkPrimitiveTopology topology,
-                                   VkPolygonMode polymode,VkCullModeFlags cullmode,
-                                   VkFrontFace frontface,u16 width,u16 height,
-                                   VkPipelineLayout layout,
-                                   VkRenderPass renderpass,u32 colorattachment_count = 1,
-                                   u32 subpass_index = 0,VkPipelineCreateFlags flags = 0,
-                                   VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
-
-
-void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpec* spec,
-                                           VkViewport* viewport,u32 viewport_count,VkRect2D* scissor,
-                                           u32 scissor_count);
-
-void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpec* spec,
-                                           u16 width,u16 height);
-
-void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpec* spec,
-                                         VkSampleCountFlagBits samplecount_bits,
-                                         VkBool32 is_persample_perfragment,//true = sample,else frag
-                                         f32 minsampleshading,
-                                         VkSampleMask* samplemask,
-                                         VkBool32 enable_alpha_to_coverage,
-                                         VkBool32 enable_alpha_to_one);
-
-void VSetDepthStencilGraphicsPipelineSpec(VGraphicsPipelineSpec* spec,
-                                          VkBool32 depthtest_enable,
-                                          VkBool32 depthwrite_enable,VkCompareOp depthtest_op,
-                                          VkBool32 depthboundstest_enable,
-                                          f32 min_depthbounds = 0.0f,
-                                          f32 max_depthbounds = 1.0f,
-                                          VkBool32 stencil_enable = false,
-                                          VkStencilOpState front = {},
-                                          VkStencilOpState back = {});
-
-//MARK: For now it assumes only one attachment
-void VEnableColorBlendTransparency(VGraphicsPipelineSpec* spec,
-                                   u32 colorattachment_index = 0,
-                                   VkBlendFactor srccolor_blendfactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                                   VkBlendFactor dstcolor_blendfactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                   VkBlendOp colorblend_op = VK_BLEND_OP_ADD,
-                                   VkBlendFactor srcalpha_blendfactor = VK_BLEND_FACTOR_ONE,
-                                   VkBlendFactor dst_alphablendfactor = VK_BLEND_FACTOR_ZERO,
-                                   VkBlendOp alphablend_op = VK_BLEND_OP_ADD,
-                                   VkColorComponentFlags colorWriteMask = 0xf);
-
-void VEnableDynamicStateGraphicsPipelineSpec(VGraphicsPipelineSpec* spec,
-                                             VkDynamicState* dynamic_array,u32 dynamic_count);
-
 
 VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
                                        VkDescriptorSetLayout* descriptorset_array,
                                        u32 descriptorset_count,
                                        VkPushConstantRange* pushconstrange_array,
                                        u32 pushconstrange_count);
-
-void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,
-                                  VkPipelineCache cache,VGraphicsPipelineSpec* spec_array,
-                                  u32 spec_count,VkPipeline* pipeline_array);
 
 void VDestroyPipeline(const  VDeviceContext* _restrict vdevice,VkPipeline pipeline);
 
@@ -949,16 +835,7 @@ u32 _ainline VFormatHash(VkFormat* format_array,u32 count){
 }
 
 
-void VSetColorBlend(VGraphicsPipelineSpec* spec,
-                    VkPipelineColorBlendAttachmentState* attachment_array,u32 attachment_count,
-                    VkBool32 logicop_enable = VK_FALSE,VkLogicOp logic_op = VK_LOGIC_OP_CLEAR,
-                    f32 blendconstants[4] = {});
 
-
-
-void VPushBackShaderPipelineSpec(VGraphicsPipelineSpec* spec,const s8* filepath,
-                                 VkShaderStageFlagBits stage,void** shaderdataptr,
-                                 VkSpecializationInfo specialization = {});
 
 
 //
