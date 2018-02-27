@@ -1319,38 +1319,19 @@ void CompileAllPipelines(PlatformData* pdata){
     }
     
     
-    SPXData shader_data[] = {
+    SPXData shader_data_1[] = {
         LoadSPX(SHADER_PATH(model_skel.vert.spx)),
         LoadSPX(SHADER_PATH(vt_generic.frag.spx)),
+        
+    };
+    
+    SPXData shader_data_2[] = {
         LoadSPX(SHADER_PATH(model.vert.spx)),
+        LoadSPX(SHADER_PATH(vt_generic.frag.spx)),
+        
     };
     
     {
-        
-#if 0
-        
-        VGraphicsPipelineSpec pipelinespec;
-        
-        VPushBackShaderPipelineSpecX(&pipelinespec,&shader_data[0]);
-        VPushBackShaderPipelineSpecX(&pipelinespec,&shader_data[1],
-                                     VTFragmentShaderSpecConst());
-        
-        VGenerateGraphicsPipelineSpec(&pipelinespec,VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                      VK_POLYGON_MODE_FILL,
-                                      VK_CULL_MODE_BACK_BIT,VK_FRONT_FACE_CLOCKWISE,
-                                      pdata->window.width,pdata->window.height,
-                                      pdata->pipelinelayout,pdata->renderpass);
-        
-        VSetDepthStencilGraphicsPipelineSpec(&pipelinespec,VK_TRUE,
-                                             VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,VK_TRUE,
-                                             0.0f,1.0f,false,{},{});
-        
-        VCreateGraphicsPipelineArray(&pdata->vdevice,0,&pipelinespec,1,
-                                     &pdata->pipeline_array[PSKEL]);
-        
-        _kill("",1);
-        
-#else
         
         VkSpecializationInfo info[] = {
             {},
@@ -1358,7 +1339,7 @@ void CompileAllPipelines(PlatformData* pdata){
         };
         
         
-        auto shaderobj = VMakeShaderObjSPX(&shader_data[0],2,&info[0],_arraycount(info));
+        auto shaderobj = VMakeShaderObjSPX(&shader_data_1[0],2,&info[0],_arraycount(info));
         
         auto pipelinespec = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
         
@@ -1368,33 +1349,27 @@ void CompileAllPipelines(PlatformData* pdata){
                                              VK_TRUE);
         
         VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSKEL]);
-        
-        //TODO: do a comparison between the two create info in the pipeline
-        //creation to make sure our new implementation works
-        
-#endif
     }
     
     
     {
-        VGraphicsPipelineSpec pipelinespec;
         
-        VPushBackShaderPipelineSpecX(&pipelinespec,&shader_data[2]);
-        VPushBackShaderPipelineSpecX(&pipelinespec,&shader_data[1],
-                                     VTFragmentShaderSpecConst());
+        VkSpecializationInfo info[] = {
+            {},
+            VTFragmentShaderSpecConst()
+        };
         
-        VGenerateGraphicsPipelineSpec(&pipelinespec,VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                      VK_POLYGON_MODE_FILL,
-                                      VK_CULL_MODE_BACK_BIT,VK_FRONT_FACE_CLOCKWISE,
-                                      pdata->window.width,pdata->window.height,
-                                      pdata->pipelinelayout,pdata->renderpass);
         
-        VSetDepthStencilGraphicsPipelineSpec(&pipelinespec,VK_TRUE,
-                                             VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,VK_TRUE,
-                                             0.0f,1.0f,false,{},{});
+        auto shaderobj = VMakeShaderObjSPX(&shader_data_2[0],2,&info[0],_arraycount(info));
         
-        VCreateGraphicsPipelineArray(&pdata->vdevice,0,&pipelinespec,1,
-                                     &pdata->pipeline_array[PSTATIC]);
+        auto pipelinespec = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
+        
+        VSetDepthStencilGraphicsPipelineSpec(&pipelinespec,
+                                             VK_TRUE,
+                                             VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
+                                             VK_TRUE);
+        
+        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSTATIC]);
     }
     
     //set rendercontext resources
