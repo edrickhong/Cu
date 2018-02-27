@@ -48,7 +48,7 @@ enum GUICameraMode{
 GUIFont GUICreateFontFromFile(const s8* filepath,VkCommandBuffer cmdbuffer,
                               VDeviceContext* vdevice,VkQueue queue);
 
-void GUIInit(VDeviceContext* vdevice,WWindowContext* window,
+void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
              VkRenderPass renderpass,VkQueue queue,VkCommandBuffer cmdbuffer,
              u32 vertexbinding_no = 0,
              GUIFont* fonthandle = 0);

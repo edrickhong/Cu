@@ -148,7 +148,7 @@ s32 main(s32 argc,s8** argv){
         CreatePrimaryRenderCommandbuffer(&pdata->vdevice,
                                          pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
     
-    GUIInit(&pdata->vdevice,&pdata->window,pdata->renderpass,pdata->transfer_queue,
+    GUIInit(&pdata->vdevice,&pdata->swapchain,pdata->renderpass,pdata->transfer_queue,
             transfercmdbuffer);
     
     GameInitData initdata = {
