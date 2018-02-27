@@ -3401,8 +3401,6 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGrap
     _vktest(vkCreateGraphicsPipelines(vdevice->device,cache,spec_count,&info_array[0],global_allocator,
                                       pipeline_array));
     
-    //_kill("",1);
-    
     //destroy all modules
     for(u32 i = 0; i < spec_count; i++){
         

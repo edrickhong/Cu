@@ -957,92 +957,35 @@ void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
         VK_DYNAMIC_STATE_SCISSOR
     };
     
+    VShaderObj obj = {};
+    
+    VPushBackShaderData(&obj,VK_SHADER_STAGE_VERTEX_BIT,&m_gui_vert_spv[0],sizeof(m_gui_vert_spv));
+    
+    VPushBackShaderData(&obj,VK_SHADER_STAGE_FRAGMENT_BIT,&m_gui_frag_spv[0],sizeof(m_gui_frag_spv));
+    
+    VPushBackVertexDesc(&obj,vertexbinding_no,sizeof(GUIVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+    
+    VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,sizeof(GUIVertex::pos));
+    
+    VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,sizeof(GUIVertex::uv));
+    
+    VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
+    
     //solid
     {
-        VGraphicsPipelineSpec pipelinespec;
         
-        VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_vert_spv[0],
-                                    sizeof(m_gui_vert_spv),VK_SHADER_STAGE_VERTEX_BIT);
+        auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
         
-        VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_frag_spv[0],
-                                    sizeof(m_gui_frag_spv),VK_SHADER_STAGE_FRAGMENT_BIT);
+        VSetRasterState(&spec,VK_CULL_MODE_NONE);
         
-        VPushBackVertexSpecDesc(&pipelinespec,vertexbinding_no,sizeof(GUIVertex),
-                                VK_VERTEX_INPUT_RATE_VERTEX);
+        VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,
-                                  sizeof(GUIVertex::pos));
+        VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_SOLID]);
         
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,
-                                  sizeof(GUIVertex::uv));
-        
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,
-                                  sizeof(GUIVertex::color));
-        
-        VGenerateGraphicsPipelineSpec(&pipelinespec,
-                                      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ,
-                                      VK_POLYGON_MODE_FILL,
-                                      VK_CULL_MODE_NONE,VK_FRONT_FACE_CLOCKWISE,
-                                      swap->width,swap->height,gui->pipelinelayout,renderpass);
-        
-        VEnableDynamicStateGraphicsPipelineSpec(&pipelinespec,
-                                                &dynamicstate_array[0],_arraycount(dynamicstate_array));
-        
-        VCreateGraphicsPipelineArray(vdevice,0,&pipelinespec,1,
-                                     &gui->pipeline_array[GUI_RENDER_SOLID]);  
     }
     
     //line
     {
-#if 0
-        VGraphicsPipelineSpec pipelinespec;
-        
-        VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_vert_spv[0],
-                                    sizeof(m_gui_vert_spv),VK_SHADER_STAGE_VERTEX_BIT);
-        
-        VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_frag_spv[0],
-                                    sizeof(m_gui_frag_spv),VK_SHADER_STAGE_FRAGMENT_BIT);
-        
-        VPushBackVertexSpecDesc(&pipelinespec,vertexbinding_no,sizeof(GUIVertex),
-                                VK_VERTEX_INPUT_RATE_VERTEX);
-        
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,
-                                  sizeof(GUIVertex::pos));
-        
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,
-                                  sizeof(GUIVertex::uv));
-        
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,
-                                  sizeof(GUIVertex::color));
-        
-        
-        VGenerateGraphicsPipelineSpec(&pipelinespec,
-                                      VK_PRIMITIVE_TOPOLOGY_LINE_LIST ,
-                                      VK_POLYGON_MODE_FILL,
-                                      VK_CULL_MODE_NONE,VK_FRONT_FACE_CLOCKWISE,
-                                      swap->width,swap->height,gui->pipelinelayout,renderpass);
-        
-        VEnableDynamicStateGraphicsPipelineSpec(&pipelinespec,
-                                                &dynamicstate_array[0],_arraycount(dynamicstate_array));
-        
-        VCreateGraphicsPipelineArray(vdevice,0,&pipelinespec,1,
-                                     &gui->pipeline_array[GUI_RENDER_LINE]);  
-        
-#else
-        
-        VShaderObj obj = {};
-        
-        VPushBackShaderData(&obj,VK_SHADER_STAGE_VERTEX_BIT,&m_gui_vert_spv[0],sizeof(m_gui_vert_spv));
-        
-        VPushBackShaderData(&obj,VK_SHADER_STAGE_FRAGMENT_BIT,&m_gui_frag_spv[0],sizeof(m_gui_frag_spv));
-        
-        VPushBackVertexDesc(&obj,vertexbinding_no,sizeof(GUIVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-        
-        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,sizeof(GUIVertex::pos));
-        
-        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,sizeof(GUIVertex::uv));
-        
-        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
         
         
         auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
@@ -1054,45 +997,34 @@ void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
         VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
         
         VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_LINE]);
-        
-#endif
     }
     
     //font
     {
-        VGraphicsPipelineSpec pipelinespec;
         
-        VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_vert_spv[0],
-                                    sizeof(m_gui_vert_spv),VK_SHADER_STAGE_VERTEX_BIT);
+        VShaderObj obj = {};
         
-        VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_tex_frag_spv[0],
-                                    sizeof(m_gui_tex_frag_spv),VK_SHADER_STAGE_FRAGMENT_BIT);
+        VPushBackShaderData(&obj,VK_SHADER_STAGE_VERTEX_BIT,&m_gui_vert_spv[0],sizeof(m_gui_vert_spv));
         
-        VPushBackVertexSpecDesc(&pipelinespec,vertexbinding_no,sizeof(GUIVertex),
-                                VK_VERTEX_INPUT_RATE_VERTEX);
+        VPushBackShaderData(&obj,VK_SHADER_STAGE_FRAGMENT_BIT,&m_gui_tex_frag_spv[0],sizeof(m_gui_tex_frag_spv));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,
-                                  sizeof(GUIVertex::pos));
+        VPushBackVertexDesc(&obj,vertexbinding_no,sizeof(GUIVertex),VK_VERTEX_INPUT_RATE_VERTEX);
         
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,
-                                  sizeof(GUIVertex::uv));
+        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,sizeof(GUIVertex::pos));
         
-        VPushBackVertexSpecAttrib(&pipelinespec,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,
-                                  sizeof(GUIVertex::color));
+        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,sizeof(GUIVertex::uv));
         
-        VGenerateGraphicsPipelineSpec(&pipelinespec,
-                                      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ,
-                                      VK_POLYGON_MODE_FILL,
-                                      VK_CULL_MODE_NONE,VK_FRONT_FACE_CLOCKWISE,
-                                      swap->width,swap->height,gui->pipelinelayout,renderpass);
+        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
         
-        VEnableColorBlendTransparency(&pipelinespec);
+        auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
         
-        VEnableDynamicStateGraphicsPipelineSpec(&pipelinespec,
-                                                &dynamicstate_array[0],_arraycount(dynamicstate_array));
+        VSetRasterState(&spec,VK_CULL_MODE_NONE);
         
-        VCreateGraphicsPipelineArray(vdevice,0,&pipelinespec,1,
-                                     &gui->pipeline_array[GUI_RENDER_TEXT]);  
+        VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
+        
+        VEnableColorBlendTransparency(&spec);
+        
+        VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_TEXT]);
     }
     
 }
