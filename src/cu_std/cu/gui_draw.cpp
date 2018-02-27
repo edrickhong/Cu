@@ -941,7 +941,7 @@ GUIFont GUICreateFontFromFile(const s8* filepath,VkCommandBuffer cmdbuffer,
     return font;
 }
 
-void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
+void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
                             VkRenderPass renderpass,u32 vertexbinding_no){
     
     if(gui->pipeline_array[0]){
@@ -983,7 +983,7 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
                                       VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ,
                                       VK_POLYGON_MODE_FILL,
                                       VK_CULL_MODE_NONE,VK_FRONT_FACE_CLOCKWISE,
-                                      window->width,window->height,gui->pipelinelayout,renderpass);
+                                      swap->width,swap->height,gui->pipelinelayout,renderpass);
         
         VEnableDynamicStateGraphicsPipelineSpec(&pipelinespec,
                                                 &dynamicstate_array[0],_arraycount(dynamicstate_array));
@@ -994,6 +994,7 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
     
     //line
     {
+#if 0
         VGraphicsPipelineSpec pipelinespec;
         
         VPushBackShaderPipelineSpec(&pipelinespec,&m_gui_vert_spv[0],
@@ -1019,13 +1020,42 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
                                       VK_PRIMITIVE_TOPOLOGY_LINE_LIST ,
                                       VK_POLYGON_MODE_FILL,
                                       VK_CULL_MODE_NONE,VK_FRONT_FACE_CLOCKWISE,
-                                      window->width,window->height,gui->pipelinelayout,renderpass);
+                                      swap->width,swap->height,gui->pipelinelayout,renderpass);
         
         VEnableDynamicStateGraphicsPipelineSpec(&pipelinespec,
                                                 &dynamicstate_array[0],_arraycount(dynamicstate_array));
         
         VCreateGraphicsPipelineArray(vdevice,0,&pipelinespec,1,
                                      &gui->pipeline_array[GUI_RENDER_LINE]);  
+        
+#else
+        
+        VShaderObj obj = {};
+        
+        VPushBackShaderData(&obj,VK_SHADER_STAGE_VERTEX_BIT,&m_gui_vert_spv[0],sizeof(m_gui_vert_spv));
+        
+        VPushBackShaderData(&obj,VK_SHADER_STAGE_FRAGMENT_BIT,&m_gui_frag_spv[0],sizeof(m_gui_frag_spv));
+        
+        VPushBackVertexDesc(&obj,vertexbinding_no,sizeof(GUIVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+        
+        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,sizeof(GUIVertex::pos));
+        
+        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,sizeof(GUIVertex::uv));
+        
+        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
+        
+        
+        auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
+        
+        VSetInputAssemblyState(&spec,VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+        
+        VSetRasterState(&spec,VK_CULL_MODE_NONE);
+        
+        VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
+        
+        VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_LINE]);
+        
+#endif
     }
     
     //font
@@ -1054,7 +1084,7 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
                                       VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ,
                                       VK_POLYGON_MODE_FILL,
                                       VK_CULL_MODE_NONE,VK_FRONT_FACE_CLOCKWISE,
-                                      window->width,window->height,gui->pipelinelayout,renderpass);
+                                      swap->width,swap->height,gui->pipelinelayout,renderpass);
         
         VEnableColorBlendTransparency(&pipelinespec);
         
@@ -1067,7 +1097,7 @@ void InitInternalComponents(VDeviceContext* vdevice,WWindowContext* window,
     
 }
 
-void GUIInit(VDeviceContext* vdevice,WWindowContext* window,
+void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
              VkRenderPass renderpass,VkQueue queue,VkCommandBuffer cmdbuffer,
              u32 vertexbinding_no,GUIFont* fonthandle){
     
@@ -1099,8 +1129,8 @@ void GUIInit(VDeviceContext* vdevice,WWindowContext* window,
     
     gui->internal_device = vdevice->device;
     
-    gui->internal_width = window->width;
-    gui->internal_height = window->height;
+    gui->internal_width = swap->width;
+    gui->internal_height = swap->height;
     
     if(!fonthandle){
         
@@ -1111,7 +1141,7 @@ void GUIInit(VDeviceContext* vdevice,WWindowContext* window,
         fonthandle = gui->default_font;
     }
     
-    InitInternalComponents(vdevice,window,renderpass,vertexbinding_no);
+    InitInternalComponents(vdevice,swap,renderpass,vertexbinding_no);
     
     
     gui->vert_buffer =
