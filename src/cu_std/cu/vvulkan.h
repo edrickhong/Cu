@@ -885,10 +885,6 @@ struct VComputePipelineSpec{
 void VSetComputePipelineSpecShader(VComputePipelineSpec* spec,void* shader_data,
                                    u32 shader_size,VkSpecializationInfo specialization = {});
 
-
-void VSetComputePipelineSpecShaderX(VComputePipelineSpec* spec,const s8* filepath,
-                                    VkSpecializationInfo specialization = {});
-
 void VGenerateComputePipelineSpec(VComputePipelineSpec* spec,VkPipelineLayout layout,
                                   VkPipelineCreateFlags flags = 0,VkPipeline parent_pipeline = 0,
                                   s32 parentpipeline_index = -1);
@@ -960,6 +956,176 @@ void VSetColorBlend(VGraphicsPipelineSpec* spec,
 
 
 
-void PushBackShaderPipelineSpec(VGraphicsPipelineSpec* spec,const s8* filepath,
-                                VkShaderStageFlagBits stage,void** shaderdataptr,
-                                VkSpecializationInfo specialization = {});
+void VPushBackShaderPipelineSpec(VGraphicsPipelineSpec* spec,const s8* filepath,
+                                 VkShaderStageFlagBits stage,void** shaderdataptr,
+                                 VkSpecializationInfo specialization = {});
+
+
+//
+
+struct VShaderObj{
+    
+#if _debug
+    u64 vert_hash;
+#endif
+    
+    u8 vert_desc_count = 0;
+    u8 vert_attrib_count = 0;
+    u8 descset_count;
+    u8 range_count = 0;
+    u32 shader_count = 0;
+    u32 range_hash_array[16];
+    u32 spv_size_array[8];
+    
+    VkVertexInputBindingDescription vert_desc_array[4];
+    VkVertexInputAttributeDescription vert_attrib_array[16];
+    u32 vert_attrib_size_array[16];
+    
+    
+    struct DescSetElement{
+        VkDescriptorType type;
+        u32 binding_no;
+        u32 array_count;
+    };
+    
+    struct DescSetEntry{
+        u32 shader_stage;
+        u32 set_no;
+        DescSetElement element_array[32];
+        u32 element_count;
+        
+    };
+    
+    DescSetEntry descset_array[16];
+    VkPushConstantRange range_array[16];
+    
+    void* shader_data_array[8];
+    VkShaderStageFlagBits shaderstage_array[8];
+    VkSpecializationInfo spec_array[8];
+    
+};
+
+struct VGraphicsPipelineSpecObj{
+    
+    VkPipelineVertexInputStateCreateInfo vertexinput;
+    VkPipelineInputAssemblyStateCreateInfo assembly;
+    VkPipelineRasterizationStateCreateInfo raster;
+    
+    
+    VkPipelineViewportStateCreateInfo viewport;
+    VkPipelineMultisampleStateCreateInfo multisample;
+    VkPipelineDepthStencilStateCreateInfo depthstencil;
+    VkPipelineColorBlendStateCreateInfo colorblendstate;
+    
+    //everything here is optional
+    VkPipelineTessellationStateCreateInfo tessalationstate;
+    VkPipelineDynamicStateCreateInfo dynamicstate;
+    
+    VkPipelineCreateFlags flags;
+    
+    VkPipelineLayout layout;
+    VkRenderPass renderpass;
+    u32 subpass_index;
+    
+    VkPipeline parent_pipeline;
+    s32 parentpipeline_index;
+    
+    VkPipelineColorBlendAttachmentState colorattachment_array[16] = {};
+    
+    VkVertexInputBindingDescription vert_desc_array[4];
+    VkVertexInputAttributeDescription vert_attrib_array[16];
+    
+    VkDynamicState dynamic_array[16];
+    
+    VkViewport viewport_array[8];
+    VkRect2D scissor_array[8];
+    
+    VkPipelineShaderStageCreateInfo shaderinfo_array[8];
+    VkSpecializationInfo spec_array[8];
+    VkShaderModule shadermodule_array[8];
+    u32 shadermodule_count = 0;
+};
+
+void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);
+
+VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,VShaderObj* obj,u32 descset_no);
+
+VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
+                                       VkDescriptorSetLayout* descriptorset_array,
+                                       u32 descriptorset_count,
+                                       VShaderObj* obj);
+
+u32 VGetDescriptorSetLayoutHash(VShaderObj* obj,u32 descset_no);
+
+VGraphicsPipelineSpecObj VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VShaderObj* obj,VkPipelineLayout layout,VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
+                                                      VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
+
+void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGraphicsPipelineSpecObj* spec_array,u32 spec_count,VkPipeline* pipeline_array,VkPipelineCache cache = 0);
+
+
+
+void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                           VkViewport* viewport,u32 viewport_count,VkRect2D* scissor,
+                                           u32 scissor_count);
+
+void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                           u16 width,u16 height);
+
+void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                         VkSampleCountFlagBits samplecount_bits = VK_SAMPLE_COUNT_1_BIT,
+                                         VkBool32 is_persample_perfragment = VK_FALSE,//true = sample,else frag
+                                         f32 minsampleshading = 1.0f,
+                                         VkSampleMask* samplemask = 0,
+                                         VkBool32 enable_alpha_to_coverage = VK_FALSE,
+                                         VkBool32 enable_alpha_to_one = VK_FALSE);
+
+
+void VSetDepthStencilGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                          VkBool32 depthtest_enable = VK_FALSE,
+                                          VkBool32 depthwrite_enable = VK_FALSE,VkCompareOp depthtest_op = VK_COMPARE_OP_NEVER,
+                                          VkBool32 depthboundstest_enable = VK_FALSE,
+                                          f32 min_depthbounds = 0.0f,
+                                          f32 max_depthbounds = 1.0f,
+                                          VkBool32 stencil_enable = false,
+                                          VkStencilOpState front = {},
+                                          VkStencilOpState back = {});
+
+void VSetColorBlend(VGraphicsPipelineSpecObj* spec,
+                    VkPipelineColorBlendAttachmentState* attachment_array,u32 attachment_count,
+                    VkBool32 logicop_enable = VK_FALSE,VkLogicOp logic_op = VK_LOGIC_OP_CLEAR,
+                    f32 blendconstants[4] = {});
+
+void VEnableColorBlendTransparency(VGraphicsPipelineSpecObj* spec,
+                                   u32 colorattachment_bitmask = 1,
+                                   VkBlendFactor srccolor_blendfactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                                   VkBlendFactor dstcolor_blendfactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                   VkBlendOp colorblend_op = VK_BLEND_OP_ADD,
+                                   VkBlendFactor srcalpha_blendfactor = VK_BLEND_FACTOR_ONE,
+                                   VkBlendFactor dst_alphablendfactor = VK_BLEND_FACTOR_ZERO,
+                                   VkBlendOp alphablend_op = VK_BLEND_OP_ADD,
+                                   VkColorComponentFlags colorWriteMask = 0xf);
+
+void VEnableDynamicStateGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                             VkDynamicState* dynamic_array,u32 dynamic_count);
+
+
+void VPushBackShaderData(VShaderObj* obj,VkShaderStageFlagBits type,void* data,
+                         u32 size,VkSpecializationInfo spec = {});
+
+
+
+void VSetInputAssemblyState(VGraphicsPipelineSpecObj* spec,VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,VkBool32 restart = false);
+
+void VSetRasterState(VGraphicsPipelineSpecObj* spec,VkCullModeFlags cullmode = VK_CULL_MODE_BACK_BIT,VkFrontFace frontface = VK_FRONT_FACE_CLOCKWISE,VkBool32 enable_depthclamp = false,VkPolygonMode polymode = VK_POLYGON_MODE_FILL,VkBool32 enable_depthbias = false,f32 depthbias_const = 0.0f,f32 depthbias_clamp = 0.0f,f32 depthbias_slope = 0.0f,f32 linewidth = 1.0f,VkBool32 enable_discard = false);
+
+void VPushBackVertexAttrib(VShaderObj* obj,u32 binding_no,VkFormat format,u32 attrib_size);
+
+void VPushBackVertexDesc(VShaderObj* obj,u32 binding_no,u32 vert_size,VkVertexInputRate inputrate);
+
+void VPushBackSetElement(VShaderObj::DescSetEntry* set,VkDescriptorType type,u32 bind,u32 array_count);
+
+VShaderObj::DescSetEntry* VGetSet(VShaderObj* obj,u32 set_no);
+
+void VPushBackDescSet(VShaderObj* obj,u32 set_no,u32 shader_stage);
+
+void VPushBackPushConstRange(VShaderObj* _restrict obj,VkFormat* format_array,u32 format_count,u32 size,VkShaderStageFlagBits shader_stage);
