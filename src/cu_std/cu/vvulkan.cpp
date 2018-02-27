@@ -3074,3 +3074,514 @@ void PushBackShaderPipelineSpec(VGraphicsPipelineSpec* spec,const s8* filepath,
     
     FCloseFile(file);
 }
+
+
+//
+
+void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                           VkViewport* viewport,u32 viewport_count,VkRect2D* scissor,
+                                           u32 scissor_count){
+    
+    memcpy(&spec->viewport_array[0],viewport,sizeof(VkViewport) * viewport_count);
+    
+    memcpy(&spec->scissor_array[0],scissor,sizeof(VkRect2D) * scissor_count);
+    
+    spec->viewport.viewportCount = viewport_count;
+    spec->viewport.pViewports = &spec->viewport_array[0];
+    spec->viewport.scissorCount = scissor_count;
+    spec->viewport.pScissors = &spec->scissor_array[0];
+    
+}
+
+void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                           u16 width,u16 height){
+    
+    VkViewport viewport = {0.0f,0.0f,(f32)width,(f32)height,0.0f,1.0f};
+    VkRect2D scissor = {{},width,height};
+    
+    VSetFixedViewportGraphicsPipelineSpec(spec,
+                                          &viewport,1,&scissor,
+                                          1);
+}
+
+void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                         VkSampleCountFlagBits samplecount_bits,
+                                         VkBool32 is_persample_perfragment,//true = sample,else frag
+                                         f32 minsampleshading,
+                                         VkSampleMask* samplemask,
+                                         VkBool32 enable_alpha_to_coverage,
+                                         VkBool32 enable_alpha_to_one){
+    spec->multisample.sType =VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    
+    spec->multisample.pNext = 0;
+    spec->multisample.flags = 0;
+    spec->multisample.rasterizationSamples = samplecount_bits;
+    spec->multisample.sampleShadingEnable = is_persample_perfragment;
+    spec->multisample.minSampleShading = minsampleshading;
+    spec->multisample.pSampleMask= samplemask;
+    spec->multisample.alphaToCoverageEnable = enable_alpha_to_coverage;
+    spec->multisample.alphaToOneEnable = enable_alpha_to_one;
+}
+
+
+void VSetDepthStencilGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                          VkBool32 depthtest_enable,
+                                          VkBool32 depthwrite_enable,VkCompareOp depthtest_op,
+                                          VkBool32 depthboundstest_enable,
+                                          f32 min_depthbounds,
+                                          f32 max_depthbounds,
+                                          VkBool32 stencil_enable,
+                                          VkStencilOpState front,
+                                          VkStencilOpState back){
+    spec->depthstencil.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    
+    spec->depthstencil.pNext = 0;
+    spec->depthstencil.flags = 0;
+    spec->depthstencil.depthTestEnable = depthtest_enable;
+    spec->depthstencil.depthWriteEnable = depthwrite_enable;
+    spec->depthstencil.depthCompareOp = depthtest_op;
+    spec->depthstencil.depthBoundsTestEnable = depthboundstest_enable;
+    spec->depthstencil.stencilTestEnable = stencil_enable;
+    spec->depthstencil.front = front;
+    spec->depthstencil.back = back;
+    spec->depthstencil.minDepthBounds = min_depthbounds;
+    spec->depthstencil.maxDepthBounds = max_depthbounds;
+}
+
+void VSetColorBlend(VGraphicsPipelineSpecObj* spec,
+                    VkPipelineColorBlendAttachmentState* attachment_array,u32 attachment_count,
+                    VkBool32 logicop_enable,VkLogicOp logic_op,
+                    f32 blendconstants[4]){
+    
+    _kill("we do not support this many color attachments\n",
+          attachment_count > _arraycount(spec->colorattachment_array));
+    
+    memcpy(&spec->colorattachment_array[0],&attachment_array[0],attachment_count * sizeof(VkPipelineColorBlendAttachmentState));
+    
+    spec->colorblendstate.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    
+    spec->colorblendstate.pNext = 0;
+    spec->colorblendstate.flags = 0;
+    spec->colorblendstate.logicOpEnable = logicop_enable;
+    spec->colorblendstate.logicOp = logic_op;
+    spec->colorblendstate.attachmentCount = attachment_count;
+    spec->colorblendstate.pAttachments = &spec->colorattachment_array[0];
+    
+}
+
+void VEnableColorBlendTransparency(VGraphicsPipelineSpecObj* spec,
+                                   u32 colorattachment_bitmask,
+                                   VkBlendFactor srccolor_blendfactor,
+                                   VkBlendFactor dstcolor_blendfactor,
+                                   VkBlendOp colorblend_op,
+                                   VkBlendFactor srcalpha_blendfactor,
+                                   VkBlendFactor dst_alphablendfactor,
+                                   VkBlendOp alphablend_op,
+                                   VkColorComponentFlags colorWriteMask){
+    
+    auto count = spec->colorblendstate.attachmentCount;
+    
+    for(u32 i = 0; i < count; i++){
+        
+        if((1 << i) & colorattachment_bitmask){
+            
+            spec->colorattachment_array[i] = {
+                VK_TRUE,srccolor_blendfactor,dstcolor_blendfactor,colorblend_op,
+                srcalpha_blendfactor,
+                dst_alphablendfactor,alphablend_op,colorWriteMask,
+            };
+        }
+    }
+}
+
+void VEnableDynamicStateGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
+                                             VkDynamicState* dynamic_array,u32 dynamic_count){
+    
+    _kill("max possible dynamic statues set\n",dynamic_count > 9);
+    
+    memcpy(&spec->dynamic_array[0],dynamic_array,sizeof(VkDynamicState) * dynamic_count);
+    
+    spec->dynamicstate.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    spec->dynamicstate.pNext = 0;
+    spec->dynamicstate.flags = 0;
+    spec->dynamicstate.dynamicStateCount = dynamic_count;
+    spec->dynamicstate.pDynamicStates = &spec->dynamic_array[0];
+}
+
+void VSetInputAssemblyState(VGraphicsPipelineSpecObj* spec,VkPrimitiveTopology topology,VkBool32 restart){
+    
+    spec->assembly = {
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        0,
+        0,
+        topology,
+        restart//restart assembly of primitives for indexed draw if index(MAX_INT) is reached
+    };
+}
+
+void VSetRasterState(VGraphicsPipelineSpecObj* spec,VkCullModeFlags cullmode,VkFrontFace frontface,VkBool32 enable_depthclamp,VkPolygonMode polymode,VkBool32 enable_depthbias,f32 depthbias_const,f32 depthbias_clamp,f32 depthbias_slope,f32 linewidth,VkBool32 enable_discard){
+    
+    spec->raster = {
+        
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        0,
+        0,
+        enable_depthclamp,
+        enable_discard,
+        polymode,
+        cullmode,
+        frontface,
+        enable_depthbias,
+        depthbias_const,
+        depthbias_clamp,
+        depthbias_slope,
+        linewidth
+    };
+}
+
+void VPushBackShaderData(VShaderObj* obj,VkShaderStageFlagBits type,void* data,
+                         u32 size,VkSpecializationInfo spec){
+    
+    _kill("max possible shaders reached\n",obj->shader_count >= 5);
+    
+    obj->shaderstage_array[obj->shader_count] = type;
+    obj->shader_data_array[obj->shader_count] = data;
+    obj->spv_size_array[obj->shader_count] = size;
+    obj->spec_array[obj->shader_count] = spec;
+    obj->shader_count++;
+}
+
+
+void VPushBackVertexAttrib(VShaderObj* obj,u32 binding_no,VkFormat format,u32 attrib_size){
+    
+    _kill("cannot push more vert attrib\n",obj->vert_attrib_count >= _arraycount(obj->vert_attrib_array));
+    
+    u32 offset = 0;
+    
+    for(u32 i = 0; i < obj->vert_attrib_count; i++){
+        
+        if(binding_no == obj->vert_attrib_array[i].binding){
+            offset += obj->vert_attrib_size_array[i];
+        }
+    }
+    
+    obj->vert_attrib_array[obj->vert_attrib_count] = {obj->vert_attrib_count,binding_no,format,offset
+    };
+    
+    obj->vert_attrib_size_array[obj->vert_attrib_count] = attrib_size;
+    obj->vert_attrib_count++;
+    
+}
+
+void VPushBackVertexDesc(VShaderObj* obj,u32 binding_no,u32 vert_size,VkVertexInputRate inputrate){
+    
+    _kill("cannot push more vert desc\n",obj->vert_desc_count >= _arraycount(obj->vert_desc_array));
+    
+    obj->vert_desc_array[obj->vert_desc_count] = {binding_no,vert_size,inputrate};
+    obj->vert_desc_count++;
+    
+}
+
+void VPushBackSetElement(VShaderObj::DescSetEntry* set,VkDescriptorType type,u32 bind,u32 array_count){
+    
+    _kill("max desc set element reached\n",set->element_count >= _arraycount(set->element_array));
+    
+    set->element_array[set->element_count] = {type,bind,array_count};
+    set->element_count++;
+    
+}
+
+VShaderObj::DescSetEntry* VGetSet(VShaderObj* obj,u32 set_no){
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        auto entry = &obj->descset_array[i];
+        if(set_no == entry->set_no){
+            return entry;
+        }
+    }
+    
+    return 0;
+}
+
+void VPushBackDescSet(VShaderObj* obj,u32 set_no,u32 shader_stage){
+    
+    VShaderObj::DescSetEntry* set = VGetSet(obj,set_no);
+    
+    if(!set){
+        
+        _kill("max desc set reached\n",obj->descset_count >= _arraycount(obj->descset_array));
+        
+        set = &obj->descset_array[obj->descset_count];
+        obj->descset_count++;
+        
+        set->set_no = set_no;
+    }
+    
+    set->shader_stage |= shader_stage;
+}
+
+void VPushBackPushConstRange(VShaderObj* _restrict obj,VkFormat* format_array,u32 format_count,u32 size,VkShaderStageFlagBits shader_stage){
+    
+    auto hash = VFormatHash(&format_array[0],format_count);
+    
+    VkPushConstantRange* range = 0;
+    
+    for(u32 i = 0; i < obj->range_count; i++){
+        
+        if(obj->range_hash_array[i] == hash){
+            range = &obj->range_array[i];
+            break;
+        }
+    }
+    
+    if(!range){
+        obj->range_hash_array[obj->range_count] = hash;
+        range = &obj->range_array[obj->range_count];
+        obj->range_count++;
+        
+        //MARK: for now we assume the offset is always 0
+        range->offset = 0;
+        range->size = size;
+    }
+    
+    range->stageFlags |= shader_stage;
+}
+
+void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGraphicsPipelineSpecObj* spec_array,u32 spec_count,VkPipeline* pipeline_array,VkPipelineCache cache){
+    
+    VkGraphicsPipelineCreateInfo info_array[16] = {};
+    
+    _kill("too many specs\n",spec_count > _arraycount(info_array));
+    
+    for(u32 i = 0; i < spec_count; i++){
+        
+        auto spec = &spec_array[i];
+        
+        VkPipelineTessellationStateCreateInfo* tessalationstate = 0;
+        VkPipelineDynamicStateCreateInfo* dynamicstate = 0;
+        
+        if(spec->tessalationstate.sType){
+            tessalationstate = &spec->tessalationstate;
+        }
+        
+        if(spec->dynamicstate.sType){
+            dynamicstate= &spec->dynamicstate;
+        }
+        
+        info_array[i] = {
+            VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            0,
+            spec->flags,
+            spec->shadermodule_count,
+            &spec->shaderinfo_array[0],
+            &spec->vertexinput,
+            &spec->assembly,
+            
+            tessalationstate,
+            
+            &spec->viewport,
+            &spec->raster,
+            &spec->multisample,
+            &spec->depthstencil,
+            &spec->colorblendstate,
+            
+            dynamicstate,
+            
+            spec->layout,
+            spec->renderpass,
+            spec->subpass_index,
+            spec->parent_pipeline,
+            spec->parentpipeline_index
+        };
+        
+    }
+    
+    _vktest(vkCreateGraphicsPipelines(vdevice->device,cache,spec_count,&info_array[0],global_allocator,
+                                      pipeline_array));
+    
+    //_kill("",1);
+    
+    //destroy all modules
+    for(u32 i = 0; i < spec_count; i++){
+        
+        auto spec = &spec_array[i];
+        
+        for(u32 j = 0; j < spec->shadermodule_count; j++){
+            vkDestroyShaderModule(vdevice->device,spec->shadermodule_array[j],global_allocator);
+        }
+    }
+    
+}
+
+VGraphicsPipelineSpecObj VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VShaderObj* obj,VkPipelineLayout layout,
+                                                      VkRenderPass renderpass,u32 subpass_index,VSwapchainContext* swap,u32 colorattachment_count,VkPipelineCreateFlags flags,
+                                                      VkPipeline parent_pipeline,s32 parentpipeline_index){
+    
+    VGraphicsPipelineSpecObj spec = {};
+    
+    memcpy(&spec.spec_array[0],&obj->spec_array[0],sizeof(VkSpecializationInfo) * obj->shader_count);
+    
+    
+    
+    spec.subpass_index = subpass_index;
+    spec.flags = flags;
+    spec.layout = layout;
+    spec.renderpass = renderpass;
+    spec.parent_pipeline = parent_pipeline;
+    spec.parentpipeline_index = parentpipeline_index;
+    
+    memcpy(&spec.vert_desc_array[0],&obj->vert_desc_array[0],obj->vert_desc_count * sizeof(VkVertexInputBindingDescription));
+    
+    memcpy(&spec.vert_attrib_array[0],&obj->vert_attrib_array[0],obj->vert_attrib_count * sizeof(VkVertexInputAttributeDescription));
+    
+    spec.vertexinput = {
+        
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        0,
+        0,
+        obj->vert_desc_count,
+        &spec.vert_desc_array[0],
+        obj->vert_attrib_count,
+        &spec.vert_attrib_array[0]
+    };
+    
+    VSetInputAssemblyState(&spec);
+    
+    VSetRasterState(&spec);
+    
+    spec.viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    
+    if(swap){
+        
+        VSetFixedViewportGraphicsPipelineSpec(&spec,swap->width,swap->height);
+    }
+    
+    VSetMultisampleGraphicsPipelineSpec(&spec);
+    
+    
+    //MARK: this is disabled by default
+    VSetDepthStencilGraphicsPipelineSpec(&spec);
+    
+    
+    _kill("we do not support this many color attachments\n",
+          colorattachment_count > _arraycount(spec.colorattachment_array));
+    
+    VkPipelineColorBlendAttachmentState attachment_array[16] = {};
+    
+    for(u32 i = 0; i < colorattachment_count; i++){
+        
+        attachment_array[i] = {
+            VK_FALSE,
+            VK_BLEND_FACTOR_SRC_ALPHA,
+            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            VK_BLEND_OP_ADD,
+            VK_BLEND_FACTOR_ONE,
+            VK_BLEND_FACTOR_ZERO,
+            VK_BLEND_OP_ADD,0xf
+        };
+    }
+    
+    VSetColorBlend(&spec,&attachment_array[0],colorattachment_count);
+    
+    spec.shadermodule_count = obj->shader_count;
+    
+    for(u32 i = 0; i < obj->shader_count; i++){
+        
+        auto data = obj->shader_data_array[i];
+        auto size = obj->spv_size_array[i];
+        
+        spec.shadermodule_array[i] = VCreateShaderModule(vdevice->device,data,size);
+    }
+    
+    for(u32 i = 0; i < obj->shader_count; i++){
+        
+        VkSpecializationInfo* info = 0;
+        
+        if(spec.spec_array[i].mapEntryCount){
+            info = &spec.spec_array[i];
+        }
+        
+        spec.shaderinfo_array[i] = {
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            0,
+            0,
+            obj->shaderstage_array[i],
+            spec.shadermodule_array[i],
+            "main",
+            info
+        };
+    }
+    
+    return spec;
+}
+
+
+void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset_count,u32 desc_set){
+    
+    _kill("desc count cannot be 0\n",!descset_count);
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        
+        auto set = &obj->descset_array[i];
+        
+        if(set->set_no == desc_set || desc_set == (u32)-1){
+            
+            for(u32 j = 0; j < set->element_count; j++){
+                
+                auto element = &set->element_array[j];
+                
+                VDescPushBackPoolSpec(spec,element->type,element->array_count * descset_count);
+            }
+        }
+    }
+    
+    if(descset_count > spec->desc_count){
+        spec->desc_count = descset_count;
+    }
+    
+}
+
+VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,VShaderObj* obj,u32 descset_no){
+    
+    VShaderObj::DescSetEntry* set = 0;
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        
+        auto dset = &obj->descset_array[i];
+        
+        if(dset->set_no == descset_no){
+            set = dset;
+            break;
+        }
+    }
+    
+    _kill("set not found\n",!set);
+    
+    
+    VDescriptorBindingSpec bindingspec = {};
+    
+    for(u32 i = 0; i < set->element_count; i++){
+        
+        auto element = &set->element_array[i];
+        
+        VDescPushBackBindingSpec(&bindingspec,element->type,
+                                 element->array_count,set->shader_stage);
+    }
+    
+    return VCreateDescriptorSetLayout(vdevice,bindingspec);
+}
+
+VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,VkDescriptorSetLayout* descriptorset_array,u32 descriptorset_count,VShaderObj* obj){
+    
+    return VCreatePipelineLayout(vdevice,descriptorset_array,descriptorset_count,obj->range_array,
+                                 obj->range_count);
+}
+
+
+VkDescriptorPool VCreateDescriptorPoolX(VDeviceContext* _in_ vdevice,
+                                        VDescriptorPoolSpec poolspec,u32 flags){
+    
+    return VCreateDescriptorPool(vdevice,poolspec,flags,poolspec.desc_count);
+}
