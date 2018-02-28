@@ -533,8 +533,8 @@ VkRenderPass VCreateRenderPass(const  VDeviceContext* _restrict vdevice,
 
 
 VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
-                                       VkDescriptorSetLayout* descriptorset_array,
-                                       u32 descriptorset_count,
+                                       VkDescriptorSetLayout* descriptorsetlayout_array,
+                                       u32 descriptorsetlayout_count,
                                        VkPushConstantRange* pushconstrange_array,
                                        u32 pushconstrange_count);
 
@@ -924,13 +924,6 @@ struct VGraphicsPipelineSpecObj{
 };
 
 void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);
-
-VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,VShaderObj* obj,u32 descset_no);
-
-VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
-                                       VkDescriptorSetLayout* descriptorset_array,
-                                       u32 descriptorset_count,
-                                       VShaderObj* obj);
 
 u32 VGetDescriptorSetLayoutHash(VShaderObj* obj,u32 descset_no);
 

@@ -178,3 +178,40 @@ VShaderObj VMakeShaderObjSPX(SPXData* spx_array,
     
     return obj;
 }
+
+
+VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,VShaderObj* obj,u32 descset_no){
+    
+    VShaderObj::DescSetEntry* set = 0;
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        
+        auto dset = &obj->descset_array[i];
+        
+        if(dset->set_no == descset_no){
+            set = dset;
+            break;
+        }
+    }
+    
+    _kill("set not found\n",!set);
+    
+    
+    VDescriptorBindingSpec bindingspec = {};
+    
+    for(u32 i = 0; i < set->element_count; i++){
+        
+        auto element = &set->element_array[i];
+        
+        VDescPushBackBindingSpec(&bindingspec,element->type,
+                                 element->array_count,set->shader_stage);
+    }
+    
+    return VCreateDescriptorSetLayout(vdevice,bindingspec);
+}
+
+VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,VkDescriptorSetLayout* descriptorsetlayout_array,u32 descriptorsetlayout_count,VShaderObj* obj){
+    
+    return VCreatePipelineLayout(vdevice,descriptorsetlayout_array,descriptorsetlayout_count,obj->range_array,
+                                 obj->range_count);
+}
