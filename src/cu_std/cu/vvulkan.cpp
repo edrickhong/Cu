@@ -2656,7 +2656,6 @@ void VCreateComputePipelineArray(const  VDeviceContext* _restrict vdevice,
 }
 
 
-//
 
 void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
                                            VkViewport* viewport,u32 viewport_count,VkRect2D* scissor,
@@ -3121,39 +3120,11 @@ void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset
     
 }
 
-VkDescriptorSetLayout VCreateDescriptorSetLayout(const  VDeviceContext* vdevice,VShaderObj* obj,u32 descset_no){
-    
-    VShaderObj::DescSetEntry* set = 0;
-    
-    for(u32 i = 0; i < obj->descset_count; i++){
-        
-        auto dset = &obj->descset_array[i];
-        
-        if(dset->set_no == descset_no){
-            set = dset;
-            break;
-        }
-    }
-    
-    _kill("set not found\n",!set);
-    
-    
-    VDescriptorBindingSpec bindingspec = {};
-    
-    for(u32 i = 0; i < set->element_count; i++){
-        
-        auto element = &set->element_array[i];
-        
-        VDescPushBackBindingSpec(&bindingspec,element->type,
-                                 element->array_count,set->shader_stage);
-    }
-    
-    return VCreateDescriptorSetLayout(vdevice,bindingspec);
-}
+
 
 VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
-                                       VkDescriptorSetLayout* descriptorset_array,
-                                       u32 descriptorset_count,VkPushConstantRange* pushconstrange_array,
+                                       VkDescriptorSetLayout* descriptorsetlayout_array,
+                                       u32 descriptorsetlayout_count,VkPushConstantRange* pushconstrange_array,
                                        u32 pushconstrange_count){
     
     VkPipelineLayout layout;
@@ -3163,8 +3134,8 @@ VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
         VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         0,
         0,
-        descriptorset_count,
-        descriptorset_array,
+        descriptorsetlayout_count,
+        descriptorsetlayout_array,
         pushconstrange_count,
         pushconstrange_array
     };
@@ -3172,12 +3143,6 @@ VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
     vkCreatePipelineLayout(vdevice->device,&createinfo,global_allocator,&layout);
     
     return layout;
-}
-
-VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,VkDescriptorSetLayout* descriptorset_array,u32 descriptorset_count,VShaderObj* obj){
-    
-    return VCreatePipelineLayout(vdevice,descriptorset_array,descriptorset_count,obj->range_array,
-                                 obj->range_count);
 }
 
 
