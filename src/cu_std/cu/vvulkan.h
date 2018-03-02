@@ -923,8 +923,6 @@ struct VGraphicsPipelineSpecObj{
     u32 shadermodule_count = 0;
 };
 
-void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);
-
 u32 VGetDescriptorSetLayoutHash(VShaderObj* obj,u32 descset_no);
 
 VGraphicsPipelineSpecObj VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VShaderObj* obj,VkPipelineLayout layout,VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
