@@ -105,6 +105,15 @@ s32 main(s32 argc,s8** argv){
     
     pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),false);
     
+    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),false);
+    
+    //MARK: keep the obj buffer permanently mapped
+    vkMapMemory(pdata->vdevice.device,pdata->skel_ubo.memory,
+                0,pdata->skel_ubo.size,0,(void**)&pdata->objupdate_ptr);
+    
+    vkMapMemory(pdata->vdevice.device,pdata->light_ubo.memory,
+                0,pdata->light_ubo.size,0,(void**)&pdata->lightupdate_ptr);
+    
     
     {
         pdata->submit_audiobuffer.size_frames =
@@ -166,11 +175,6 @@ s32 main(s32 argc,s8** argv){
     pdata->deltatime = 0;
     
     ResetTransferBuffer();
-    
-    
-    //MARK: keep the obj buffer permanently mapped
-    vkMapMemory(pdata->vdevice.device,pdata->skel_ubo.memory,
-                0,pdata->skel_ubo.size,0,(void**)&pdata->objupdate_ptr);
     
     while(gdata->running){
         
@@ -330,29 +334,4 @@ s32 main(s32 argc,s8** argv){
   implement quaternion double cover
   Implement Dual quaternion blending in MDF
   
-  FIXME:
-  TAlloc calls. I think there are some corruption issues caused by these calls
-  
-  main:
-  src/engine/main.h:  auto pushconst = TAlloc(PushConst,1);
-  src/engine/main.h:  auto cmdbuffers = TAlloc(VkCommandBuffer,count);
-  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
-  src/engine/main.h:      auto batch = TAlloc(RenderBatch,1);
-  src/engine/main.h:    TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
-  src/engine/main.h:  auto blend = TAlloc(ThreadLinearBlendRes,1);
-  src/engine/main.h:  blend->result = TAlloc(Matrix4b4,anim_handle->bone_count);
-  
-  main(from game):  
-  src/engine/main.h:  auto orientation = TAlloc(Matrix4b4,1);
-  
-  
-  
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h SetObjectOrientation 1282
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h DispatchSkelLinearBlend 1592
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h DispatchSkelLinearBlend 1591
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h BuildRenderCommandBuffer 624
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h DispatchRenderContext 418
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h GetCmdBufferArray 453
-WARNING: Raw ptr, no bounds checking can be done for passed ptr : c:\users\user\desktop\cu\src\engine\main.h ProcessObjUpdateList 968
-
 */

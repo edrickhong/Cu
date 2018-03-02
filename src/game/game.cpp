@@ -684,8 +684,6 @@ extern "C" {
         
         ProcessAudio(context);
         
-        context->SetLightPos(Vector4{-8.0f,-5.0f,0.0f,1.0f});
-        
         UpdateAnimationDataList(context);
         UpdateDrawList(context);
     }

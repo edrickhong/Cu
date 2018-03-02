@@ -40,9 +40,6 @@ layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
 layout(push_constant) uniform PushConsts{		
     mat4 viewproj;
     vec4 camerapos;
-    vec4 lightpos;
-    vec4 ambient_color;
-    float ambient_intensity;
 }pushconst;
 
 
