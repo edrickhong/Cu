@@ -7,26 +7,32 @@ layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inTexcoord;
 
+struct PointLight{
+    vec4 pos;
+    vec4 color;
+    float intensity;
+};
+
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
-    
     mat4 world;
     mat4 bone_array[64];
     uint texture_id[16];
     
 }ubo;
 
-layout(push_constant) uniform PushConsts{		
-    mat4 viewproj;
-    vec4 camerapos;
-    vec4 lightpos;
-    vec4 ambient_color;
-    float ambient_intensity;
-}pushconst;
+
 
 layout (set = 1,binding = 0) uniform sampler2D samplerColor;//we should separate this
 layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should separate this
 
 layout (set = 1,binding = 2, rgba8) uniform restrict writeonly image2D vt_feedback;
+
+
+layout (set = 1,binding = 3) uniform LIGHT_UBO{
+    uint point_count;
+    PointLight point_array[1024];
+    
+}light;
 
 layout(origin_upper_left) in vec4 gl_FragCoord;
 
@@ -34,6 +40,11 @@ struct FetchCoord{
     uvec2 texture_detail;// x: texture_id(actual id = tid + 1) y: mip
     vec2 texcoord; // x and y coord of the texture
 };
+
+layout(push_constant) uniform PushConsts{		
+    mat4 viewproj;
+    vec4 camerapos;
+}pushconst;
 
 
 
@@ -242,23 +253,29 @@ void main(){
     vec4 color = VTReadTexture(samplerColor,vec2(phys_w,phys_h),
                                samplerLookup[texture_id],inTexcoord,texture_id);
     
-    vec3 normal = normalize(inNormal);
-    vec3 lightpos = vec3(pushconst.lightpos.xyz);
-    vec3 lightdir = normalize(lightpos - inPos);
-    
-    vec3 diffuse = max(dot(normal,lightdir),0.0f) * vec3(1,1,1);
-    
     vec3 eyepos = vec3(pushconst.camerapos.xyz);
-    
     vec3 eyetovertex = normalize(eyepos - inPos);
-    vec3 reflvec = reflect(-lightdir,normal);
     
-    //factor and strength
-    vec3 specular = pow(max(dot(eyepos,reflvec),0.0f),8) * 0.0001f * vec3(1,1,1);
+    vec4 factor = vec4(0.0f,0.0f,0.0f,1.0f);
     
-    vec3 ambientcolor = vec3(pushconst.ambient_color * pushconst.ambient_intensity);
-    
-    vec4 factor = vec4((ambientcolor + diffuse + specular),1);
+    for(uint i = 0; i < light.point_count; i++){
+        
+        PointLight p_light = light.point_array[i];
+        
+        vec3 normal = normalize(inNormal);
+        vec3 lightpos = vec3(p_light.pos.xyz);
+        vec3 lightdir = normalize(lightpos - inPos);
+        
+        vec3 diffuse = max(dot(normal,lightdir),0.0f) * vec3(1,1,1);
+        vec3 reflvec = reflect(-lightdir,normal);
+        
+        //factor and strength
+        vec3 specular = pow(max(dot(eyepos,reflvec),0.0f),8) * 0.0001f * vec3(1,1,1);
+        
+        vec3 ambientcolor = vec3(p_light.color * p_light.intensity);
+        
+        factor += vec4((ambientcolor + diffuse + specular),0);
+    }
     
     outFragColor = color * factor;
 }

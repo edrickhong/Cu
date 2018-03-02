@@ -23,3 +23,5 @@ VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
                                        VkDescriptorSetLayout* descriptorset_array,
                                        u32 descriptorset_count,
                                        VShaderObj* obj);
+
+void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset_count = 1,u32 desc_set = (u32)-1);

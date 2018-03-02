@@ -497,6 +497,20 @@ struct ThreadLinearBlendRes{
     DEBUGPTR(Matrix4b4) result;//filled by the platform
 };
 
+struct LightUBO{
+    
+#define _lightcount 1024
+    
+    struct PointLight{
+        Vector4 pos;
+        Color color;
+        f32 intensity;
+    };
+    u32 point_count;
+    
+    PointLight point_array[_lightcount];
+};
+
 struct PlatformData{
     
     WWindowContext window;
@@ -516,8 +530,10 @@ struct PlatformData{
     
     VkDescriptorPool descriptorpool;
     
+    
     VkDescriptorSetLayout dynuniform_descriptorlayout;
     VkDescriptorSetLayout vt_descriptorlayout;
+    
     
     VkDescriptorSet dynuniform_skel_descriptorset;
     VkDescriptorSet vt_descriptorset;
@@ -527,10 +543,10 @@ struct PlatformData{
     VkPipelineLayout pipelinelayout;
     
     VBufferContext skel_ubo;
+    VBufferContext light_ubo;
     
     Matrix4b4 view;
     Matrix4b4 proj;
-    Vector4 lightpos;
     Vector4 camerapos;
     
     AAudioBuffer submit_audiobuffer;
@@ -552,6 +568,7 @@ struct PlatformData{
     
     //MARK:
     s8* objupdate_ptr;
+    s8* lightupdate_ptr;
     ObjUpdateEntry objupdate_array[256];
     u32 objupdate_count;
     
@@ -636,10 +653,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     *pushconst = {
         Transpose(pdata->proj * pdata->view),
-        pdata->camerapos,
-        pdata->lightpos,
-        White,
-        0.2f
+        pdata->camerapos
     };
     
     //MARK:
@@ -1284,10 +1298,6 @@ void SetActiveCameraOrientation(Vector4 pos,Vector4 lookdir){
     pdata->view = ViewMatrix(pos,pos + lookdir,{0.0f,-1.0f,0.0f,0.0f});
 }
 
-void SetLightPos(Vector4 pos){
-    pdata->lightpos = pos;
-}
-
 void SetObjectOrientation(u32 obj_id,Vector4 pos,Quaternion rot,f32 scale){
     
     _kill("too many entries\n",
@@ -1410,7 +1420,22 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     f32 aspectratio = ((f32)pdata->window.width)/((f32)pdata->window.height);
     
     pdata->proj = ProjectionMatrix(_radians(90.0f),aspectratio,0.1f,256.0f);
-    pdata->lightpos = Vector4{-9.0f,-5.0f,0.0f,1.0f};
+    
+    //MARK:light stuff (DEBUG) 
+    {
+        auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+        light_ubo->point_count = 1;
+        light_ubo->point_array[0] = {Vector4{-8.0f,-5.0f,0.0f,1.0f},White,0.2f};
+        
+        VkMappedMemoryRange range = {
+            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            0,
+            pdata->light_ubo.memory,
+            0,
+            sizeof(LightUBO)
+        };
+        
+    }
     
     pdata->camerapos = position;
     
@@ -1506,7 +1531,7 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     VkDescriptorSetLayout desclayout_array[] = {
         pdata->dynuniform_descriptorlayout,
-        pdata->vt_descriptorlayout,    
+        pdata->vt_descriptorlayout,
     };
     
     
@@ -1519,13 +1544,13 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     VkDescriptorSetLayout desc_layout[] = {
         pdata->dynuniform_descriptorlayout,
-        pdata->vt_descriptorlayout,    
+        pdata->vt_descriptorlayout,
     };
     
     
     
     pdata->pipelinelayout = VCreatePipelineLayout(&pdata->vdevice,
-                                                  &desc_layout[0],2,&shader_obj);
+                                                  &desc_layout[0],_arraycount(desc_layout),&shader_obj);
     
     VDescriptorWriteSpec writespec;
     
@@ -1534,6 +1559,11 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     VDescPushBackWriteSpecBuffer(&writespec,pdata->dynuniform_skel_descriptorset,0,0,1,
                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,&skel_binfo);
+    
+    auto light_binfo = VGetBufferInfo(&pdata->light_ubo,0,sizeof(LightUBO));
+    
+    VDescPushBackWriteSpecBuffer(&writespec,pdata->vt_descriptorset,3,0,1,
+                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,&light_binfo);
     
     VkDescriptorImageInfo image_info[17] =
     {
@@ -1588,7 +1618,6 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.SetObjectMaterial = SetObjectMaterial;
     pdata->scenecontext.SetActiveCameraOrientation = SetActiveCameraOrientation;
     pdata->scenecontext.SetObjectOrientation = SetObjectOrientation;
-    pdata->scenecontext.SetLightPos = SetLightPos;
     
     
     //asset stuff
