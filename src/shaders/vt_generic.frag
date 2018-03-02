@@ -98,8 +98,18 @@ float GetMipLevel(vec2 uv,vec2 dim){
     return miplevel;
 }
 
+vec4 VTGetPhysCoord(sampler2D vt_texture,vec2 vt_coord){
+    return vec4(0);
+}
+ivec2 VTGetFeedBackWritePos(){
+    return ivec2(0);
+}
+vec4 VTGenerateFetchData(uint texture_id){
+    
+    return vec4(0);
+}
 
-//TODO:can we make this generic?
+//TODO: Separate this
 vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
                    sampler2D vt_texture,vec2 vt_coord,uint texture_id){
     
