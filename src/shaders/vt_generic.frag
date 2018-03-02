@@ -181,7 +181,7 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
                 
                 vt_dimpagesf = vec2(vt_dimpages.x,vt_dimpages.y);
                 
-                fetchcoord = inTexcoord - (fract(inTexcoord * vt_dimpagesf)/vt_dimpagesf);
+                fetchcoord = vt_coord - (fract(vt_coord * vt_dimpagesf)/vt_dimpagesf);
                 
                 p_data = texture(vt_texture,fetchcoord);
                 
@@ -200,7 +200,7 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
     
     vec2 page_pos = floor(p_data.xy * 255.0f + 0.5f);
     
-    vec2 page_offset = fract(inTexcoord.xy * vt_dimpagesf);
+    vec2 page_offset = fract(vt_coord.xy * vt_dimpagesf);
     
 #define k 1.0f/128.0f
     
