@@ -279,7 +279,6 @@ void main(){
         vec3 diffuse = max(dot(normal,lightdir),0.0f) * vec3(1,1,1);
         vec3 reflvec = reflect(-lightdir,normal);
         
-        //factor and strength
         vec3 specular = pow(max(dot(eyepos,reflvec),0.0f),8) * 0.0001f * vec3(1,1,1);
         
         vec3 ambientcolor = vec3(p_light.color * p_light.intensity);
