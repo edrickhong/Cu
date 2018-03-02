@@ -271,7 +271,7 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
                           VK_PIPELINE_BIND_POINT_GRAPHICS,batch->pipeline);
         
         vkCmdPushConstants(cmdbuffer,batch->pipelinelayout,
-                           VK_SHADER_STAGE_VERTEX_BIT,0,batch->pushconst_size,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,0,batch->pushconst_size,
                            batch->pushconst_data);
         
         //slot 0 is reserved for dynamic ubo

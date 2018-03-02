@@ -37,10 +37,8 @@ layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
     
 }ubo;
 
-#define _Diffuse_ID 0
-
 layout(push_constant) uniform PushConsts{		
-    mat4 viewproj;//TODO: we can separate proj to a specialization const since it never changes
+    mat4 viewproj;
     vec4 camerapos;
     vec4 lightpos;
     vec4 ambient_color;
@@ -50,11 +48,8 @@ layout(push_constant) uniform PushConsts{
 
 layout (location = 0) out vec3 outPos;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) flat out vec3 outEyePos;
-layout (location = 3) flat out vec3 outLightPos;
-layout (location = 4) out vec3 outAmbientColor;
-layout (location = 5) out vec2 outTexcoord;
-layout (location = 6) flat out uint outTextureIndex;
+layout (location = 2) out vec2 outTexcoord;
+
 
 out gl_PerVertex {
     
@@ -104,11 +99,7 @@ void main(){
     gl_Position = viewproj * vertexposition;
     outPos = vec3(vertexposition);
     outNormal = normal;
-    outEyePos = vec3(pushconst.camerapos);
-    outLightPos = vec3(pushconst.lightpos);
-    outAmbientColor = vec3(pushconst.ambient_color * pushconst.ambient_intensity);
     outTexcoord = inTexcoord;
-    outTextureIndex = ubo.texture_id[_Diffuse_ID];
     
 }
 

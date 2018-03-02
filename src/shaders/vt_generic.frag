@@ -5,19 +5,23 @@
 
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
-layout (location = 2) flat in vec3 inEyePos;
-layout (location = 3) flat in vec3 inLightPos;
-layout (location = 4) in vec3 inAmbientColor;
-layout (location = 5) in vec2 inTexcoord;
-layout (location = 6) flat in uint inTextureIndex;
+layout (location = 2) in vec2 inTexcoord;
 
-//layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
-//    
-//    mat4 world;
-//    mat4 bone_array[64];
-//    uint texture_id[16];
-//    
-//}ubo;
+layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
+    
+    mat4 world;
+    mat4 bone_array[64];
+    uint texture_id[16];
+    
+}ubo;
+
+layout(push_constant) uniform PushConsts{		
+    mat4 viewproj;
+    vec4 camerapos;
+    vec4 lightpos;
+    vec4 ambient_color;
+    float ambient_intensity;
+}pushconst;
 
 layout (set = 1,binding = 0) uniform sampler2D samplerColor;//we should separate this
 layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should separate this
@@ -45,6 +49,7 @@ layout (constant_id = 5) const float phys_w = 16384.0f;
 layout (constant_id = 6) const float phys_h = 8192.0f;
 
 #define _max_int 255.0f
+
 
 
 
@@ -85,7 +90,7 @@ float GetMipLevel(vec2 uv,vec2 dim){
 
 //TODO:can we make this generic?
 vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
-                   sampler2D vt_texture,vec2 vt_coord){
+                   sampler2D vt_texture,vec2 vt_coord,uint texture_id){
     
     vec2 phys_dimpages_recp = page_size / vec2(phys_w,phys_h);
     
@@ -124,7 +129,7 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
                 
                 
                 vec4 fetch_data =
-                    vec4(float(inTextureIndex + 1),float(mip_level),tcoord.x,tcoord.y) *
+                    vec4(float(texture_id + 1),float(mip_level),tcoord.x,tcoord.y) *
                     vec4(1.0f/255.0f,1.0f/255.0f,1.0f/255.0f,1.0f/255.0f);
                 
                 ivec2 write_pos_int = ivec2(write_pos.x,write_pos.y);
@@ -228,23 +233,32 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
     return color;
 }
 
+#define _Diffuse_ID 0
+
 void main(){
     
+    uint texture_id = ubo.texture_id[_Diffuse_ID];
+    
     vec4 color = VTReadTexture(samplerColor,vec2(phys_w,phys_h),
-                               samplerLookup[inTextureIndex],inTexcoord);
+                               samplerLookup[texture_id],inTexcoord,texture_id);
     
     vec3 normal = normalize(inNormal);
-    vec3 lightdir = normalize(inLightPos - inPos);
+    vec3 lightpos = vec3(pushconst.lightpos.xyz);
+    vec3 lightdir = normalize(lightpos - inPos);
     
     vec3 diffuse = max(dot(normal,lightdir),0.0f) * vec3(1,1,1);
     
-    vec3 eyetovertex = normalize(inEyePos - inPos);
+    vec3 eyepos = vec3(pushconst.camerapos.xyz);
+    
+    vec3 eyetovertex = normalize(eyepos - inPos);
     vec3 reflvec = reflect(-lightdir,normal);
     
     //factor and strength
-    vec3 specular = pow(max(dot(inEyePos,reflvec),0.0f),8) * 0.0001f * vec3(1,1,1);
+    vec3 specular = pow(max(dot(eyepos,reflvec),0.0f),8) * 0.0001f * vec3(1,1,1);
     
-    vec4 factor = vec4((inAmbientColor + diffuse + specular),1);
+    vec3 ambientcolor = vec3(pushconst.ambient_color * pushconst.ambient_intensity);
+    
+    vec4 factor = vec4((ambientcolor + diffuse + specular),1);
     
     outFragColor = color * factor;
 }
