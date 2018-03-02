@@ -215,3 +215,26 @@ VkPipelineLayout VCreatePipelineLayout(const  VDeviceContext* _restrict vdevice,
     return VCreatePipelineLayout(vdevice,descriptorsetlayout_array,descriptorsetlayout_count,obj->range_array,
                                  obj->range_count);
 }
+
+void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset_count,u32 desc_set){
+    
+    _kill("desc count cannot be 0\n",!descset_count);
+    
+    for(u32 i = 0; i < obj->descset_count; i++){
+        
+        auto set = &obj->descset_array[i];
+        
+        if(set->set_no == desc_set || desc_set == (u32)-1){
+            
+            for(u32 j = 0; j < set->element_count; j++){
+                
+                auto element = &set->element_array[j];
+                
+                VDescPushBackPoolSpec(spec,element->type,element->array_count * descset_count);
+            }
+        }
+    }
+    
+    spec->desc_count = descset_count * obj->descset_count;
+    
+}
