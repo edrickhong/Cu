@@ -538,7 +538,7 @@ struct PlatformData{
     VkDescriptorSet dynuniform_skel_descriptorset;
     VkDescriptorSet vt_descriptorset;
     
-    
+    VkPipelineCache pipelinecache;
     VkPipeline pipeline_array[2];
     VkPipelineLayout pipelinelayout;
     
@@ -1320,6 +1320,21 @@ void SetObjectMaterial(u32 obj_id,u32 mat_id){
 
 void CompileAllPipelines(PlatformData* pdata){
     
+    void* cache_data = 0;
+    ptrsize cache_size = 0;
+    
+    auto pipelinecachefile = "pipelinecache_file.txt";
+    
+    if(FIsFileExists(pipelinecachefile)){
+        
+        auto file = FOpenFile(pipelinecachefile,F_FLAG_READONLY);
+        cache_data = FReadFileToBuffer(file,&cache_size);
+        
+        FCloseFile(file);
+    }
+    
+    pdata->pipelinecache = VCreatePipelineCache(&pdata->vdevice,cache_data,cache_size);
+    
     if(pdata->pipeline_array[PSTATIC]){
         VDestroyPipeline(&pdata->vdevice,pdata->pipeline_array[PSTATIC]);
     }
@@ -1358,7 +1373,7 @@ void CompileAllPipelines(PlatformData* pdata){
                                              VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
                                              VK_TRUE);
         
-        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSKEL]);
+        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSKEL],pdata->pipelinecache);
     }
     
     
@@ -1379,7 +1394,7 @@ void CompileAllPipelines(PlatformData* pdata){
                                              VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
                                              VK_TRUE);
         
-        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSTATIC]);
+        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSTATIC],pdata->pipelinecache);
     }
     
     //set rendercontext resources
@@ -1406,6 +1421,26 @@ void CompileAllPipelines(PlatformData* pdata){
         pdata->rendercontext.rendergroup[1].scissor_count = 0;
         pdata->rendercontext.rendergroup[1].viewport_count = 0;
     }
+    
+    if(cache_data){
+        unalloc(cache_data);
+    }
+    
+    u32 write_cache_size = 0;
+    
+    //write the cache data
+    VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,0,&write_cache_size);
+    
+    auto write_cache_data = TAlloc(s8,write_cache_size);
+    
+    VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,write_cache_data,&write_cache_size);
+    
+    
+    auto file = FOpenFile(pipelinecachefile,F_FLAG_WRITEONLY | F_FLAG_CREATE | F_FLAG_TRUNCATE);
+    
+    FWrite(file,write_cache_data,write_cache_size);
+    
+    FCloseFile(file);
 }
 
 
