@@ -942,7 +942,7 @@ GUIFont GUICreateFontFromFile(const s8* filepath,VkCommandBuffer cmdbuffer,
 }
 
 void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
-                            VkRenderPass renderpass,u32 vertexbinding_no){
+                            VkRenderPass renderpass,u32 vertexbinding_no,VkPipelineCache cache = 0){
     
     if(gui->pipeline_array[0]){
         return;
@@ -971,66 +971,57 @@ void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
     
     VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
     
+    VGraphicsPipelineSpecObj spec_array[3] = {};
+    
     //solid
-    {
-        
-        auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
-        
-        VSetRasterState(&spec,VK_CULL_MODE_NONE);
-        
-        VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
-        
-        VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_SOLID]);
-        
-    }
+    
+    VMakeGraphicsPipelineSpecObj(vdevice,&spec_array[0],&obj,gui->pipelinelayout,renderpass,0,swap);
+    
+    VSetRasterState(&spec_array[0],VK_CULL_MODE_NONE);
+    
+    VEnableDynamicStateGraphicsPipelineSpec(&spec_array[0],&dynamicstate_array[0],_arraycount(dynamicstate_array));
     
     //line
-    {
-        
-        
-        auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
-        
-        VSetInputAssemblyState(&spec,VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-        
-        VSetRasterState(&spec,VK_CULL_MODE_NONE);
-        
-        VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
-        
-        VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_LINE]);
-    }
+    
+    
+    VMakeGraphicsPipelineSpecObj(vdevice,&spec_array[1],&obj,gui->pipelinelayout,renderpass,0,swap);
+    
+    VSetInputAssemblyState(&spec_array[1],VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+    
+    VSetRasterState(&spec_array[1],VK_CULL_MODE_NONE);
+    
+    VEnableDynamicStateGraphicsPipelineSpec(&spec_array[1],&dynamicstate_array[0],_arraycount(dynamicstate_array));
     
     //font
-    {
-        
-        VShaderObj obj = {};
-        
-        VPushBackShaderData(&obj,VK_SHADER_STAGE_VERTEX_BIT,&m_gui_vert_spv[0],sizeof(m_gui_vert_spv));
-        
-        VPushBackShaderData(&obj,VK_SHADER_STAGE_FRAGMENT_BIT,&m_gui_tex_frag_spv[0],sizeof(m_gui_tex_frag_spv));
-        
-        VPushBackVertexDesc(&obj,vertexbinding_no,sizeof(GUIVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-        
-        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,sizeof(GUIVertex::pos));
-        
-        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,sizeof(GUIVertex::uv));
-        
-        VPushBackVertexAttrib(&obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
-        
-        auto spec = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
-        
-        VSetRasterState(&spec,VK_CULL_MODE_NONE);
-        
-        VEnableDynamicStateGraphicsPipelineSpec(&spec,&dynamicstate_array[0],_arraycount(dynamicstate_array));
-        
-        VEnableColorBlendTransparency(&spec);
-        
-        VCreateGraphicsPipelineArray(vdevice,&spec,1,&gui->pipeline_array[GUI_RENDER_TEXT]);
-    }
+    
+    VShaderObj text_obj = {};
+    
+    VPushBackShaderData(&text_obj,VK_SHADER_STAGE_VERTEX_BIT,&m_gui_vert_spv[0],sizeof(m_gui_vert_spv));
+    
+    VPushBackShaderData(&text_obj,VK_SHADER_STAGE_FRAGMENT_BIT,&m_gui_tex_frag_spv[0],sizeof(m_gui_tex_frag_spv));
+    
+    VPushBackVertexDesc(&text_obj,vertexbinding_no,sizeof(GUIVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+    
+    VPushBackVertexAttrib(&text_obj,vertexbinding_no,VK_FORMAT_R32G32B32_SFLOAT,sizeof(GUIVertex::pos));
+    
+    VPushBackVertexAttrib(&text_obj,vertexbinding_no,VK_FORMAT_R32G32_SFLOAT,sizeof(GUIVertex::uv));
+    
+    VPushBackVertexAttrib(&text_obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
+    
+    VMakeGraphicsPipelineSpecObj(vdevice,&spec_array[2],&text_obj,gui->pipelinelayout,renderpass,0,swap);
+    
+    VSetRasterState(&spec_array[2],VK_CULL_MODE_NONE);
+    
+    VEnableDynamicStateGraphicsPipelineSpec(&spec_array[2],&dynamicstate_array[0],_arraycount(dynamicstate_array));
+    
+    VEnableColorBlendTransparency(&spec_array[2]);
+    
+    VCreateGraphicsPipelineArray(vdevice,&spec_array[0],_arraycount(spec_array),&gui->pipeline_array[0],cache);
     
 }
 
 void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
-             VkRenderPass renderpass,VkQueue queue,VkCommandBuffer cmdbuffer,
+             VkRenderPass renderpass,VkQueue queue,VkCommandBuffer cmdbuffer,VkPipelineCache cache,
              u32 vertexbinding_no,GUIFont* fonthandle){
     
     _kill("GUI already init\n",gui);
@@ -1073,7 +1064,7 @@ void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
         fonthandle = gui->default_font;
     }
     
-    InitInternalComponents(vdevice,swap,renderpass,vertexbinding_no);
+    InitInternalComponents(vdevice,swap,renderpass,vertexbinding_no,cache);
     
     
     gui->vert_buffer =
