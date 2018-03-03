@@ -29,58 +29,58 @@ typedef DIR* DirectoryHandle;
 typedef ino64_t FileNode;
 
 struct FileInfo{
-  s8 filename[256];
-  u32 type;
+    s8 filename[256];
+    u32 type;
 };
 
 FileHandle _ainline FOpenFile(const s8* filepath,u32 flags){
-  
-  FileHandle filehandle = open(filepath,flags);
-  
-  return filehandle;
+    
+    FileHandle filehandle = open(filepath,flags);
+    
+    return filehandle;
 }
 
 
 void _ainline FCloseFile(FileHandle filehandle){
-  close(filehandle);
+    close(filehandle);
 }
 
 logic _ainline FIsFileExists(const s8* filepath){
-  auto file = FOpenFile(filepath,F_FLAG_READONLY);
-  logic ret = file != F_FILE_INVALID;
-  FCloseFile(file);
-  return ret;
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    logic ret = file != F_FILE_INVALID;
+    FCloseFile(file);
+    return ret;
 }
 
 void _ainline FRead(FileHandle filehandle,void* buffer,ptrsize size){
-  read(filehandle,buffer,size);
+    read(filehandle,buffer,size);
 }
 
 void _ainline FWrite(FileHandle filehandle,void* buffer,ptrsize size){
-  write(filehandle,buffer,size);
+    write(filehandle,buffer,size);
 }
 
 ptrsize _ainline FSeekFile(FileHandle filehandle,ptrsize move_size,u32 movemethod){
-
-  if(movemethod == F_METHOD_START){
-    lseek(filehandle,0,SEEK_SET);
-    movemethod = F_METHOD_CUR;
-  }
-
-  return lseek(filehandle,move_size,movemethod);
+    
+    if(movemethod == F_METHOD_START){
+        lseek(filehandle,0,SEEK_SET);
+        movemethod = F_METHOD_CUR;
+    }
+    
+    return lseek(filehandle,move_size,movemethod);
 }
 
 ptrsize _ainline FCurFilePosition(FileHandle filehandle){
-  return FSeekFile(filehandle,0,F_METHOD_CUR);
+    return FSeekFile(filehandle,0,F_METHOD_CUR);
 }
 
 ptrsize _ainline FGetFileSize(FileHandle filehandle){
-  
-  ptrsize size = FSeekFile(filehandle,0,F_METHOD_END);
-
-  FSeekFile(filehandle,0,F_METHOD_START);
-
-  return size;
+    
+    ptrsize size = FSeekFile(filehandle,0,F_METHOD_END);
+    
+    FSeekFile(filehandle,0,F_METHOD_START);
+    
+    return size;
 }
 
 s8* FReadFileToBuffer(FileHandle filehandle,ptrsize* size);
