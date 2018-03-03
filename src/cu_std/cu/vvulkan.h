@@ -928,8 +928,8 @@ struct VGraphicsPipelineSpecObj{
 
 u32 VGetDescriptorSetLayoutHash(VShaderObj* obj,u32 descset_no);
 
-void VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VGraphicsPipelineSpecObj* spec,VShaderObj* obj,VkPipelineLayout layout,VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
-                                  VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
+VGraphicsPipelineSpecObj VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VShaderObj* obj,VkPipelineLayout layout,VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
+                                                      VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
 
 void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGraphicsPipelineSpecObj* spec_array,u32 spec_count,VkPipeline* pipeline_array,VkPipelineCache cache = 0);
 
