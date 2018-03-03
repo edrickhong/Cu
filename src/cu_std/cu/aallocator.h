@@ -43,127 +43,127 @@ void DebugPrintTAllocEntry(u32 i);
 
 template <class T>
 struct DebugAllocedPtr{
-  
-  T* ptr;
-  u32 forward_size;
-  u32 backward_size;
-  
-  s8* file;
-  s8* function;
-  u32 line;
-
-  DebugAllocedPtr(){}
-
-  DebugAllocedPtr(u32 f_alloc_size,s8* file,s8* function,u32 line){
-    ptr = (T*)DebugTAlloc(f_alloc_size,file,function,line);
-    forward_size = f_alloc_size - sizeof(T);
-    backward_size = 0;
-    this->file = file;
-    this->function = function;
-    this->line = line;
-  }
-
-  DebugAllocedPtr operator+ (u32 count){
-
-    u32 add_size = (count * sizeof(T));
-
-    _kill("over reached\n",add_size > forward_size);
-
-    DebugAllocedPtr n_dbg_ptr = *this;
-
-    n_dbg_ptr.ptr += count;
-    n_dbg_ptr.forward_size -= add_size;
-    n_dbg_ptr.backward_size += add_size;
-
-    return n_dbg_ptr;
-  }
-
-  DebugAllocedPtr operator+= (u32 count){
-
-    return operator+ (count);
-  }
-
-  DebugAllocedPtr operator++(){
-    return operator+ (1);
-  }
-
-  DebugAllocedPtr operator- (u32 count){
-
-    u32 minus_size = (count * sizeof(T));
-
-    _kill("over reached\n",minus_size > backward_size);
-
-    DebugAllocedPtr n_dbg_ptr = *this;
-
-    n_dbg_ptr.ptr -= count;
-    n_dbg_ptr.forward_size += minus_size;
-    n_dbg_ptr.backward_size -= minus_size;
-
-    return n_dbg_ptr;
-  }
-
-  DebugAllocedPtr operator-= (u32 count){
-
-    return operator- (count);
-  }
-
-  DebugAllocedPtr operator--(){
-    return operator- (1);
-  }
-
-  T& operator[] (u32 index){
-
-    u32 add_size = (index * sizeof(T));
-
-    _kill("over reached\n",add_size > forward_size);
-
-    return ptr[index];
-  }
-
-  template <class A>
-  operator A*(){
-
+    
+    T* ptr;
+    u32 forward_size;
+    u32 backward_size;
+    
+    s8* file;
+    s8* function;
+    u32 line;
+    
+    DebugAllocedPtr(){}
+    
+    DebugAllocedPtr(u32 f_alloc_size,s8* in_file,s8* in_function,u32 in_line){
+        ptr = (T*)DebugTAlloc(f_alloc_size,file,function,line);
+        forward_size = f_alloc_size - sizeof(T);
+        backward_size = 0;
+        this->file = in_file;
+        this->function = in_function;
+        this->line = in_line;
+    }
+    
+    DebugAllocedPtr operator+ (u32 count){
+        
+        u32 add_size = (count * sizeof(T));
+        
+        _kill("over reached\n",add_size > forward_size);
+        
+        DebugAllocedPtr n_dbg_ptr = *this;
+        
+        n_dbg_ptr.ptr += count;
+        n_dbg_ptr.forward_size -= add_size;
+        n_dbg_ptr.backward_size += add_size;
+        
+        return n_dbg_ptr;
+    }
+    
+    DebugAllocedPtr operator+= (u32 count){
+        
+        return operator+ (count);
+    }
+    
+    DebugAllocedPtr operator++(){
+        return operator+ (1);
+    }
+    
+    DebugAllocedPtr operator- (u32 count){
+        
+        u32 minus_size = (count * sizeof(T));
+        
+        _kill("over reached\n",minus_size > backward_size);
+        
+        DebugAllocedPtr n_dbg_ptr = *this;
+        
+        n_dbg_ptr.ptr -= count;
+        n_dbg_ptr.forward_size += minus_size;
+        n_dbg_ptr.backward_size -= minus_size;
+        
+        return n_dbg_ptr;
+    }
+    
+    DebugAllocedPtr operator-= (u32 count){
+        
+        return operator- (count);
+    }
+    
+    DebugAllocedPtr operator--(){
+        return operator- (1);
+    }
+    
+    T& operator[] (u32 index){
+        
+        u32 add_size = (index * sizeof(T));
+        
+        _kill("over reached\n",add_size > forward_size);
+        
+        return ptr[index];
+    }
+    
+    template <class A>
+        operator A*(){
+        
 #if _enable_boundscheck_warning
-    
-    printf("WARNING: Raw ptr, no bounds checking can be done for passed ptr : %s %s %d\n",
-	   file,function,line);
-
+        
+        printf("WARNING: Raw ptr, no bounds checking can be done for passed ptr : %s %s %d\n",
+               file,function,line);
+        
 #endif
+        
+        return (A*)ptr;
+    }
     
-    return (A*)ptr;
-  }
-
-  T* operator-> (){
-    return ptr;
-  }
-
-  T& operator* (){
-    return *ptr;
-  }
-  
+    T* operator-> (){
+        return ptr;
+    }
+    
+    T& operator* (){
+        return *ptr;
+    }
+    
 };
 
 template <class T>
 DebugAllocedPtr<T> MakeDebugPtr(u32 f_alloc_size,s8* file,s8* function,u32 line){
-  DebugAllocedPtr<T> a(f_alloc_size,file,function,line);
-  return a;
+    DebugAllocedPtr<T> a(f_alloc_size,file,function,line);
+    return a;
 }
 
 template <class T>
 void memcpy(DebugAllocedPtr<T> dst,DebugAllocedPtr<T> src,u32 size){
-  
-  _kill("over reach\n",(size > dst.forward_size) || (size > src.forward_size));
-
-  memcpy(dst.ptr,src.ptr,size);
+    
+    _kill("over reach\n",(size > dst.forward_size) || (size > src.forward_size));
+    
+    memcpy(dst.ptr,src.ptr,size);
 }
 
 
 template <class T>
 void memset(DebugAllocedPtr<T> dst,int c,u32 size){
-  
-  _kill("over reach\n",(size > dst.forward_size));
-
-  memset(dst.ptr,c,size);
+    
+    _kill("over reach\n",(size > dst.forward_size));
+    
+    memset(dst.ptr,c,size);
 }
 
 

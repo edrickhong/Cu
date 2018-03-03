@@ -199,14 +199,14 @@ namespace Vec3{
     logic TypedIntersect(Line3 a,Plane b);
     
     logic Intersect(Line3 a,Plane b,Point3* out_point);
-};
+}
 
 namespace Vec4{
     Vector4 Normalize(Vector4 vec);
     f32 Magnitude(Vector4 vec);
     f32 Dot(Vector4 vec1,Vector4 vec2);
     Vector4 VectorComponentMul(Vector4 a,Vector4 b);
-};
+}
 
 Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs);
 Matrix4b4 operator-(Matrix4b4 lhs,Matrix4b4 rhs);
@@ -366,7 +366,7 @@ namespace Quat{
     Quaternion Normalize(Quaternion a);
     f32 Magnitude(Quaternion a);
     f32 Dot(Quaternion a,Quaternion b);
-};
+}
 
 
 Quaternion operator+(Quaternion lhs,Quaternion rhs);
