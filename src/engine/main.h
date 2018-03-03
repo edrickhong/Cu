@@ -1317,23 +1317,49 @@ void SetObjectMaterial(u32 obj_id,u32 mat_id){
                     sizeof(u32) * mat->textureid_count,&mat->textureid_array);
 }
 
+#define _PIPELINECACHE_FILE "pipelinecache_file.txt"
 
-void CompileAllPipelines(PlatformData* pdata){
+void SetupPipelineCache(){
     
     void* cache_data = 0;
     ptrsize cache_size = 0;
     
-    auto pipelinecachefile = "pipelinecache_file.txt";
-    
-    if(FIsFileExists(pipelinecachefile)){
+    if(FIsFileExists(_PIPELINECACHE_FILE)){
         
-        auto file = FOpenFile(pipelinecachefile,F_FLAG_READONLY);
+        auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READONLY);
         cache_data = FReadFileToBuffer(file,&cache_size);
         
         FCloseFile(file);
     }
     
     pdata->pipelinecache = VCreatePipelineCache(&pdata->vdevice,cache_data,cache_size);
+    
+    if(cache_data){
+        unalloc(cache_data);
+    }
+}
+
+void WritePipelineCache(){
+    
+    ptrsize write_cache_size = 0;
+    
+    //write the cache data
+    VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,0,&write_cache_size);
+    
+    auto write_cache_data = TAlloc(s8,write_cache_size);
+    
+    VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,write_cache_data,&write_cache_size);
+    
+    
+    auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_WRITEONLY | F_FLAG_CREATE | F_FLAG_TRUNCATE);
+    
+    FWrite(file,write_cache_data,write_cache_size);
+    
+    FCloseFile(file);
+}
+
+
+void CompileAllPipelines(PlatformData* pdata){
     
     if(pdata->pipeline_array[PSTATIC]){
         VDestroyPipeline(&pdata->vdevice,pdata->pipeline_array[PSTATIC]);
@@ -1356,6 +1382,8 @@ void CompileAllPipelines(PlatformData* pdata){
         
     };
     
+    VGraphicsPipelineSpecObj spec_array[2] = {};
+    
     {
         
         VkSpecializationInfo info[] = {
@@ -1366,14 +1394,12 @@ void CompileAllPipelines(PlatformData* pdata){
         
         auto shaderobj = VMakeShaderObjSPX(&shader_data_1[0],2,&info[0],_arraycount(info));
         
-        auto pipelinespec = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
+        VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&spec_array[0],&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
         
-        VSetDepthStencilGraphicsPipelineSpec(&pipelinespec,
+        VSetDepthStencilGraphicsPipelineSpec(&spec_array[0],
                                              VK_TRUE,
                                              VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
                                              VK_TRUE);
-        
-        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSKEL],pdata->pipelinecache);
     }
     
     
@@ -1387,15 +1413,17 @@ void CompileAllPipelines(PlatformData* pdata){
         
         auto shaderobj = VMakeShaderObjSPX(&shader_data_2[0],2,&info[0],_arraycount(info));
         
-        auto pipelinespec = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
+        VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&spec_array[1],&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
         
-        VSetDepthStencilGraphicsPipelineSpec(&pipelinespec,
+        VSetDepthStencilGraphicsPipelineSpec(&spec_array[1],
                                              VK_TRUE,
                                              VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
                                              VK_TRUE);
         
-        VCreateGraphicsPipelineArray(&pdata->vdevice,&pipelinespec,1,&pdata->pipeline_array[PSTATIC],pdata->pipelinecache);
+        
     }
+    
+    VCreateGraphicsPipelineArray(&pdata->vdevice,&spec_array[0],_arraycount(spec_array),&pdata->pipeline_array[0],pdata->pipelinecache);
     
     //set rendercontext resources
     {
@@ -1421,26 +1449,6 @@ void CompileAllPipelines(PlatformData* pdata){
         pdata->rendercontext.rendergroup[1].scissor_count = 0;
         pdata->rendercontext.rendergroup[1].viewport_count = 0;
     }
-    
-    if(cache_data){
-        unalloc(cache_data);
-    }
-    
-    u32 write_cache_size = 0;
-    
-    //write the cache data
-    VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,0,&write_cache_size);
-    
-    auto write_cache_data = TAlloc(s8,write_cache_size);
-    
-    VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,write_cache_data,&write_cache_size);
-    
-    
-    auto file = FOpenFile(pipelinecachefile,F_FLAG_WRITEONLY | F_FLAG_CREATE | F_FLAG_TRUNCATE);
-    
-    FWrite(file,write_cache_data,write_cache_size);
-    
-    FCloseFile(file);
 }
 
 
