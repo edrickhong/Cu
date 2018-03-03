@@ -808,7 +808,7 @@ void GenerateShaderTable(s8* infile_string,s8* outfile_string){
     
     ParseStateStack pstate;
     
-    GenericLayout genericlayout_array[256] = {};
+    GenericLayout genericlayout_array[1024] = {};
     u32 genericlayout_count = 0;
     
     //parse the glsl source
@@ -868,12 +868,13 @@ void GenerateShaderTable(s8* infile_string,s8* outfile_string){
     DescLayout dlayout = {};
     PushConstLayout playout = {};
     
-    qsort(genericlayout_array,genericlayout_count,sizeof(genericlayout_array[0]),
+    qsort(&genericlayout_array[0],genericlayout_count,sizeof(genericlayout_array[0]),
           [](const void * a, const void* b)->s32 {
           
           auto a_layout = (GenericLayout*)a;
           auto b_layout = (GenericLayout*)b;
           
+          //FIXME: uninitialized read here
           return a_layout->loc_array[0] - b_layout->loc_array[0];
           });
     
