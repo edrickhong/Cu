@@ -921,7 +921,13 @@ void MixAudio(void* data,void*){
         auto tcpy = (s8*)cpydata;
         
         audio->audioasset.avail_size -= submitbuffer->size;
+        
+        //To side step overlap in sanitizers
+#if 0
         memcpy(tcpy,(tcpy + submitbuffer->size),(audio->audioasset.avail_size));
+#else
+        memmove(tcpy,(tcpy + submitbuffer->size),(audio->audioasset.avail_size));
+#endif
     }
     
     {

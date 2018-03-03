@@ -846,9 +846,9 @@ VkInstance CreateInstance(const s8* _restrict name,
     instance_info.ppEnabledExtensionNames = extension_array;
     instance_info.enabledExtensionCount = extension_count;
     
-    VkInstance instance;
+    VkInstance instance = 0;
     
-    _vktest(vkCreateInstance(&instance_info, global_allocator, &instance));
+    _vktest(vkCreateInstance(&instance_info, global_allocator,&instance));
     
     return instance;
 }
@@ -1379,9 +1379,11 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
     u32 layer_count = _arraycount(layer_array);
     
     
-    const s8* extension_array[] = {VK_KHR_SURFACE_EXTENSION_NAME,
+    const s8* extension_array[] = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
         _surface_extension,
-        VK_EXT_DEBUG_REPORT_EXTENSION_NAME};
+        VK_EXT_DEBUG_REPORT_EXTENSION_NAME
+    };
     
     u32 extension_count = 2;
     
