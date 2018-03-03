@@ -135,6 +135,7 @@ extern void* vkgetphysicaldevicesurfacesupportkhr;
 extern void* vkcmdclearcolorimage;
 extern void* vkgetphysicaldeviceimageformatproperties;
 extern void* vkcmdcopyimagetobuffer;
+extern void* vkgetpipelinecachedata;
 
 //defines
 #define vkEnumerateInstanceExtensionProperties ((PFN_vkEnumerateInstanceExtensionProperties)(vkenumerateinstanceextensionproperties))
@@ -267,6 +268,8 @@ extern void* vkcmdcopyimagetobuffer;
 #define vkGetPhysicalDeviceImageFormatProperties ((PFN_vkGetPhysicalDeviceImageFormatProperties)vkgetphysicaldeviceimageformatproperties)
 
 #define vkCmdCopyImageToBuffer ((PFN_vkCmdCopyImageToBuffer)vkcmdcopyimagetobuffer)
+
+#define vkGetPipelineCacheData ((PFN_vkGetPipelineCacheData)vkgetpipelinecachedata)
 
 
 #if _debug
@@ -997,3 +1000,7 @@ VShaderObj::DescSetEntry* VGetSet(VShaderObj* obj,u32 set_no);
 void VPushBackDescSet(VShaderObj* obj,u32 set_no,u32 shader_stage);
 
 void VPushBackPushConstRange(VShaderObj* _restrict obj,VkFormat* format_array,u32 format_count,u32 size,VkShaderStageFlagBits shader_stage);
+
+VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* init_data = 0,u32 init_size = 0);
+
+void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,u32* init_size);

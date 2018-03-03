@@ -115,6 +115,7 @@ void* vkgetphysicaldevicesurfacesupportkhr;
 void* vkcmdclearcolorimage;
 void* vkgetphysicaldeviceimageformatproperties;
 void* vkcmdcopyimagetobuffer;
+void* vkgetpipelinecachedata;
 
 #ifdef _WIN32
 
@@ -386,6 +387,8 @@ void InternalLoadVulkanFunctions(){
     _initfunc(vkGetPhysicalDeviceImageFormatProperties,vkgetphysicaldeviceimageformatproperties);
     
     _initfunc(vkCmdCopyImageToBuffer,vkcmdcopyimagetobuffer);
+    
+    _initfunc(vkGetPipelineCacheData,vkgetpipelinecachedata);
     
 }
 
@@ -3124,4 +3127,26 @@ VkDescriptorPool VCreateDescriptorPoolX(VDeviceContext* _in_ vdevice,
                                         VDescriptorPoolSpec poolspec,u32 flags){
     
     return VCreateDescriptorPool(vdevice,poolspec,flags,poolspec.desc_count);
+}
+
+VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* init_data,u32 init_size){
+    
+    VkPipelineCacheCreateInfo info = {
+        VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        0,
+        0,
+        init_size,
+        init_data
+    };
+    
+    VkPipelineCache cache;
+    
+    _vktest(vkCreatePipelineCache(vdevice->device,&info,global_allocator,&cache));
+    
+    return cache;
+}
+
+void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,u32* init_size){
+    
+    _vktest(vkGetPipelineCacheData(vdevice->device,cache,(size_t*)init_size,init_data));
 }
