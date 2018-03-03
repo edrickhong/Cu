@@ -1394,7 +1394,7 @@ void CompileAllPipelines(PlatformData* pdata){
         
         auto shaderobj = VMakeShaderObjSPX(&shader_data_1[0],2,&info[0],_arraycount(info));
         
-        VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&spec_array[0],&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
+        spec_array[0] = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
         
         VSetDepthStencilGraphicsPipelineSpec(&spec_array[0],
                                              VK_TRUE,
@@ -1413,7 +1413,7 @@ void CompileAllPipelines(PlatformData* pdata){
         
         auto shaderobj = VMakeShaderObjSPX(&shader_data_2[0],2,&info[0],_arraycount(info));
         
-        VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&spec_array[1],&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
+        spec_array[1] = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shaderobj,pdata->pipelinelayout,pdata->renderpass,0,&pdata->swapchain);
         
         VSetDepthStencilGraphicsPipelineSpec(&spec_array[1],
                                              VK_TRUE,

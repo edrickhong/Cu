@@ -975,7 +975,7 @@ void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
     
     //solid
     
-    VMakeGraphicsPipelineSpecObj(vdevice,&spec_array[0],&obj,gui->pipelinelayout,renderpass,0,swap);
+    spec_array[0] = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
     
     VSetRasterState(&spec_array[0],VK_CULL_MODE_NONE);
     
@@ -984,7 +984,7 @@ void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
     //line
     
     
-    VMakeGraphicsPipelineSpecObj(vdevice,&spec_array[1],&obj,gui->pipelinelayout,renderpass,0,swap);
+    spec_array[1] = VMakeGraphicsPipelineSpecObj(vdevice,&obj,gui->pipelinelayout,renderpass,0,swap);
     
     VSetInputAssemblyState(&spec_array[1],VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
     
@@ -1008,7 +1008,7 @@ void InitInternalComponents(VDeviceContext* vdevice,VSwapchainContext* swap,
     
     VPushBackVertexAttrib(&text_obj,vertexbinding_no,VK_FORMAT_R32G32B32A32_SFLOAT,sizeof(GUIVertex::color));
     
-    VMakeGraphicsPipelineSpecObj(vdevice,&spec_array[2],&text_obj,gui->pipelinelayout,renderpass,0,swap);
+    spec_array[2] = VMakeGraphicsPipelineSpecObj(vdevice,&text_obj,gui->pipelinelayout,renderpass,0,swap);
     
     VSetRasterState(&spec_array[2],VK_CULL_MODE_NONE);
     

@@ -2668,11 +2668,10 @@ void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
     
     memcpy(&spec->scissor_array[0],scissor,sizeof(VkRect2D) * scissor_count);
     
-    spec->viewport.viewportCount = viewport_count;
-    spec->viewport.pViewports = &spec->viewport_array[0];
-    spec->viewport.scissorCount = scissor_count;
-    spec->viewport.pScissors = &spec->scissor_array[0];
+    spec->viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     
+    spec->viewport.viewportCount = viewport_count;
+    spec->viewport.scissorCount = scissor_count;
 }
 
 void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
@@ -2681,11 +2680,11 @@ void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
     VkViewport viewport = {0.0f,0.0f,(f32)width,(f32)height,0.0f,1.0f};
     VkRect2D scissor = {{},width,height};
     
-    VSetFixedViewportGraphicsPipelineSpec(spec,
-                                          &viewport,1,&scissor,
-                                          1);
+    VSetFixedViewportGraphicsPipelineSpec(spec,&viewport,1,&scissor,1);
 }
 
+
+//TODO: VkSampleMask* samplemask is a dependency
 void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
                                          VkSampleCountFlagBits samplecount_bits,
                                          VkBool32 is_persample_perfragment,//true = sample,else frag
@@ -2749,7 +2748,6 @@ void VSetColorBlend(VGraphicsPipelineSpecObj* spec,
     spec->colorblendstate.logicOpEnable = logicop_enable;
     spec->colorblendstate.logicOp = logic_op;
     spec->colorblendstate.attachmentCount = attachment_count;
-    spec->colorblendstate.pAttachments = &spec->colorattachment_array[0];
     
 }
 
@@ -2789,7 +2787,6 @@ void VEnableDynamicStateGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
     spec->dynamicstate.pNext = 0;
     spec->dynamicstate.flags = 0;
     spec->dynamicstate.dynamicStateCount = dynamic_count;
-    spec->dynamicstate.pDynamicStates = &spec->dynamic_array[0];
 }
 
 void VSetInputAssemblyState(VGraphicsPipelineSpecObj* spec,VkPrimitiveTopology topology,VkBool32 restart){
@@ -2863,7 +2860,6 @@ void VPushBackVertexDesc(VShaderObj* obj,u32 binding_no,u32 vert_size,VkVertexIn
     
     obj->vert_desc_array[obj->vert_desc_count] = {binding_no,vert_size,inputrate};
     obj->vert_desc_count++;
-    
 }
 
 void VPushBackSetElement(VShaderObj::DescSetEntry* set,VkDescriptorType type,u32 bind,u32 array_count){
@@ -2941,6 +2937,21 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGrap
         
         auto spec = &spec_array[i];
         
+        //bind all the pointers
+        
+        //vertex descs and attribs
+        spec->vertexinput.pVertexBindingDescriptions = &spec->vert_desc_array[0];
+        
+        spec->vertexinput.pVertexAttributeDescriptions = &spec->vert_attrib_array[0];
+        
+        //fixed viewport
+        spec->viewport.pViewports = &spec->viewport_array[0];
+        spec->viewport.pScissors = &spec->scissor_array[0];
+        
+        //color blend state
+        spec->colorblendstate.pAttachments = &spec->colorattachment_array[0];
+        
+        
         VkPipelineTessellationStateCreateInfo* tessalationstate = 0;
         VkPipelineDynamicStateCreateInfo* dynamicstate = 0;
         
@@ -2949,7 +2960,20 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGrap
         }
         
         if(spec->dynamicstate.sType){
+            spec->dynamicstate.pDynamicStates = &spec->dynamic_array[0];
             dynamicstate= &spec->dynamicstate;
+        }
+        
+        //shader info
+        for(u32 j = 0; j < spec->shadermodule_count; j++){
+            
+            VkSpecializationInfo* spec_info = 0;
+            
+            if(spec->spec_array[i].mapEntryCount){
+                spec_info = &spec->spec_array[j];
+            }
+            
+            spec->shaderinfo_array[j].pSpecializationInfo = spec_info;
         }
         
         info_array[i] = {
@@ -2995,57 +3019,55 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGrap
     
 }
 
-void VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VGraphicsPipelineSpecObj* spec,VShaderObj* obj,VkPipelineLayout layout,
-                                  VkRenderPass renderpass,u32 subpass_index,VSwapchainContext* swap,u32 colorattachment_count,VkPipelineCreateFlags flags,
-                                  VkPipeline parent_pipeline,s32 parentpipeline_index){
+VGraphicsPipelineSpecObj VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VShaderObj* obj,VkPipelineLayout layout,
+                                                      VkRenderPass renderpass,u32 subpass_index,VSwapchainContext* swap,u32 colorattachment_count,VkPipelineCreateFlags flags,
+                                                      VkPipeline parent_pipeline,s32 parentpipeline_index){
     
-    *spec = {};
+    VGraphicsPipelineSpecObj spec = {};
     
-    memcpy(&spec->spec_array[0],&obj->spec_array[0],sizeof(VkSpecializationInfo) * obj->shader_count);
+    memcpy(&spec.spec_array[0],&obj->spec_array[0],sizeof(VkSpecializationInfo) * obj->shader_count);
     
     
-    spec->subpass_index = subpass_index;
-    spec->flags = flags;
-    spec->layout = layout;
-    spec->renderpass = renderpass;
-    spec->parent_pipeline = parent_pipeline;
-    spec->parentpipeline_index = parentpipeline_index;
+    spec.subpass_index = subpass_index;
+    spec.flags = flags;
+    spec.layout = layout;
+    spec.renderpass = renderpass;
+    spec.parent_pipeline = parent_pipeline;
+    spec.parentpipeline_index = parentpipeline_index;
     
-    memcpy(&spec->vert_desc_array[0],&obj->vert_desc_array[0],obj->vert_desc_count * sizeof(VkVertexInputBindingDescription));
+    memcpy(&spec.vert_desc_array[0],&obj->vert_desc_array[0],obj->vert_desc_count * sizeof(VkVertexInputBindingDescription));
     
-    memcpy(&spec->vert_attrib_array[0],&obj->vert_attrib_array[0],obj->vert_attrib_count * sizeof(VkVertexInputAttributeDescription));
+    memcpy(&spec.vert_attrib_array[0],&obj->vert_attrib_array[0],obj->vert_attrib_count * sizeof(VkVertexInputAttributeDescription));
     
-    spec->vertexinput = VkPipelineVertexInputStateCreateInfo{
+    spec.vertexinput = {
         
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         0,
         0,
         obj->vert_desc_count,
-        &spec->vert_desc_array[0],
+        0,
         obj->vert_attrib_count,
-        &spec->vert_attrib_array[0]
+        0
     };
     
-    VSetInputAssemblyState(spec);
+    VSetInputAssemblyState(&spec);
     
-    VSetRasterState(spec);
-    
-    spec->viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    VSetRasterState(&spec);
     
     if(swap){
         
-        VSetFixedViewportGraphicsPipelineSpec(spec,swap->width,swap->height);
+        VSetFixedViewportGraphicsPipelineSpec(&spec,swap->width,swap->height);
     }
     
-    VSetMultisampleGraphicsPipelineSpec(spec);
+    VSetMultisampleGraphicsPipelineSpec(&spec);
     
     
     //MARK: this is disabled by default
-    VSetDepthStencilGraphicsPipelineSpec(spec);
+    VSetDepthStencilGraphicsPipelineSpec(&spec);
     
     
     _kill("we do not support this many color attachments\n",
-          colorattachment_count > _arraycount(spec->colorattachment_array));
+          colorattachment_count > _arraycount(spec.colorattachment_array));
     
     VkPipelineColorBlendAttachmentState attachment_array[16] = {};
     
@@ -3062,36 +3084,37 @@ void VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VGraphicsPipeli
         };
     }
     
-    VSetColorBlend(spec,&attachment_array[0],colorattachment_count);
+    VSetColorBlend(&spec,&attachment_array[0],colorattachment_count);
     
-    spec->shadermodule_count = obj->shader_count;
+    spec.shadermodule_count = obj->shader_count;
     
     for(u32 i = 0; i < obj->shader_count; i++){
         
         auto data = obj->shader_data_array[i];
         auto size = obj->spv_size_array[i];
         
-        spec->shadermodule_array[i] = VCreateShaderModule(vdevice->device,data,size);
+        spec.shadermodule_array[i] = VCreateShaderModule(vdevice->device,data,size);
     }
     
     for(u32 i = 0; i < obj->shader_count; i++){
         
         VkSpecializationInfo* info = 0;
         
-        if(spec->spec_array[i].mapEntryCount){
-            info = &spec->spec_array[i];
+        if(spec.spec_array[i].mapEntryCount){
+            info = &spec.spec_array[i];
         }
         
-        spec->shaderinfo_array[i] = {
+        spec.shaderinfo_array[i] = {
             VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             0,
             0,
             obj->shaderstage_array[i],
-            spec->shadermodule_array[i],
-            "main",
-            info
+            spec.shadermodule_array[i],
+            "main"
         };
     }
+    
+    return spec;
 }
 
 
