@@ -103,6 +103,8 @@ s32 main(s32 argc,s8** argv){
     SetupFrameBuffers(&pdata->vdevice,transfercmdbuffer,pdata->transfer_queue,
                       pdata->renderpass,&pdata->swapchain);
     
+    SetupPipelineCache();
+    
     pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),false);
     
     pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),false);
@@ -158,7 +160,7 @@ s32 main(s32 argc,s8** argv){
                                          pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
     
     GUIInit(&pdata->vdevice,&pdata->swapchain,pdata->renderpass,pdata->transfer_queue,
-            transfercmdbuffer);
+            transfercmdbuffer,pdata->pipelinecache);
     
     GameInitData initdata = {
         &pdata->scenecontext,gdata,&pdata->window,pdata->vdevice,pdata->renderpass,
@@ -309,6 +311,8 @@ s32 main(s32 argc,s8** argv){
         }
         
     }
+    
+    WritePipelineCache();
     
     return 0;
     

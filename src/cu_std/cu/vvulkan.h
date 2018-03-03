@@ -928,8 +928,8 @@ struct VGraphicsPipelineSpecObj{
 
 u32 VGetDescriptorSetLayoutHash(VShaderObj* obj,u32 descset_no);
 
-VGraphicsPipelineSpecObj VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VShaderObj* obj,VkPipelineLayout layout,VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
-                                                      VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
+void VMakeGraphicsPipelineSpecObj(const  VDeviceContext* vdevice,VGraphicsPipelineSpecObj* spec,VShaderObj* obj,VkPipelineLayout layout,VkRenderPass renderpass,u32 subpass_index = 0,VSwapchainContext* swap = 0,u32 colorattachment_count = 1,VkPipelineCreateFlags flags = 0,
+                                  VkPipeline parent_pipeline = 0,s32 parentpipeline_index = -1);
 
 void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGraphicsPipelineSpecObj* spec_array,u32 spec_count,VkPipeline* pipeline_array,VkPipelineCache cache = 0);
 
@@ -1001,6 +1001,6 @@ void VPushBackDescSet(VShaderObj* obj,u32 set_no,u32 shader_stage);
 
 void VPushBackPushConstRange(VShaderObj* _restrict obj,VkFormat* format_array,u32 format_count,u32 size,VkShaderStageFlagBits shader_stage);
 
-VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* init_data = 0,u32 init_size = 0);
+VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* init_data = 0,ptrsize init_size = 0);
 
-void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,u32* init_size);
+void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,ptrsize* init_size);
