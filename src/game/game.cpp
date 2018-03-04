@@ -1096,6 +1096,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                 data->orientation.scale[obj_id] = scale;
                 to_update = true;
             }
+            GUIDrawPosMarker(pos);
         }break;
         
         case 3:{
@@ -1103,6 +1104,10 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                 data->orientation.rot[obj_id] = rot;
                 to_update = true;
             }  
+        }break;
+        
+        default:{
+            GUIDrawPosMarker(pos);
         }break;
         
     }
