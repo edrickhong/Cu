@@ -94,7 +94,7 @@ struct SceneContext{
     void (*SetObjectMaterial)(u32,u32);
     void (*SetActiveCameraOrientation)(Vector4,Vector4);
     void (*SetObjectOrientation)(u32,Vector4,Quaternion,f32);
-    void (*SetPointLight)();
+    void (*AddPointLight)(Vector3,Color,f32);
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);
@@ -154,3 +154,20 @@ extern "C"{
     
     _dllexport void GameReload(GameReloadData*);
 }
+
+
+//MARK:light stuff (DEBUG) 
+//{
+//    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+//    light_ubo->point_count = 1;
+//    light_ubo->point_array[0] = {Vector4{-8.0f,-5.0f,0.0f,1.0f},White,0.2f};
+//    
+//    VkMappedMemoryRange range = {
+//        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+//        0,
+//        pdata->light_ubo.memory,
+//        0,
+//        sizeof(LightUBO)
+//    };
+//    
+//}
