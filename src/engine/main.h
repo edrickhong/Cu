@@ -485,10 +485,10 @@ struct Threadinfo{
 struct ObjUpdateEntry{
     u16 offset;
     u16 data_size;
-    void* data;
 };
 
 struct ThreadLinearBlendRes{
+    u32 id;
     f32 time;
     u32 bone_count;
     u32 animation_index;
@@ -583,13 +583,17 @@ void _ainline PushUpdateEntry(u32 id,u32 offset,u32 data_size,void* data){
     
     auto effective_offset = (id * sizeof(SkelUBO)) + offset;
     
+    auto ptr = ((s8*)pdata->objupdate_ptr) + effective_offset;
+    memcpy(ptr,data,data_size);
+    
     pdata->objupdate_array[pdata->objupdate_count] = {
         (u16)effective_offset,
-        (u16)data_size,
-        data
+        (u16)data_size
     };
     
     pdata->objupdate_count++;
+    
+    data;
 }
 
 _persist u32 gui_draw_is_locked = 0;
@@ -998,8 +1002,6 @@ void ProcessObjUpdateList(){
           return entry_a->offset - entry_b->offset;
           });
     
-    s8* mapped_ptr = pdata->objupdate_ptr;
-    
     auto range_array =
         TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
     
@@ -1007,10 +1009,6 @@ void ProcessObjUpdateList(){
     for(u32 i = 0; i < pdata->objupdate_count; i++){
         
         auto entry = pdata->objupdate_array[i];
-        
-        auto ptr = mapped_ptr + (entry.offset);
-        
-        memcpy(ptr,entry.data,entry.data_size);
         
         range_array[i] = {
             VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
@@ -1043,6 +1041,9 @@ void ThreadLinearBlend(void* args,void*){
     ThreadLinearBlendRes* data = (ThreadLinearBlendRes*)args;
     
     ALinearBlend(data->time,data->animation_index,data->set_array,data->root,data->result);
+    
+    PushUpdateEntry(data->id,offsetof(SkelUBO,bone_array),
+                    data->bone_count * sizeof(Matrix4b4),data->result);
 }
 
 _persist u32 is_first_present = true;
@@ -1689,6 +1690,7 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
     
     auto blend = TAlloc(ThreadLinearBlendRes,1);
     
+    blend->id = anim->id;
     blend->time = anim->animationtime;
     blend->bone_count = anim_handle->bone_count;
     blend->animation_index = anim->animationindex;
@@ -1699,9 +1701,6 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
     
     PushThreadWorkQueue(&pdata->threadqueue,
                         ThreadLinearBlend,(void*)blend,pdata->worker_sem);
-    
-    PushUpdateEntry(anim->id,offsetof(SkelUBO,bone_array),
-                    anim_handle->bone_count * sizeof(Matrix4b4),blend->result);
 }
 
 void _ainline ProcessDrawList(){
