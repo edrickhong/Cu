@@ -1002,8 +1002,18 @@ void ProcessObjUpdateList(){
           return entry_a->offset - entry_b->offset;
           });
     
+    auto tcount = pdata->objupdate_count + 1;
+    
     auto range_array =
-        TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
+        TAlloc(VkMappedMemoryRange,tcount);
+    
+    range_array[pdata->objupdate_count] = {
+        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        0,
+        pdata->light_ubo.memory,
+        0,
+        sizeof(LightUBO)
+    };
     
     
     for(u32 i = 0; i < pdata->objupdate_count; i++){
@@ -1022,7 +1032,7 @@ void ProcessObjUpdateList(){
     
     {
         TIMEBLOCKTAGGED("vkFlush",Green);
-        vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,range_array);
+        vkFlushMappedMemoryRanges(pdata->vdevice.device,tcount,range_array);
     }
     
 }
@@ -1458,6 +1468,22 @@ void CompileAllPipelines(PlatformData* pdata){
     }
 }
 
+void ClearLightList(){
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    light_ubo->point_count = 0;
+}
+
+void AddPointLight(Vector3 pos,Color color,f32 intensity){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    light_ubo->point_array[light_ubo->point_count] = {
+        pos,color,intensity
+    };
+    
+    light_ubo->point_count++;
+}
+
 
 
 //MARK:
@@ -1470,22 +1496,6 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     f32 aspectratio = ((f32)pdata->window.width)/((f32)pdata->window.height);
     
     pdata->proj = ProjectionMatrix(_radians(90.0f),aspectratio,0.1f,256.0f);
-    
-    //MARK:light stuff (DEBUG) 
-    {
-        auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-        light_ubo->point_count = 1;
-        light_ubo->point_array[0] = {Vector4{-8.0f,-5.0f,0.0f,1.0f},White,0.2f};
-        
-        VkMappedMemoryRange range = {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            pdata->light_ubo.memory,
-            0,
-            sizeof(LightUBO)
-        };
-        
-    }
     
     pdata->camerapos = position;
     
@@ -1668,6 +1678,7 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.SetObjectMaterial = SetObjectMaterial;
     pdata->scenecontext.SetActiveCameraOrientation = SetActiveCameraOrientation;
     pdata->scenecontext.SetObjectOrientation = SetObjectOrientation;
+    pdata->scenecontext.AddPointLight = AddPointLight;
     
     
     //asset stuff
