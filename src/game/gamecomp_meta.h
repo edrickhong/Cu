@@ -96,7 +96,9 @@ _persist MetaDataEntry EntityAudioData_METACOMP_STRUCT[] = {
 
 _persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
 {(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),(u32)-1},
-{(u32)112280,(u32)112280,"Color","color",sizeof(Color),offsetof(PointLight,color),(u32)-1},
+{(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(PointLight,R),(u32)-1},
+{(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(PointLight,G),(u32)-1},
+{(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(PointLight,B),(u32)-1},
 {(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),(u32)-1},
 };
 

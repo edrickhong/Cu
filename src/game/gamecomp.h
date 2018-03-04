@@ -34,6 +34,8 @@ struct REFLCOMPONENT EntityAudioData{
 
 struct REFLCOMPONENT PointLight{
     ObjectID id;
-    Color color;
+    f32 R;
+    f32 G;
+    f32 B;
     f32 intensity;
 };
