@@ -62,6 +62,11 @@ u32 entitydrawdata_count = 0;
 EntityAudioData entityaudiodata_array[_component_count];
 u32 entityaudiodata_count = 0;
 
+
+
+PointLight pointlight_array[_component_count];
+u32 pointlight_count = 0;
+
 };
 
 
@@ -89,11 +94,18 @@ _persist MetaDataEntry EntityAudioData_METACOMP_STRUCT[] = {
 {(u32)7072,(u32)30233,"u16","toremove",sizeof(u16),offsetof(EntityAudioData,toremove),(u32)-1},
 };
 
+_persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),(u32)-1},
+{(u32)112280,(u32)112280,"Color","color",sizeof(Color),offsetof(PointLight,color),(u32)-1},
+{(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),(u32)-1},
+};
+
 
 MetaDataCompEntry METACOMP_ARRAY[] = {
 {offsetof(ComponentStruct,entityanimationdata_array),offsetof(ComponentStruct,entityanimationdata_count),sizeof(ComponentStruct::entityanimationdata_array[0]),"EntityAnimationData",(u32)1270161200,&EntityAnimationData_METACOMP_STRUCT[0],_arraycount(EntityAnimationData_METACOMP_STRUCT)},
 {offsetof(ComponentStruct,entitydrawdata_array),offsetof(ComponentStruct,entitydrawdata_count),sizeof(ComponentStruct::entitydrawdata_array[0]),"EntityDrawData",(u32)40446580,&EntityDrawData_METACOMP_STRUCT[0],_arraycount(EntityDrawData_METACOMP_STRUCT)},
 {offsetof(ComponentStruct,entityaudiodata_array),offsetof(ComponentStruct,entityaudiodata_count),sizeof(ComponentStruct::entityaudiodata_array[0]),"EntityAudioData",(u32)78986700,&EntityAudioData_METACOMP_STRUCT[0],_arraycount(EntityAudioData_METACOMP_STRUCT)},
+{offsetof(ComponentStruct,pointlight_array),offsetof(ComponentStruct,pointlight_count),sizeof(ComponentStruct::pointlight_array[0]),"PointLight",(u32)2658434,&PointLight_METACOMP_STRUCT[0],_arraycount(PointLight_METACOMP_STRUCT)},
 
 };
 

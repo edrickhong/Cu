@@ -1097,17 +1097,22 @@ void EditorGUI(SceneContext* context){
     
     static logic show_object_list = false;
     static logic show_object_editor = false;
+    static logic show_light_list = false;
     
     //control panel
     
     {
         static GUIVec2 pos = {-1.0f,1.0f};
-        static GUIDim2 dim = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
+        static GUIDim2 dim = {GUIDEFAULT_W * 4.8f,GUIDEFAULT_H * 0.22f};
         
         GUIBeginWindow("Control Panel",&pos,&dim);
         
         if(GUIButton("Obj List")){
             show_object_list = !show_object_list;
+        }
+        
+        if(GUIButton("Light List")){
+            show_light_list = !show_light_list;
         }
         
         if(GUIButton("Obj Editor")){
@@ -1415,7 +1420,9 @@ void EditorGUI(SceneContext* context){
             
             if(!(FindHash(metacomp->comp_name_hash,comphash_array,comphash_count) ||
                  (metacomp->comp_name_hash == PHashString("EntityAnimationData")) ||
-                 (metacomp->comp_name_hash == PHashString("EntityAudioData")))){
+                 (metacomp->comp_name_hash == PHashString("EntityAudioData"))  ||
+                 (metacomp->comp_name_hash == PHashString("PointLight"))
+                 )){
                 entry_array[entry_count] = &metacomp->comp_name_string[0];
                 entry_count++;
             }
