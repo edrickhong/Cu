@@ -2642,7 +2642,7 @@ void GUIDebugGetCurrentHolder(){
     printf("GUI current holder %s\n",gui->internal_state_string);
 }
 
-void GUIDrawPosMarker(GUIVec3 world_pos){
+void GUIDrawPosMarker(GUIVec3 world_pos,Color color){
     
     GUISetRenderMode(GUI_RENDER_LINE);
     GUISetCameraMode(GUI_CAMERA_NONE);
@@ -2658,7 +2658,7 @@ void GUIDrawPosMarker(GUIVec3 world_pos){
     auto c = WorldSpaceToClipSpace(obj_w + Vector4{0,1,0,0},viewproj);
     auto obj_c = WorldSpaceToClipSpace(obj_w,viewproj);
     
-    InternalGUIDrawLine(obj_c,a,Red);
-    InternalGUIDrawLine(obj_c,b,Red);
-    InternalGUIDrawLine(obj_c,c,Red);
+    InternalGUIDrawLine(obj_c,a,color);
+    InternalGUIDrawLine(obj_c,b,color);
+    InternalGUIDrawLine(obj_c,c,color);
 }
