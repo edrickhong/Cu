@@ -32,6 +32,8 @@
 
 #include "editor_ui.h"
 
+#define _pos_width 0.345f
+
 
 /*
 //TODO: separate sampler and texture
@@ -86,6 +88,15 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                     drawobj->group = 1;
                 }
                 
+            }
+            
+            if(compname_hash == PHashString("PointLight")){
+                auto light = (PointLight*)obj;
+                
+                light->R = 1.0f;
+                light->G = 1.0f;
+                light->B = 1.0f;
+                light->intensity = 0.2f;
             }
             
             return obj;
@@ -444,7 +455,7 @@ void UpdateLightList(SceneContext* context){
         
         auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
         
-        context->AddPointLight(pos,light->color,light->intensity);
+        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity);
     }
 }
 
@@ -1214,8 +1225,6 @@ void EditorGUI(SceneContext* context){
         static GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
         
         GUIBeginWindow("Object Editor",&w_pos,&w_dim);
-        
-#define _pos_width 0.345f
         
         //orientation fields
         {
