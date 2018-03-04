@@ -1066,6 +1066,22 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
 
 logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
     
+    //Mark out obj
+    for(u32 i = 0; i < data->orientation.count; i++){
+        
+        if(i != obj_id){
+            
+            Vector3 pos = {
+                data->orientation.pos_x[i],
+                data->orientation.pos_y[i],
+                data->orientation.pos_z[i],
+            };
+            
+            
+            GUIDrawPosMarker(pos,White);
+        }
+    }
+    
     logic to_update = false;
     
     Vector3 pos = {
@@ -1096,7 +1112,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                 data->orientation.scale[obj_id] = scale;
                 to_update = true;
             }
-            GUIDrawPosMarker(pos);
+            GUIDrawPosMarker(pos,Red);
         }break;
         
         case 3:{
@@ -1107,7 +1123,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
         }break;
         
         default:{
-            GUIDrawPosMarker(pos);
+            GUIDrawPosMarker(pos,Red);
         }break;
         
     }
