@@ -36,7 +36,12 @@
 
 
 /*
-//TODO: separate sampler and texture
+TODO: 
+move gui state to the engine
+light
+handle array types in the editor (cparser can parse array types but it is not written to the table)
+add a color picker
+separate sampler and texture
 */
 
 
@@ -332,19 +337,27 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
                 u32 type_hash;
                 u32 type_size;
                 u32 name_hash;
-                s8 buffer[128] = {};
+                u32 arraycount;
+                
                 
                 FRead(file,&type_hash,sizeof(type_hash));
                 FRead(file,&type_size,sizeof(type_size));
                 FRead(file,&name_hash,sizeof(name_hash));
-                FRead(file,&buffer[0],type_size);
+                FRead(file,&arraycount,sizeof(arraycount));
                 
-                if(comp){
-                    if(MetaGetTypeByNameHash(name_hash,&out_comp.metadata_table[0],
-                                             out_comp.metadata_count) == type_hash){
-                        MetaSetValueByNameHash(obj,&buffer[0],name_hash,
-                                               &out_comp.metadata_table[0],out_comp.metadata_count);
-                    } 
+                for(u32 a = 0; a < arraycount; a++){
+                    
+                    s8 buffer[128] = {};
+                    
+                    FRead(file,&buffer[0],type_size);
+                    
+                    if(comp){
+                        if(MetaGetTypeByNameHash(name_hash,&out_comp.metadata_table[0],
+                                                 out_comp.metadata_count) == type_hash){
+                            MetaSetValueByNameHash(obj,a,&buffer[0],name_hash,
+                                                   &out_comp.metadata_table[0],out_comp.metadata_count);
+                        } 
+                    }
                 }
                 
             }
@@ -365,67 +378,6 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
     FCloseFile(file);
 }
 
-void ComponentStartInit(SceneContext* context){
-    
-    ((ComponentStruct*)data->components)->entityanimationdata_count = 2;
-    ((ComponentStruct*)data->components)->entityanimationdata_array[0] = {0,0,0,1,0.0f,1.0f};
-    ((ComponentStruct*)data->components)->entityanimationdata_array[1] = {1,0,0,1,0.0f,0.2f};
-    
-    auto quaternion = ConstructQuaternion({1,0,0,0},_radians(-90));
-    
-    data->orientation.pos_x[0] = -9.0f;
-    data->orientation.pos_y[0] = -1.5f;
-    data->orientation.pos_z[0] = 2.0f;
-    data->orientation.rot[0] = quaternion;
-    data->orientation.scale[0] = 0.001f;
-    
-    context->SetObjectOrientation(0,{-9.0f,-1.5f,2.0f,1.0f},quaternion,0.001f);
-    
-    data->orientation.pos_x[1] = -6.0f;
-    data->orientation.pos_y[1] = -1.5f;
-    data->orientation.pos_z[1] = 2.0f;
-    data->orientation.rot[1] = quaternion;
-    data->orientation.scale[1] = 0.001f;
-    
-    context->SetObjectOrientation(1,{-6.0f,-1.5f,2.0f,1.0f},quaternion,0.001f);
-    
-    auto quaternion1 = ConstructQuaternion({1,0,0,0},(22.0f/7.0f));
-    
-    data->orientation.pos_x[2] = 0.0f;
-    data->orientation.pos_y[2] = 0.0f;
-    data->orientation.pos_z[2] = 1.0f;
-    data->orientation.rot[1] = quaternion1;
-    data->orientation.scale[2] = 0.1f;
-    
-    
-    
-    context->SetObjectOrientation(2,{0.0f,0.0f,1.0f,1.0f},quaternion1,0.1f);
-    
-    data->orientation.count = 3;
-    
-    ((ComponentStruct*)data->components)->entitydrawdata_count = 3;
-    
-    auto drawdata = &((ComponentStruct*)data->components)->entitydrawdata_array[0];
-    drawdata->id = 0;
-    drawdata->model = 0;
-    // drawdata->texture = 0;
-    drawdata->group = 0;
-    
-    drawdata++;
-    
-    drawdata->id = 1;
-    drawdata->model = 0;
-    // drawdata->texture = 0;
-    drawdata->group = 0;
-    
-    
-    drawdata++;
-    
-    drawdata->id = 2;
-    drawdata->model = 1;
-    // drawdata->texture = 1;
-    drawdata->group = 1;
-}
 
 typedef u64 AudioToken;
 
@@ -653,11 +605,6 @@ extern "C" {
                     
                     auto entry = &out_comp.metadata_table[k];
                     
-                    s8 buffer[128] = {};
-                    
-                    MetaGetValueByNameHash(obj,&buffer[0],entry->name_hash,
-                                           &out_comp.metadata_table[0],out_comp.metadata_count);
-                    
                     //type hash
                     FWrite(outfile,&entry->type_hash,sizeof(entry->type_hash));
                     //size
@@ -665,8 +612,19 @@ extern "C" {
                     //name hash
                     FWrite(outfile,&entry->name_hash,sizeof(entry->name_hash));	
                     
-                    //value
-                    FWrite(outfile,&buffer[0],entry->size);
+                    //array count
+                    FWrite(outfile,&entry->arraycount,sizeof(entry->arraycount));
+                    
+                    for(u32 a = 0; a < entry->arraycount; a++){
+                        
+                        s8 buffer[128] = {};
+                        
+                        MetaGetValueByNameHash(obj,a,&buffer[0],entry->name_hash,
+                                               &out_comp.metadata_table[0],out_comp.metadata_count);
+                        
+                        //value
+                        FWrite(outfile,&buffer[0],entry->size);
+                    }
                 }
                 
                 
@@ -1069,7 +1027,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
     //Mark out obj
     for(u32 i = 0; i < data->orientation.count; i++){
         
-        if(i != obj_id){
+        if(i != obj_id && !data->orientation.skip_array[i]){
             
             Vector3 pos = {
                 data->orientation.pos_x[i],
@@ -1355,7 +1313,7 @@ void EditorGUI(SceneContext* context){
                 //check object id
                 u32 id;
                 
-                MetaGetValueByName(comp_data_entry,&id,"id",comp_meta.metadata_table,
+                MetaGetValueByName(comp_data_entry,0,&id,"id",comp_meta.metadata_table,
                                    comp_meta.metadata_count);
                 
                 if(id != obj_id){
@@ -1384,62 +1342,66 @@ void EditorGUI(SceneContext* context){
                         continue;
                     }
                     
-                    s8 buffer[256] = {};
-                    
-                    MetaGetValueByName(comp_data_entry,&buffer[0],comp_meta_entry.name_string,
-                                       comp_meta.metadata_table,comp_meta.metadata_count);
-                    
-                    if(IsIntType(comp_meta_entry.type_hash)){
-                        sprintf(&buffer[0],"%d",*((u32*)(&buffer[0])));
-                    }
-                    
-                    else if(IsFloatType(comp_meta_entry.type_hash)){
-                        sprintf(&buffer[0],"%f",*((f32*)(&buffer[0])));
-                    }
-                    
-                    else if(InspectorIsOpaqueType(comp_meta_entry.type_hash)){
+                    for(u32 a = 0; a < comp_meta_entry.arraycount; a++){
                         
-                        u32 ret_id =
-                            InspectorHandleOpaqueTypes(comp_meta_entry.type_hash,*((u32*)(&buffer[0])),
-                                                       obj_id,context);
+                        s8 buffer[256] = {};
                         
-                        if(ret_id != (u32)-1){
-                            
-                            MetaSetValueByName(comp_data_entry,&ret_id,comp_meta_entry.name_string,
-                                               comp_meta.metadata_table,comp_meta.metadata_count);
+                        MetaGetValueByName(comp_data_entry,a,&buffer[0],comp_meta_entry.name_string,
+                                           comp_meta.metadata_table,comp_meta.metadata_count);
+                        
+                        if(IsIntType(comp_meta_entry.type_hash)){
+                            sprintf(&buffer[0],"%d",*((u32*)(&buffer[0])));
                         }
                         
-                        continue;
-                    }
-                    
-                    auto cur_buffer = &buffer[0];
-                    static s8 in_buffer[128] = {};
-                    
-                    if(GUIIsElementActive(comp_meta_entry.name_string)){
-                        cur_buffer = &in_buffer[0];
-                    }
-                    
-                    if(GUITextField(comp_meta_entry.name_string,cur_buffer)){
+                        else if(IsFloatType(comp_meta_entry.type_hash)){
+                            sprintf(&buffer[0],"%f",*((f32*)(&buffer[0])));
+                        }
                         
-                        if(PIsStringFloat(&in_buffer[0])){
+                        else if(InspectorIsOpaqueType(comp_meta_entry.type_hash)){
                             
-                            auto value = (f32)atof(&in_buffer[0]);
+                            u32 ret_id =
+                                InspectorHandleOpaqueTypes(comp_meta_entry.type_hash,*((u32*)(&buffer[0])),
+                                                           obj_id,context);
                             
-                            if(IsIntType(comp_meta_entry.type_hash)){
+                            if(ret_id != (u32)-1){
                                 
-                                auto v = (u32)value;
-                                memcpy(&in_buffer[0],&v,sizeof(v)); 
+                                MetaSetValueByName(comp_data_entry,a,&ret_id,comp_meta_entry.name_string,
+                                                   comp_meta.metadata_table,comp_meta.metadata_count);
                             }
                             
-                            if(IsFloatType(comp_meta_entry.type_hash)){
-                                memcpy(&in_buffer[0],&value,sizeof(value)); 
-                            }
-                            
-                            MetaSetValueByName(comp_data_entry,&in_buffer[0],comp_meta_entry.name_string,
-                                               comp_meta.metadata_table,comp_meta.metadata_count);
+                            continue;
                         }
                         
-                        memset(&in_buffer[0],0,sizeof(in_buffer));
+                        auto cur_buffer = &buffer[0];
+                        static s8 in_buffer[128] = {};
+                        
+                        if(GUIIsElementActive(comp_meta_entry.name_string)){
+                            cur_buffer = &in_buffer[0];
+                        }
+                        
+                        if(GUITextField(comp_meta_entry.name_string,cur_buffer)){
+                            
+                            if(PIsStringFloat(&in_buffer[0])){
+                                
+                                auto value = (f32)atof(&in_buffer[0]);
+                                
+                                if(IsIntType(comp_meta_entry.type_hash)){
+                                    
+                                    auto v = (u32)value;
+                                    memcpy(&in_buffer[0],&v,sizeof(v)); 
+                                }
+                                
+                                if(IsFloatType(comp_meta_entry.type_hash)){
+                                    memcpy(&in_buffer[0],&value,sizeof(value)); 
+                                }
+                                
+                                MetaSetValueByName(comp_data_entry,a,&in_buffer[0],comp_meta_entry.name_string,
+                                                   comp_meta.metadata_table,comp_meta.metadata_count);
+                            }
+                            
+                            memset(&in_buffer[0],0,sizeof(in_buffer));
+                        }
+                        
                     }
                     
                 }
