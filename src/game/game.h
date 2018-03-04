@@ -74,6 +74,23 @@ struct GameData{
     //These are entity registers
     SOAOrientationData orientation;
     void* components;
+    
+    //GUI state variables
+    Vector2 prev_mpos;
+    u32 widget_type = 0;
+    u32 obj_id = 2;
+    logic show_object_list = false;
+    logic show_object_editor = false;
+    GUIVec2 pos_1 = {-1.0f,1.0f};
+    GUIDim2 dim_1 = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
+    logic write_orientation = true;
+    GUIVec2 pos_2 = {-0.16f,GUIDEFAULT_Y};
+    GUIDim2 dim_2 = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+    
+    GUIVec2 w_pos = {0.4f,GUIDEFAULT_Y};
+    GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+    s8 o_buffer[4][128] = {};
+    s8 in_buffer[128] = {};
 };
 
 
