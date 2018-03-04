@@ -39,7 +39,6 @@
 TODO: 
 move gui state to the engine
 light
-handle array types in the editor (cparser can parse array types but it is not written to the table)
 add a color picker
 separate sampler and texture
 */
@@ -645,6 +644,26 @@ extern "C" {
         data->camera_pos = Vector4{0.0f,0.0f,-4.0f,1.0f};
         data->camera_lookdir = Vector4{0.0f,0.0f,1.0f,0.0f};
         
+        
+        //set gui state
+        data->prev_mpos = {};
+        data->widget_type = 0;
+        data->obj_id = 2;
+        data->show_object_list = false;
+        data->show_object_editor = false;
+        data->pos_1 = {-1.0f,1.0f};
+        data->dim_1 = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
+        data->write_orientation = true;
+        data->pos_2 = {-0.16f,GUIDEFAULT_Y};
+        data->dim_2 = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+        
+        data->w_pos = {0.4f,GUIDEFAULT_Y};
+        data->w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+        
+        memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
+        memset(&data->in_buffer[0],0,sizeof(data->in_buffer));
+        
+        
     }
     
     _dllexport void GameUpdateRender(SceneContext* context){
@@ -909,15 +928,13 @@ logic FindHash(u32 hash,u32* hash_array,u32 hash_count){
 
 void EditorKeyboard(SceneContext* context,u32* widget_type){
     
-    static Vector2 prev_mpos = {};
-    
     auto mousestate = context->mousestate;
     
     auto cur_mpos = GUIMouseCoordToScreenCoord();
     cur_mpos.y *= -1.0f;
     
-    auto x_len = cur_mpos.x - prev_mpos.x;
-    auto y_len = cur_mpos.y - prev_mpos.y;
+    auto x_len = cur_mpos.x - data->prev_mpos.x;
+    auto y_len = cur_mpos.y - data->prev_mpos.y;
     
     if(IsKeyDown(mousestate,MOUSEBUTTON_RIGHT)){
         
@@ -946,7 +963,7 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         data->camera_lookdir = Vec3::Normalize(data->camera_lookdir);
     }
     
-    prev_mpos = cur_mpos;
+    data->prev_mpos = cur_mpos;
     
     KeyboardState* keyboardstate = context->keyboardstate;
     f32 delta_time = context->prev_frametime;
@@ -1095,28 +1112,20 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
 
 void EditorGUI(SceneContext* context){
     
-    static u32 widget_type = 0;
-    static u32 obj_id = 2;
-    
-    auto to_update_view = EditorWidget(context,obj_id,widget_type);
-    
-    static logic show_object_list = false;
-    static logic show_object_editor = false;
+    auto to_update_view = EditorWidget(context,data->obj_id,data->widget_type);
     
     //control panel
     
     {
-        static GUIVec2 pos = {-1.0f,1.0f};
-        static GUIDim2 dim = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
         
-        GUIBeginWindow("Control Panel",&pos,&dim);
+        GUIBeginWindow("Control Panel",&data->pos_1,&data->dim_1);
         
         if(GUIButton("Obj List")){
-            show_object_list = !show_object_list;
+            data->show_object_list = !data->show_object_list;
         }
         
         if(GUIButton("Obj Editor")){
-            show_object_editor = !show_object_editor;  
+            data->show_object_editor = !data->show_object_editor;  
         }
         
         if(GUIButton("Profiler")){
@@ -1125,19 +1134,14 @@ void EditorGUI(SceneContext* context){
         
     }
     
-    static logic write_orientation = true;
-    
     //object list
-    if(show_object_list){
-        
-        static GUIVec2 pos = {-0.16f,GUIDEFAULT_Y};
-        static GUIDim2 dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+    if(data->show_object_list){
         
         s8 title_buffer[128] = {};
         
-        sprintf(title_buffer,"Object List(%d)",obj_id);
+        sprintf(title_buffer,"Object List(%d)",data->obj_id);
         
-        GUIBeginWindow(title_buffer,&pos,&dim);
+        GUIBeginWindow(title_buffer,&data->pos_2,&data->dim_2);
         
         for(u32 i = 0; i < data->orientation.count; i++){
             
@@ -1150,29 +1154,29 @@ void EditorGUI(SceneContext* context){
             sprintf(buffer,"obj_id:%d",i);
             
             if(GUIButton(&buffer[0])){
-                write_orientation = true;
-                obj_id = i;
+                data->write_orientation = true;
+                data->obj_id = i;
             }
             
         }
         
         if(GUIButton("Add Object")){
-            obj_id = AddObject(context);
+            data->obj_id = AddObject(context);
         }
         
         if(GUIButton("Remove Object")){
             
-            RemoveObject(obj_id,context);
+            RemoveObject(data->obj_id,context);
             
-            auto tid = obj_id;
+            auto tid = data->obj_id;
             
-            obj_id = 0;
+            data->obj_id = 0;
             
             if(tid > (data->orientation.count >> 1)){
                 for(u32 j = data->orientation.count - 1; j != (u32)-1 ; j--){
                     
                     if(!data->orientation.skip_array[j]){
-                        obj_id = j;
+                        data->obj_id = j;
                         break;
                     }
                     
@@ -1184,7 +1188,7 @@ void EditorGUI(SceneContext* context){
                 for(u32 j = 0; j < data->orientation.count ; j++){
                     
                     if(!data->orientation.skip_array[j]){
-                        obj_id = j;
+                        data->obj_id = j;
                         break;
                     }
                     
@@ -1198,99 +1202,98 @@ void EditorGUI(SceneContext* context){
     
     
     //component editor view
-    if(show_object_editor){
+    if(data->show_object_editor){
         
-        static GUIVec2 w_pos = {0.4f,GUIDEFAULT_Y};
-        static GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
         
-        GUIBeginWindow("Object Editor",&w_pos,&w_dim);
+        
+        GUIBeginWindow("Object Editor",&data->w_pos,&data->w_dim);
         
         //orientation fields
         {
             
             //TODO: I will admit I was lazy, I'll do it individually at some point
             auto init_orientation_field = [](s8* b1,s8* b2,s8* b3,s8* b4)->void {
-                sprintf(b1,"%f",data->orientation.pos_x[obj_id]);
-                sprintf(b2,"%f",data->orientation.pos_y[obj_id]);
-                sprintf(b3,"%f",data->orientation.pos_z[obj_id]);
-                sprintf(b4,"%f",data->orientation.scale[obj_id]);
+                sprintf(b1,"%f",data->orientation.pos_x[data->obj_id]);
+                sprintf(b2,"%f",data->orientation.pos_y[data->obj_id]);
+                sprintf(b3,"%f",data->orientation.pos_z[data->obj_id]);
+                sprintf(b4,"%f",data->orientation.scale[data->obj_id]);
             };
             
-            static s8 o_buffer[4][128] = {};
             
-            if(write_orientation || to_update_view){
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
-                write_orientation = false;
+            
+            if(data->write_orientation || to_update_view){
+                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
+                data->write_orientation = false;
             }
             
-            if(GUITextField("x",&o_buffer[0][0],false,_pos_width)){
+            if(GUITextField("x",&data->o_buffer[0][0],false,_pos_width)){
                 
-                if(PIsStringFloat(&o_buffer[0][0])){
+                if(PIsStringFloat(&data->o_buffer[0][0])){
                     
-                    auto value = (f32)atof(&o_buffer[0][0]);
+                    auto value = (f32)atof(&data->o_buffer[0][0]);
                     
-                    memcpy(&data->orientation.pos_x[obj_id],&value,
-                           sizeof(data->orientation.pos_x[obj_id]));
+                    memcpy(&data->orientation.pos_x[data->obj_id],&value,
+                           sizeof(data->orientation.pos_x[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
                 
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
+                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
             
-            if(GUITextField("y",&o_buffer[1][0],false,_pos_width)){
+            if(GUITextField("y",&data->o_buffer[1][0],false,_pos_width)){
                 
-                if(PIsStringFloat(&o_buffer[1][0])){
+                if(PIsStringFloat(&data->o_buffer[1][0])){
                     
-                    auto value = (f32)atof(&o_buffer[1][0]);
+                    auto value = (f32)atof(&data->o_buffer[1][0]);
                     
-                    memcpy(&data->orientation.pos_y[obj_id],&value,
-                           sizeof(data->orientation.pos_y[obj_id]));
+                    memcpy(&data->orientation.pos_y[data->obj_id],&value,
+                           sizeof(data->orientation.pos_y[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
+                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
-            if(GUITextField("z",&o_buffer[2][0],false,_pos_width)){
+            if(GUITextField("z",&data->o_buffer[2][0],false,_pos_width)){
                 
-                if(PIsStringFloat(&o_buffer[2][0])){
+                if(PIsStringFloat(&data->o_buffer[2][0])){
                     
-                    auto value = (f32)atof(&o_buffer[2][0]);
+                    auto value = (f32)atof(&data->o_buffer[2][0]);
                     
-                    memcpy(&data->orientation.pos_z[obj_id],&value,
-                           sizeof(data->orientation.pos_z[obj_id]));
+                    memcpy(&data->orientation.pos_z[data->obj_id],&value,
+                           sizeof(data->orientation.pos_z[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
+                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
-            if(GUITextField("scale",&o_buffer[3][0])){
+            if(GUITextField("scale",&data->o_buffer[3][0])){
                 
-                if(PIsStringFloat(&o_buffer[3][0])){
+                if(PIsStringFloat(&data->o_buffer[3][0])){
                     
-                    auto value = (f32)atof(&o_buffer[3][0]);
+                    auto value = (f32)atof(&data->o_buffer[3][0]);
                     
-                    memcpy(&data->orientation.scale[obj_id],&value,
-                           sizeof(data->orientation.scale[obj_id]));
+                    memcpy(&data->orientation.scale[data->obj_id],&value,
+                           sizeof(data->orientation.scale[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
+                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
-            if(write_orientation){
+            if(data->write_orientation){
                 
-                Vector4 pos = {data->orientation.pos_x[obj_id],data->orientation.pos_y[obj_id],
-                    data->orientation.pos_z[obj_id],1.0f};
+                Vector4 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
+                    data->orientation.pos_z[data->obj_id],1.0f};
                 
-                auto scale = data->orientation.scale[obj_id];
+                auto scale = data->orientation.scale[data->obj_id];
                 
-                auto rot = data->orientation.rot[obj_id];
+                auto rot = data->orientation.rot[data->obj_id];
                 
-                context->SetObjectOrientation(obj_id,pos,rot,scale);
+                context->SetObjectOrientation(data->obj_id,pos,rot,scale);
             } 
             
         }
@@ -1316,7 +1319,7 @@ void EditorGUI(SceneContext* context){
                 MetaGetValueByName(comp_data_entry,0,&id,"id",comp_meta.metadata_table,
                                    comp_meta.metadata_count);
                 
-                if(id != obj_id){
+                if(id != data->obj_id){
                     continue;
                 }
                 
@@ -1329,7 +1332,7 @@ void EditorGUI(SceneContext* context){
                 if(comp_meta.comp_name_hash != PHashString("EntityAnimationData")){
                     
                     if(GUIButton("X")){
-                        RemoveComponent(comp_meta.comp_name_hash,obj_id,context);
+                        RemoveComponent(comp_meta.comp_name_hash,data->obj_id,context);
                     }
                     
                 }
@@ -1361,7 +1364,7 @@ void EditorGUI(SceneContext* context){
                             
                             u32 ret_id =
                                 InspectorHandleOpaqueTypes(comp_meta_entry.type_hash,*((u32*)(&buffer[0])),
-                                                           obj_id,context);
+                                                           data->obj_id,context);
                             
                             if(ret_id != (u32)-1){
                                 
@@ -1373,33 +1376,32 @@ void EditorGUI(SceneContext* context){
                         }
                         
                         auto cur_buffer = &buffer[0];
-                        static s8 in_buffer[128] = {};
                         
                         if(GUIIsElementActive(comp_meta_entry.name_string)){
-                            cur_buffer = &in_buffer[0];
+                            cur_buffer = &data->in_buffer[0];
                         }
                         
                         if(GUITextField(comp_meta_entry.name_string,cur_buffer)){
                             
-                            if(PIsStringFloat(&in_buffer[0])){
+                            if(PIsStringFloat(&data->in_buffer[0])){
                                 
-                                auto value = (f32)atof(&in_buffer[0]);
+                                auto value = (f32)atof(&data->in_buffer[0]);
                                 
                                 if(IsIntType(comp_meta_entry.type_hash)){
                                     
                                     auto v = (u32)value;
-                                    memcpy(&in_buffer[0],&v,sizeof(v)); 
+                                    memcpy(&data->in_buffer[0],&v,sizeof(v)); 
                                 }
                                 
                                 if(IsFloatType(comp_meta_entry.type_hash)){
-                                    memcpy(&in_buffer[0],&value,sizeof(value)); 
+                                    memcpy(&data->in_buffer[0],&value,sizeof(value)); 
                                 }
                                 
-                                MetaSetValueByName(comp_data_entry,a,&in_buffer[0],comp_meta_entry.name_string,
+                                MetaSetValueByName(comp_data_entry,a,&data->in_buffer[0],comp_meta_entry.name_string,
                                                    comp_meta.metadata_table,comp_meta.metadata_count);
                             }
                             
-                            memset(&in_buffer[0],0,sizeof(in_buffer));
+                            memset(&data->in_buffer[0],0,sizeof(data->in_buffer));
                         }
                         
                     }
@@ -1436,7 +1438,7 @@ void EditorGUI(SceneContext* context){
         if(GUIComboBox("Comp",(const s8**)&entry_array[0],entry_count,&id)){
             
             if(id){
-                AddComponent(PHashString(entry_array[id]),obj_id,context);
+                AddComponent(PHashString(entry_array[id]),data->obj_id,context);
             }
             
         }
@@ -1451,7 +1453,7 @@ void EditorGUI(SceneContext* context){
 #endif
     
     if(!GUIIsAnyElementActive()){
-        EditorKeyboard(context,&widget_type);  
+        EditorKeyboard(context,&data->widget_type);  
     }
     
 }
