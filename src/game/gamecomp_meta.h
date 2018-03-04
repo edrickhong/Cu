@@ -11,6 +11,7 @@
   s8 name_string[128];
   u32 size;
   u32 offset;
+  u32 arraycount;
   // for referencing other components to access.
   u32 ref_metadatacomp_index; 
   };
@@ -72,34 +73,34 @@ u32 pointlight_count = 0;
 
 
 _persist MetaDataEntry EntityAnimationData_METACOMP_STRUCT[] = {
-{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(EntityAnimationData,id),(u32)-1},
-{(u32)2466981,(u32)4490554,"AnimationID","animdata_id",sizeof(AnimationID),offsetof(EntityAnimationData,animdata_id),(u32)-1},
-{(u32)7072,(u32)48303245,"u16","animationindex",sizeof(u16),offsetof(EntityAnimationData,animationindex),(u32)-1},
-{(u32)7072,(u32)883313,"u16","islooping",sizeof(u16),offsetof(EntityAnimationData,islooping),(u32)-1},
-{(u32)10963,(u32)25108223,"f32","animationtime",sizeof(f32),offsetof(EntityAnimationData,animationtime),(u32)-1},
-{(u32)10963,(u32)15697,"f32","speed",sizeof(f32),offsetof(EntityAnimationData,speed),(u32)-1},
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(EntityAnimationData,id),1,(u32)-1},
+{(u32)2466981,(u32)4490554,"AnimationID","animdata_id",sizeof(AnimationID),offsetof(EntityAnimationData,animdata_id),1,(u32)-1},
+{(u32)7072,(u32)48303245,"u16","animationindex",sizeof(u16),offsetof(EntityAnimationData,animationindex),1,(u32)-1},
+{(u32)7072,(u32)883313,"u16","islooping",sizeof(u16),offsetof(EntityAnimationData,islooping),1,(u32)-1},
+{(u32)10963,(u32)25108223,"f32","animationtime",sizeof(f32),offsetof(EntityAnimationData,animationtime),1,(u32)-1},
+{(u32)10963,(u32)15697,"f32","speed",sizeof(f32),offsetof(EntityAnimationData,speed),1,(u32)-1},
 };
 
 _persist MetaDataEntry EntityDrawData_METACOMP_STRUCT[] = {
-{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(EntityDrawData,id),(u32)-1},
-{(u32)443850,(u32)47494,"ModelID","model",sizeof(ModelID),offsetof(EntityDrawData,model),(u32)-1},
-{(u32)1921701,(u32)487130,"MaterialID","material",sizeof(MaterialID),offsetof(EntityDrawData,material),(u32)-1},
-{(u32)250014058,(u32)46101,"RenderGroupIndex","group",sizeof(RenderGroupIndex),offsetof(EntityDrawData,group),(u32)-1},
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(EntityDrawData,id),1,(u32)-1},
+{(u32)443850,(u32)47494,"ModelID","model",sizeof(ModelID),offsetof(EntityDrawData,model),1,(u32)-1},
+{(u32)1921701,(u32)487130,"MaterialID","material",sizeof(MaterialID),offsetof(EntityDrawData,material),1,(u32)-1},
+{(u32)250014058,(u32)46101,"RenderGroupIndex","group",sizeof(RenderGroupIndex),offsetof(EntityDrawData,group),1,(u32)-1},
 };
 
 _persist MetaDataEntry EntityAudioData_METACOMP_STRUCT[] = {
-{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(EntityAudioData,id),(u32)-1},
-{(u32)54203314,(u32)299390,"AudioAssetHandle","audioasset",sizeof(AudioAssetHandle),offsetof(EntityAudioData,audioasset),(u32)-1},
-{(u32)7072,(u32)883313,"u16","islooping",sizeof(u16),offsetof(EntityAudioData,islooping),(u32)-1},
-{(u32)7072,(u32)30233,"u16","toremove",sizeof(u16),offsetof(EntityAudioData,toremove),(u32)-1},
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(EntityAudioData,id),1,(u32)-1},
+{(u32)54203314,(u32)299390,"AudioAssetHandle","audioasset",sizeof(AudioAssetHandle),offsetof(EntityAudioData,audioasset),1,(u32)-1},
+{(u32)7072,(u32)883313,"u16","islooping",sizeof(u16),offsetof(EntityAudioData,islooping),1,(u32)-1},
+{(u32)7072,(u32)30233,"u16","toremove",sizeof(u16),offsetof(EntityAudioData,toremove),1,(u32)-1},
 };
 
 _persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
-{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),(u32)-1},
-{(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(PointLight,R),(u32)-1},
-{(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(PointLight,G),(u32)-1},
-{(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(PointLight,B),(u32)-1},
-{(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),(u32)-1},
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),1,(u32)-1},
+{(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(PointLight,R),1,(u32)-1},
+{(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(PointLight,G),1,(u32)-1},
+{(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(PointLight,B),1,(u32)-1},
+{(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),1,(u32)-1},
 };
 
 
@@ -173,14 +174,17 @@ MetaDataCompEntry METACOMP_ARRAY[] = {
   }
   
   
-  logic MetaGetValueByNameHash(void* obj,void* outdata,u32 hash,MetaDataEntry* array,
+  logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaDataEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
   MetaDataEntry* entry = &array[i];
   if(entry->name_hash == hash){
+  
+  _kill("index exceeds arraycount\n",index >= entry->arraycount);
+  
   auto data = (s8*)obj;
-  memcpy(outdata,data + entry->offset,entry->size);
+  memcpy(outdata,data + entry->offset + (entry->size * index),entry->size);
   return true;
   }
   }
@@ -188,20 +192,26 @@ MetaDataCompEntry METACOMP_ARRAY[] = {
   return false;
   }
   
-  logic MetaGetValueByName(void* obj,void* outdata,const s8* name,MetaDataEntry* array,
+  logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaDataEntry* array,
   u32 array_count){
   
-  return MetaGetValueByNameHash(obj,outdata,PHashString(name),array,array_count);
+  return MetaGetValueByNameHash(obj,index,outdata,PHashString(name),array,array_count);
   }
   
-  logic MetaSetValueByNameHash(void* obj,void* value,u32 hash,MetaDataEntry* array,
+  logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaDataEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
+  
   MetaDataEntry* entry = &array[i];
+  
   if(entry->name_hash == hash){
+  
+  _kill("index exceeds arraycount\n",index >= entry->arraycount);
+  
+  
   auto data = (s8*)obj;
-  memcpy(data + entry->offset,value,entry->size);
+  memcpy(data + entry->offset + (entry->size * index),value,entry->size);
   return true;
   }
   }
@@ -209,10 +219,10 @@ MetaDataCompEntry METACOMP_ARRAY[] = {
   return false;
   }
   
-  logic MetaSetValueByName(void* obj,void* value,const s8* name,MetaDataEntry* array,
+  logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaDataEntry* array,
   u32 array_count){
   
-  return MetaSetValueByNameHash(obj,value,PHashString(name),array,array_count);
+  return MetaSetValueByNameHash(obj,index,value,PHashString(name),array,array_count);
   }
   
   logic MetaIsCType(u32 hash){
@@ -276,9 +286,11 @@ MetaDataCompEntry METACOMP_ARRAY[] = {
    
    printf("%s %s : ",comp_meta_entry.type_string,comp_meta_entry.name_string);
    
+   for(u32 k = 0; k < comp_meta_entry.arraycount; k++){
+   
    s8 buffer[256] = {};
    
-   MetaGetValueByName(comp_entry_data,&buffer[0],comp_meta_entry.name_string,
+   MetaGetValueByName(comp_entry_data,k,&buffer[0],comp_meta_entry.name_string,
         outdata.metadata_table,outdata.metadata_count);
         
    if(
@@ -303,6 +315,8 @@ MetaDataCompEntry METACOMP_ARRAY[] = {
      printf("%d\n",*((u32*)(&buffer[0])));
    }
    
+}
+
         }
         
       }

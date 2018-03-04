@@ -361,18 +361,18 @@ void WriteStructMetaData(FormedStruct* curstruct,FormedStruct* array,u32 array_c
         
         if(offset_string){
             
-            sprintf(writebuffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",sizeof(%s),offsetof(%s,%s) + %s,(u32)%d},\n",
+            sprintf(writebuffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",sizeof(%s),offsetof(%s,%s) + %s,%d,(u32)%d},\n",
                     (u32)PHashString(typename_buffer),(u32)PHashString(name_buffer),
                     typename_buffer,name_buffer,
                     typename_buffer,
-                    curstruct->name,entry->name,offset_string,ref_id);
+                    curstruct->name,entry->name,offset_string,entry->arraycount,ref_id);
         }
         
         else{
-            sprintf(writebuffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",sizeof(%s),offsetof(%s,%s),(u32)%d},\n",
+            sprintf(writebuffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",sizeof(%s),offsetof(%s,%s),%d,(u32)%d},\n",
                     (u32)PHashString(typename_buffer),(u32)PHashString(name_buffer),
                     typename_buffer,name_buffer,
-                    typename_buffer,curstruct->name,entry->name,ref_id); 
+                    typename_buffer,curstruct->name,entry->name,entry->arraycount,ref_id); 
         }
         
         FWrite(file,(void*)writebuffer,strlen(writebuffer));
@@ -472,6 +472,7 @@ s32 main(s32 argc,s8** argv){
   s8 name_string[128];
   u32 size;
   u32 offset;
+  u32 arraycount;
   // for referencing other components to access.
   u32 ref_metadatacomp_index; 
   };
@@ -648,14 +649,17 @@ s32 main(s32 argc,s8** argv){
   }
   
   
-  logic MetaGetValueByNameHash(void* obj,void* outdata,u32 hash,MetaDataEntry* array,
+  logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaDataEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
   MetaDataEntry* entry = &array[i];
   if(entry->name_hash == hash){
+  
+  _kill("index exceeds arraycount\n",index >= entry->arraycount);
+  
   auto data = (s8*)obj;
-  memcpy(outdata,data + entry->offset,entry->size);
+  memcpy(outdata,data + entry->offset + (entry->size * index),entry->size);
   return true;
   }
   }
@@ -663,20 +667,26 @@ s32 main(s32 argc,s8** argv){
   return false;
   }
   
-  logic MetaGetValueByName(void* obj,void* outdata,const s8* name,MetaDataEntry* array,
+  logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaDataEntry* array,
   u32 array_count){
   
-  return MetaGetValueByNameHash(obj,outdata,PHashString(name),array,array_count);
+  return MetaGetValueByNameHash(obj,index,outdata,PHashString(name),array,array_count);
   }
   
-  logic MetaSetValueByNameHash(void* obj,void* value,u32 hash,MetaDataEntry* array,
+  logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaDataEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
+  
   MetaDataEntry* entry = &array[i];
+  
   if(entry->name_hash == hash){
+  
+  _kill("index exceeds arraycount\n",index >= entry->arraycount);
+  
+  
   auto data = (s8*)obj;
-  memcpy(data + entry->offset,value,entry->size);
+  memcpy(data + entry->offset + (entry->size * index),value,entry->size);
   return true;
   }
   }
@@ -684,10 +694,10 @@ s32 main(s32 argc,s8** argv){
   return false;
   }
   
-  logic MetaSetValueByName(void* obj,void* value,const s8* name,MetaDataEntry* array,
+  logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaDataEntry* array,
   u32 array_count){
   
-  return MetaSetValueByNameHash(obj,value,PHashString(name),array,array_count);
+  return MetaSetValueByNameHash(obj,index,value,PHashString(name),array,array_count);
   }
   
   logic MetaIsCType(u32 hash){
@@ -751,9 +761,11 @@ s32 main(s32 argc,s8** argv){
    
    printf("%s %s : ",comp_meta_entry.type_string,comp_meta_entry.name_string);
    
+   for(u32 k = 0; k < comp_meta_entry.arraycount; k++){
+   
    s8 buffer[256] = {};
    
-   MetaGetValueByName(comp_entry_data,&buffer[0],comp_meta_entry.name_string,
+   MetaGetValueByName(comp_entry_data,k,&buffer[0],comp_meta_entry.name_string,
         outdata.metadata_table,outdata.metadata_count);
         
    if(
@@ -778,6 +790,8 @@ s32 main(s32 argc,s8** argv){
      printf("%d\n",*((u32*)(&buffer[0])));
    }
    
+}
+
         }
         
       }
