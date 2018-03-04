@@ -2641,3 +2641,24 @@ logic GUIRotationGizmo(GUIVec3 world_pos,Quaternion* rot){
 void GUIDebugGetCurrentHolder(){
     printf("GUI current holder %s\n",gui->internal_state_string);
 }
+
+void GUIDrawPosMarker(GUIVec3 world_pos){
+    
+    GUISetRenderMode(GUI_RENDER_LINE);
+    GUISetCameraMode(GUI_CAMERA_NONE);
+    
+    GUIInternalMakeSubmission();
+    
+    auto viewproj = gui->proj_matrix * gui->view_matrix;
+    
+    auto obj_w = world_pos;
+    
+    auto a = WorldSpaceToClipSpace(obj_w + (Vector4{1,1,0,0} * 0.5f),viewproj);
+    auto b = WorldSpaceToClipSpace(obj_w + (Vector4{-1,1,0,0}  * 0.5f),viewproj);
+    auto c = WorldSpaceToClipSpace(obj_w + Vector4{0,1,0,0},viewproj);
+    auto obj_c = WorldSpaceToClipSpace(obj_w,viewproj);
+    
+    InternalGUIDrawLine(obj_c,a,Red);
+    InternalGUIDrawLine(obj_c,b,Red);
+    InternalGUIDrawLine(obj_c,c,Red);
+}
