@@ -123,6 +123,8 @@ logic GUIScaleGizmo(GUIVec3 world_pos,f32* scale);
 //TODO: make a vec3 version
 logic GUIRotationGizmo(GUIVec3 world_pos,Quaternion* rot);
 
+void GUIDrawPosMarker(GUIVec3 world_pos);
+
 GUIVec2 GUIMouseCoordToScreenCoord();
 
 
