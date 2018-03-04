@@ -186,6 +186,7 @@ s32 main(s32 argc,s8** argv){
             gui_draw_is_locked = 0;
             
             Clear(&pdata->rendercontext);
+            ClearLightList();
             
             GUIUpdate(&pdata->window,&pdata->keyboardstate,&pdata->mousestate,
                       pdata->view,pdata->proj);
