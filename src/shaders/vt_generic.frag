@@ -256,6 +256,15 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
 
 #define _Diffuse_ID 0
 
+
+//TODO: figure out the effective range of the lights
+float CalculateAttenuation(vec3 light_pos,vec3 frag_pos,float constant,float linear,float quadratic){
+    
+    float dist = length(light_pos - frag_pos);
+    
+    return (1.0f)/(constant + (linear * dist) + (quadratic * (dist * dist)));
+}
+
 void main(){
     
     uint texture_id = ubo.texture_id[_Diffuse_ID];
