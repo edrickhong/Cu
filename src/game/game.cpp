@@ -36,8 +36,7 @@
 
 
 /*
-TODO: 
-move gui state to the engine
+TODO:
 light
 add a color picker
 separate sampler and texture
