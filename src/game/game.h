@@ -94,6 +94,7 @@ struct SceneContext{
     void (*SetObjectMaterial)(u32,u32);
     void (*SetActiveCameraOrientation)(Vector4,Vector4);
     void (*SetObjectOrientation)(u32,Vector4,Quaternion,f32);
+    void (*SetPointLight)();
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);
