@@ -66,7 +66,7 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    VCreateInstance("eengine",true,1,0,0);
+    VCreateInstance("eengine",false,1,0,0);
     
     pdata->vdevice = VCreateDeviceContext(&pdata->window);
     
