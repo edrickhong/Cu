@@ -505,6 +505,9 @@ struct LightUBO{
         Vector4 pos;
         Color color;
         f32 intensity;
+        
+        f32 linear;
+        f32 quadratic;
     };
     u32 point_count;
     
@@ -1473,12 +1476,12 @@ void ClearLightList(){
     light_ubo->point_count = 0;
 }
 
-void AddPointLight(Vector3 pos,Color color,f32 intensity){
+void AddPointLight(Vector3 pos,Color color,f32 intensity,f32 linear,f32 quadratic){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
     light_ubo->point_array[light_ubo->point_count] = {
-        pos,color,intensity
+        pos,color,intensity,linear,quadratic
     };
     
     light_ubo->point_count++;

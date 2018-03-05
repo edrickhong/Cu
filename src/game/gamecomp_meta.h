@@ -101,6 +101,8 @@ _persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
 {(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(PointLight,G),1,(u32)-1},
 {(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(PointLight,B),1,(u32)-1},
 {(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),1,(u32)-1},
+{(u32)10963,(u32)23337,"f32","linear",sizeof(f32),offsetof(PointLight,linear),1,(u32)-1},
+{(u32)10963,(u32)1143784,"f32","quadratic",sizeof(f32),offsetof(PointLight,quadratic),1,(u32)-1},
 };
 
 

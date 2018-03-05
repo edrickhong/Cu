@@ -38,4 +38,7 @@ struct REFLCOMPONENT PointLight{
     f32 G;
     f32 B;
     f32 intensity;
+    
+    f32 linear;
+    f32 quadratic;
 };
