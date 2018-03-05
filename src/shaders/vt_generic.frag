@@ -11,6 +11,9 @@ struct PointLight{
     vec4 pos;
     vec4 color;
     float intensity;
+    
+    float linear;
+    float quadratic;
 };
 
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
@@ -256,13 +259,23 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
 
 #define _Diffuse_ID 0
 
-
 //TODO: figure out the effective range of the lights
-float CalculateAttenuation(vec3 light_pos,vec3 frag_pos,float constant,float linear,float quadratic){
-    
-    float dist = length(light_pos - frag_pos);
+float CalculateAttenuation(float dist,float constant,float linear,float quadratic){
     
     return (1.0f)/(constant + (linear * dist) + (quadratic * (dist * dist)));
+}
+
+float CalculateSphericalLightAttenuation(float dist,float radius){
+    
+    // f = 1/(((d/r) + 1)^2)
+    //or f = 1/(1 + ((2/r) * d) + ((1/(r^2)) * d^2))
+    // which is similar to the formula where constant = 1,linear = (2/r) and quadratic = (1/r^2)
+    
+    float linear = 2.0f/radius;
+    float quadratic = 1/(radius * radius);
+    
+    
+    return CalculateAttenuation(dist,1.0f,linear,quadratic);
 }
 
 void main(){
@@ -292,7 +305,9 @@ void main(){
         
         vec3 ambientcolor = vec3(p_light.color * p_light.intensity);
         
-        factor += vec4((ambientcolor + diffuse + specular),0);
+        float attenuation = CalculateAttenuation(length(inPos - lightpos),1.0f,p_light.linear,p_light.quadratic);
+        
+        factor += vec4((ambientcolor + diffuse + specular),0) * attenuation;
     }
     
     outFragColor = color * factor;

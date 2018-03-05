@@ -405,7 +405,7 @@ void UpdateLightList(SceneContext* context){
         
         auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
         
-        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity);
+        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity,light->linear,light->quadratic);
     }
 }
 
