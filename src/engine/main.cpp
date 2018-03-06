@@ -66,7 +66,7 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    VCreateInstance("eengine",false,1,0,0);
+    VCreateInstance("eengine",true,1,0,0);
     
     pdata->vdevice = VCreateDeviceContext(&pdata->window);
     
@@ -271,10 +271,12 @@ s32 main(s32 argc,s8** argv){
                 
                 if(frames >= pdata->submit_audiobuffer.size_frames){
                     
-                    MixAudioLayout args = {&pdata->submit_audiobuffer,audio_data,audio_count};
+                    auto args = TAlloc(MixAudioLayout,1);
+                    
+                    *args = {&pdata->submit_audiobuffer,audio_data,audio_count};
                     
                     PushThreadWorkQueue(&pdata->threadqueue,
-                                        MixAudio,(void*)&args,pdata->worker_sem);
+                                        MixAudio,(void*)args,pdata->worker_sem);
                     
                 }
                 

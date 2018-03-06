@@ -12,8 +12,7 @@ struct PointLight{
     vec4 color;
     float intensity;
     
-    float linear;
-    float quadratic;
+    float radius;
 };
 
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
@@ -305,7 +304,7 @@ void main(){
         
         vec3 ambientcolor = vec3(p_light.color * p_light.intensity);
         
-        float attenuation = CalculateAttenuation(length(inPos - lightpos),1.0f,p_light.linear,p_light.quadratic);
+        float attenuation = CalculateSphericalLightAttenuation(length(inPos - lightpos),p_light.radius);
         
         factor += vec4((ambientcolor + diffuse + specular),0) * attenuation;
     }
