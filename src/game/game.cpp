@@ -100,6 +100,7 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->G = 1.0f;
                 light->B = 1.0f;
                 light->intensity = 0.2f;
+                light->radius = 1.0f;
             }
             
             return obj;
@@ -405,7 +406,11 @@ void UpdateLightList(SceneContext* context){
         
         auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
         
-        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity,light->linear,light->quadratic);
+        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity,light->radius);
+        
+#if _debug && 0
+        GUIDrawAxisSphere(pos,4.0f);
+#endif
     }
 }
 
