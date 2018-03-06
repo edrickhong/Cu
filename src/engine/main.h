@@ -346,6 +346,8 @@ void ExecuteRenderBatch(RenderContext* context,
             VPushThreadCommandbufferList(&context->rendergroup[i].cmdbufferlist,
                                          cmdbuffer);
             
+            _kill("exceeds total\n",(renderbatch_completed_count + render->group_submit_count[i]) > renderbatch_total_count);
+            
             LockedAdd(&renderbatch_completed_count,render->group_submit_count[i]);
         }
         
@@ -362,6 +364,8 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
     //FIXME:
     //we can get a hang here sometimes (renderbatch_completed_count > renderbatch_total_count)
     //Change the way completion is done. we will do this right after we revamp gui
+    
+    
     while(renderbatch_completed_count != renderbatch_total_count){
         _kill("",renderbatch_completed_count > renderbatch_total_count);
         _mm_pause();
@@ -506,8 +510,7 @@ struct LightUBO{
         Color color;
         f32 intensity;
         
-        f32 linear;
-        f32 quadratic;
+        f32 radius;
     };
     u32 point_count;
     
@@ -1476,12 +1479,12 @@ void ClearLightList(){
     light_ubo->point_count = 0;
 }
 
-void AddPointLight(Vector3 pos,Color color,f32 intensity,f32 linear,f32 quadratic){
+void AddPointLight(Vector3 pos,Color color,f32 intensity,f32 radius){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
     light_ubo->point_array[light_ubo->point_count] = {
-        pos,color,intensity,linear,quadratic
+        pos,color,intensity,radius
     };
     
     light_ubo->point_count++;
