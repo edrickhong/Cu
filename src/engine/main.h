@@ -213,6 +213,19 @@ struct ThreadRenderData{
     VkCommandBuffer cmdbuffer[2 * _rendergroupcount];//MARK: swapchain 2 by rendergroup
     u32 active_group;
     u8 group_submit_count[4];
+    
+#if _debug
+    struct DebugRenderEntry{
+        u32 batch_index;
+        u32 group_no;
+        u32 obj_index_in_batch;
+        s8* obj_assetfile;
+    };
+    
+    DebugRenderEntry debugentry_array[32] = {};
+    u32 debugentry_count = 0;
+    
+#endif
 };
 
 ThreadRenderData CreateThreadRenderData(VDeviceContext* vdevice){
@@ -262,6 +275,8 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
             VStartCommandBuffer(cmdbuffer,
                                 VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
                                 context->renderpass,context->subpass_index,context->framebuffer,VK_FALSE,0,0);
+            
+            render->debugentry_count = 0;
         }
         
         _kill("a trivial non program will always have these\n",
@@ -310,6 +325,15 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
                                     &batch->descriptorset_array[0],1,&offsets);
             
             InternalDraw(cmdbuffer,vertexbuffer,indexbuffer,instancebuffer,obj.count);
+            
+#if _debug
+            
+            render->debugentry_array[render->debugentry_count] = {
+                index,batch->group,i,obj.handle->assetfile
+            };
+            render->debugentry_count++;
+            
+#endif
         }
         
         render->group_submit_count[batch->group]++;
