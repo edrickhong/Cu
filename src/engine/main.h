@@ -29,6 +29,48 @@
   NOTE: stb_vorbis_decode_filename("somefile.ogg", &channels, &sample_rate, &output);
 */
 
+
+//TODO: Make this easier to log with
+
+#if _debug
+
+
+struct DebugRenderEntry{
+    u32 batch_index;
+    u32 group_no;
+    u32 obj_index_in_batch;
+    s8* obj_assetfile;
+};
+
+struct DebugRenderRefEntry{
+    DebugRenderEntry* entry_array;
+    u32 entry_count;
+    ThreadID thread;
+};
+
+
+_persist DebugRenderRefEntry global_debugentry_array[32];
+_persist u32 global_debugentry_count = 0;
+
+void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
+    
+    u32 expected_count;
+    u32 actual_count;
+    
+    do{
+        
+        _kill("too refs\n",global_debugentry_count >= _arraycount(global_debugentry_array));
+        
+        expected_count = global_debugentry_count;
+        
+        actual_count = LockedCmpXchg(&global_debugentry_count,expected_count,expected_count + 1);
+        
+    }while(expected_count != actual_count);
+    
+    global_debugentry_array[actual_count] = {array,count,tid};
+    
+}
+
 void _ainline DebugPlane(Vertex* vert_array,u32* index_array){
     
     Vertex vert[] = {
@@ -45,6 +87,8 @@ void _ainline DebugPlane(Vertex* vert_array,u32* index_array){
     memcpy(vert_array,vert,sizeof(vert));
     memcpy(index_array,index,sizeof(index));
 }
+
+#endif
 
 struct PrimaryRenderCommandbuffer{
     VkCommandBuffer buffer;
@@ -215,12 +259,6 @@ struct ThreadRenderData{
     u8 group_submit_count[4];
     
 #if _debug
-    struct DebugRenderEntry{
-        u32 batch_index;
-        u32 group_no;
-        u32 obj_index_in_batch;
-        s8* obj_assetfile;
-    };
     
     DebugRenderEntry debugentry_array[32] = {};
     u32 debugentry_count = 0;
@@ -354,6 +392,11 @@ void ExecuteRenderBatch(RenderContext* context,
         return;
     }
     
+#if _debug
+    
+    DebugSubmitDebugEntryRef(TGetThisThreadID(),&render->debugentry_array[0],render->debugentry_count);
+#endif
+    
     u32 count = _typebitcount(render->active_group) - BSR(render->active_group);
     
     for(u32 i = 0; i < count; i++){
@@ -395,6 +438,11 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
         _mm_pause();
     }
     
+#if _debug
+    
+    global_debugentry_count = 0;
+    
+#endif
 }
 
 void _ainline InternalDispatchRenderBatch(RenderBatch* batch,TSemaphore sem){
@@ -532,13 +580,20 @@ struct LightUBO{
     struct PointLight{
         Vector4 pos;
         Color color;
-        f32 intensity;
         
         f32 radius;
     };
+    
+    struct DirLight{
+        Vector4 dir;
+        Color color;
+    };
+    
     u32 point_count;
+    u32 dir_count;
     
     PointLight point_array[_lightcount];
+    DirLight dir_array[_lightcount];
 };
 
 struct PlatformData{
@@ -1501,20 +1556,29 @@ void CompileAllPipelines(PlatformData* pdata){
 void ClearLightList(){
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     light_ubo->point_count = 0;
+    light_ubo->dir_count = 0;
 }
 
-void AddPointLight(Vector3 pos,Color color,f32 intensity,f32 radius){
+void AddPointLight(Vector3 pos,Color color,f32 radius){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
+    //TODO: make radius into a proper distance cut off
+    
     light_ubo->point_array[light_ubo->point_count] = {
-        pos,color,intensity,radius
+        pos,color,radius
     };
     
     light_ubo->point_count++;
 }
 
-
+void AddDirLight(Vector3 dir,Color color){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    light_ubo->dir_array[light_ubo->dir_count] = {dir,color};
+    light_ubo->dir_count ++;
+}
 
 //MARK:
 void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
@@ -1709,6 +1773,7 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.SetActiveCameraOrientation = SetActiveCameraOrientation;
     pdata->scenecontext.SetObjectOrientation = SetObjectOrientation;
     pdata->scenecontext.AddPointLight = AddPointLight;
+    pdata->scenecontext.AddDirLight = AddDirLight;
     
     
     //asset stuff

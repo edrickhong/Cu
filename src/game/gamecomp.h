@@ -37,7 +37,21 @@ struct REFLCOMPONENT PointLight{
     f32 R;
     f32 G;
     f32 B;
-    f32 intensity;
     
     f32 radius;
+    f32 intensity;
+};
+
+struct REFLCOMPONENT DirectionalLight{
+    ObjectID id;
+    
+    f32 R;
+    f32 G;
+    f32 B;
+    
+    f32 dir_x;
+    f32 dir_y;
+    f32 dir_z;
+    
+    f32 intensity;
 };
