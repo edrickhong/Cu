@@ -2,6 +2,10 @@
 #include "tthread.h"
 #include "aallocator.h"
 
+#ifdef TGetEntryIndex
+#undef TGetEntryIndex
+#endif
+
 struct InternalArgs{
     s32 (*threadproc)(void*);
     void* args;
