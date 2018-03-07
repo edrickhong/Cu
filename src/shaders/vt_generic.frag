@@ -10,9 +10,13 @@ layout (location = 2) in vec2 inTexcoord;
 struct PointLight{
     vec4 pos;
     vec4 color;
-    float intensity;
     
     float radius;
+};
+
+struct DirectionalLight{
+    vec4 dir;
+    vec4 color;
 };
 
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
@@ -32,7 +36,9 @@ layout (set = 1,binding = 2, rgba8) uniform restrict writeonly image2D vt_feedba
 
 layout (set = 1,binding = 3) uniform LIGHT_UBO{
     uint point_count;
+    uint dir_count;
     PointLight point_array[1024];
+    DirectionalLight dir_array[1024];
     
 }light;
 
@@ -277,6 +283,18 @@ float CalculateSphericalLightAttenuation(float dist,float radius){
     return CalculateAttenuation(dist,1.0f,linear,quadratic);
 }
 
+float Diffuse(vec3 normal,vec3 lightdir){
+    return max(dot(normal,lightdir),0.0f);
+}
+
+float Specular(vec3 normal,vec3 lightdir,vec3 eyepos,float factor,float intensity){
+    
+    vec3 reflvec = reflect(-lightdir,normal);
+    
+    
+    return pow(max(dot(eyepos,reflvec),0.0f),factor) * intensity;
+}
+
 void main(){
     
     uint texture_id = ubo.texture_id[_Diffuse_ID];
@@ -287,27 +305,45 @@ void main(){
     vec3 eyepos = vec3(pushconst.camerapos.xyz);
     vec3 eyetovertex = normalize(eyepos - inPos);
     
+    vec3 normal = normalize(inNormal);
+    
+    //MARK: these are fixed for now
+    vec3 ambient_color = vec3(1.0f,1.0f,1.0f);
+    float ambient_intensity = 0.1f;
+    
+    vec3 ambient = ambient_color * ambient_intensity;
+    
     vec4 factor = vec4(0.0f,0.0f,0.0f,1.0f);
+    
+    for(uint i = 0; i < light.dir_count; i++){
+        
+        DirectionalLight d_light = light.dir_array[i];
+        vec3 lightdir = -normalize(d_light.dir.xyz);
+        
+        vec3 diffuse = Diffuse(normal,lightdir) * d_light.color.xyz;
+        
+        vec3 specular = Specular(normal,lightdir,eyepos,8,0.0001f) * d_light.color.xyz;
+        
+        factor += vec4((diffuse + specular),0);
+    }
     
     for(uint i = 0; i < light.point_count; i++){
         
         PointLight p_light = light.point_array[i];
         
-        vec3 normal = normalize(inNormal);
         vec3 lightpos = vec3(p_light.pos.xyz);
         vec3 lightdir = normalize(lightpos - inPos);
         
-        vec3 diffuse = max(dot(normal,lightdir),0.0f) * vec3(1,1,1);
-        vec3 reflvec = reflect(-lightdir,normal);
+        vec3 diffuse = Diffuse(normal,lightdir) * p_light.color.xyz;
         
-        vec3 specular = pow(max(dot(eyepos,reflvec),0.0f),8) * 0.0001f * vec3(1,1,1);
-        
-        vec3 ambientcolor = vec3(p_light.color * p_light.intensity);
+        vec3 specular = Specular(normal,lightdir,eyepos,8,0.0001f) * p_light.color.xyz;
         
         float attenuation = CalculateSphericalLightAttenuation(length(inPos - lightpos),p_light.radius);
         
-        factor += vec4((ambientcolor + diffuse + specular),0) * attenuation;
+        factor += vec4((diffuse + specular),0) * attenuation;
     }
+    
+    factor.xyz += ambient;
     
     outFragColor = color * factor;
 }

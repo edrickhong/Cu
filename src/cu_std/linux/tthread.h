@@ -5,7 +5,7 @@
 #include "semaphore.h"
 
 struct TThreadContext{
-  pthread_t handle;
+    pthread_t handle;
 };
 
 typedef sem_t* TSemaphore;
@@ -27,3 +27,18 @@ typedef pthread_t ThreadID;
 ThreadID TGetThisThreadID();
 
 void TSetThreadAffinity(ThreadID threadid,u32 cpu_mask);
+
+u32 TGetEntryIndex(u32* cur_index);
+
+//TODO: actually use this
+u32 TGetEntryIndex(u32* cur_index,u32 max_count);
+
+#if _debug
+
+#define TGetEntryIndex(a,b) TGetEntryIndex(a,b)
+
+#else
+
+#define TGetEntryIndex(a,b) TGetEntryIndex(a)
+
+#endif

@@ -99,8 +99,19 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->R = 1.0f;
                 light->G = 1.0f;
                 light->B = 1.0f;
-                light->intensity = 0.2f;
                 light->radius = 1.0f;
+                f32 intensity = 1.0f;
+            }
+            
+            if(compname_hash == PHashString("DirectionalLight")){
+                
+                auto light = (DirectionalLight*)obj;
+                
+                light->R = 1.0f;
+                light->G = 1.0f;
+                light->B = 1.0f;
+                
+                f32 intensity = 1.0f;
             }
             
             return obj;
@@ -400,13 +411,26 @@ void UpdateLightList(SceneContext* context){
     
     auto comp = (ComponentStruct*)data->components;
     
+    for(u32 i = 0; i < comp->directionallight_count; i++){
+        
+        auto light = &comp->directionallight_array[i];
+        
+        Vector4 c = {light->R,light->G,light->B,1.0f};
+        c =  c * light->intensity;
+        
+        context->AddDirLight(Vector3{light->dir_x,light->dir_y,light->dir_z,1.0f},Color{c.x,c.y,c.z,1.0f});
+    }
+    
     for(u32 i = 0; i < comp->pointlight_count; i++){
         
         auto light = &comp->pointlight_array[i];
         
         auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
         
-        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity,light->radius);
+        Vector4 c = {light->R,light->G,light->B,1.0f};
+        c =  c * light->intensity;
+        
+        context->AddPointLight(pos,Color{c.x,c.y,c.z,1.0f},light->radius);
         
 #if _debug && 0
         GUIDrawAxisSphere(pos,4.0f);
