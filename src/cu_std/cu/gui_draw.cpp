@@ -15,6 +15,8 @@
 #include "wwindow.h"
 #include "ffileio.h"
 
+//TODO: do not draw widgets if the pos is not within the screen
+
 struct InternalGUIFontHeader{
     u32 width;
     u32 height;

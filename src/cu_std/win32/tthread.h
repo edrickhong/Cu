@@ -10,7 +10,7 @@
 
 
 struct TThreadContext{
-  HANDLE handle;
+    HANDLE handle;
 };
 
 typedef HANDLE TSemaphore;
@@ -24,36 +24,51 @@ void TDestroySemaphore(TSemaphore sem);
 
 
 void _ainline  TSignalSemaphore(TSemaphore sem){
-  ReleaseSemaphore(sem,1,0);
+    ReleaseSemaphore(sem,1,0);
 }
 
 void _ainline TWaitSemaphore(TSemaphore sem){
-  WaitForSingleObject(sem,INFINITE);
+    WaitForSingleObject(sem,INFINITE);
 }
 
 void _ainline TWaitSemaphore(TSemaphore sem,f32 time_ms){
-  WaitForSingleObject(sem,(DWORD)time_ms);
+    WaitForSingleObject(sem,(DWORD)time_ms);
 }
- 
+
 typedef DWORD ThreadID;
 
 ThreadID  _ainline TGetThisThreadID(){
-  return GetCurrentThreadId();
+    return GetCurrentThreadId();
 }
 
 void _ainline TSetThreadAffinity(ThreadID threadid,u32 cpu_mask){
-
-  auto handle = OpenThread(THREAD_SET_LIMITED_INFORMATION  |
-			   THREAD_QUERY_LIMITED_INFORMATION ,false,threadid);
-
-  _kill("failed to get handle in affinity\n",!handle);
-
-  
-  auto res = SetThreadAffinityMask(handle,cpu_mask);
-
-  _kill("failed to set affinity\n",!res);
-
-  res = CloseHandle(handle);
-
-  _kill("failed to close in thread affinity\n",!res);
+    
+    auto handle = OpenThread(THREAD_SET_LIMITED_INFORMATION  |
+                             THREAD_QUERY_LIMITED_INFORMATION ,false,threadid);
+    
+    _kill("failed to get handle in affinity\n",!handle);
+    
+    
+    auto res = SetThreadAffinityMask(handle,cpu_mask);
+    
+    _kill("failed to set affinity\n",!res);
+    
+    res = CloseHandle(handle);
+    
+    _kill("failed to close in thread affinity\n",!res);
 }
+
+
+u32 TGetEntryIndex(u32* cur_index);
+
+u32 TGetEntryIndex(u32* cur_index,u32 max_count);
+
+#if _debug
+
+#define TGetEntryIndex(a,b) TGetEntryIndex(a,b)
+
+#else
+
+#define TGetEntryIndex(a,b) TGetEntryIndex(a)
+
+#endif
