@@ -1,5 +1,6 @@
 #include "math.glsl"
 #include "mode.glsl"
+#include "virtual_texturing.glsl"
 
 //does not support trilinear and aniso
 
@@ -67,228 +68,39 @@ layout (constant_id = 4) const float page_size = 128.0f;
 layout (constant_id = 5) const float phys_w = 16384.0f;
 layout (constant_id = 6) const float phys_h = 8192.0f;
 
-#define _max_int 255.0f
 
 
 
 
 
-float GetMipLevel(vec2 uv,vec2 dim){
-    
-    /*
-      explanation for dxdf(k)/dydf(k) in glsl:
-      
-      as the frag shader renders a triangle, it sweeps the aabb of the triangle in a 2x2 pixel grid fashion
-      (executes 2x2 pixels per invocation). when an invocation reaches the dfdx function, it calculates
-      the difference between the value of k that is passed to that instance of dxdf:
-      
-      2x2 pixel grid each w unique values of k:
-      
-      1  2
-      0  4
-      
-      the dfdx for pixel (0,0) is 2 - 1 which is 1
-      the dfdy for pixel (0,0) is 0 - 1 which is -1
-      
-      NOTE: this is taken from stb's implementation
-      //TODO: try to fully understand this
-    */
-    
-    vec2 uv_scaled = uv * dim;
-    
-    vec2 dx_scaled = dFdx(uv_scaled);
-    vec2 dy_scaled = dFdy(uv_scaled);
-    
-    vec2 dtex = dx_scaled * dx_scaled + dy_scaled * dy_scaled;
-    float min_delta = max(dtex.x,dtex.y);
-    float miplevel = max(0.5 * log2(min_delta), 0.0);
-    
-    return miplevel;
-}
 
-vec4 VTGetPhysCoord(sampler2D vt_texture,vec2 vt_coord){
-    return vec4(0);
-}
-
-bool VTToGenerateFetchRequest(vec4 vt){
-    return vt.z == 0.0f;
-}
-
-bool VTToExecuteWrite(vec2 write_pos,vec2 framebuffer_dim_rcp,vec2 feedback_dim){
+vec4 VTInternalReadTexture(sampler2D phys_texture,vec2 phys_dim,
+                           sampler2D vt_texture,vec2 vt_coord,uint texture_id){
     
-    vec2 subpixel_size = feedback_dim * framebuffer_dim_rcp;
-    
-    return fract(write_pos.x) < subpixel_size.x && fract(write_pos.y) < subpixel_size.y;
-}
-
-vec2 VTGenerateWritePos(vec2 framebuffer_dim_rcp,vec2 feedback_dim,vec2 fragcoord){
-    
-    
-    vec2 normalized_pixel_pos = fragcoord * framebuffer_dim_rcp;
-    vec2 write_pos = normalized_pixel_pos * feedback_dim;
-    
-    return write_pos;
-}
-
-vec4 VTGenerateFetchData(uint texture_id,vec2 fetchcoord,uint mip_level,vec2 vt_dimpagesf){
-    
-    vec2 tcoord = fetchcoord * vt_dimpagesf;
-    
-    
-    vec4 fetch_data =
-        vec4(float(texture_id + 1),float(mip_level),tcoord.x,tcoord.y) *
-        vec4(1.0f/255.0f,1.0f/255.0f,1.0f/255.0f,1.0f/255.0f);
-    
-    return fetch_data;
-}
-
-//TODO: Separate this
-vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
-                   sampler2D vt_texture,vec2 vt_coord,uint texture_id){
-    
-    vec2 phys_dimpages_recp = page_size / vec2(phys_w,phys_h);
+    vec2 phys_dimpages_recp = page_size / phys_dim;
     
     int total_mip_levels = textureQueryLevels(vt_texture);
     int mip_level = clamp(int(GetMipLevel(vt_coord,textureSize(vt_texture,0) * page_size)),0,
                           total_mip_levels - 1);
     
-    vec2 vt_dimpagesf;
-    vec4 p_data;
+    VT_TextureLevelContext context = VT_GetContext(vt_texture,vt_coord,mip_level);
     
-    {
+    if(!VT_IsContextValid(context)){
         
-        ivec2 vt_dimpages = textureSize(vt_texture,mip_level);
+        vec2 fbdim_rcp = vec2(1.0f/framebuffer_w,1.0f/framebuffer_h);
+        vec2 feedback_dim = vec2(feedback_w,feedback_h);
         
-        vt_dimpagesf = vec2(vt_dimpages.x,vt_dimpages.y);
+        vec2 write_pos = VT_GenerateWritePos(fbdim_rcp,feedback_dim,gl_FragCoord.xy);
         
-        
-        vec2 fetchcoord = vt_coord - (fract(vt_coord * vt_dimpagesf)/vt_dimpagesf);
-        
-        //x:x, y:y ,z: 1.0f if page is invalid , w:
-        p_data = textureLod(vt_texture,fetchcoord,mip_level);
-        
-        if(p_data.z == 0.0f){
+        if(VT_ToExecuteWritePos(write_pos,fbdim_rcp,feedback_dim)){
             
-            //write to fetch buffer
-            
-            vec2 fbdim_rcp = vec2(1.0f/framebuffer_w,1.0f/framebuffer_h);
-            vec2 image_feedback_dim = vec2(feedback_w,feedback_h);
-            vec2 subpixel_size = image_feedback_dim * fbdim_rcp;
-            vec2 normalized_pixel_pos = gl_FragCoord.xy * fbdim_rcp;
-            vec2 write_pos = normalized_pixel_pos * image_feedback_dim;
-            
-            if(fract(write_pos.x) < subpixel_size.x && fract(write_pos.y) < subpixel_size.y){
-                
-                vec2 tcoord = fetchcoord * vt_dimpagesf;
-                
-                
-                vec4 fetch_data =
-                    vec4(float(texture_id + 1),float(mip_level),tcoord.x,tcoord.y) *
-                    vec4(1.0f/255.0f,1.0f/255.0f,1.0f/255.0f,1.0f/255.0f);
-                
-                ivec2 write_pos_int = ivec2(write_pos.x,write_pos.y);
-                
-                imageStore(vt_feedback,write_pos_int,fetch_data);
-                
-#if  0
-                
-                vec4 m_color = vec4(0,0,0,0);
-                
-                if(mip_level == 0){
-                    m_color = vec4(1,0,0,1);
-                }
-                
-                if(mip_level == 1){
-                    m_color = vec4(0,1,0,1);
-                }
-                
-                if(mip_level == 2){
-                    m_color = vec4(0,0,1,1);
-                }
-                
-                if(mip_level == 3){
-                    m_color = vec4(1,0,1,1);
-                }
-                
-                return m_color;
-                
-#endif
-                
-            }
-            
-#if  1
-            
-            //try to get a valid texture coord
-            
-            for(mip_level = mip_level + 1; mip_level < total_mip_levels; mip_level++){
-                
-                vt_dimpages = textureSize(vt_texture,mip_level);
-                
-                vt_dimpagesf = vec2(vt_dimpages.x,vt_dimpages.y);
-                
-                fetchcoord = vt_coord - (fract(vt_coord * vt_dimpagesf)/vt_dimpagesf);
-                
-                p_data = texture(vt_texture,fetchcoord);
-                
-                //FIXME: the regions we break at are wrong
-                if(p_data.z != 0.0f){
-                    break;
-                }
-                
-            }
-            
-#endif
-            
+            imageStore(vt_feedback,ivec2(write_pos.xy),VT_GenerateFetchRequestData(context,texture_id,mip_level));
         }
         
+        context = VT_HandleInvalidContext(context,vt_texture,vt_coord,mip_level,total_mip_levels);
     }
     
-    //actual texture data
-    
-    vec2 page_pos = floor(p_data.xy * 255.0f + 0.5f);
-    
-    vec2 page_offset = fract(vt_coord.xy * vt_dimpagesf);
-    
-#define k 1.0f/128.0f
-    
-#if 1
-    
-    //This produces better results but might be slower
-    page_offset.x = clamp(page_offset.x,k,(1.0f - k));
-    page_offset.y = clamp(page_offset.y,k,(1.0f - k));
-    
-#else
-    
-    page_offset.x = InterpolateValue(k,(1.0f - k),page_offset.x);
-    page_offset.y = InterpolateValue(k,(1.0f - k),page_offset.y);
-    
-#endif
-    
-    page_pos = (page_pos + page_offset) * phys_dimpages_recp;
-    
-    vec4 color = texture(phys_texture,page_pos.xy);
-    
-#if  0
-    
-    if(mip_level == 0){
-        color = vec4(1,0,0,1);
-    }
-    
-    if(mip_level == 1){
-        color = vec4(0,1,0,1);
-    }
-    
-    if(mip_level == 2){
-        color = vec4(0,0,1,1);
-    }
-    
-    if(mip_level == 3){
-        color = vec4(1,0,1,1);
-    }
-    
-#endif
-    
-    return color;
+    return VT_ReadPhysTexture(context,vt_coord,phys_dimpages_recp,phys_texture);
 }
 
 #define _Diffuse_ID 0
@@ -324,12 +136,14 @@ float Specular(vec3 normal,vec3 lightdir,vec3 eyepos,float factor,float intensit
     return pow(max(dot(eyepos,reflvec),0.0f),factor) * intensity;
 }
 
+
+
 void main(){
     
     uint texture_id = ubo.texture_id[_Diffuse_ID];
     
-    vec4 color = VTReadTexture(samplerColor,vec2(phys_w,phys_h),
-                               samplerLookup[texture_id],inTexcoord,texture_id);
+    vec4 color = VTInternalReadTexture(samplerColor,vec2(phys_w,phys_h),
+                                       samplerLookup[texture_id],inTexcoord,texture_id);
     
     vec3 eyepos = vec3(pushconst.camerapos.xyz);
     vec3 eyetovertex = normalize(eyepos - inPos);
