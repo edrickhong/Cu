@@ -212,6 +212,7 @@ void InternalLoadVulkanLib(){
         "vulkan-1.dll",
         "vulkan.dll",
 #else
+        "libvulkan.so.1.1.70", // required for 1.1
         
         "libvulkan.so.1.0.66",
         "libvulkan.so.1.0.65",
