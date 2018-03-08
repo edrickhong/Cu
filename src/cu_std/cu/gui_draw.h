@@ -139,3 +139,5 @@ void GUIGenFontFile(const s8* filepath,const s8* writepath,f32 fontsize);
 void GUIDebugGetCurrentHolder();
 
 void GUIDrawAxisSphere(Vector3 obj_w,f32 radius,Color x = White,Color y = White,Color z = White);
+
+//TODO: implement a color picker (https://en.wikipedia.org/wiki/HSL_and_HSV)
