@@ -109,12 +109,37 @@ float GetMipLevel(vec2 uv,vec2 dim){
 vec4 VTGetPhysCoord(sampler2D vt_texture,vec2 vt_coord){
     return vec4(0);
 }
-ivec2 VTGetFeedBackWritePos(){
-    return ivec2(0);
+
+bool VTToGenerateFetchRequest(vec4 vt){
+    return vt.z == 0.0f;
 }
-vec4 VTGenerateFetchData(uint texture_id){
+
+bool VTToExecuteWrite(vec2 write_pos,vec2 framebuffer_dim_rcp,vec2 feedback_dim){
     
-    return vec4(0);
+    vec2 subpixel_size = feedback_dim * framebuffer_dim_rcp;
+    
+    return fract(write_pos.x) < subpixel_size.x && fract(write_pos.y) < subpixel_size.y;
+}
+
+vec2 VTGenerateWritePos(vec2 framebuffer_dim_rcp,vec2 feedback_dim,vec2 fragcoord){
+    
+    
+    vec2 normalized_pixel_pos = fragcoord * framebuffer_dim_rcp;
+    vec2 write_pos = normalized_pixel_pos * feedback_dim;
+    
+    return write_pos;
+}
+
+vec4 VTGenerateFetchData(uint texture_id,vec2 fetchcoord,uint mip_level,vec2 vt_dimpagesf){
+    
+    vec2 tcoord = fetchcoord * vt_dimpagesf;
+    
+    
+    vec4 fetch_data =
+        vec4(float(texture_id + 1),float(mip_level),tcoord.x,tcoord.y) *
+        vec4(1.0f/255.0f,1.0f/255.0f,1.0f/255.0f,1.0f/255.0f);
+    
+    return fetch_data;
 }
 
 //TODO: Separate this
@@ -193,6 +218,8 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
             
 #if  1
             
+            //try to get a valid texture coord
+            
             for(mip_level = mip_level + 1; mip_level < total_mip_levels; mip_level++){
                 
                 vt_dimpages = textureSize(vt_texture,mip_level);
@@ -215,6 +242,8 @@ vec4 VTReadTexture(sampler2D phys_texture,vec2 phys_dim,
         }
         
     }
+    
+    //actual texture data
     
     vec2 page_pos = floor(p_data.xy * 255.0f + 0.5f);
     
