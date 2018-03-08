@@ -32,16 +32,6 @@ struct REFLCOMPONENT EntityAudioData{
     u16 toremove = 0;
 };
 
-struct REFLCOMPONENT PointLight{
-    ObjectID id;
-    f32 R;
-    f32 G;
-    f32 B;
-    
-    f32 radius;
-    f32 intensity;
-};
-
 struct REFLCOMPONENT DirectionalLight{
     ObjectID id;
     
@@ -52,6 +42,32 @@ struct REFLCOMPONENT DirectionalLight{
     f32 dir_x;
     f32 dir_y;
     f32 dir_z;
+    
+    f32 intensity;
+};
+
+struct REFLCOMPONENT PointLight{
+    ObjectID id;
+    f32 R;
+    f32 G;
+    f32 B;
+    
+    f32 radius;
+    f32 intensity;
+};
+
+struct REFLCOMPONENT SpotLight{
+    ObjectID id;
+    
+    f32 R;
+    f32 G;
+    f32 B;
+    
+    f32 dir_x;
+    f32 dir_y;
+    f32 dir_z;
+    
+    f32 angle;
     
     f32 intensity;
 };

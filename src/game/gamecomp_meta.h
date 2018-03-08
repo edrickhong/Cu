@@ -65,13 +65,18 @@ u32 entityaudiodata_count = 0;
 
 
 
+DirectionalLight directionallight_array[_component_count];
+u32 directionallight_count = 0;
+
+
+
 PointLight pointlight_array[_component_count];
 u32 pointlight_count = 0;
 
 
 
-DirectionalLight directionallight_array[_component_count];
-u32 directionallight_count = 0;
+SpotLight spotlight_array[_component_count];
+u32 spotlight_count = 0;
 
 };
 
@@ -100,15 +105,6 @@ _persist MetaDataEntry EntityAudioData_METACOMP_STRUCT[] = {
 {(u32)7072,(u32)30233,"u16","toremove",sizeof(u16),offsetof(EntityAudioData,toremove),1,(u32)-1},
 };
 
-_persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
-{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),1,(u32)-1},
-{(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(PointLight,R),1,(u32)-1},
-{(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(PointLight,G),1,(u32)-1},
-{(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(PointLight,B),1,(u32)-1},
-{(u32)10963,(u32)105551,"f32","radius",sizeof(f32),offsetof(PointLight,radius),1,(u32)-1},
-{(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),1,(u32)-1},
-};
-
 _persist MetaDataEntry DirectionalLight_METACOMP_STRUCT[] = {
 {(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(DirectionalLight,id),1,(u32)-1},
 {(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(DirectionalLight,R),1,(u32)-1},
@@ -120,13 +116,35 @@ _persist MetaDataEntry DirectionalLight_METACOMP_STRUCT[] = {
 {(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(DirectionalLight,intensity),1,(u32)-1},
 };
 
+_persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),1,(u32)-1},
+{(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(PointLight,R),1,(u32)-1},
+{(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(PointLight,G),1,(u32)-1},
+{(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(PointLight,B),1,(u32)-1},
+{(u32)10963,(u32)105551,"f32","radius",sizeof(f32),offsetof(PointLight,radius),1,(u32)-1},
+{(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),1,(u32)-1},
+};
+
+_persist MetaDataEntry SpotLight_METACOMP_STRUCT[] = {
+{(u32)440841,(u32)8517,"ObjectID","id",sizeof(ObjectID),offsetof(SpotLight,id),1,(u32)-1},
+{(u32)10963,(u32)2543,"f32","R",sizeof(f32),offsetof(SpotLight,R),1,(u32)-1},
+{(u32)10963,(u32)2200,"f32","G",sizeof(f32),offsetof(SpotLight,G),1,(u32)-1},
+{(u32)10963,(u32)2047,"f32","B",sizeof(f32),offsetof(SpotLight,B),1,(u32)-1},
+{(u32)10963,(u32)38605,"f32","dir_x",sizeof(f32),offsetof(SpotLight,dir_x),1,(u32)-1},
+{(u32)10963,(u32)38258,"f32","dir_y",sizeof(f32),offsetof(SpotLight,dir_y),1,(u32)-1},
+{(u32)10963,(u32)38367,"f32","dir_z",sizeof(f32),offsetof(SpotLight,dir_z),1,(u32)-1},
+{(u32)10963,(u32)81318,"f32","angle",sizeof(f32),offsetof(SpotLight,angle),1,(u32)-1},
+{(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(SpotLight,intensity),1,(u32)-1},
+};
+
 
 MetaDataCompEntry METACOMP_ARRAY[] = {
 {offsetof(ComponentStruct,entityanimationdata_array),offsetof(ComponentStruct,entityanimationdata_count),sizeof(ComponentStruct::entityanimationdata_array[0]),"EntityAnimationData",(u32)1270161200,&EntityAnimationData_METACOMP_STRUCT[0],_arraycount(EntityAnimationData_METACOMP_STRUCT)},
 {offsetof(ComponentStruct,entitydrawdata_array),offsetof(ComponentStruct,entitydrawdata_count),sizeof(ComponentStruct::entitydrawdata_array[0]),"EntityDrawData",(u32)40446580,&EntityDrawData_METACOMP_STRUCT[0],_arraycount(EntityDrawData_METACOMP_STRUCT)},
 {offsetof(ComponentStruct,entityaudiodata_array),offsetof(ComponentStruct,entityaudiodata_count),sizeof(ComponentStruct::entityaudiodata_array[0]),"EntityAudioData",(u32)78986700,&EntityAudioData_METACOMP_STRUCT[0],_arraycount(EntityAudioData_METACOMP_STRUCT)},
-{offsetof(ComponentStruct,pointlight_array),offsetof(ComponentStruct,pointlight_count),sizeof(ComponentStruct::pointlight_array[0]),"PointLight",(u32)2658434,&PointLight_METACOMP_STRUCT[0],_arraycount(PointLight_METACOMP_STRUCT)},
 {offsetof(ComponentStruct,directionallight_array),offsetof(ComponentStruct,directionallight_count),sizeof(ComponentStruct::directionallight_array[0]),"DirectionalLight",(u32)212002541,&DirectionalLight_METACOMP_STRUCT[0],_arraycount(DirectionalLight_METACOMP_STRUCT)},
+{offsetof(ComponentStruct,pointlight_array),offsetof(ComponentStruct,pointlight_count),sizeof(ComponentStruct::pointlight_array[0]),"PointLight",(u32)2658434,&PointLight_METACOMP_STRUCT[0],_arraycount(PointLight_METACOMP_STRUCT)},
+{offsetof(ComponentStruct,spotlight_array),offsetof(ComponentStruct,spotlight_count),sizeof(ComponentStruct::spotlight_array[0]),"SpotLight",(u32)1998734,&SpotLight_METACOMP_STRUCT[0],_arraycount(SpotLight_METACOMP_STRUCT)},
 
 };
 
