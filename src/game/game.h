@@ -113,6 +113,7 @@ struct SceneContext{
     void (*SetObjectOrientation)(u32,Vector4,Quaternion,f32);
     void (*AddPointLight)(Vector3,Color,f32);
     void (*AddDirLight)(Vector3,Color);
+    void (*AddSpotLight)(Vector3,Vector3,Color,f32,f32,f32);
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);

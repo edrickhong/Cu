@@ -8,18 +8,6 @@ layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inTexcoord;
 
-struct PointLight{
-    vec4 pos;
-    vec4 color;
-    
-    float radius;
-};
-
-struct DirectionalLight{
-    vec4 dir;
-    vec4 color;
-};
-
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
     mat4 world;
     mat4 bone_array[64];
@@ -34,12 +22,40 @@ layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should sep
 
 layout (set = 1,binding = 2, rgba8) uniform restrict writeonly image2D vt_feedback;
 
+struct PointLight{
+    vec4 pos;
+    vec4 color;
+    
+    float radius;
+};
+
+struct DirectionalLight{
+    vec4 dir;
+    vec4 color;
+};
+
+struct SpotLight{
+    
+    vec4 pos;
+    vec4 dir;
+    vec4 color;
+    
+    float cos_angle;
+    float hard_cos_angle;
+    float radius;
+};
+
 
 layout (set = 1,binding = 3) uniform LIGHT_UBO{
-    uint point_count;
+    
     uint dir_count;
-    PointLight point_array[1024];
+    uint point_count;
+    uint spot_count;
+    
     DirectionalLight dir_array[1024];
+    PointLight point_array[1024];
+    SpotLight spot_array[1024];
+    
     
 }light;
 
@@ -184,6 +200,30 @@ void main(){
         float attenuation = CalculateSphericalLightAttenuation(length(inPos - lightpos),p_light.radius);
         
         factor += vec4((diffuse + specular),0) * attenuation;
+    }
+    
+    for(uint i = 0; i < light.spot_count; i++){
+        
+        SpotLight s_light = light.spot_array[i];
+        
+        vec3 lightpos = vec3(s_light.pos.xyz);
+        vec3 frag_to_light = normalize(lightpos - inPos);
+        
+        vec3 lightdir = normalize(-s_light.dir.xyz);
+        
+        float t = dot(lightdir,frag_to_light);
+        
+        if(t > s_light.cos_angle){
+            
+            vec3 diffuse = Diffuse(normal,lightdir) * s_light.color.xyz;
+            vec3 specular = Specular(normal,lightdir,eyepos,8,0.0001f) * s_light.color.xyz;
+            
+            float attenuation = CalculateSphericalLightAttenuation(length(inPos - lightpos),s_light.radius);
+            
+            float intensity = clamp((t - s_light.hard_cos_angle)/(s_light.hard_cos_angle - s_light.cos_angle),0.0f,1.0f);
+            
+            factor += vec4((diffuse + specular),0) * attenuation * intensity;
+        }
     }
     
     factor.xyz += ambient;
