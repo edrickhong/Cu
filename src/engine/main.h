@@ -589,11 +589,27 @@ struct LightUBO{
         Color color;
     };
     
-    u32 point_count;
-    u32 dir_count;
+    struct SpotLight{
+        
+        Vector4 pos;
+        Vector4 dir;
+        Color color;
+        
+        f32 cos_angle;
+        f32 hard_cos_angle;
+        
+        f32 radius;
+    };
     
-    PointLight point_array[_lightcount];
+    u32 dir_count;
+    u32 point_count;
+    u32 spot_count;
+    
+    
     DirLight dir_array[_lightcount];
+    PointLight point_array[_lightcount];
+    SpotLight spot_array[_lightcount];
+    
 };
 
 struct PlatformData{
@@ -1557,6 +1573,7 @@ void ClearLightList(){
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     light_ubo->point_count = 0;
     light_ubo->dir_count = 0;
+    light_ubo->spot_count = 0;
 }
 
 void AddPointLight(Vector3 pos,Color color,f32 radius){
@@ -1578,6 +1595,17 @@ void AddDirLight(Vector3 dir,Color color){
     
     light_ubo->dir_array[light_ubo->dir_count] = {dir,color};
     light_ubo->dir_count ++;
+}
+
+void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
+    
+    _kill("hard must be less than full\n",hard_angle > full_angle);
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    light_ubo->spot_array[light_ubo->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
+    light_ubo->spot_count ++;
+    
 }
 
 //MARK:
@@ -1774,6 +1802,7 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.SetObjectOrientation = SetObjectOrientation;
     pdata->scenecontext.AddPointLight = AddPointLight;
     pdata->scenecontext.AddDirLight = AddDirLight;
+    pdata->scenecontext.AddSpotLight = AddSpotLight;
     
     
     //asset stuff

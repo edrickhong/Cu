@@ -436,6 +436,10 @@ void UpdateLightList(SceneContext* context){
         GUIDrawAxisSphere(pos,4.0f);
 #endif
     }
+    
+    
+    //MARK: debug spot light
+    context->AddSpotLight(data->camera_pos,data->camera_lookdir,White,60,50,32.0f);
 }
 
 
