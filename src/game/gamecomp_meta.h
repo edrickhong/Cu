@@ -133,7 +133,8 @@ _persist MetaDataEntry SpotLight_METACOMP_STRUCT[] = {
 {(u32)10963,(u32)38605,"f32","dir_x",sizeof(f32),offsetof(SpotLight,dir_x),1,(u32)-1},
 {(u32)10963,(u32)38258,"f32","dir_y",sizeof(f32),offsetof(SpotLight,dir_y),1,(u32)-1},
 {(u32)10963,(u32)38367,"f32","dir_z",sizeof(f32),offsetof(SpotLight,dir_z),1,(u32)-1},
-{(u32)10963,(u32)81318,"f32","angle",sizeof(f32),offsetof(SpotLight,angle),1,(u32)-1},
+{(u32)10963,(u32)1276495,"f32","hard_angle",sizeof(f32),offsetof(SpotLight,hard_angle),1,(u32)-1},
+{(u32)10963,(u32)1279408,"f32","soft_angle",sizeof(f32),offsetof(SpotLight,soft_angle),1,(u32)-1},
 {(u32)10963,(u32)170974,"f32","intensity",sizeof(f32),offsetof(SpotLight,intensity),1,(u32)-1},
 };
 
