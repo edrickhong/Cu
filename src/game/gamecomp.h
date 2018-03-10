@@ -70,8 +70,9 @@ struct REFLCOMPONENT SpotLight{
     f32 dir_y;
     f32 dir_z;
     
+    f32 full_angle;
     f32 hard_angle;
-    f32 soft_angle;
+    f32 radius;
     
     f32 intensity;
 };
