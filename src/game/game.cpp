@@ -1012,6 +1012,8 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         auto x_angle = 0.0f;
         auto y_angle = 0.0f;
         
+        Vector3 lookdir = data->camera_lookdir;
+        
         if(x_len != 0){
             x_angle = atanf(x_len/1.0f);
         }
@@ -1021,17 +1023,24 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         }
         
         if(fabsf(x_angle) > fabsf(y_angle)){
-            data->camera_lookdir = RotateVector(data->camera_lookdir,
-                                                {0,x_angle});  
+            
+            lookdir = RotateVector(lookdir,
+                                   {0,x_angle});  
         }
         
         else{
-            data->camera_lookdir = RotateVector(data->camera_lookdir,
-                                                {y_angle});  
+            
+            auto k = RotateVector(lookdir,
+                                  {y_angle});  
+            
+            if((1.0f - Vec3::Dot(k,Vector3{0.0f,-1.0f,0.0f,0.0f})) > 0.01f){
+                lookdir = k;
+            }
         }
         
+        lookdir = Vec3::Normalize(lookdir);
         
-        data->camera_lookdir = Vec3::Normalize(data->camera_lookdir);
+        data->camera_lookdir = lookdir;
     }
     
     data->prev_mpos = cur_mpos;
