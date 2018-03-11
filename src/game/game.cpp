@@ -111,7 +111,35 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->G = 1.0f;
                 light->B = 1.0f;
                 
+                light->dir_x = 0.0f;
+                light->dir_y = 0.0f;
+                light->dir_z = 1.0f;
+                
                 f32 intensity = 1.0f;
+            }
+            
+            if(compname_hash == PHashString("SpotLight")){
+                
+                auto light = (SpotLight*)obj;
+                
+                light->R = 1.0f;
+                light->G = 1.0f;
+                light->B = 1.0f;
+                
+                
+                Vector3 dir = {0.0f,0.0f,1.0f,0.0f};
+                
+                dir = RotateVector3(dir,data->orientation.rot[obj_id]);
+                
+                light->dir_x = dir.x;
+                light->dir_y = dir.y;
+                light->dir_z = dir.z;
+                
+                light->radius = 1.0f;
+                light->intensity = 1.0f;
+                
+                light->full_angle = 60.0f;
+                light->hard_angle = 50.0f;
             }
             
             return obj;
@@ -198,7 +226,7 @@ u32 AddObject(SceneContext* context){
     data->orientation.pos_y[id] = pos.y;
     data->orientation.pos_z[id] = pos.z;
     
-    data->orientation.rot[id] = ConstructQuaternion({1,0,0,0},_radians(-90));
+    data->orientation.rot[id] = ConstructQuaternion({1,0,0,0},_radians(0));
     
     data->orientation.scale[id] = 1.0f;
     
@@ -437,9 +465,20 @@ void UpdateLightList(SceneContext* context){
 #endif
     }
     
-    
-    //MARK: debug spot light
-    context->AddSpotLight(data->camera_pos,data->camera_lookdir,White,60,50,32.0f);
+    for(u32 i = 0; i < comp->spotlight_count; i++){
+        
+        auto light = &comp->spotlight_array[i];
+        
+        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
+        
+        auto dir = Vector3{light->dir_x,light->dir_y,light->dir_z,1.0f};
+        
+        Vector4 c = {light->R,light->G,light->B,1.0f};
+        c =  c * light->intensity;
+        
+        context->AddSpotLight(pos,dir,Color{c.x,c.y,c.z,1.0f},light->full_angle,light->hard_angle,light->radius);
+        
+    }
 }
 
 
@@ -1124,8 +1163,31 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
         
         case 3:{
             if(GUIRotationGizmo(pos,&rot)){
+                
                 data->orientation.rot[obj_id] = rot;
                 to_update = true;
+                
+                //rotate spot lights. we will not tread dir lights as objects
+                
+                auto comp = (ComponentStruct*)data->components;
+                
+                for(u32 i = 0; i < comp->spotlight_count; i++){
+                    
+                    auto light = &comp->spotlight_array[i];
+                    
+                    if(obj_id == light->id){
+                        
+                        Vector3 dir = {0.0f,0.0f,1.0f,1.0f};
+                        
+                        dir = RotateVector3(dir,data->orientation.rot[obj_id]);
+                        
+                        light->dir_x = dir.x;
+                        light->dir_y = dir.y;
+                        light->dir_z = dir.z;
+                        
+                        break;
+                    }
+                }
             }  
         }break;
         
