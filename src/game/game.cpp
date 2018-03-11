@@ -719,7 +719,7 @@ extern "C" {
         //set gui state
         data->prev_mpos = {};
         data->widget_type = 0;
-        data->obj_id = 2;
+        data->obj_id = 0;
         data->show_object_list = false;
         data->show_object_editor = false;
         data->pos_1 = {-1.0f,1.0f};
@@ -1139,6 +1139,11 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
     
     logic to_update = false;
     
+    if(obj_id == (u32)-1){
+        return false;
+    }
+    
+    
     Vector3 pos = {
         data->orientation.pos_x[obj_id],
         data->orientation.pos_y[obj_id],
@@ -1227,7 +1232,7 @@ void EditorGUI(SceneContext* context){
             data->show_object_list = !data->show_object_list;
         }
         
-        if(GUIButton("Obj Editor")){
+        if(GUIButton("Obj Editor") && data->obj_id != (u32)-1){
             data->show_object_editor = !data->show_object_editor;  
         }
         
@@ -1273,7 +1278,7 @@ void EditorGUI(SceneContext* context){
             
             auto tid = data->obj_id;
             
-            data->obj_id = 0;
+            data->obj_id = (u32)-1;
             
             if(tid > (data->orientation.count >> 1)){
                 for(u32 j = data->orientation.count - 1; j != (u32)-1 ; j--){
@@ -1307,7 +1312,9 @@ void EditorGUI(SceneContext* context){
     //component editor view
     if(data->show_object_editor){
         
-        
+        if(data->obj_id == (u32)-1){
+            data->show_object_editor = false;
+        }
         
         GUIBeginWindow("Object Editor",&data->w_pos,&data->w_dim);
         
