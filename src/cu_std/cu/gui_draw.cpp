@@ -2307,7 +2307,7 @@ logic GUITranslateGizmo(GUIVec3* world_pos){
     auto obj_w = *world_pos;
     auto obj_c = WorldSpaceToClipSpace(obj_w,viewproj);
     
-    //TODO: return if out of screen space
+    //TODO: return if out of screen space (use a mask)
     
     
     auto x_c = WorldSpaceToClipSpace(obj_w + Vector4{1,0,0,0},viewproj);

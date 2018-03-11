@@ -44,17 +44,21 @@ enum PipelineType{
     PSTATIC= 1,
 };
 
+#define _max_objects 512
+
 struct SOAOrientationData{
     
-    f32 pos_x[300];
-    f32 pos_y[300];
-    f32 pos_z[300];
+    f32 pos_x[_max_objects];
+    f32 pos_y[_max_objects];
+    f32 pos_z[_max_objects];
     
-    Quaternion rot[300];
+    Quaternion rot[_max_objects];
     
-    f32 scale[300];
+    f32 scale[_max_objects];
     
-    u8 skip_array[300] = {};
+    u8 skip_array[_max_objects] = {};
+    
+    s8 obj_name[_max_objects][256] = {};
     u32 count = 0;
 };
 
