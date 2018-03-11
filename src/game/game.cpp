@@ -723,7 +723,7 @@ extern "C" {
         data->show_object_list = false;
         data->show_object_editor = false;
         data->pos_1 = {-1.0f,1.0f};
-        data->dim_1 = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
+        data->dim_1 = {GUIDEFAULT_W * 4.8f,GUIDEFAULT_H * 0.22f};
         data->write_orientation = true;
         data->pos_2 = {-0.16f,GUIDEFAULT_Y};
         data->dim_2 = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
@@ -1239,6 +1239,65 @@ void EditorGUI(SceneContext* context){
         if(GUIButton("Profiler")){
             data->draw_profiler = !data->draw_profiler;
         }
+        
+        if(GUIButton("Dir Light Editor")){
+            data->show_dir_light_editor = !data->show_dir_light_editor;
+            data->dirlight_id = (u32)-1;
+        }
+        
+    }
+    
+    
+    //TODO: editor for ambient light
+    if(0){
+        
+    }
+    
+    //directional light list (this should overwrite the regular widgets)
+    if(data->show_dir_light_editor){
+        
+        GUIBeginWindow("Directional Lights",&data->w_pos,&data->w_dim);
+        
+        //MARK: if you think about it, directional lights are constant. maybe we should just have a dir light register instead of using AddDirLight that clears every frame
+        
+        auto comp = (ComponentStruct*)data->components;
+        
+        //list lights
+        for(u32 i = 0; i < comp->directionallight_count; i++){
+            
+            s8 buffer[128] = {};
+            
+            sprintf(&buffer[0],"light: %d",i);
+            
+            if(GUIButton(&buffer[0])){
+                data->dirlight_id = i;
+            }
+        }
+        
+        if(GUIButton("Add Light")){}
+        if(GUIButton("Remove Light")){}
+        
+        //        struct REFLCOMPONENT DirectionalLight{
+        //            ObjectID id;
+        //            
+        //            f32 R;
+        //            f32 G;
+        //            f32 B;
+        //            
+        //            f32 dir_x;
+        //            f32 dir_y;
+        //            f32 dir_z;
+        //            
+        //            f32 intensity;
+        //        };
+        
+        if(data->dirlight_id != (u32)-1){
+            
+            //dir light fields
+            
+            //rotation widget and maybe scale to control intensity
+        }
+        
         
     }
     

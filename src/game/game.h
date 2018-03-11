@@ -82,9 +82,11 @@ struct GameData{
     //GUI state variables
     Vector2 prev_mpos;
     u32 widget_type = 0;
-    u32 obj_id = 2;
+    u32 obj_id = 0;
+    u32 dirlight_id = 0;
     logic show_object_list = false;
     logic show_object_editor = false;
+    logic show_dir_light_editor = false;
     GUIVec2 pos_1 = {-1.0f,1.0f};
     GUIDim2 dim_1 = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
     logic write_orientation = true;
@@ -177,20 +179,3 @@ extern "C"{
     
     _dllexport void GameReload(GameReloadData*);
 }
-
-
-//MARK:light stuff (DEBUG) 
-//{
-//    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-//    light_ubo->point_count = 1;
-//    light_ubo->point_array[0] = {Vector4{-8.0f,-5.0f,0.0f,1.0f},White,0.2f};
-//    
-//    VkMappedMemoryRange range = {
-//        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-//        0,
-//        pdata->light_ubo.memory,
-//        0,
-//        sizeof(LightUBO)
-//    };
-//    
-//}
