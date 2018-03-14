@@ -178,7 +178,16 @@ void ErrorString(VkResult errorCode){
 
 #define _vktest(condition) {VkResult result = condition;if((result != VK_SUCCESS)) {ErrorString(condition);*(s32 *)0 = 0;}}
 
-#define _instanceproc(fptr,inst, entrypoint)				\
+#define _instproc(fptr,inst,entrypoint)				\
+{									\
+    fptr = (void*)vkGetInstanceProcAddr(inst, ""#entrypoint); \
+    if (!fptr)								\
+    {									\
+        _kill("",1);							\
+    }									\
+}
+
+#define _instanceproc(fptr,inst,entrypoint)				\
 {									\
     fptr = (PFN_vk##entrypoint) vkGetInstanceProcAddr(inst, "vk"#entrypoint); \
     if (!fptr)								\
@@ -188,7 +197,7 @@ void ErrorString(VkResult errorCode){
 }
 
 // Macro to get a procedure address based on a vulkan device
-#define _deviceproc(fptr,dev, entrypoint)				\
+#define _deviceproc(fptr,dev,entrypoint)				\
 {									\
     fptr = (PFN_vk##entrypoint) vkGetDeviceProcAddr(dev, "vk"#entrypoint); \
     if (!fptr)								\
@@ -272,15 +281,30 @@ void InternalLoadVulkanLib(){
 
 _persist VkInstance global_instance = 0;
 
-#define _initfunc(func,var) var = (void*)vkGetInstanceProcAddr(global_instance,""#func)
+#if _debug 
+_persist VkDevice global_device = 0;
+#endif
 
-void InternalLoadVulkanFunctions(){
+void InternalLoadVulkanInstanceLevelFunctions(){
     
-    _initfunc(vkEnumeratePhysicalDevices,vkenumeratephysicaldevices);
-    _initfunc(vkGetPhysicalDeviceProperties,vkgetphysicaldeviceproperties);
+    _instproc(vkenumeratephysicaldevices,global_instance,vkEnumeratePhysicalDevices);
+    
+    _instproc(vkgetphysicaldevicequeuefamilyproperties,global_instance,vkGetPhysicalDeviceQueueFamilyProperties);
+    
+    _instproc(vkgetphysicaldeviceproperties,global_instance,vkGetPhysicalDeviceProperties);
+}
+
+void InternalLoadVulkanFunctions(void* k,void* load_fptr){
+    _kill("",!vkenumeratephysicaldevices);
+    
+    auto load = (void* (*)(void*,const s8*))load_fptr;
+    
+#define _initfunc(func,var) var = (void*)load(k,""#func); _kill("failed to load function\n",!func)
+    
+    //TODO: remove instance level functions and run them in instance creation
     _initfunc(vkEnumerateDeviceLayerProperties,vkenumeratedevicelayerproperties);
     _initfunc(vkEnumerateDeviceExtensionProperties,vkenumeratedeviceextensionproperties);
-    _initfunc(vkGetPhysicalDeviceQueueFamilyProperties,vkgetphysicaldevicequeuefamilyproperties);
+    
     _initfunc(vkGetPhysicalDeviceFeatures,vkgetphysicaldevicefeatures);
     _initfunc(vkCreateDevice,vkcreatedevice);
     _initfunc(vkGetPhysicalDeviceFormatProperties,vkgetphysicaldeviceformatproperties);
@@ -390,6 +414,8 @@ void InternalLoadVulkanFunctions(){
     _initfunc(vkCmdCopyImageToBuffer,vkcmdcopyimagetobuffer);
     
     _initfunc(vkGetPipelineCacheData,vkgetpipelinecachedata);
+    
+#undef _initfunc
     
 }
 
@@ -897,8 +923,6 @@ VkSurfaceKHR CreateSurface(VkInstance instance,HINSTANCE connection,HWND window)
     surface_info.hinstance = connection;
     surface_info.hwnd = window;
     
-    _initfunc(vkCreateWin32SurfaceKHR,vkcreate_xlib_wayland_win32surfacekhr);
-    
     _vktest(vkCreateWin32SurfaceKHR(instance,&surface_info,global_allocator,&surface));
     
     return surface;
@@ -917,8 +941,6 @@ VkSurfaceKHR CreateSurface(VkInstance instance,Display* display,Window window){
     surface_info.pNext = 0;
     surface_info.dpy = display;
     surface_info.window = window;
-    
-    _initfunc(vkCreateXlibSurfaceKHR,vkcreate_xlib_wayland_win32surfacekhr);
     
     _vktest(vkCreateXlibSurfaceKHR(instance, &surface_info,global_allocator,&surface));
     
@@ -1356,7 +1378,7 @@ void VSetDeviceAllocator(VkDeviceMemory (*allocator)(VkDevice,VkDeviceSize,u32))
 }
 
 void VCreateInstance(const s8* applicationname_string,logic validation_enable,
-                     u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver){
+                     u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver,u32 lflags){
     
     _kill("instance already active\n",global_instance);
     
@@ -1406,7 +1428,11 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
                                      layer_array,layer_count,
                                      extension_array,extension_count);
     
-    InternalLoadVulkanFunctions();
+    InternalLoadVulkanInstanceLevelFunctions();
+    
+    if(!(lflags & V_L_SINGLE_VKDEVICE)){
+        InternalLoadVulkanFunctions(global_instance,(void*)vkGetInstanceProcAddr);
+    }
     
     if(validation_enable){
         CreateVkDebug(global_instance);
@@ -1466,9 +1492,12 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
 #endif
             
 #ifdef _WIN32
-            _initfunc(vkGetPhysicalDeviceWin32PresentationSupportKHR,vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr);
+            
+            _instproc(vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr,global_instance,vkGetPhysicalDeviceWin32PresentationSupportKHR);
 #else
-            _initfunc(vkGetPhysicalDeviceXlibPresentationSupportKHR,vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr);
+            
+            
+            _instproc(vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr,global_instance,vkGetPhysicalDeviceXlibPresentationSupportKHR);
 #endif
             
             auto res = _get_present_support(physdevice,window,famindex);
@@ -1616,6 +1645,19 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
         CreateDevice(context.physicaldevice,queueinfo_array,queueinfo_count,layer_array,
                      layer_count,extension_array,extension_count,&devicefeatures); 
     
+    if(!vkcreategraphicspipelines){
+        
+#if _debug
+        
+        _kill("V_L_SINGLE_VKDEVICE specified but another VkDevice was created\n",global_device);
+        global_device = context.device;
+        
+        InternalLoadVulkanFunctions(context.device,(void*)vkGetDeviceProcAddr);
+        
+#endif
+        
+    }
+    
     return context;
 }
 
@@ -1628,10 +1670,14 @@ VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _restrict vdevic
     
 #ifdef _WIN32
     
+    _instproc(vkcreate_xlib_wayland_win32surfacekhr,global_instance,vkCreateWin32SurfaceKHR);
+    
     VkSurfaceKHR surface =
         CreateSurface(global_instance,windowcontext.handle, windowcontext.rootwindow);
     
 #else
+    
+    _instproc(vkcreate_xlib_wayland_win32surfacekhr,global_instance,vkCreateXlibSurfaceKHR);
     
     VkSurfaceKHR surface =
         CreateSurface(global_instance,windowcontext.x11_handle, windowcontext.x11_rootwindow);
