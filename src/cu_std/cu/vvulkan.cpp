@@ -292,9 +292,29 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     _instproc(vkgetphysicaldevicequeuefamilyproperties,global_instance,vkGetPhysicalDeviceQueueFamilyProperties);
     
     _instproc(vkgetphysicaldeviceproperties,global_instance,vkGetPhysicalDeviceProperties);
+    
+    _instproc(vkgetphysicaldevicememoryproperties,global_instance,vkGetPhysicalDeviceMemoryProperties);
+    
+    _instproc(vkgetphysicaldevicefeatures,global_instance,vkGetPhysicalDeviceFeatures);
+    
+    _instproc(vkcreatedevice,global_instance,vkCreateDevice);
+    
+    _instproc(vkgetphysicaldevicesurfacesupportkhr,global_instance,vkGetPhysicalDeviceSurfaceSupportKHR);
+    
+    _instproc(vkenumeratedevicelayerproperties,global_instance,vkEnumerateDeviceLayerProperties);
+    
+    _instproc(vkenumeratedeviceextensionproperties,global_instance,vkEnumerateDeviceExtensionProperties);
+    
+    _instproc(vkgetphysicaldeviceformatproperties,global_instance,vkGetPhysicalDeviceFormatProperties);
+    
+    _instproc(vkgetphysicaldeviceimageformatproperties,global_instance,vkGetPhysicalDeviceImageFormatProperties);
+    
+    //vulkan 1.1 here
 }
 
 void InternalLoadVulkanFunctions(void* k,void* load_fptr){
+    
+    
     _kill("",!vkenumeratephysicaldevices);
     
     auto load = (void* (*)(void*,const s8*))load_fptr;
@@ -302,13 +322,8 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
 #define _initfunc(func,var) var = (void*)load(k,""#func); _kill("failed to load function\n",!func)
     
     //TODO: remove instance level functions and run them in instance creation
-    _initfunc(vkEnumerateDeviceLayerProperties,vkenumeratedevicelayerproperties);
-    _initfunc(vkEnumerateDeviceExtensionProperties,vkenumeratedeviceextensionproperties);
     
-    _initfunc(vkGetPhysicalDeviceFeatures,vkgetphysicaldevicefeatures);
-    _initfunc(vkCreateDevice,vkcreatedevice);
-    _initfunc(vkGetPhysicalDeviceFormatProperties,vkgetphysicaldeviceformatproperties);
-    _initfunc(vkGetPhysicalDeviceMemoryProperties,vkgetphysicaldevicememoryproperties);
+    
     _initfunc(vkCmdPipelineBarrier,vkcmdpipelinebarrier);
     _initfunc(vkCreateShaderModule,vkcreateshadermodule);
     _initfunc(vkCreateBuffer,vkcreatebuffer);
@@ -405,15 +420,13 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkGetSwapchainImagesKHR,vkgetswapchainimageskhr);
     _initfunc(vkQueuePresentKHR,vkqueuepresentkhr);
     
-    
-    _initfunc(vkGetPhysicalDeviceSurfaceSupportKHR,vkgetphysicaldevicesurfacesupportkhr);
-    
     _initfunc(vkCmdClearColorImage,vkcmdclearcolorimage);
-    _initfunc(vkGetPhysicalDeviceImageFormatProperties,vkgetphysicaldeviceimageformatproperties);
     
     _initfunc(vkCmdCopyImageToBuffer,vkcmdcopyimagetobuffer);
     
     _initfunc(vkGetPipelineCacheData,vkgetpipelinecachedata);
+    
+    //vulkan 1.1 here
     
 #undef _initfunc
     
@@ -1378,7 +1391,7 @@ void VSetDeviceAllocator(VkDeviceMemory (*allocator)(VkDevice,VkDeviceSize,u32))
 }
 
 void VCreateInstance(const s8* applicationname_string,logic validation_enable,
-                     u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver,u32 lflags){
+                     u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver,u32 v_inst_flags){
     
     _kill("instance already active\n",global_instance);
     
@@ -1430,7 +1443,7 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
     
     InternalLoadVulkanInstanceLevelFunctions();
     
-    if(!(lflags & V_L_SINGLE_VKDEVICE)){
+    if(!(v_inst_flags & V_INSTANCE_FLAGS_SINGLE_VKDEVICE)){
         InternalLoadVulkanFunctions(global_instance,(void*)vkGetInstanceProcAddr);
     }
     
@@ -1464,14 +1477,22 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     
     VDeviceContext context;
     
-    VkPhysicalDevice device_array[3];
+    VkPhysicalDevice device_array[16];
     u32 count;
     
     u32 swapchain_enable = false;
     
     _vktest(vkEnumeratePhysicalDevices(global_instance,(u32*)&count,0));
     
+    printf("device count %d\n",count);
+    
+    _kill("too many devices\n",count > _arraycount(device_array));
+    
     _vktest(vkEnumeratePhysicalDevices(global_instance,(u32*)&count,device_array));
+    
+    for(u32 i = 0; i < count; i++){
+        printf("dev %d %p\n",i,(void*)device_array[i]);
+    }
     
     if(window){
         
