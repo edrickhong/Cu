@@ -1,5 +1,10 @@
 #include "libload.h"
 
+#define _get_main_version_no(version) ((version >> 22))
+#define _get_sub_version_no(version) ((version >> 12) & (u32)0x3FF)
+#define _get_rev_version_no(version) (version & (u32)0xFFF)
+
+
 void* vkenumerateinstanceextensionproperties;
 void* vkenumerateinstancelayerproperties;
 void* vkcreateinstance;
@@ -280,6 +285,7 @@ void InternalLoadVulkanLib(){
 }
 
 _persist VkInstance global_instance = 0;
+_persist u32 global_version_no = 0;
 
 #if _debug 
 _persist VkDevice global_device = 0;
@@ -310,6 +316,10 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     _instproc(vkgetphysicaldeviceimageformatproperties,global_instance,vkGetPhysicalDeviceImageFormatProperties);
     
     //vulkan 1.1 here
+    
+    if(_get_sub_version_no(global_version_no)){
+        //TODO: deprecated 1.0 functions (set them to -1)
+    }
 }
 
 void InternalLoadVulkanFunctions(void* k,void* load_fptr){
@@ -427,6 +437,9 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkGetPipelineCacheData,vkgetpipelinecachedata);
     
     //vulkan 1.1 here
+    if(_get_sub_version_no(global_version_no)){
+        //TODO: deprecated 1.0 functions (set them to -1)
+    }
     
 #undef _initfunc
     
@@ -1440,6 +1453,8 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
                                      firstno_apiver,secondno_apiver,thirdno_apiver,
                                      layer_array,layer_count,
                                      extension_array,extension_count);
+    
+    global_version_no = VK_MAKE_VERSION(firstno_apiver,secondno_apiver,thirdno_apiver);
     
     InternalLoadVulkanInstanceLevelFunctions();
     
