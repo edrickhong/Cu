@@ -1539,32 +1539,32 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     
     VDeviceContext context;
     
-    VkPhysicalDevice device_array[16];
+    VPhysicalDevice_Index device_array[16];
     u32 count;
     
-    u32 swapchain_enable = false;
+    VEnumeratedPhysicalDevices(0,&count);
     
-    _vktest(vkEnumeratePhysicalDevices(global_instance,(u32*)&count,0));
-    
-    printf("device count %d\n",count);
+    _dprint("device count %d\n",count);
     
     _kill("too many devices\n",count > _arraycount(device_array));
     
-    _vktest(vkEnumeratePhysicalDevices(global_instance,(u32*)&count,device_array));
+    VEnumeratedPhysicalDevices(&device_array[0],&count);
+    
+#if _debug
     
     for(u32 i = 0; i < count; i++){
-        printf("dev %d %p\n",i,(void*)device_array[i]);
+        printf("dev %d %p\n",i,(void*)device_array[i].physicaldevice);
     }
     
+#endif
+    
     if(window){
-        
-        swapchain_enable = true;
         
         auto famindex = global_queuefamilyinfo_array[VQUEUETYPE_ROOT].familyindex;
         
         for(u32 i = 0; i < count; i++){
             
-            auto physdevice = device_array[i];
+            auto physdevice = device_array[i].physicaldevice;
             
 #if _debug
             
@@ -1594,7 +1594,7 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
         
     }
     
-    context.physicaldevice = device_array[physicaldevice_index];
+    context.physicaldevice = device_array[physicaldevice_index].physicaldevice;
     
 #if 1
     VkPhysicalDeviceProperties physproperties;
@@ -1716,7 +1716,7 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     const s8* layer_array[] = {"VK_LAYER_LUNARG_standard_validation"};
     u32 layer_count = 0;
     
-    if(swapchain_enable){
+    if(window){
         extension_count++;
     }
     
@@ -3301,4 +3301,36 @@ VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* in
 void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,ptrsize* init_size){
     
     _vktest(vkGetPipelineCacheData(vdevice->device,cache,(size_t*)init_size,init_data));
+}
+
+void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count){
+    
+    u32 c = 0;
+    
+    VkPhysicalDevice device_array[16];
+    u32 device_count = 0;
+    
+    _vktest(vkEnumeratePhysicalDevices(global_instance,&device_count,0));
+    
+    _kill("too many devices\n",device_count > _arraycount(device_array));
+    
+    _vktest(vkEnumeratePhysicalDevices(global_instance,&device_count,device_array));
+    
+    for(u32 i = 0; i < device_count; i++){
+        
+        auto d = device_array[i];
+        
+        VkPhysicalDeviceProperties physproperties;
+        vkGetPhysicalDeviceProperties(d,&physproperties);
+        
+        if(physproperties.apiVersion >= global_version_no){
+            
+            if(array){
+                array[c] = {d,i};
+            }
+            
+            c++;
+        }
+    }
+    
 }

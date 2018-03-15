@@ -512,7 +512,12 @@ VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _in_ vdevice,
                                           VPresentSyncType sync_type = VSYNC_NONE,
                                           VSwapchainContext* oldswapchain = 0);
 
-void VEnumeratedPhysicalDevices();
+struct VPhysicalDevice_Index{
+    VkPhysicalDevice physicaldevice;
+    u32 index;
+};
+
+void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count);
 
 VkFence VCreateFence(VDeviceContext* _in_ vdevice,VkFenceCreateFlags flags);
 
