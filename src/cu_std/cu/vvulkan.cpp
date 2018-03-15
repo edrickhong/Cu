@@ -1,8 +1,10 @@
 #include "libload.h"
 
-#define _get_main_version_no(version) ((version >> 22))
-#define _get_sub_version_no(version) ((version >> 12) & (u32)0x3FF)
-#define _get_rev_version_no(version) (version & (u32)0xFFF)
+/*
+#define VK_VERSION_MAJOR(version) ((uint32_t)(version) >> 22)
+#define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
+#define VK_VERSION_PATCH(version) ((uint32_t)(version) & 0xfff)
+*/
 
 
 void* vkenumerateinstanceextensionproperties;
@@ -263,6 +265,7 @@ void InternalLoadVulkanLib(){
         vklib = LLoadLibrary(vklib_array[i]);
         
         if(vklib){
+            _dprint("using vkloader %s\n",vklib_array[i]);
             break;
         }
         
@@ -317,7 +320,7 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     
     //vulkan 1.1 here
     
-    if(_get_sub_version_no(global_version_no)){
+    if(VK_VERSION_MINOR(global_version_no)){
         //TODO: deprecated 1.0 functions (set them to -1)
     }
 }
@@ -437,7 +440,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkGetPipelineCacheData,vkgetpipelinecachedata);
     
     //vulkan 1.1 here
-    if(_get_sub_version_no(global_version_no)){
+    if(VK_VERSION_MINOR(global_version_no)){
         //TODO: deprecated 1.0 functions (set them to -1)
     }
     
@@ -873,8 +876,7 @@ VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
 }
 
 
-VkInstance CreateInstance(const s8* _restrict name,
-                          u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver,
+VkInstance CreateInstance(const s8* _restrict name,u32 api_version,
                           const s8** layer_array,ptrsize layer_count,
                           const s8** extension_array,ptrsize extension_count){
     
@@ -883,7 +885,7 @@ VkInstance CreateInstance(const s8* _restrict name,
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = name;
     app_info.pEngineName = name;
-    app_info.apiVersion = VK_MAKE_VERSION(firstno_apiver,secondno_apiver,thirdno_apiver);
+    app_info.apiVersion = api_version;
     
     VkInstanceCreateInfo instance_info = {};
     
@@ -1403,8 +1405,7 @@ void VSetDeviceAllocator(VkDeviceMemory (*allocator)(VkDevice,VkDeviceSize,u32))
     deviceallocator = allocator;
 }
 
-void VCreateInstance(const s8* applicationname_string,logic validation_enable,
-                     u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver,u32 v_inst_flags){
+u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,u32 v_inst_flags){
     
     _kill("instance already active\n",global_instance);
     
@@ -1448,13 +1449,57 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
     
     _kill("failed to load lib\n",!vkcreateinstance);
     
+    if(VK_MAKE_VERSION(1,0,0) != api_version){
+        
+        PFN_vkEnumerateInstanceVersion EnumerateInstanceVersion_fptr =
+        
+            (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(
+            VK_NULL_HANDLE,"vkEnumerateInstanceVersion");
+        
+        if(EnumerateInstanceVersion_fptr){
+            
+            u32 latest_version = 0;
+            
+            EnumerateInstanceVersion_fptr(&latest_version);
+            
+            _dprint("VULKAN\nLatest supported: %d.%d.%d\nRequested: %d.%d.%d\n",VK_VERSION_MAJOR(latest_version),VK_VERSION_MINOR(latest_version),VK_VERSION_PATCH(latest_version),VK_VERSION_MAJOR(api_version),VK_VERSION_MINOR(api_version),VK_VERSION_PATCH(api_version));
+            
+            if(api_version > latest_version){
+                
+                if(V_INSTANCE_FLAGS_API_VERSION_OPTIONAL & v_inst_flags){
+                    
+                    api_version = latest_version;
+                }
+                
+                else{
+                    return (u32)-1;
+                }
+                
+            }
+            
+        }
+        
+        else if(V_INSTANCE_FLAGS_API_VERSION_OPTIONAL & v_inst_flags){
+            
+            _dprint("Only 1.0 loader found. Falling back to version 1.0\n%s","");
+            
+            
+            api_version = VK_MAKE_VERSION(1,0,0);
+        }
+        
+        else{
+            return (u32)-1;
+        }
+    }
+    
+    _dprint("Using: %d.%d.%d\n",VK_VERSION_MAJOR(api_version),VK_VERSION_MINOR(api_version),VK_VERSION_PATCH(api_version));
     
     global_instance = CreateInstance(applicationname_string,
-                                     firstno_apiver,secondno_apiver,thirdno_apiver,
+                                     api_version,
                                      layer_array,layer_count,
                                      extension_array,extension_count);
     
-    global_version_no = VK_MAKE_VERSION(firstno_apiver,secondno_apiver,thirdno_apiver);
+    global_version_no = api_version;
     
     InternalLoadVulkanInstanceLevelFunctions();
     
@@ -1465,6 +1510,8 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
     if(validation_enable){
         CreateVkDebug(global_instance);
     }
+    
+    return api_version;
 }
 
 VkQueue VGetQueue(const VDeviceContext* _restrict vdevice,VQueueType type){
