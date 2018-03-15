@@ -486,10 +486,10 @@ void VPushBackSubpassDependencySpec(VSubpassDependencySpec* spec,
 enum V_Instance_Flags{
     V_INSTANCE_FLAGS_NONE = 0,
     V_INSTANCE_FLAGS_SINGLE_VKDEVICE = 1,
+    V_INSTANCE_FLAGS_API_VERSION_OPTIONAL = 2,
 };
 
-void VCreateInstance(const s8* applicationname_string,logic validation_enable,
-                     u32 major_apiversion,u32 minor_apiversion,u32 revision_apiversion,u32 v_inst_flags = V_INSTANCE_FLAGS_NONE);
+u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,u32 v_inst_flags = V_INSTANCE_FLAGS_NONE);
 
 VDeviceContext VCreateDeviceContext(WWindowContext* window = 0,
                                     u32 createqueue_bits = VCREATEQUEUEBIT_ALL,
