@@ -66,7 +66,9 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    VCreateInstance("eengine",true,1,1,0,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    
+    _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
     pdata->vdevice = VCreateDeviceContext(&pdata->window);
     
