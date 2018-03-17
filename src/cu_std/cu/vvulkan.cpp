@@ -124,6 +124,9 @@ void* vkgetphysicaldeviceimageformatproperties;
 void* vkcmdcopyimagetobuffer;
 void* vkgetpipelinecachedata;
 
+//vulkan 1.1
+void* vkenumeratephysicaldevicegroups;
+
 #ifdef _WIN32
 
 #define _surface_extension VK_KHR_WIN32_SURFACE_EXTENSION_NAME
@@ -321,7 +324,10 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     //vulkan 1.1 here
     
     if(VK_VERSION_MINOR(global_version_no)){
+        
         //TODO: deprecated 1.0 functions (set them to -1)
+        
+        _instproc(vkenumeratephysicaldevicegroups,global_instance,vkEnumeratePhysicalDeviceGroup);
     }
 }
 
@@ -1560,17 +1566,36 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     
     if(window){
         
-        auto famindex = global_queuefamilyinfo_array[VQUEUETYPE_ROOT].familyindex;
-        
         for(u32 i = 0; i < count; i++){
             
             auto physdevice = device_array[i].physicaldevice;
             
 #if _debug
             
-            u32 tcount;
+            u32 p_count = 0;
+            VkQueueFamilyProperties p_array[8] = {};
             
-            vkGetPhysicalDeviceQueueFamilyProperties(physdevice,&tcount,0);
+            vkGetPhysicalDeviceQueueFamilyProperties(physdevice,
+                                                     &p_count,0);
+            
+            _kill("",p_count > _arraycount(p_array));
+            
+            vkGetPhysicalDeviceQueueFamilyProperties(physdevice,
+                                                     &p_count,&p_array[0]);
+            
+            u32 famindex = (u32)-1;
+            
+            for(u32 j = 0; j < p_count; j++){
+                
+                if(p_array[j].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+                    famindex = j;
+                    break;
+                }
+            }
+            
+            if(famindex == (u32)-1){
+                continue;
+            }
             
 #endif
             
@@ -3303,7 +3328,9 @@ void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache ca
     _vktest(vkGetPipelineCacheData(vdevice->device,cache,(size_t*)init_size,init_data));
 }
 
-void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count){
+
+//TODO: allow filtering out presentable devices only
+void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count,WWindowContext* window){
     
     u32 c = 0;
     
@@ -3324,6 +3351,10 @@ void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count){
         vkGetPhysicalDeviceProperties(d,&physproperties);
         
         if(physproperties.apiVersion >= global_version_no){
+            
+            if(window){
+                
+            }
             
             if(array){
                 array[c] = {d,i};
