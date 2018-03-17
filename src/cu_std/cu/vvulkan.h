@@ -379,22 +379,14 @@ enum VQueueType{
 
 
 struct VDeviceContext{
-    VkPhysicalDevice physicaldevice;
-    VkDevice device;
-    VkPhysicalDeviceMemoryProperties* memoryproperties;
-};
-
-struct VDeviceGroupContext{
     
-    struct VPhysicalDeviceGroup{
+    struct PhysDeviceInfo{
         
-        VkPhysicalDevice physicaldevice_array[4];
-        //MARK: these devices will be similar. we should use the minimum set
-        VkPhysicalDeviceMemoryProperties* memoryproperties[4];
+        VkPhysicalDevice physicaldevice_array[8];
+        VkPhysicalDeviceMemoryProperties* memoryproperties;
         u32 physicaldevice_count;
     };
-    
-    VPhysicalDeviceGroup devicegroup;
+    PhysDeviceInfo* phys_info;
     VkDevice device;
 };
 
@@ -509,11 +501,15 @@ enum V_Instance_Flags{
     V_INSTANCE_FLAGS_API_VERSION_OPTIONAL = 2,
 };
 
+enum V_VDeviceContext_Flags{
+    V_VDEVICECONTEXT_FLAGS_NONE = 0,
+    V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW = 1,
+};
+
 u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,u32 v_inst_flags = V_INSTANCE_FLAGS_NONE);
 
-VDeviceContext VCreateDeviceContext(WWindowContext* window = 0,
-                                    u32 createqueue_bits = VCREATEQUEUEBIT_ALL,
-                                    u32 physicaldevice_index = 0);
+VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array = 0,u32 physdevice_count = 1,u32 vdevice_flags = V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW,
+                                    u32 createqueue_bits = VCREATEQUEUEBIT_ALL);
 
 VkQueue VGetQueue(const VDeviceContext* _in_ vdevice,VQueueType type);
 
@@ -539,7 +535,7 @@ struct VPhysicalDevice_Index{
 
 struct VPhysicalDeviceGroups{};
 
-void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count,WWindowContext* window = 0);
+void VEnumeratePhysicalDevices(VkPhysicalDevice * array,u32* count,WWindowContext* window = 0);
 
 void VEnumeratePhysicalDeviceGroups(VPhysicalDeviceGroups* array,u32* count,WWindowContext* window = 0);
 
