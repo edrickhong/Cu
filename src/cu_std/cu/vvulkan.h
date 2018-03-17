@@ -137,6 +137,9 @@ extern void* vkgetphysicaldeviceimageformatproperties;
 extern void* vkcmdcopyimagetobuffer;
 extern void* vkgetpipelinecachedata;
 
+//vulkan 1.1
+extern void* vkenumeratephysicaldevicegroups;
+
 //defines
 #define vkEnumerateInstanceExtensionProperties ((PFN_vkEnumerateInstanceExtensionProperties)(vkenumerateinstanceextensionproperties))
 #define vkEnumerateInstanceLayerProperties ((PFN_vkEnumerateInstanceLayerProperties)(vkenumerateinstancelayerproperties))
@@ -271,6 +274,9 @@ extern void* vkgetpipelinecachedata;
 
 #define vkGetPipelineCacheData ((PFN_vkGetPipelineCacheData)vkgetpipelinecachedata)
 
+//vulkan 1.1
+#define vkEnumeratePhysicalDeviceGroups ((PFN_vkEnumeratePhysicalDeviceGroups)vkenumeratephysicaldevicegroups)
+
 
 #if _debug
 #define _vk_inject_cmdbuffers 1
@@ -376,6 +382,20 @@ struct VDeviceContext{
     VkPhysicalDevice physicaldevice;
     VkDevice device;
     VkPhysicalDeviceMemoryProperties* memoryproperties;
+};
+
+struct VDeviceGroupContext{
+    
+    struct VPhysicalDeviceGroup{
+        
+        VkPhysicalDevice physicaldevice_array[4];
+        //MARK: these devices will be similar. we should use the minimum set
+        VkPhysicalDeviceMemoryProperties* memoryproperties[4];
+        u32 physicaldevice_count;
+    };
+    
+    VPhysicalDeviceGroup devicegroup;
+    VkDevice device;
 };
 
 struct VModel{
@@ -517,7 +537,11 @@ struct VPhysicalDevice_Index{
     u32 index;
 };
 
-void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count);
+struct VPhysicalDeviceGroups{};
+
+void VEnumeratedPhysicalDevices(VPhysicalDevice_Index* array,u32* count,WWindowContext* window = 0);
+
+void VEnumeratePhysicalDeviceGroups(VPhysicalDeviceGroups* array,u32* count,WWindowContext* window = 0);
 
 VkFence VCreateFence(VDeviceContext* _in_ vdevice,VkFenceCreateFlags flags);
 
