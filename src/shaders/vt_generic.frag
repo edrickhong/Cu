@@ -56,6 +56,7 @@ layout (set = 1,binding = 3) uniform LIGHT_UBO{
     PointLight point_array[1024];
     SpotLight spot_array[1024];
     
+    vec4 ambient_color;
     
 }light;
 
@@ -166,11 +167,7 @@ void main(){
     
     vec3 normal = normalize(inNormal);
     
-    //MARK: these are fixed for now
-    vec3 ambient_color = vec3(1.0f,1.0f,1.0f);
-    float ambient_intensity = 0.1f;
-    
-    vec3 ambient = ambient_color * ambient_intensity;
+    vec3 ambient = vec3(light.ambient_color.xyz);
     
     vec4 factor = vec4(0.0f,0.0f,0.0f,1.0f);
     

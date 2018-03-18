@@ -605,6 +605,8 @@ struct LightUBO{
     PointLight point_array[_lightcount];
     SpotLight spot_array[_lightcount];
     
+    Color ambient_color;
+    
 };
 
 struct PlatformData{
@@ -1570,6 +1572,15 @@ void ClearLightList(){
     light_ubo->spot_count = 0;
 }
 
+void SetAmbientColor(Color color ,f32 intensity){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    Vector4 c = Vector4{color.R,color.G,color.B,color.A} * intensity;
+    
+    light_ubo->ambient_color = Color{c.x,c.y,c.z,1.0f};
+}
+
 void GetDirLightList(DirLight** array,u32** count){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
@@ -1806,6 +1817,7 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.AddSpotLight = AddSpotLight;
     
     pdata->scenecontext.GetDirLightList = GetDirLightList;
+    pdata->scenecontext.SetAmbientColor = SetAmbientColor;
     
     
     //asset stuff

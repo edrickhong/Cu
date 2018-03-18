@@ -100,7 +100,7 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->G = 1.0f;
                 light->B = 1.0f;
                 light->radius = 1.0f;
-                f32 intensity = 1.0f;
+                light->intensity = 1.0f;
             }
             
             if(compname_hash == PHashString("SpotLight")){
@@ -278,52 +278,6 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     auto file = FOpenFile(_COMPFILE,F_FLAG_READONLY);
     
-    {
-        
-        FRead(file,&data->orientation.count,sizeof(data->orientation.count));
-        
-        auto count = data->orientation.count;
-        
-        for(u32 i = 0; i < count; i++){
-            FRead(file,&data->orientation.pos_x[i],sizeof(data->orientation.pos_x[i]));
-        }
-        
-        for(u32 i = 0; i < count; i++){
-            FRead(file,&data->orientation.pos_y[i],sizeof(data->orientation.pos_y[i]));
-        }
-        
-        for(u32 i = 0; i < count; i++){
-            FRead(file,&data->orientation.pos_z[i],sizeof(data->orientation.pos_z[i]));
-        }
-        
-        for(u32 i = 0; i < count; i++){
-            FRead(file,&data->orientation.rot[i],sizeof(data->orientation.rot[i]));
-        }
-        
-        for(u32 i = 0; i < count; i++){
-            FRead(file,&data->orientation.scale[i],sizeof(data->orientation.scale[i]));
-        }
-        
-        //skip array
-        for(u32 i = 0; i < count; i++){
-            FRead(file,&data->orientation.skip_array[i],sizeof(data->orientation.skip_array[i]));
-        }
-        
-        for(u32 i = 0; i < count; i++){
-            
-            Vector4 pos = {data->orientation.pos_x[i],data->orientation.pos_y[i],
-                data->orientation.pos_z[i],1.0f};
-            
-            auto scale = data->orientation.scale[i];
-            
-            auto rot = data->orientation.rot[i];
-            
-            context->SetObjectOrientation(i,pos,rot,scale);
-            
-        }
-        
-    }
-    
     u32 metacount;
     
     FRead(file,&metacount,sizeof(metacount));
@@ -396,6 +350,73 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         auto mat_id = components->entitydrawdata_array[i].material;
         
         context->SetObjectMaterial(obj_id,mat_id);
+    }
+    
+    {
+        
+        FRead(file,&data->orientation.count,sizeof(data->orientation.count));
+        
+        auto count = data->orientation.count;
+        
+        for(u32 i = 0; i < count; i++){
+            FRead(file,&data->orientation.pos_x[i],sizeof(data->orientation.pos_x[i]));
+        }
+        
+        for(u32 i = 0; i < count; i++){
+            FRead(file,&data->orientation.pos_y[i],sizeof(data->orientation.pos_y[i]));
+        }
+        
+        for(u32 i = 0; i < count; i++){
+            FRead(file,&data->orientation.pos_z[i],sizeof(data->orientation.pos_z[i]));
+        }
+        
+        for(u32 i = 0; i < count; i++){
+            FRead(file,&data->orientation.rot[i],sizeof(data->orientation.rot[i]));
+        }
+        
+        for(u32 i = 0; i < count; i++){
+            FRead(file,&data->orientation.scale[i],sizeof(data->orientation.scale[i]));
+        }
+        
+        //skip array
+        for(u32 i = 0; i < count; i++){
+            FRead(file,&data->orientation.skip_array[i],sizeof(data->orientation.skip_array[i]));
+        }
+        
+        for(u32 i = 0; i < count; i++){
+            
+            Vector4 pos = {data->orientation.pos_x[i],data->orientation.pos_y[i],
+                data->orientation.pos_z[i],1.0f};
+            
+            auto scale = data->orientation.scale[i];
+            
+            auto rot = data->orientation.rot[i];
+            
+            context->SetObjectOrientation(i,pos,rot,scale);
+            
+        }
+        
+        //ambient light
+        FRead(file,&data->ambient_color,sizeof(Color));
+        FRead(file,&data->ambient_intensity,sizeof(data->ambient_intensity));
+        
+        context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
+        
+        //dir light
+        
+        u32* dir_count = 0;
+        DirLight* dir_array = 0;
+        
+        ((SceneContext*)context)->GetDirLightList(&dir_array,&dir_count);
+        
+        for(u32 i = 0; i < (*dir_count); i++){
+            
+            auto k = &dir_array[i];
+            
+            FWrite(file,&k->dir,sizeof(k->dir));
+            FWrite(file,&k->color,sizeof(k->color));
+        }
+        
     }
     
     FCloseFile(file);
@@ -571,45 +592,6 @@ extern "C" {
         auto outfile = FOpenFile(_COMPFILE,F_FLAG_READWRITE |
                                  F_FLAG_TRUNCATE | F_FLAG_CREATE);
         
-        {
-            
-            FWrite(outfile,&data->orientation.count,sizeof(data->orientation.count));
-            
-            auto count = data->orientation.count;
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.pos_x[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.pos_y[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.pos_z[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.rot[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.scale[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            //skip array
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.skip_array[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-        }
-        
         u32 metacount = _arraycount(METACOMP_ARRAY);
         
         FWrite(outfile,&metacount,sizeof(metacount));
@@ -677,6 +659,67 @@ extern "C" {
             
         }
         
+        
+        //static stuff can go here so we can just append stuff
+        {
+            
+            FWrite(outfile,&data->orientation.count,sizeof(data->orientation.count));
+            
+            auto count = data->orientation.count;
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.pos_x[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.pos_y[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.pos_z[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.rot[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.scale[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            //skip array
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.skip_array[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            //ambient light
+            FWrite(outfile,&data->ambient_color,sizeof(Color));
+            FWrite(outfile,&data->ambient_intensity,sizeof(data->ambient_intensity));
+            
+            //dir light
+            
+            u32* dir_count = 0;
+            DirLight* dir_array = 0;
+            
+            ((SceneContext*)context)->GetDirLightList(&dir_array,&dir_count);
+            
+            for(u32 i = 0; i < (*dir_count); i++){
+                
+                auto k = &dir_array[i];
+                
+                FWrite(outfile,&k->dir,sizeof(k->dir));
+                FWrite(outfile,&k->color,sizeof(k->color));
+            }
+            
+        }
+        
+        
         FCloseFile(outfile);
     }
     
@@ -697,18 +740,24 @@ extern "C" {
         data->obj_id = 0;
         data->show_object_list = false;
         data->show_object_editor = false;
-        data->pos_1 = {-1.0f,1.0f};
-        data->dim_1 = {GUIDEFAULT_W * 4.8f,GUIDEFAULT_H * 0.22f};
-        data->write_orientation = true;
-        data->pos_2 = {-0.16f,GUIDEFAULT_Y};
-        data->dim_2 = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+        data->pos_control = {-1.0f,1.0f};
+        data->dim_control = {GUIDEFAULT_W * 6.8f,GUIDEFAULT_H * 0.22f};
         
-        data->w_pos = {0.4f,GUIDEFAULT_Y};
-        data->w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+        data->write_orientation = true;
+        
+        data->pos_obj_list = {-0.16f,GUIDEFAULT_Y};
+        data->dim_obj_list = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+        
+        data->pos_obj_editor = {0.4f,GUIDEFAULT_Y};
+        data->dim_obj_list = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
         
         data->dirlight_id = (u32)-1;
         
-        data->pos_3 = data->w_pos;
+        data->pos_dirlight = data->pos_obj_editor;
+        data->pos_ambient = data->pos_dirlight;
+        
+        data->ambient_color = White;
+        data->ambient_intensity = 0.4f;
         
         memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
         
@@ -1204,7 +1253,7 @@ void EditorGUI(SceneContext* context){
     
     {
         
-        GUIBeginWindow("Control Panel",&data->pos_1,&data->dim_1);
+        GUIBeginWindow("Control Panel",&data->pos_control,&data->dim_control);
         
         if(GUIButton("Obj List")){
             data->show_object_list = !data->show_object_list;
@@ -1218,17 +1267,71 @@ void EditorGUI(SceneContext* context){
             data->draw_profiler = !data->draw_profiler;
         }
         
-        if(GUIButton("Dir Light Editor")){
+        if(GUIButton("Dir Light")){
             data->show_dir_light_editor = !data->show_dir_light_editor;
             data->dirlight_id = (u32)-1;
+        }
+        
+        if(GUIButton("Ambient Light")){
+            
+            data->show_ambient_light_editor = !data->show_ambient_light_editor;
         }
         
     }
     
     
     //TODO: editor for ambient light
-    if(0){
+    if(data->show_ambient_light_editor){
         
+        GUIBeginWindow("Ambient Light",&data->pos_ambient,&data->dim_obj_list);
+        
+        auto color = &data->ambient_color;
+        auto intensity = &data->ambient_intensity;
+        
+        auto write_values = false;
+        
+        s8 buffer[128] = {};
+        
+        sprintf(&buffer[0],"%f",color->R);
+        
+        if(GUITextField("R",&buffer[0])){
+            color->R = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        sprintf(&buffer[0],"%f",color->G);
+        
+        if(GUITextField("G",&buffer[0])){
+            color->G = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        sprintf(&buffer[0],"%f",color->B);
+        
+        if(GUITextField("B",&buffer[0])){
+            color->B = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        sprintf(&buffer[0],"%f",*intensity);
+        
+        if(GUITextField("intensity",&buffer[0])){
+            *intensity = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        if(write_values){
+            
+            context->SetAmbientColor(*color,*intensity);
+        }
     }
     
     //directional light list (this should overwrite the regular widgets)
@@ -1238,7 +1341,7 @@ void EditorGUI(SceneContext* context){
         
         sprintf(&title_buffer[0],"Directional Lights(%d)",data->dirlight_id);
         
-        GUIBeginWindow(&title_buffer[0],&data->pos_3,&data->w_dim);
+        GUIBeginWindow(&title_buffer[0],&data->pos_dirlight,&data->dim_obj_list);
         
         //MARK: if you think about it, directional lights are constant. maybe we should just have a dir light register instead of using AddDirLight that clears every frame
         
@@ -1358,7 +1461,7 @@ void EditorGUI(SceneContext* context){
         
         sprintf(title_buffer,"Object List(%d)",data->obj_id);
         
-        GUIBeginWindow(title_buffer,&data->pos_2,&data->dim_2);
+        GUIBeginWindow(title_buffer,&data->pos_obj_list,&data->dim_obj_list);
         
         for(u32 i = 0; i < data->orientation.count; i++){
             
@@ -1425,7 +1528,7 @@ void EditorGUI(SceneContext* context){
             data->show_object_editor = false;
         }
         
-        GUIBeginWindow("Object Editor",&data->w_pos,&data->w_dim);
+        GUIBeginWindow("Object Editor",&data->pos_obj_editor,&data->dim_obj_list);
         
         //orientation fields
         {
