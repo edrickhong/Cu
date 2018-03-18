@@ -275,17 +275,17 @@ the [patch string].
 }
 
 s32 main(s32 argc,s8** argv){
-	
+	/*
   if(argc < 3){
     printf("not enough arguments\n");
     PrintHelp();
     return -1;
   }
 
-  AssetTable assetlist;
-  assetlist.Init();
-
-  InternalParseAssetList(argv[1],&assetlist);
+  AssetTable asset_table;
+  asset_table.Init();
+  s8 asset_file = arv[1];
+  FileToTable(asset_file,&asset_table);
 
   //Read the -commands
   //add to asset list
@@ -370,6 +370,6 @@ To an admiring bog!
     printf("unrecognized command %s\n",argv[2]);
     PrintHelp();
   }
-  
+  */
   return 0;
 }
