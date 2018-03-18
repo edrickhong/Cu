@@ -584,11 +584,6 @@ struct LightUBO{
         f32 radius;
     };
     
-    struct DirLight{
-        Vector4 dir;
-        Color color;
-    };
-    
     struct SpotLight{
         
         Vector4 pos;
@@ -1572,8 +1567,15 @@ void CompileAllPipelines(PlatformData* pdata){
 void ClearLightList(){
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     light_ubo->point_count = 0;
-    light_ubo->dir_count = 0;
     light_ubo->spot_count = 0;
+}
+
+void GetDirLightList(DirLight** array,u32** count){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    *count = &light_ubo->dir_count;
+    *array = &light_ubo->dir_array[0];
 }
 
 void AddPointLight(Vector3 pos,Color color,f32 radius){
@@ -1801,8 +1803,9 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.SetActiveCameraOrientation = SetActiveCameraOrientation;
     pdata->scenecontext.SetObjectOrientation = SetObjectOrientation;
     pdata->scenecontext.AddPointLight = AddPointLight;
-    pdata->scenecontext.AddDirLight = AddDirLight;
     pdata->scenecontext.AddSpotLight = AddSpotLight;
+    
+    pdata->scenecontext.GetDirLightList = GetDirLightList;
     
     
     //asset stuff
