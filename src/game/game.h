@@ -71,15 +71,14 @@ struct GameData{
     f32 roty;
     logic running = true;
     
-#if _debug
-    logic draw_profiler;
-#endif
-    
     //These are entity registers
     SOAOrientationData orientation;
     void* components;
     
+#if _debug
     //GUI state variables
+    logic draw_profiler;
+    
     Vector2 prev_mpos;
     u32 widget_type = 0;
     u32 obj_id = 0;
@@ -93,10 +92,21 @@ struct GameData{
     GUIVec2 pos_2 = {-0.16f,GUIDEFAULT_Y};
     GUIDim2 dim_2 = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
     
+    GUIVec2 pos_3 = {-1.0f,1.0f};
+    
     GUIVec2 w_pos = {0.4f,GUIDEFAULT_Y};
     GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+    
     s8 o_buffer[4][128] = {};
-    s8 in_buffer[128] = {};
+    
+    Quaternion dir_light_rot[1024];
+#endif
+    
+};
+
+struct DirLight{
+    Vector4 dir;
+    Color color;
 };
 
 
@@ -118,8 +128,9 @@ struct SceneContext{
     void (*SetActiveCameraOrientation)(Vector4,Vector4);
     void (*SetObjectOrientation)(u32,Vector4,Quaternion,f32);
     void (*AddPointLight)(Vector3,Color,f32);
-    void (*AddDirLight)(Vector3,Color);
     void (*AddSpotLight)(Vector3,Vector3,Color,f32,f32,f32);
+    
+    void (*GetDirLightList)(DirLight**,u32**);
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);

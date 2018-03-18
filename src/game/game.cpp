@@ -103,21 +103,6 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 f32 intensity = 1.0f;
             }
             
-            if(compname_hash == PHashString("DirectionalLight")){
-                
-                auto light = (DirectionalLight*)obj;
-                
-                light->R = 1.0f;
-                light->G = 1.0f;
-                light->B = 1.0f;
-                
-                light->dir_x = 0.0f;
-                light->dir_y = 0.0f;
-                light->dir_z = 1.0f;
-                
-                f32 intensity = 1.0f;
-            }
-            
             if(compname_hash == PHashString("SpotLight")){
                 
                 auto light = (SpotLight*)obj;
@@ -439,16 +424,6 @@ void UpdateLightList(SceneContext* context){
     
     auto comp = (ComponentStruct*)data->components;
     
-    for(u32 i = 0; i < comp->directionallight_count; i++){
-        
-        auto light = &comp->directionallight_array[i];
-        
-        Vector4 c = {light->R,light->G,light->B,1.0f};
-        c =  c * light->intensity;
-        
-        context->AddDirLight(Vector3{light->dir_x,light->dir_y,light->dir_z,1.0f},Color{c.x,c.y,c.z,1.0f});
-    }
-    
     for(u32 i = 0; i < comp->pointlight_count; i++){
         
         auto light = &comp->pointlight_array[i];
@@ -731,8 +706,11 @@ extern "C" {
         data->w_pos = {0.4f,GUIDEFAULT_Y};
         data->w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
         
+        data->dirlight_id = (u32)-1;
+        
+        data->pos_3 = data->w_pos;
+        
         memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
-        memset(&data->in_buffer[0],0,sizeof(data->in_buffer));
         
         
     }
@@ -1256,14 +1234,23 @@ void EditorGUI(SceneContext* context){
     //directional light list (this should overwrite the regular widgets)
     if(data->show_dir_light_editor){
         
-        GUIBeginWindow("Directional Lights",&data->w_pos,&data->w_dim);
+        s8 title_buffer[128] = {};
+        
+        sprintf(&title_buffer[0],"Directional Lights(%d)",data->dirlight_id);
+        
+        GUIBeginWindow(&title_buffer[0],&data->pos_3,&data->w_dim);
         
         //MARK: if you think about it, directional lights are constant. maybe we should just have a dir light register instead of using AddDirLight that clears every frame
         
         auto comp = (ComponentStruct*)data->components;
         
+        u32* dir_count = 0;
+        DirLight* dir_array = 0;
+        
+        context->GetDirLightList(&dir_array,&dir_count);
+        
         //list lights
-        for(u32 i = 0; i < comp->directionallight_count; i++){
+        for(u32 i = 0; i < *dir_count; i++){
             
             s8 buffer[128] = {};
             
@@ -1274,28 +1261,45 @@ void EditorGUI(SceneContext* context){
             }
         }
         
-        if(GUIButton("Add Light")){}
-        if(GUIButton("Remove Light")){}
+        if(GUIButton("Add Light")){
+            dir_array[*dir_count] = {Vector3{0.0f,0.0f,1.0f,1.0f},White};
+            data->dir_light_rot[*dir_count] = ConstructQuaternion(Vector3{0.0f,1.0f,0.0f,1.0f},0.0f);
+            
+            data->dirlight_id = (*dir_count);
+            (*dir_count)++;
+        }
         
-        //        struct REFLCOMPONENT DirectionalLight{
-        //            ObjectID id;
-        //            
-        //            f32 R;
-        //            f32 G;
-        //            f32 B;
-        //            
-        //            f32 dir_x;
-        //            f32 dir_y;
-        //            f32 dir_z;
-        //            
-        //            f32 intensity;
-        //        };
+        if(GUIButton("Remove Light")){
+            (*dir_count)--;
+            dir_array[data->dirlight_id] = dir_array[*dir_count];
+            
+            data->dirlight_id = (*dir_count) - 1;
+        }
+        
+        
         
         if(data->dirlight_id != (u32)-1){
             
+            auto light = &dir_array[data->dirlight_id];
+            auto rot = &data->dir_light_rot[data->dirlight_id];
+            Vector4 dir = Vector3{0.0f,0.0f,1.0f,0.0f};
+            
             //dir light fields
             
+            if(GUITextField("R","asdhaskdakj")){}
+            if(GUITextField("G","asdhaskdakj")){}
+            if(GUITextField("B","asdhaskdakj")){}
+            
+            if(GUITextField("intensity","")){}
+            
             //rotation widget and maybe scale to control intensity
+            
+            auto pos = data->camera_pos + (Vec3::Normalize(data->camera_lookdir) * 2.0f);
+            
+            if(GUIRotationGizmo(pos,rot)){
+                
+                light->dir = RotateVector3(dir,*rot);
+            }
         }
         
         
@@ -1380,20 +1384,13 @@ void EditorGUI(SceneContext* context){
         //orientation fields
         {
             
-            //TODO: I will admit I was lazy, I'll do it individually at some point
-            auto init_orientation_field = [](s8* b1,s8* b2,s8* b3,s8* b4)->void {
-                sprintf(b1,"%f",data->orientation.pos_x[data->obj_id]);
-                sprintf(b2,"%f",data->orientation.pos_y[data->obj_id]);
-                sprintf(b3,"%f",data->orientation.pos_z[data->obj_id]);
-                sprintf(b4,"%f",data->orientation.scale[data->obj_id]);
-            };
+            sprintf(&data->o_buffer[0][0],"%f",data->orientation.pos_x[data->obj_id]);
             
+            sprintf(&data->o_buffer[1][0],"%f",data->orientation.pos_y[data->obj_id]);
             
+            sprintf(&data->o_buffer[2][0],"%f",data->orientation.pos_z[data->obj_id]);
             
-            if(data->write_orientation || to_update_view){
-                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
-                data->write_orientation = false;
-            }
+            sprintf(&data->o_buffer[3][0],"%f",data->orientation.scale[data->obj_id]);
             
             if(GUITextField("x",&data->o_buffer[0][0],false,_pos_width)){
                 
@@ -1406,8 +1403,6 @@ void EditorGUI(SceneContext* context){
                     
                     data->write_orientation = true;
                 }
-                
-                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
             
@@ -1422,7 +1417,6 @@ void EditorGUI(SceneContext* context){
                     
                     data->write_orientation = true;
                 }
-                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
             if(GUITextField("z",&data->o_buffer[2][0],false,_pos_width)){
@@ -1436,7 +1430,6 @@ void EditorGUI(SceneContext* context){
                     
                     data->write_orientation = true;
                 }
-                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
             if(GUITextField("scale",&data->o_buffer[3][0])){
@@ -1450,10 +1443,11 @@ void EditorGUI(SceneContext* context){
                     
                     data->write_orientation = true;
                 }
-                init_orientation_field(&data->o_buffer[0][0],&data->o_buffer[1][0],&data->o_buffer[2][0],&data->o_buffer[3][0]);
             }
             
             if(data->write_orientation){
+                
+                data->write_orientation = false;
                 
                 Vector4 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
                     data->orientation.pos_z[data->obj_id],1.0f};
@@ -1546,31 +1540,25 @@ void EditorGUI(SceneContext* context){
                         
                         auto cur_buffer = &buffer[0];
                         
-                        if(GUIIsElementActive(comp_meta_entry.name_string)){
-                            cur_buffer = &data->in_buffer[0];
-                        }
-                        
                         if(GUITextField(comp_meta_entry.name_string,cur_buffer)){
                             
-                            if(PIsStringFloat(&data->in_buffer[0])){
+                            if(PIsStringFloat(&cur_buffer[0])){
                                 
-                                auto value = (f32)atof(&data->in_buffer[0]);
+                                auto value = (f32)atof(&cur_buffer[0]);
                                 
                                 if(IsIntType(comp_meta_entry.type_hash)){
                                     
                                     auto v = (u32)value;
-                                    memcpy(&data->in_buffer[0],&v,sizeof(v)); 
+                                    memcpy(&cur_buffer[0],&v,sizeof(v)); 
                                 }
                                 
                                 if(IsFloatType(comp_meta_entry.type_hash)){
-                                    memcpy(&data->in_buffer[0],&value,sizeof(value)); 
+                                    memcpy(&cur_buffer[0],&value,sizeof(value)); 
                                 }
                                 
-                                MetaSetValueByName(comp_data_entry,a,&data->in_buffer[0],comp_meta_entry.name_string,
+                                MetaSetValueByName(comp_data_entry,a,&cur_buffer[0],comp_meta_entry.name_string,
                                                    comp_meta.metadata_table,comp_meta.metadata_count);
                             }
-                            
-                            memset(&data->in_buffer[0],0,sizeof(data->in_buffer));
                         }
                         
                     }
