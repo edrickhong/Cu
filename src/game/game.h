@@ -100,6 +100,8 @@ struct GameData{
     s8 o_buffer[4][128] = {};
     
     Quaternion dir_light_rot[1024];
+    Color dir_light_color[1024];
+    f32 dir_light_intensity[1024];
 #endif
     
 };
