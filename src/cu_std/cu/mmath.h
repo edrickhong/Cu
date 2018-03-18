@@ -378,7 +378,6 @@ Quaternion operator*(Quaternion lhs,Quaternion rhs);
 
 Quaternion Inverse(Quaternion q);
 
-//TODO: implement this
 Vector3 RotateVector3(Vector3 v,Quaternion q);
 
 Quaternion ConstructQuaternion(Vector3 vector,f32 angle);

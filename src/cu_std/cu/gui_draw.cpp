@@ -559,6 +559,9 @@ struct GUIContext{
             Quaternion start_rot;
         };
         
+        //textbox
+        s8 text_buffer[1024 * 2];
+        
     };
     
 };
@@ -1840,13 +1843,21 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
     
     if(gui->internal_active_state == token){
         
+        in_buffer = &gui->text_buffer[0];
+        
         if((GUIMouseClickL() || gui->internal_curkeystate[KCODE_KEY_ENTER]) &&
            gui->internal_active_state == token){
+            
             gui->internal_active_state = false;
+            
+            auto len = strlen(&gui->text_buffer[0]) + 1;
+            
+            memcpy((void*)&buffer[0],&gui->text_buffer[0],len);
+            
             return true;  
         }
         
-        u32 len = strlen(buffer);
+        u32 len = strlen(in_buffer);
         
         KeyboardState state;
         
@@ -1889,8 +1900,7 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
         InternalSetActiveState(label);
         
         //temp behavior
-        auto len = strlen(buffer);
-        memset(&in_buffer[0],0,len);
+        memset(&gui->text_buffer[0],0,strlen(&gui->text_buffer[0]));
     }
     
     
@@ -1898,7 +1908,7 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
     
     GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,{w,h});
     
-    InternalDrawString(buffer,-1.0f,1.0f,gui->default_font_size,gui->default_font,gui->text_color);
+    InternalDrawString(in_buffer,-1.0f,1.0f,gui->default_font_size,gui->default_font,gui->text_color);
     return false;
 }
 
