@@ -77,31 +77,41 @@ struct GameData{
     
 #if _debug
     //GUI state variables
-    logic draw_profiler;
+    
     
     Vector2 prev_mpos;
     u32 widget_type = 0;
     u32 obj_id = 0;
     u32 dirlight_id = 0;
+    
+    logic draw_profiler;
     logic show_object_list = false;
     logic show_object_editor = false;
     logic show_dir_light_editor = false;
-    GUIVec2 pos_1 = {-1.0f,1.0f};
-    GUIDim2 dim_1 = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
+    logic show_ambient_light_editor = false;
     logic write_orientation = true;
-    GUIVec2 pos_2 = {-0.16f,GUIDEFAULT_Y};
-    GUIDim2 dim_2 = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
     
-    GUIVec2 pos_3 = {-1.0f,1.0f};
+    GUIVec2 pos_control = {-1.0f,1.0f};
+    GUIDim2 dim_control = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
     
-    GUIVec2 w_pos = {0.4f,GUIDEFAULT_Y};
-    GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+    GUIVec2 pos_obj_list = {-0.16f,GUIDEFAULT_Y};
+    GUIDim2 dim_obj_list = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+    
+    GUIVec2 pos_obj_editor = {0.4f,GUIDEFAULT_Y};
+    GUIDim2 dim_obj_editor = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+    
+    GUIVec2 pos_dirlight = {-1.0f,1.0f};
+    GUIVec2 pos_ambient = {-1.0f,1.0f};
     
     s8 o_buffer[4][128] = {};
     
     Quaternion dir_light_rot[1024];
     Color dir_light_color[1024];
     f32 dir_light_intensity[1024];
+    
+    Color ambient_color;
+    f32 ambient_intensity;
+    
 #endif
     
 };
@@ -133,6 +143,7 @@ struct SceneContext{
     void (*AddSpotLight)(Vector3,Vector3,Color,f32,f32,f32);
     
     void (*GetDirLightList)(DirLight**,u32**);
+    void (*SetAmbientColor)(Color,f32);
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);
