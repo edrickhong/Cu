@@ -1265,6 +1265,9 @@ void EditorGUI(SceneContext* context){
             dir_array[*dir_count] = {Vector3{0.0f,0.0f,1.0f,1.0f},White};
             data->dir_light_rot[*dir_count] = ConstructQuaternion(Vector3{0.0f,1.0f,0.0f,1.0f},0.0f);
             
+            data->dir_light_color[*dir_count] = White;
+            data->dir_light_intensity[*dir_count] = 1.0f;
+            
             data->dirlight_id = (*dir_count);
             (*dir_count)++;
         }
@@ -1284,13 +1287,56 @@ void EditorGUI(SceneContext* context){
             auto rot = &data->dir_light_rot[data->dirlight_id];
             Vector4 dir = Vector3{0.0f,0.0f,1.0f,0.0f};
             
+            auto color = &data->dir_light_color[data->dirlight_id];
+            auto intensity = &data->dir_light_intensity[data->dirlight_id];
+            
+            logic write_values = false;
+            
             //dir light fields
+            s8 buffer[128] = {};
             
-            if(GUITextField("R","asdhaskdakj")){}
-            if(GUITextField("G","asdhaskdakj")){}
-            if(GUITextField("B","asdhaskdakj")){}
+            sprintf(&buffer[0],"%f",color->R);
             
-            if(GUITextField("intensity","")){}
+            if(GUITextField("R",&buffer[0])){
+                color->R = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            sprintf(&buffer[0],"%f",color->G);
+            
+            if(GUITextField("G",&buffer[0])){
+                color->G = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            
+            sprintf(&buffer[0],"%f",color->B);
+            
+            if(GUITextField("B",&buffer[0])){
+                color->B = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            
+            sprintf(&buffer[0],"%f",*intensity);
+            
+            if(GUITextField("intensity",&buffer[0])){
+                *intensity = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            if(write_values){
+                auto c = Vector4{color->R,color->G,color->B,color->A} * (*intensity);
+                light->color = Color{c.x,c.y,c.z,1.0f};
+            }
             
             //rotation widget and maybe scale to control intensity
             
