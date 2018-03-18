@@ -6,135 +6,216 @@
 #include "main.h"
 #include "ffileio.h"
 #include "ccontainer.h"
-#include "pparse.h"
-
 #include "aallocator.h"
+#include "pparse.h"
+/*
 
-typedef s8 AssetFilePathEntry[256];
+************
+Flow:
+assetlist file
+
+Globals:
+AssetTable
+Buffer to hold the data
+
+
+on startup:
+filetolist
+
+list
+printlist
+
+add
+listtofile
+
+remove
+listtofile
+
+
+
+
+
+
+TODO stuff/PROGRESS:
+
+AddToList (P)(Can add, but have not assigned FileNode and file_location hash not confirmed)
+RemoveFromList (D)
+Parse (D)
+WriteTableToFile (D)
+FileToTable (D)
+SortByType (D)
+BakeToBuffer
+BakeToFile
+BakeToExecutable
+Validate
+Console Commands
+
+
+P=Inprogress
+D=written but not tested
+T=tested and working but not optimised
+O=optimised,working
+
+?: Do we need AddAssetAtPoint?
+(Does the order of assets matter?/Do we ever need to reorder the data buffer?)
+
+Validating: What makes the data valid? checking the whole table for all attributes?
+Checking for duplicates: qsort, std::set, or comparing each element with nested for loop?
+*************
+*/
 
 enum AssetType : u32{
-  ASSET_AUDIO = 0,
+	ASSET_AUDIO = 0,
     ASSET_TEXTURE = 1,
     ASSET_MODEL = 2,
     ASSET_SHADER = 3,
     ASSET_UNKNOWN,
     };
 
-struct AssetTableEntry{
-  AssetType type;
-  AssetFilePathEntry file_location = {};
-  u64 file_location_hash;
+
+
+struct AssetTableEntry {
+	AssetType type;
+	s8 file_location[256] = {};
+	u64 file_location_hash = 0;
+	FileNode file_node;
+	//u32 size;
+	u32 offset;
 };
 
-struct AssetMap{
-  u64 filehash;
-  u64 offset;
-};
-
+//AssetTable Declaration
 _declare_list(AssetTable,AssetTableEntry);
 
-void InternalParseAssetList(const s8* assetlist,AssetTable* out_table){
-  
-  auto file = FOpenFile(assetlist,F_FLAG_READWRITE);
-  ptrsize list_count;
 
-  auto list = (AssetTableEntry*)FReadFileToBuffer(file,&list_count);
-  
-  list_count /= sizeof(AssetTableEntry);
 
-  printf("list count %d\n",(u32)list_count);
+// run on startup
+// read resource file and store it as an AssetTable, run on startup if resource file exists
+void FileToTable(const s8* asset_list, AssetTable* out_table) {
+	//open asset list file and store as asset table
+	auto file = FOpenFile(asset_list, F_FLAG_READWRITE); //FileHandle
+	ptrsize list_count;
+	auto list = (AssetTableEntry*)FReadFileToBuffer(file, &list_count);
+	list_count /= sizeof(AssetTableEntry);
+	//store the list count
 
-  for(u32 i = 0; i < list_count; i++){
-    auto entry = list[i];
-    out_table->PushBack(entry);
-  }
+	printf("list count %d\n", (u32)list_count);
 
-  FCloseFile(file);
-  unalloc(list);
+	//populate the table
+	for (u32 i = 0; i < list_count; i++) {
+		auto entry = list[i];
+		out_table->PushBack(entry);
+	}
+
+	FCloseFile(file);
+	unalloc(list);
 }
 
-void InternalWriteAssetList(const s8* assetlist,AssetTable* out_table){
+void AddAssetToList(const s8* asset, AssetTable* out_table) {
+	//check for duplicates and calculate offset
+	for (u32 i = 0; i < out_table.count; i++) {
+		AssetTableEntry entry = &out_table[i]; //HELPLAH
+		if (PHashString(asset) == entry->file_location_hash) {
+			printf("Warning! %s file exists!",asset);
+		//file already exists
+		}
+	}
 
-  printf("table count %d\n",(u32)out_table->count);
+	//store offset
+	auto file = FOpenFile(asset, F_FLAG_READWRITE);
+	entry.offset = FGetFileSize(file) + out_table->container[out_table.count];
 
-  qsort(out_table->container,out_table->count,
-	sizeof(AssetTableEntry),
-	[](const void * a, const void* b)->s32 {
-          
-          auto block_a = (AssetTableEntry*)a;
-          auto block_b = (AssetTableEntry*)b;
-          
-          return block_a->type - block_b->type;
-	});
-  
-  auto file = FOpenFile(assetlist,F_FLAG_WRITEONLY | F_FLAG_TRUNCATE);
+	if (out_table.count > 0) {
+		entry.offset = out_table->container[out_table.count].offset + file_size;
+	}
+	u32 len = strlen(asset);
 
-  FWrite(file,out_table->container,out_table->count * sizeof(AssetTableEntry));
-  
-  FCloseFile(file);
+
+	//label file type
+	auto file_extension = asset[len - 3] + asset[len - 2] + asset[len - 1];
+	if (file_extension == ('m' + 'd' + 'f')) {
+		entry.type = ASSET_MODEL;
+	}
+
+	else if (file_extension == ('a' + 'd' + 'f')) {
+		entry.type = ASSET_AUDIO;
+	}
+
+	else if (file_extension == ('t' + 'd' + 'f')) {
+		entry.type = ASSET_TEXTURE;
+	}
+
+	else if (file_extension == ('s' + 'p' + 'x')) {
+		entry.type = ASSET_SHADER;
+	}
+
+	else {
+		_kill("unknown asset type\n", 1);
+	}
+	// location
+	memcpy(&entry.file_location, &asset[0], strlen(asset));
+	// hash
+	&entry->file_location_hash = PHashString(asset);
+	//assign file node?
+
+	out_table->PushBack(entry);
 }
 
-void InternalAddAssetList(const s8* asset,AssetTable* out_table){
+void RemoveAssetFromList(const s8* asset, AssetTable* out_table) {
+	for (u32 i = 0; i < out_table->count; i++) {
 
-  for(u32 i = 0; i < out_table->count; i++){
-    
-    auto entry = &out_table->container[i];
-    
-    if(entry->file_location_hash == PHashString(asset)){
-      printf("WARNING: %s already exists\n",asset);
-      return;
-    }
-    
-  }
-  
-  u32 len = strlen(asset);
+		auto entry = &out_table->container[i];
 
-  auto k = asset[len - 3] + asset[len - 2] + asset[len - 1];
+		if (entry->file_location_hash == PHashString(asset)) {
+			out_table->Remove(entry);
+			return;
+		}
 
-  AssetTableEntry entry = {ASSET_UNKNOWN};
+	}
 
-  memcpy(&entry.file_location,&asset[0],strlen(asset));
-  entry.file_location_hash = PHashString(asset);
+	printf("WARNING: %s doesn't exist\n", asset);
 
-  if(k == ('m' + 'd' + 'f') ){
-    entry.type = ASSET_MODEL;
-  }
 
-  else if(k == ('a' + 'd' + 'f') ){
-    entry.type = ASSET_AUDIO;
-  }
-
-  else if(k == ('t' + 'd' + 'f') ){
-    entry.type = ASSET_TEXTURE;
-  }
-
-  else if(k == ('s' + 'p' + 'x') ){
-    entry.type = ASSET_SHADER;
-  }
-
-  else{
-    _kill("unknown asset type\n",1);
-  }
-
-  out_table->PushBack(entry);
 }
 
-void InternalRemoveAssetList(const s8* asset,AssetTable* out_table){
-  
-  for(u32 i = 0; i < out_table->count; i++){
-    
-    auto entry = &out_table->container[i];
-    
-    if(entry->file_location_hash == PHashString(asset)){
-      out_table->Remove(entry);
-      return;
-    }
-    
-  }
 
-  printf("WARNING: %s doesn't exist\n",asset);
+	
+void SortListByType(const s8* assetlist, AssetTable* out_table) {
+	
+	printf("Table Count: %d\n\n", (u32)out_table->count);
+
+	//sort by type
+	qsort(out_table->container, out_table->count,
+		sizeof(AssetTableEntry),
+		[](const void * a, const void* b)->s32
+	{
+		auto block_a = (AssetTableEntry*)a;
+		auto block_b = (AssetTableEntry*)b;
+
+
+		return block_a->type - block_b->type;
+	}
+	);
+	PrintAssetList(out_table);
+	return;
+
+}
+void WriteToFile(const s8* assetlist, AssetTable* out_table) {
+	auto file = FOpenFile(assetlist, F_FLAG_WRITEONLY | F_FLAG_TRUNCATE);
+
+	FWrite(file, out_table->container, out_table->count * sizeof(AssetTableEntry));
+
+	FCloseFile(file);
 }
 
+//check for duplicates, also verify the data is loaded correctly by visiting each pointer
+//or just scrap the old data and populate new one
+void ValidateList(const s8* assetlist, AssetTable* out_table) {
+	printf("table count %d\n", (u32)out_table->count);
+
+}
+
+
+///Prints Asset List to Console
 void PrintAssetList(AssetTable* table){
 
   u32 t = (u32)-1;
@@ -194,7 +275,7 @@ the [patch string].
 }
 
 s32 main(s32 argc,s8** argv){
-
+	
   if(argc < 3){
     printf("not enough arguments\n");
     PrintHelp();
@@ -206,12 +287,13 @@ s32 main(s32 argc,s8** argv){
 
   InternalParseAssetList(argv[1],&assetlist);
 
+  //Read the -commands
   //add to asset list
   if(PHashString(argv[2]) == PHashString("-add")){
     
     for(s32 i = 3; i < argc; i++){
       
-      InternalAddAssetList(argv[i],&assetlist);
+      AddAssetToList(argv[i],&assetlist);
       
     }
 
@@ -288,6 +370,6 @@ To an admiring bog!
     printf("unrecognized command %s\n",argv[2]);
     PrintHelp();
   }
-
+  
   return 0;
 }
