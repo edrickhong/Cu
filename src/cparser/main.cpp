@@ -418,6 +418,8 @@ void WriteStructMetaData(FormedStruct* curstruct,FormedStruct* array,u32 array_c
     
 }
 
+#if 1
+
 s32 main(s32 argc,s8** argv){
     
     if(argc != 3){
@@ -829,3 +831,320 @@ s32 main(s32 argc,s8** argv){
     
     return 0;
 }
+
+#else
+
+void IgnoreWhiteSpace(s8* buffer,u32* cur){
+    
+    auto k = *cur;
+    
+    while(PIsWhiteSpace(buffer[k])){
+        k++;
+    }
+    
+    *cur = k;
+}
+
+void IgnorePreprocessorAndComments(s8* buffer,u32* cur){
+    
+    auto k = *cur;
+    
+    
+    
+    auto is_block = IsStartComment(buffer[k],buffer[k + 1]);
+    
+    while(is_block){
+        
+        is_block = IsEndComment(buffer[k],buffer[k + 1]);
+        k++;
+        
+        if(!is_block){
+            
+            k+=2;
+            IgnoreWhiteSpace(buffer,cur);
+        }
+        
+    }
+    
+    *cur = k;
+}
+
+void SanitizeString(s8* buffer,u32* k){
+    
+    auto cur = *k;
+    
+    IgnoreWhiteSpace(buffer,&cur);
+    
+    for(;;){
+        
+        logic reparse = false;
+        
+        if(IsComment(buffer[cur],buffer[cur + 1])){
+            PSkipLine(buffer,&cur);
+            reparse = true;
+        }
+        
+        
+        if(IsPreprocessor(buffer[cur])){
+            PSkipLine(buffer,&cur);
+            reparse = true;
+        }
+        
+        
+        auto keep_parsing = IsStartComment(buffer[cur],buffer[cur + 1]);
+        
+        while(keep_parsing){
+            
+            keep_parsing = !IsEndComment(buffer[cur],buffer[cur + 1]);
+            cur++;
+            
+            if(!keep_parsing){
+                cur += 2;
+                reparse = true;
+            }
+        }
+        
+        
+        if(!reparse){
+            break;
+        }
+        
+        
+    }
+    
+    *k = cur;
+}
+
+logic IsCType(u64 hash){
+    
+    CType array[] = {
+        
+        CType_U8,
+        CType_U16,
+        CType_U32,
+        CType_U64,
+        
+        CType_S8 ,
+        CType_S16,
+        CType_S32,
+        CType_S64,
+        
+        CType_LOGIC,
+        
+        CType_F32,
+        CType_F64,
+        
+        CType_PTRSIZE,
+        
+        CType_VOID,
+        
+        CType_STRUCT,
+    };
+    
+    for(u32 i = 0; i < _arraycount(array); i++){
+        
+        if(hash == array[i]){
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+enum ParseTags{
+    TAG_SYMBOL = 0,
+    TAG_CTYPE = 1,
+    TAG_STRUCT = 2,
+    TAG_KEY = 4,
+    TAG_KEY_TAG = 8,
+};
+
+struct EvalChar{
+    u64 hash;
+    s8 string[128] = {};
+    ParseTags tag;
+};
+
+enum ParserKeyWord{
+    PARSERKEYWORD_REFLSTRUCT = PHashString("REFLSTRUCT"),
+    PARSERKEYWORD_REFLFUNC = PHashString("REFLFUNC"),
+};
+
+logic IsParserKeyword(u64 hash){
+    
+    ParserKeyWord array[] = {
+        PARSERKEYWORD_REFLSTRUCT,
+        PARSERKEYWORD_REFLFUNC,
+    };
+    
+    for(u32 i = 0; i < _arraycount(array); i++){
+        
+        if(hash == array[i]){
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+void IsParseableStruct(EvalChar* eval_buffer,u32 count){
+    
+    u32 mask = 0;
+    
+    for(u32 i = 0; i < count; i++){
+        
+        auto c = &eval_buffer[i];
+        
+        printf("%s ",c->string);
+        
+        if(c->hash == PHashString("struct")){
+            c->tag = TAG_STRUCT;
+            mask |= TAG_STRUCT;
+        }
+        
+        else if(IsCType(c->hash)){
+            c->tag = TAG_CTYPE;
+            mask |= TAG_CTYPE;
+        }
+        
+        else if(IsParserKeyword(c->hash)){
+            c->tag = TAG_KEY;
+            mask |= TAG_KEY;
+        }
+    }
+    
+    printf("\n\n");
+    //    _kill("",1);
+    
+    
+    if(((TAG_STRUCT | TAG_KEY) & mask) == (TAG_STRUCT | TAG_KEY)){
+        
+        s8* string = 0;
+        
+        for(u32 i = 0; i < count; i++){
+            
+            auto c = &eval_buffer[i];
+            
+            if(c->tag == TAG_SYMBOL){
+                string = c->string;
+                break;
+            }
+        }
+        
+        printf("found struct %s\n",string);
+    }
+    
+}
+
+s32 main(s32 argc,s8** argv){
+    
+    {
+        
+        u32 evaluation_count = 0;
+        EvalChar evaluation_buffer[32] = {};
+        
+        auto string = R"FOO(
+        
+        #define REFLCOMPONENT
+#define REFLSTRUCT(TAG)
+#define REFLFUNC(TAG)
+
+/*
+  hello world
+*/
+
+//THIS IS A TEST COMMENT
+
+struct REFLCOMPONENT Character{
+    s8* name;
+    u32 health;
+    u32 atk;
+};
+
+struct REFLCOMPONENT BossCharacter{
+    Character character;//this is a char name
+    u32 special_ability;/*asdasd*/
+};
+
+struct REFLSTRUCT(GENERIC) Foo{
+    u32 a;
+    u32 b;
+    u32 c;
+};
+
+s32 REFLFUNC(GENERIC) AddFunction(u32 a,u32 b){
+
+    return a + b;
+}
+
+)FOO";
+        
+        ptrsize size = strlen(string) + 1;
+        u32 cur = 0;
+        s8* buffer = (s8*)&string[0];
+        
+        for(;;){
+            
+            SanitizeString(buffer,&cur);
+            
+            u32 symbol_len = 0;
+            s8 symbol_buffer[128] = {};
+            
+            PGetSymbol(&symbol_buffer[0],buffer,&cur,&symbol_len);
+            
+            if(symbol_len){
+                
+                //                printf("%s\n",&symbol_buffer[0]);
+                
+                evaluation_buffer[evaluation_count] =
+                {PHashString(&symbol_buffer[0])};
+                memcpy(&evaluation_buffer[evaluation_count].string[0],&symbol_buffer[0],strlen(&symbol_buffer[0]));
+                
+                evaluation_count++;
+            }
+            
+            if(buffer[cur] == ';'){
+                evaluation_count = 0;
+            }
+            
+            if(buffer[cur] == '{'){
+                
+                //start evaluating
+                IsParseableStruct(&evaluation_buffer[0],evaluation_count);
+                
+                evaluation_count = 0;
+                
+                u32 k = 0;
+                
+                for(;;cur++){
+                    
+                    auto c = buffer[cur];
+                    
+                    if(c == '{'){
+                        k++;
+                    }
+                    
+                    if(c == '}'){
+                        k --;
+                    }
+                    
+                    if(!k){
+                        break;
+                    }
+                }
+            }
+            
+            cur++;
+            
+            if(cur >= size){
+                break;
+            }
+        }
+    }
+    
+    printf("\n");
+    
+    return 0;
+}
+
+#endif
