@@ -1280,7 +1280,6 @@ void EditorGUI(SceneContext* context){
     }
     
     
-    //TODO: editor for ambient light
     if(data->show_ambient_light_editor){
         
         GUIBeginWindow("Ambient Light",&data->pos_ambient,&data->dim_obj_list);
