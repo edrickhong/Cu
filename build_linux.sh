@@ -4,7 +4,7 @@ cd $WORK_DIR
 cd src/shaders/
 echo "BUILDING METADATA"
 #build meta data
-./../../bin/cparser ../game/gamecomp.h ../game/gamecomp_meta.h
+#./../../bin/cparser ../game/gamecomp.h ../game/gamecomp_meta.h
 
 echo "BUILDING SHADERS"
 

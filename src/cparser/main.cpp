@@ -418,7 +418,7 @@ void WriteStructMetaData(FormedStruct* curstruct,FormedStruct* array,u32 array_c
     
 }
 
-#if 1
+#if 0
 
 s32 main(s32 argc,s8** argv){
     
@@ -957,6 +957,8 @@ enum ParseTags{
     TAG_STRUCT = 2,
     TAG_KEY = 4,
     TAG_KEY_TAG = 8,
+    TAG_START_ARG = 16,
+    TAG_END_ARG = 32,
 };
 
 struct EvalChar{
@@ -968,6 +970,7 @@ struct EvalChar{
 enum ParserKeyWord{
     PARSERKEYWORD_REFLSTRUCT = PHashString("REFLSTRUCT"),
     PARSERKEYWORD_REFLFUNC = PHashString("REFLFUNC"),
+    PARSERKEYWORD_REFLCOMPONENT = PHashString("REFLCOMPONENT"),
 };
 
 logic IsParserKeyword(u64 hash){
@@ -975,6 +978,7 @@ logic IsParserKeyword(u64 hash){
     ParserKeyWord array[] = {
         PARSERKEYWORD_REFLSTRUCT,
         PARSERKEYWORD_REFLFUNC,
+        PARSERKEYWORD_REFLCOMPONENT,
     };
     
     for(u32 i = 0; i < _arraycount(array); i++){
@@ -987,53 +991,145 @@ logic IsParserKeyword(u64 hash){
     return false;
 }
 
-void IsParseableStruct(EvalChar* eval_buffer,u32 count){
+void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
     u32 mask = 0;
+    
+    logic to_tag_key_tag = false;
     
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
         
-        printf("%s ",c->string);
+        //        printf("%s",c->string);
         
         if(c->hash == PHashString("struct")){
             c->tag = TAG_STRUCT;
             mask |= TAG_STRUCT;
+            
+            //            printf("[struct] ");
         }
         
         else if(IsCType(c->hash)){
             c->tag = TAG_CTYPE;
             mask |= TAG_CTYPE;
+            
+            //            printf("[type] ");
         }
         
         else if(IsParserKeyword(c->hash)){
             c->tag = TAG_KEY;
             mask |= TAG_KEY;
+            
+            //            printf("[key] ");
         }
-    }
-    
-    printf("\n\n");
-    //    _kill("",1);
-    
-    
-    if(((TAG_STRUCT | TAG_KEY) & mask) == (TAG_STRUCT | TAG_KEY)){
         
-        s8* string = 0;
-        
-        for(u32 i = 0; i < count; i++){
+        else if(c->hash == PHashString("(")){
+            c->tag = TAG_START_ARG;
             
-            auto c = &eval_buffer[i];
-            
-            if(c->tag == TAG_SYMBOL){
-                string = c->string;
-                break;
+            if((c - 1)->tag == TAG_KEY){
+                to_tag_key_tag = true;
             }
         }
         
-        printf("found struct %s\n",string);
+        else if(c->hash == PHashString(")")){
+            c->tag = TAG_END_ARG;
+            
+            if(to_tag_key_tag){
+                to_tag_key_tag = false;
+            }
+        }
+        
+        else if(to_tag_key_tag){
+            c->tag = TAG_KEY_TAG;
+            //            printf("[key_tag] ");
+        }
+        
+        else{
+            c->tag = TAG_SYMBOL;
+            
+            //            printf("[symbol] ");
+        }
     }
     
+    //    printf("\n\n");
+    
+}
+
+logic IsReflStruct(EvalChar* eval_buffer,u32 count){
+    
+    logic is_struct = eval_buffer[0].tag == TAG_STRUCT;
+    
+    logic has_keyword = false;
+    
+    for(u32 i = 1; i < count; i++){
+        
+        has_keyword = eval_buffer[i].tag == TAG_KEY;
+        
+        if(has_keyword){
+            break;
+        }
+    }
+    
+    return is_struct && has_keyword;
+}
+
+logic IsReflFunc(EvalChar* eval_buffer,u32 count){
+    
+    logic has_return_type = eval_buffer[0].tag == TAG_CTYPE;
+    
+    logic has_arg_brackets = false;
+    
+    for(u32 i = 1; i < count - 1; i++){
+        
+        auto a = eval_buffer[i];
+        auto b = eval_buffer[i + 1];
+        
+        if(a.tag == TAG_SYMBOL && b.tag == TAG_START_ARG){
+            
+            for(u32 j = i + 2; j < count; j++){
+                
+                auto k = eval_buffer[j];
+                
+                if(k.tag == TAG_END_ARG){
+                    has_arg_brackets = true;
+                    break;
+                }
+            }
+            
+            if(has_arg_brackets){
+                break;
+            }
+        }
+    }
+    
+    return has_return_type && has_arg_brackets;
+}
+
+void SkipBracketBlock(s8* buffer,u32* a){
+    
+    auto cur = *a;
+    
+    u32 k = 0;
+    
+    for(;;cur++){
+        
+        auto c = buffer[cur];
+        
+        if(c == '{'){
+            k++;
+        }
+        
+        if(c == '}'){
+            k --;
+        }
+        
+        if(!k){
+            break;
+        }
+    }
+    
+    *a = cur;
 }
 
 s32 main(s32 argc,s8** argv){
@@ -1077,6 +1173,70 @@ s32 REFLFUNC(GENERIC) AddFunction(u32 a,u32 b){
     return a + b;
 }
 
+
+typedef u32 ObjectID;
+typedef u32 LightID;
+typedef u32 AnimationID;
+typedef u32 ModelID;
+typedef u32 TextureID;
+typedef u32 RenderGroupIndex;
+typedef u32 MaterialID;
+
+//NOTE: we should not be able to edit core formats. this is because the engine depends not changing
+struct REFLCOMPONENT EntityAnimationData{
+    ObjectID id;
+    AnimationID animdata_id;
+    u16 animationindex;
+    u16 islooping;
+    f32 animationtime;
+    f32 speed;
+};
+
+struct REFLCOMPONENT EntityDrawData{
+    ObjectID id;
+    ModelID model;
+    MaterialID material;
+    RenderGroupIndex group;
+};
+
+struct REFLCOMPONENT EntityAudioData{
+    ObjectID id;
+    AudioAssetHandle audioasset;
+    u16 islooping = 0;
+    u16 toremove = 0;
+};
+
+struct REFLCOMPONENT PointLight{
+    ObjectID id;
+    f32 R;
+    f32 G;
+    f32 B;
+    
+    f32 radius;
+    f32 intensity;
+};
+
+
+// soft angle is the outer circle where it starts to drop off
+//effective angle is hard_angle + soft_angle
+struct REFLCOMPONENT SpotLight{
+    ObjectID id;
+    
+    f32 R; // replace w color
+    f32 G;
+    f32 B;
+    
+    f32 dir_x;
+    f32 dir_y;
+    f32 dir_z;
+    
+    f32 full_angle;
+    f32 hard_angle;
+    f32 radius;
+    
+    f32 intensity;
+};
+
 )FOO";
         
         ptrsize size = strlen(string) + 1;
@@ -1103,6 +1263,23 @@ s32 REFLFUNC(GENERIC) AddFunction(u32 a,u32 b){
                 evaluation_count++;
             }
             
+            if(buffer[cur] == '('){
+                
+                evaluation_buffer[evaluation_count] =
+                {PHashString("("),"("};
+                
+                evaluation_count++;
+            }
+            
+            if(buffer[cur] == ')'){
+                
+                evaluation_buffer[evaluation_count] =
+                {PHashString(")"),")"};
+                
+                evaluation_count++;
+                
+            }
+            
             if(buffer[cur] == ';'){
                 evaluation_count = 0;
             }
@@ -1110,28 +1287,35 @@ s32 REFLFUNC(GENERIC) AddFunction(u32 a,u32 b){
             if(buffer[cur] == '{'){
                 
                 //start evaluating
-                IsParseableStruct(&evaluation_buffer[0],evaluation_count);
+                TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
+                
+                if(IsReflStruct(&evaluation_buffer[0],evaluation_count)){
+                    //parse the struct
+                    
+                    printf("found struct:");
+                    
+                    for(u32 i = 0; i < evaluation_count; i++){
+                        printf("%s ",evaluation_buffer[i].string);
+                    }
+                    
+                    printf("\n");
+                }
+                
+                if(IsReflFunc(&evaluation_buffer[0],evaluation_count)){
+                    //parse the function
+                    
+                    printf("found function:");
+                    
+                    for(u32 i = 0; i < evaluation_count; i++){
+                        printf("%s ",evaluation_buffer[i].string);
+                    }
+                    
+                    printf("\n");
+                }
+                
+                SkipBracketBlock(buffer,&cur);
                 
                 evaluation_count = 0;
-                
-                u32 k = 0;
-                
-                for(;;cur++){
-                    
-                    auto c = buffer[cur];
-                    
-                    if(c == '{'){
-                        k++;
-                    }
-                    
-                    if(c == '}'){
-                        k --;
-                    }
-                    
-                    if(!k){
-                        break;
-                    }
-                }
             }
             
             cur++;
