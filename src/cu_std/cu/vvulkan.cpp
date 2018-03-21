@@ -318,7 +318,7 @@ void InternalLoadVulkanInstanceLevelFunctions(){
         
         //TODO: deprecated 1.0 functions (set them to -1)
         
-        _instproc(vkenumeratephysicaldevicegroups,global_instance,vkEnumeratePhysicalDeviceGroup);
+        _instproc(vkenumeratephysicaldevicegroups,global_instance,vkEnumeratePhysicalDeviceGroups);
     }
 }
 
