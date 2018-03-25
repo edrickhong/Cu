@@ -3,10 +3,6 @@
 #include "iintrin.h"
 #include "aallocator.h"
 
-#ifdef TGetEntryIndex
-#undef TGetEntryIndex
-#endif
-
 void TWaitSemaphore(TSemaphore sem,f32 time_ms){
     
     timespec time = {};
@@ -88,39 +84,7 @@ void TSignalSemaphore(TSemaphore sem){
 }
 
 
-u32 TGetEntryIndex(u32* cur_index){
-    
-    u32 expected_count;
-    u32 actual_count;
-    
-    do{
-        
-        expected_count = *cur_index;
-        
-        actual_count = LockedCmpXchg(cur_index,expected_count,expected_count + 1);
-        
-    }while(expected_count != actual_count);
-    
-    return actual_count;
-}
 
-u32 TGetEntryIndex(u32* cur_index,u32 max_count){
-    
-    u32 expected_count;
-    u32 actual_count;
-    
-    do{
-        
-        _kill("exceeded max entries\n",*cur_index >= max_count);
-        
-        expected_count = *cur_index;
-        
-        actual_count = LockedCmpXchg(cur_index,expected_count,expected_count + 1);
-        
-    }while(expected_count != actual_count);
-    
-    return actual_count;
-}
 
 
 /*NOTE:We will not be implementing sys_clone. it needs to be implemented fully in assembly.

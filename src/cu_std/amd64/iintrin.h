@@ -11,25 +11,25 @@
 #define LockedDecrement(value) InterlockedDecrement(value)
 
 long _ainline LockedAdd(u32* value1,u32 value2){
-
-  long k = 0;
-
-  for(u32 i = 0; i < value2; i++){
-    k = LockedIncrement(value1);
-  }
-
-  return k;
+    
+    long k = 0;
+    
+    for(u32 i = 0; i < value2; i++){
+        k = LockedIncrement(value1);
+    }
+    
+    return k;
 }
 
 long _ainline LockedSub(u32* value1,u32 value2){
-  
-  long k = 0;
-
-  for(u32 i = 0; i < value2; i++){
-    k = LockedDecrement(value1);
-  }
-
-  return k;  
+    
+    long k = 0;
+    
+    for(u32 i = 0; i < value2; i++){
+        k = LockedDecrement(value1);
+    }
+    
+    return k;  
 }
 
 #define LockedCmpXchg(ptr,oldval,newval) InterlockedCompareExchange(ptr,newval,oldval)
