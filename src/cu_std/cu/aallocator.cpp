@@ -1,4 +1,5 @@
 #include "iintrin.h"
+#include "tthreadx.h"
 
 
 #ifdef TAlloc
@@ -38,18 +39,7 @@ _persist AAllocatorContext* alloc_context = 0;
 
 void DebugSubmitTAlloc(void* base_ptr,u32 size,const s8* file,const s8* function,u32 line){
     
-    u32 expected_count;
-    u32 actual_count;
-    
-    do{
-        
-        _kill("too many allocs\n",alloc_context->alloc_count >= _arraycount( alloc_context->alloc_array));
-        
-        expected_count = alloc_context->alloc_count;
-        
-        actual_count = LockedCmpXchg(&alloc_context->alloc_count,expected_count,expected_count + 1);
-        
-    }while(expected_count != actual_count);
+    auto actual_count = TGetEntryIndexD(&alloc_context->alloc_count,_arraycount( alloc_context->alloc_array));
     
     for(u32 i = 0; i < actual_count; i++){
         _kill("duplicate submission\n",alloc_context->alloc_array[i].ptr == base_ptr);
@@ -85,19 +75,7 @@ void DebugSubmitMalloc(void* base_ptr,u32 size,const s8* file,const s8* function
         return;
     }
     
-    u32 expected_count;
-    u32 actual_count;
-    
-    do{
-        
-        _kill("too many mallocs\n",alloc_context->malloc_count >= _arraycount( alloc_context->malloc_array));
-        
-        expected_count = alloc_context->malloc_count;
-        
-        actual_count = LockedCmpXchg(&alloc_context->malloc_count,expected_count,
-                                     expected_count + 1);
-        
-    }while(expected_count != actual_count);
+    auto actual_count = TGetEntryIndexD(&alloc_context->malloc_count,_arraycount( alloc_context->malloc_array));
     
     alloc_context->malloc_array[actual_count] = {base_ptr,TGetThisThreadID(),size,file,function,line};
     
