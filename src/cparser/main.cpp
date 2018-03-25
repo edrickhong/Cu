@@ -54,6 +54,7 @@ enum CType{
     
     CType_STRUCT = PHashString("struct"),
     CType_ENUM = PHashString("enum"),
+    CType_UNION = PHashString("union"),
 };
 
 enum Keyword{
@@ -940,6 +941,8 @@ logic IsCType(u64 hash){
         CType_VOID,
         
         CType_STRUCT,
+        CType_ENUM,
+        CType_UNION,
     };
     
     for(u32 i = 0; i < _arraycount(array); i++){
@@ -952,6 +955,7 @@ logic IsCType(u64 hash){
     return false;
 }
 
+//TODO: struct union and enum have the same parse structure (should we condense here?)
 enum ParseTags{
     TAG_SYMBOL = 0,
     TAG_CTYPE = 1,
@@ -961,6 +965,7 @@ enum ParseTags{
     TAG_START_ARG = 16,
     TAG_END_ARG = 32,
     TAG_ENUM = 64,
+    TAG_UNION = 128,
 };
 
 struct EvalChar{
@@ -969,10 +974,14 @@ struct EvalChar{
     ParseTags tag;
 };
 
+
+//Why not just condense it to keyword REFL() ?
+
 enum ParserKeyWord{
     PARSERKEYWORD_REFLSTRUCT = PHashString("REFLSTRUCT"),
     PARSERKEYWORD_REFLFUNC = PHashString("REFLFUNC"),
     PARSERKEYWORD_REFLENUM = PHashString("REFLENUM"),
+    PARSERKEYWORD_REFLUNION = PHashString("REFLUNION"),
     PARSERKEYWORD_TAGFIELD = PHashString("TAGFIELD"),
 };
 
@@ -982,7 +991,7 @@ logic IsParserKeyword(u64 hash){
         PARSERKEYWORD_REFLSTRUCT,
         PARSERKEYWORD_REFLFUNC,
         PARSERKEYWORD_REFLENUM,
-        PARSERKEYWORD_TAGFIELD
+        PARSERKEYWORD_TAGFIELD,
     };
     
     for(u32 i = 0; i < _arraycount(array); i++){
@@ -1394,6 +1403,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     *a = cur;
 }
 
+//TODO: we should handle unions as well
 s32 main(s32 argc,s8** argv){
     
     {
