@@ -55,17 +55,7 @@ _persist u32 global_debugentry_count = 0;
 void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
     
     u32 expected_count;
-    u32 actual_count;
-    
-    do{
-        
-        _kill("too refs\n",global_debugentry_count >= _arraycount(global_debugentry_array));
-        
-        expected_count = global_debugentry_count;
-        
-        actual_count = LockedCmpXchg(&global_debugentry_count,expected_count,expected_count + 1);
-        
-    }while(expected_count != actual_count);
+    u32 actual_count = TGetEntryIndexD(&global_debugentry_count,_arraycount(global_debugentry_array));
     
     global_debugentry_array[actual_count] = {array,count,tid};
     
@@ -156,7 +146,7 @@ struct RenderContext{
 };
 
 _persist RenderBatch* renderbatch_array[16];
-_persist u32 renderbatch_count = 0;
+_persist u32 renderbatch_cur = 0;
 _persist u32 renderbatch_completed_count = 0;
 _persist u32 renderbatch_total_count = 0;
 
@@ -194,7 +184,7 @@ void _ainline Clear(RenderContext* context){
         group->cmdbufferlist.count = 0;    
     }
     
-    renderbatch_count = 0;
+    renderbatch_cur = 0;
     renderbatch_completed_count = 0;
     renderbatch_total_count = 0;
 }
@@ -288,17 +278,17 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
     
     TIMEBLOCK(Wheat);
     
-    auto count = renderbatch_count;
-    
-    if(!count){
+    if(renderbatch_cur == renderbatch_total_count){
         return false;
     }
     
-    auto actual_count = LockedCmpXchg(&renderbatch_count,count,count -1);
+    auto count = renderbatch_cur;
+    
+    auto actual_count = LockedCmpXchg(&renderbatch_cur,count,count + 1);
     
     if(count == actual_count){
         
-        auto index = count - 1;
+        auto index = count;
         
         auto batch = renderbatch_array[index];
         
@@ -447,11 +437,10 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
 
 void _ainline InternalDispatchRenderBatch(RenderBatch* batch,TSemaphore sem){
     
-    _kill("too many batches\n",renderbatch_count >= _arraycount(renderbatch_array));
+    _kill("too many batches\n",renderbatch_total_count >= _arraycount(renderbatch_array));
     
-    renderbatch_array[renderbatch_count] = batch;
+    renderbatch_array[renderbatch_total_count] = batch;
     renderbatch_total_count++;
-    renderbatch_count++;
     
     TSignalSemaphore(sem);
 }

@@ -19,6 +19,8 @@
 #include "ttype.h"
 #include "ccolor.h"
 
+#include "tthreadx.h"
+
 
 extern void* vkenumerateinstanceextensionproperties;
 extern void* vkenumerateinstancelayerproperties;
@@ -727,16 +729,7 @@ struct VThreadCommandbufferList{
 void _ainline VPushThreadCommandbufferList(VThreadCommandbufferList* list,
                                            VkCommandBuffer cmdbuffer){
     
-    u32 index;
-    u32 actual_index;
-    
-    do{
-        
-        index = list->count;
-        
-        actual_index = LockedCmpXchg(&list->count,index,index + 1);
-        
-    }while(actual_index != index);
+    u32 index = TGetEntryIndex(&list->count);
     
     //FIXME: we sometimes get null cmdbuffers
     _kill("submitted null cmdbuffer\n",!cmdbuffer);

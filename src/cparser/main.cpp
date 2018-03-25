@@ -52,7 +52,8 @@ enum CType{
     
     CType_VOID = PHashString("void"),
     
-    CType_STRUCT,
+    CType_STRUCT = PHashString("struct"),
+    CType_ENUM = PHashString("enum"),
 };
 
 enum Keyword{
@@ -418,7 +419,7 @@ void WriteStructMetaData(FormedStruct* curstruct,FormedStruct* array,u32 array_c
     
 }
 
-#if 0
+#if 1
 
 s32 main(s32 argc,s8** argv){
     
@@ -959,6 +960,7 @@ enum ParseTags{
     TAG_KEY_TAG = 8,
     TAG_START_ARG = 16,
     TAG_END_ARG = 32,
+    TAG_ENUM = 64,
 };
 
 struct EvalChar{
@@ -970,7 +972,8 @@ struct EvalChar{
 enum ParserKeyWord{
     PARSERKEYWORD_REFLSTRUCT = PHashString("REFLSTRUCT"),
     PARSERKEYWORD_REFLFUNC = PHashString("REFLFUNC"),
-    PARSERKEYWORD_REFLCOMPONENT = PHashString("REFLCOMPONENT"),
+    PARSERKEYWORD_REFLENUM = PHashString("REFLENUM"),
+    PARSERKEYWORD_TAGFIELD = PHashString("TAGFIELD"),
 };
 
 logic IsParserKeyword(u64 hash){
@@ -978,7 +981,8 @@ logic IsParserKeyword(u64 hash){
     ParserKeyWord array[] = {
         PARSERKEYWORD_REFLSTRUCT,
         PARSERKEYWORD_REFLFUNC,
-        PARSERKEYWORD_REFLCOMPONENT,
+        PARSERKEYWORD_REFLENUM,
+        PARSERKEYWORD_TAGFIELD
     };
     
     for(u32 i = 0; i < _arraycount(array); i++){
@@ -1006,6 +1010,13 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         if(c->hash == PHashString("struct")){
             c->tag = TAG_STRUCT;
             mask |= TAG_STRUCT;
+            
+            //            printf("[struct] ");
+        }
+        
+        else if(c->hash == PHashString("enum")){
+            c->tag = TAG_ENUM;
+            mask |= TAG_ENUM;
             
             //            printf("[struct] ");
         }
@@ -1074,6 +1085,24 @@ logic IsReflStruct(EvalChar* eval_buffer,u32 count){
     return is_struct && has_keyword;
 }
 
+logic IsReflEnum(EvalChar* eval_buffer,u32 count){
+    
+    logic is_enum = eval_buffer[0].tag == TAG_ENUM;
+    
+    logic has_keyword = false;
+    
+    for(u32 i = 1; i < count; i++){
+        
+        has_keyword = eval_buffer[i].tag == TAG_KEY;
+        
+        if(has_keyword){
+            break;
+        }
+    }
+    
+    return is_enum && has_keyword;
+}
+
 logic IsReflFunc(EvalChar* eval_buffer,u32 count){
     
     logic has_return_type = eval_buffer[0].tag == TAG_CTYPE;
@@ -1132,6 +1161,239 @@ void SkipBracketBlock(s8* buffer,u32* a){
     *a = cur;
 }
 
+struct GenericTypeDec{
+    
+    u32 tag_count = 0;
+    u32 taghash_array[128];
+    s8 tagstring_array[128][128];
+    
+    s8 type_string[128];
+    s8 name_string[128];
+    u64 name_hash;
+    CType type;
+};
+
+struct GenericTypeDef : GenericTypeDec{
+    
+    u32 indir_count;
+    u32 array_dim[128];
+    u32 array_dim_count;
+};
+
+struct GenericStruct : GenericTypeDec{
+    
+    u32 members_count = 0;
+    GenericTypeDef members_array[256];
+    
+};
+
+logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 terminator){
+    
+    auto cur = *a;
+    
+    u32 evaluation_count = *k;
+    
+    u32 symbol_len = 0;
+    s8 symbol_buffer[128] = {};
+    
+    logic ret = false;
+    
+    PGetSymbol(&symbol_buffer[0],buffer,&cur,&symbol_len);
+    
+    if(symbol_len){
+        
+        //                printf("%s\n",&symbol_buffer[0]);
+        
+        evaluation_buffer[evaluation_count] =
+        {PHashString(&symbol_buffer[0])};
+        memcpy(&evaluation_buffer[evaluation_count].string[0],&symbol_buffer[0],strlen(&symbol_buffer[0]));
+        
+        evaluation_count++;
+    }
+    
+    if(buffer[cur] == '('){
+        
+        evaluation_buffer[evaluation_count] =
+        {PHashString("("),"("};
+        
+        evaluation_count++;
+    }
+    
+    if(buffer[cur] == ')'){
+        
+        evaluation_buffer[evaluation_count] =
+        {PHashString(")"),")"};
+        
+        evaluation_count++;
+        
+    }
+    
+    if(buffer[cur] == '*'){
+        
+        evaluation_buffer[evaluation_count] =
+        {PHashString("*"),"*"};
+        
+        evaluation_count++;
+        
+    }
+    
+    if(buffer[cur] == ';'){
+        evaluation_count = 0;
+    }
+    
+    if(buffer[cur] == terminator){
+        
+        TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
+        
+        ret = true;
+    }
+    
+    *k = evaluation_count;
+    *a = cur;
+    
+    return ret;
+}
+
+
+//TODO: test this function
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count){
+    
+    auto t = &struct_array[*struct_count];
+    (*struct_count)++;
+    
+    //get general info
+    
+    for(u32 i = 0; i < count; i++){
+        
+        auto c = &eval_buffer[i];
+        
+        if(c->tag == TAG_KEY_TAG){
+            
+            memcpy(&t->tagstring_array[t->tag_count][0],&c->string[0],strlen(&c->string[0]));
+            
+            t->taghash_array[t->tag_count] = c->hash;
+            
+            t->tag_count++;
+        }
+        
+        if(c->tag == TAG_SYMBOL){
+            
+            memcpy(&t->name_string[0],&c->string[0],strlen(&c->string[0]));
+            t->name_hash = c->hash;
+            
+            t->type = CType_STRUCT;
+            memcpy(&t->type_string[0],"struct",strlen("struct"));
+        }
+    }
+    
+    auto cur = *a;
+    
+    u32 k = 0;
+    
+    
+    EvalChar fieldeval_array[256] = {};
+    u32 fieldeval_count = 0;
+    
+    for(;;cur++){
+        
+        SanitizeString(buffer,&cur);
+        
+        auto c = buffer[cur];
+        
+        if(FillEvalBuffer(buffer,&cur,&fieldeval_array[0],&fieldeval_count,';')){
+            
+            //evaluated the buffer etc
+            
+            if(fieldeval_count){
+                
+                auto member = &t->members_array[t->members_count];
+                
+                memset(member,0,sizeof(GenericTypeDef));
+                
+                for(u32 i = 0; i < fieldeval_count; i++){
+                    
+                    auto x = fieldeval_array[i];
+                    
+                    if(x.tag == TAG_CTYPE){
+                        member->type = (CType)x.hash;
+                        
+                        memcpy(&member->type_string[0],&x.string[0],strlen(&x.string[0]));
+                    }
+                    
+                    if(x.tag == TAG_SYMBOL){
+                        
+                        member->name_hash = x.hash;
+                        
+                        memcpy(&member->name_string[0],&x.string[0],strlen(&x.string[0]));
+                        
+                    }
+                    
+                    if(x.tag == TAG_KEY_TAG){
+                        
+                    }
+                    
+                    //indirection
+                    if(x.string[0] == '*'){
+                        
+                    }
+                    
+                    //is an array
+                    if(PIsStringInt(&x.string[0])){
+                        
+                    }
+                }
+                
+            }
+            
+            fieldeval_count = 0;
+            continue;
+        }
+        
+        if(c == '{'){
+            
+            if(fieldeval_count){
+                
+                TagEvalBuffer(&fieldeval_array[0],fieldeval_count);
+                
+                for(u32 i = 0; i < fieldeval_count; i++){
+                    
+                    auto x = fieldeval_array[i];
+                    
+                    if(x.tag == TAG_SYMBOL){
+                        
+                        //this is NOT  an anonymouse struct
+                        
+                        s8 buffer[512] = {};
+                        
+                        sprintf(&buffer[0],"%s::%s",&t->name_string[0],&x.string[0]);
+                        
+                        memcpy(&x.string[0],&buffer[0],strlen(&buffer[0]));
+                        
+                        GenerateGenericStruct(&fieldeval_array[0],fieldeval_count,buffer,&cur,struct_array,struct_count);
+                        break;
+                    }
+                }
+                
+                fieldeval_count = 0;
+            }
+            
+            k++;
+        }
+        
+        if(c == '}'){
+            
+            k --;
+        }
+        
+        if(!k){
+            break;
+        }
+    }
+    
+    
+    *a = cur;
+}
+
 s32 main(s32 argc,s8** argv){
     
     {
@@ -1141,8 +1403,7 @@ s32 main(s32 argc,s8** argv){
         
         auto string = R"FOO(
         
-        #define REFLCOMPONENT
-#define REFLSTRUCT(TAG)
+        #define REFLSTRUCT(TAG)
 #define REFLFUNC(TAG)
 
 /*
@@ -1157,7 +1418,7 @@ struct REFLCOMPONENT Character{
     u32 atk;
 };
 
-struct REFLCOMPONENT BossCharacter{
+struct REFLSTRUCT(COMP) BossCharacter{
     Character character;//this is a char name
     u32 special_ability;/*asdasd*/
 };
@@ -1170,8 +1431,28 @@ struct REFLSTRUCT(GENERIC) Foo{
 
 s32 REFLFUNC(GENERIC) AddFunction(u32 a,u32 b){
 
-    return a + b;
+return a + b;
 }
+
+u32 REFLFUNC(GENERIC) FOO(u32* a){
+    return *a;
+}
+
+void REFLFUNC(GENERIC) BAR(u32 a[5],u32 count){
+
+for(u32 i = 0; i < count; i++){
+a[i] += 1;
+}
+
+}
+
+
+enum REFLENUM(GENERIC) ENUMT{
+ENUMT_NONE,
+ENUMT_ONE,
+ENUMT_TWO,
+ENUMT_THREE,
+};
 
 
 typedef u32 ObjectID;
@@ -1183,7 +1464,7 @@ typedef u32 RenderGroupIndex;
 typedef u32 MaterialID;
 
 //NOTE: we should not be able to edit core formats. this is because the engine depends not changing
-struct REFLCOMPONENT EntityAnimationData{
+struct REFLSTRUCT(COMP) EntityAnimationData{
     ObjectID id;
     AnimationID animdata_id;
     u16 animationindex;
@@ -1192,21 +1473,21 @@ struct REFLCOMPONENT EntityAnimationData{
     f32 speed;
 };
 
-struct REFLCOMPONENT EntityDrawData{
+struct REFLSTRUCT(COMP) EntityDrawData{
     ObjectID id;
     ModelID model;
     MaterialID material;
     RenderGroupIndex group;
 };
 
-struct REFLCOMPONENT EntityAudioData{
+struct REFLSTRUCT(COMP) EntityAudioData{
     ObjectID id;
     AudioAssetHandle audioasset;
     u16 islooping = 0;
     u16 toremove = 0;
 };
 
-struct REFLCOMPONENT PointLight{
+struct REFLSTRUCT(COMP) PointLight{
     ObjectID id;
     f32 R;
     f32 G;
@@ -1219,7 +1500,7 @@ struct REFLCOMPONENT PointLight{
 
 // soft angle is the outer circle where it starts to drop off
 //effective angle is hard_angle + soft_angle
-struct REFLCOMPONENT SpotLight{
+struct REFLSTRUCT(COMP) SpotLight{
     ObjectID id;
     
     f32 R; // replace w color
@@ -1239,52 +1520,20 @@ struct REFLCOMPONENT SpotLight{
 
 )FOO";
         
+        GenericStruct struct_array[1024] = {};
+        u32 struct_count = 0;
+        
         ptrsize size = strlen(string) + 1;
         u32 cur = 0;
         s8* buffer = (s8*)&string[0];
         
+        
+        //TODO: we should abstract this away (so we can recurse this)
         for(;;){
             
             SanitizeString(buffer,&cur);
             
-            u32 symbol_len = 0;
-            s8 symbol_buffer[128] = {};
-            
-            PGetSymbol(&symbol_buffer[0],buffer,&cur,&symbol_len);
-            
-            if(symbol_len){
-                
-                //                printf("%s\n",&symbol_buffer[0]);
-                
-                evaluation_buffer[evaluation_count] =
-                {PHashString(&symbol_buffer[0])};
-                memcpy(&evaluation_buffer[evaluation_count].string[0],&symbol_buffer[0],strlen(&symbol_buffer[0]));
-                
-                evaluation_count++;
-            }
-            
-            if(buffer[cur] == '('){
-                
-                evaluation_buffer[evaluation_count] =
-                {PHashString("("),"("};
-                
-                evaluation_count++;
-            }
-            
-            if(buffer[cur] == ')'){
-                
-                evaluation_buffer[evaluation_count] =
-                {PHashString(")"),")"};
-                
-                evaluation_count++;
-                
-            }
-            
-            if(buffer[cur] == ';'){
-                evaluation_count = 0;
-            }
-            
-            if(buffer[cur] == '{'){
+            if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{')){
                 
                 //start evaluating
                 TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
@@ -1299,6 +1548,30 @@ struct REFLCOMPONENT SpotLight{
                     }
                     
                     printf("\n");
+                    
+#if 0
+                    
+                    GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],&struct_count);
+                    
+                    _kill("examine struct",1);
+                    
+#endif
+                }
+                
+                if(IsReflEnum(&evaluation_buffer[0],evaluation_count)){
+                    
+                    
+                    //parse the enum
+                    
+                    printf("found enum:");
+                    
+                    for(u32 i = 0; i < evaluation_count; i++){
+                        printf("%s ",evaluation_buffer[i].string);
+                    }
+                    
+                    printf("\n");
+                    
+                    
                 }
                 
                 if(IsReflFunc(&evaluation_buffer[0],evaluation_count)){
@@ -1314,6 +1587,8 @@ struct REFLCOMPONENT SpotLight{
                 }
                 
                 SkipBracketBlock(buffer,&cur);
+                
+                
                 
                 evaluation_count = 0;
             }

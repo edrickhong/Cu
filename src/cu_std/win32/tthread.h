@@ -57,18 +57,3 @@ void _ainline TSetThreadAffinity(ThreadID threadid,u32 cpu_mask){
     
     _kill("failed to close in thread affinity\n",!res);
 }
-
-
-u32 TGetEntryIndex(u32* cur_index);
-
-u32 TGetEntryIndex(u32* cur_index,u32 max_count);
-
-#if _debug
-
-#define TGetEntryIndex(a,b) TGetEntryIndex(a,b)
-
-#else
-
-#define TGetEntryIndex(a,b) TGetEntryIndex(a)
-
-#endif
