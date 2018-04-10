@@ -1,6 +1,6 @@
+#include "main.h"
 #include "stdio.h"
 #include "stdlib.h"
-
 #include "ttype.h"
 #include "mode.h"
 #include "main.h"
@@ -8,7 +8,12 @@
 #include "ccontainer.h"
 #include "aallocator.h"
 #include "pparse.h"
+
 /*
+NOTES:
+press ctrl+f5 to run console
+Program creates blank resource file if you try to add a nonexistent one
+resource files and shizz are taken from directory Jupiter\Make\
 
 ************
 Flow:
@@ -38,17 +43,17 @@ listtofile
 
 TODO stuff/PROGRESS:
 
-AddToList (P)(Can add, but have not assigned FileNode and file_location hash not confirmed)
-RemoveFromList (D)
-Parse (D)
-WriteTableToFile (D)
-FileToTable (D)
+AddToList (T)(note: assign FileNode)
+RemoveFromList (T)
+Parse (T)
+WriteTableToFile (T)
+FileToTable (T)
 SortByType (D)
 BakeToBuffer
 BakeToFile
 BakeToExecutable
 Validate
-Console Commands
+Additional Console Commands
 
 
 P=Inprogress
@@ -64,7 +69,7 @@ Checking for duplicates: qsort, std::set, or comparing each element with nested 
 *************
 */
 
-enum AssetType : u32{
+enum AssetType{
 	ASSET_AUDIO = 0,
     ASSET_TEXTURE = 1,
     ASSET_MODEL = 2,
@@ -98,7 +103,7 @@ void FileToTable(const s8* asset_list, AssetTable* out_table) {
 	list_count /= sizeof(AssetTableEntry);
 	//store the list count
 
-	printf("list count %d\n", (u32)list_count);
+	printf("initial list count %d\n", (u32)list_count);
 
 	//populate the table
 	for (u32 i = 0; i < list_count; i++) {
@@ -112,25 +117,33 @@ void FileToTable(const s8* asset_list, AssetTable* out_table) {
 
 void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	//check for duplicates and calculate offset
-	for (u32 i = 0; i < out_table.count; i++) {
-		AssetTableEntry entry = &out_table[i]; //HELPLAH
+	
+	for (u32 i = 0; i < out_table->count; i++) {
+		auto entry = &out_table->container[i]; 
 		if (PHashString(asset) == entry->file_location_hash) {
-			printf("Warning! %s file exists!",asset);
+			printf("Warning! %s file exists!\n",asset);
+			return;
 		//file already exists
 		}
 	}
 
+	AssetTableEntry entry = { ASSET_UNKNOWN };
+
 	//store offset
 	auto file = FOpenFile(asset, F_FLAG_READWRITE);
-	entry.offset = FGetFileSize(file) + out_table->container[out_table.count];
+	auto file_size = FGetFileSize(file);
 
-	if (out_table.count > 0) {
-		entry.offset = out_table->container[out_table.count].offset + file_size;
+	if (out_table->count > 0) {
+		entry.offset = out_table->container[out_table->count-1].offset + file_size;
 	}
+	else
+		entry.offset = 0;
+
 	u32 len = strlen(asset);
 
 
 	//label file type
+
 	auto file_extension = asset[len - 3] + asset[len - 2] + asset[len - 1];
 	if (file_extension == ('m' + 'd' + 'f')) {
 		entry.type = ASSET_MODEL;
@@ -154,7 +167,7 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	// location
 	memcpy(&entry.file_location, &asset[0], strlen(asset));
 	// hash
-	&entry->file_location_hash = PHashString(asset);
+	entry.file_location_hash = PHashString(asset);
 	//assign file node?
 
 	out_table->PushBack(entry);
@@ -195,7 +208,7 @@ void SortListByType(const s8* assetlist, AssetTable* out_table) {
 		return block_a->type - block_b->type;
 	}
 	);
-	PrintAssetList(out_table);
+	//PrintAssetList(out_table);
 	return;
 
 }
@@ -229,7 +242,7 @@ void PrintAssetList(AssetTable* table){
       t = entry->type;
     }
     
-    printf("%d %s %llu\n",i,entry->file_location,entry->file_location_hash);
+    printf("%d %d %d %s %llu\n",i,entry->type,entry->offset,entry->file_location,entry->file_location_hash);
     
   }
   
@@ -275,16 +288,24 @@ the [patch string].
 }
 
 s32 main(s32 argc,s8** argv){
-	/*
+
+
+	for (s32 i = 0; i < argc; i++) {
+		printf("%s\n", argv[i]);
+
+	}
+
   if(argc < 3){
     printf("not enough arguments\n");
     PrintHelp();
+	int b;
+	scanf("%d",&b);
     return -1;
   }
 
   AssetTable asset_table;
   asset_table.Init();
-  s8 asset_file = arv[1];
+  s8* asset_file = argv[1];
   FileToTable(asset_file,&asset_table);
 
   //Read the -commands
@@ -293,25 +314,33 @@ s32 main(s32 argc,s8** argv){
     
     for(s32 i = 3; i < argc; i++){
       
-      AddAssetToList(argv[i],&assetlist);
+      AddAssetToList(argv[i],&asset_table);
       
     }
 
-    InternalWriteAssetList(argv[1],&assetlist);
+    WriteToFile(argv[1],&asset_table);
   }
 
   //remove asset list
   else if(PHashString(argv[2]) == PHashString("-remove")){
-    
-    for(s32 i = 3; i < argc; i++){
-      InternalRemoveAssetList(argv[i],&assetlist);
-    }
-    
-    InternalWriteAssetList(argv[1],&assetlist);
+
+	 if (PHashString(argv[3]) == PHashString("-all")) {
+		  for (u32 p = 0; asset_table.count > 0; p++) {
+			  printf("removing %s\n", asset_table.container[p].file_location);
+			  RemoveAssetFromList(asset_table.container[p].file_location, &asset_table);
+		  }
+	 }
+	 else {
+		 for (s32 i = 3; i < argc; i++) {
+			 RemoveAssetFromList(argv[i], &asset_table);
+		 }
+	 }
+
+    WriteToFile(argv[1],&asset_table);
   }
 
   else if(PHashString(argv[2]) == PHashString("-list")){
-    PrintAssetList(&assetlist);
+    PrintAssetList(&asset_table);
   }
 
   else if(PHashString(argv[2]) == PHashString("-bake")){
@@ -330,10 +359,8 @@ s32 main(s32 argc,s8** argv){
 
     printf("exec size %d\n",(u32)exec_size);
 
-    auto offset = PFindStringInString("patchthisvalueinatassetpacktime",exec_buffer);
-
+	s8 offset = PFindStringInString("patchthisvalueinatassetpacktime", exec_buffer);
     _kill("couldn't find patch string",offset == (u32)-1);
-
     exec_buffer[offset] = '!';
 
     auto size_ptr = (u32*)&exec_buffer[offset + 1];
@@ -370,6 +397,6 @@ To an admiring bog!
     printf("unrecognized command %s\n",argv[2]);
     PrintHelp();
   }
-  */
+  
   return 0;
 }
