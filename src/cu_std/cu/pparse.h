@@ -85,7 +85,7 @@ constexpr u64 PHashString(const s8* string){
     u64 hash = 0;
     
     for(u32 i = 0; i < len; i++){
-        hash += ((string[i] * (i + 1)) * 31) ^ (hash | 1);
+        hash += ((string[i] * (i + 1)) * 31) ^ (((string[i] * 13) ^ ((hash + string[i]) | 19)) | 1);
     }
     
     return hash;
