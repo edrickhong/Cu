@@ -4,84 +4,85 @@
 #include "aallocator.h"
 
 void TWaitSemaphore(TSemaphore sem,f32 time_ms){
-
-  timespec time = {};
-  time.tv_nsec = time_ms * 1000000.0f;
-  
-  sem_timedwait(sem,&time); 
+    
+    timespec time = {};
+    time.tv_nsec = time_ms * 1000000.0f;
+    
+    sem_timedwait(sem,&time); 
 }
 
 void TWaitSemaphore(TSemaphore sem){
-  sem_wait(sem);
+    sem_wait(sem);
 }
 
 ThreadID TGetThisThreadID(){
-  return pthread_self();
+    return pthread_self();
 }
 
 void TSetThreadAffinity(ThreadID threadid,u32 cpu_mask){
-
-  _kill("mask of 0 used\n",!cpu_mask);
-
-  u32 count = 32 - BSR(cpu_mask);
-
-  cpu_set_t cpuset;
-
-  CPU_ZERO(&cpuset);
-
-  for(u32 i = 0; i < count; i++){
     
-    if( (1 << i) & cpu_mask){
-      CPU_SET(i, &cpuset);
+    _kill("mask of 0 used\n",!cpu_mask);
+    
+    u32 count = 32 - BSR(cpu_mask);
+    
+    cpu_set_t cpuset;
+    
+    CPU_ZERO(&cpuset);
+    
+    for(u32 i = 0; i < count; i++){
+        
+        if( (1 << i) & cpu_mask){
+            CPU_SET(i, &cpuset);
+        }
     }
-  }
-
-  auto res = pthread_setaffinity_np(threadid,sizeof(cpuset),&cpuset);
-
-  _kill("failed to set affinity\n",res);
-  
+    
+    auto res = pthread_setaffinity_np(threadid,sizeof(cpuset),&cpuset);
+    
+    _kill("failed to set affinity\n",res);
+    
 }
 
 TThreadContext  TCreateThread(s32(*call_fptr)(void*),u32 stack_size,void* args){
-
-  TThreadContext context;
-  pthread_attr_t attr;
-
-  pthread_attr_init(&attr);
-
-  u32 err = pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-
-  _kill("failed to set detached\n",err != 0);
-
-  err = pthread_attr_setstacksize(&attr,stack_size);
-
-  _kill("failed to set stack size\n",err != 0);
-  
-  err = pthread_create(&context.handle,&attr,(void *(*)(void *))call_fptr,args);
-
-  pthread_attr_destroy(&attr);
-
-  _kill("failed to create thread\n",err != 0);
-
-  return context;
+    
+    TThreadContext context;
+    pthread_attr_t attr;
+    
+    pthread_attr_init(&attr);
+    
+    u32 err = pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    
+    _kill("failed to set detached\n",err != 0);
+    
+    err = pthread_attr_setstacksize(&attr,stack_size);
+    
+    _kill("failed to set stack size\n",err != 0);
+    
+    err = pthread_create(&context.handle,&attr,(void *(*)(void *))call_fptr,args);
+    
+    pthread_attr_destroy(&attr);
+    
+    _kill("failed to create thread\n",err != 0);
+    
+    return context;
 }
 
 TSemaphore TCreateSemaphore(u32 value){
-  
-  TSemaphore sem = (TSemaphore)alloc(sizeof(sem_t));
-  sem_init(sem,0,value);
-
-  return sem;
+    
+    TSemaphore sem = (TSemaphore)alloc(sizeof(sem_t));
+    sem_init(sem,0,value);
+    
+    return sem;
 }
 
 void TDestroySemaphore(TSemaphore sem){
-  sem_destroy(sem);
-  unalloc(sem);
+    sem_destroy(sem);
+    unalloc(sem);
 }
 
 void TSignalSemaphore(TSemaphore sem){
-  sem_post(sem);
+    sem_post(sem);
 }
+
 
 
 
@@ -122,20 +123,20 @@ Since this requires a system call, we might as well use the one provided in libc
 //   if(threadlib){
 //     return;
 //   }
-  
+
 //   const s8* lib_array[] = {
 //     "libpthread.so.0",
 //     "libpthread.so",
 //   };
 
 //   for(u32 i = 0; i < _arraycount(lib_array); i++){
-    
+
 //     threadlib = LLoadLibrary(lib_array[i]);
-    
+
 //     if(threadlib){
 //       break;
 //     }
-    
+
 //   }
 
 //   _kill("cannot load thread lib\n",!threadlib);

@@ -66,9 +66,20 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    VCreateInstance("eengine",true,1,0,0);
+    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
-    pdata->vdevice = VCreateDeviceContext(&pdata->window);
+    _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
+    
+    {
+        
+        VkPhysicalDevice phys_array[16];
+        u32 phys_count;
+        
+        VEnumeratePhysicalDevices(&phys_array[0],&phys_count,&pdata->window);
+        
+        pdata->vdevice = VCreateDeviceContext(&phys_array[0]);
+        
+    }
     
     pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
                                                VSYNC_NORMAL);
@@ -271,10 +282,12 @@ s32 main(s32 argc,s8** argv){
                 
                 if(frames >= pdata->submit_audiobuffer.size_frames){
                     
-                    MixAudioLayout args = {&pdata->submit_audiobuffer,audio_data,audio_count};
+                    auto args = TAlloc(MixAudioLayout,1);
+                    
+                    *args = {&pdata->submit_audiobuffer,audio_data,audio_count};
                     
                     PushThreadWorkQueue(&pdata->threadqueue,
-                                        MixAudio,(void*)&args,pdata->worker_sem);
+                                        MixAudio,(void*)args,pdata->worker_sem);
                     
                 }
                 
@@ -339,4 +352,62 @@ s32 main(s32 argc,s8** argv){
   implement quaternion double cover
   Implement Dual quaternion blending in MDF
   
+  multi gpu functions
+  
+  void vkCmdSetDeviceMask(
+VkCommandBuffer commandBuffer, uint32_t deviceMask);
+
+VkResult vkAcquireNextImage2KHR(
+VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo, uint32_t* pImageIndex);
+typedef struct VkAcquireNextImageInfoKHR {
+VkStructureType sType; const void* pNext;
+VkSwapchainKHR swapchain;
+uint64_t timeout;
+VkSemaphore semaphore;
+VkFence fence;
+uint32_t deviceMask;
+} VkAcquireNextImageInfoKHR;
+
+
+typedef struct VkDeviceGroupPresentInfoKHR {
+VkStructureType sType; const void* pNext;
+uint32_t swapchainCount;
+const uint32_t* pDeviceMasks;
+VkDeviceGroupPresentModeFlagBitsKHR mode;
+} VkDeviceGroupPresentInfoKHR;
+
+typedef struct VkDeviceGroupCommandBufferBeginInfo {
+VkStructureType sType; const void* pNext;
+uint32_t deviceMask;
+} VkDeviceGroupCommandBufferBeginInfo;
+
+enum VkDeviceGroupPresentModeFlagBitsKHR:
+VK_DEVICE_GROUP_PRESENT_MODE_X_BIT_KHR where X is
+LOCAL,
+REMOTE,
+SUM,
+LOCAL_MULTI_DEVICE
+typedef struct VkDeviceGroupRenderPassBeginInfo {
+VkStructureType sType; const void* pNext;
+uint32_t deviceMask;
+uint32_t deviceRenderAreaCount;
+const VkRect2D* pDeviceRenderAreas; P.15
+} VkDeviceGroupRenderPassBeginInfo;
+typedef struct VkDeviceGroupSubmitInfo {
+VkStructureType sType; const void* pNext;
+uint32_t waitSemaphoreCount;
+const uint32_t* pWaitSemaphoreDeviceIndices;
+uint32_t commandBufferCount;
+const uint32_t* pCommandBufferDeviceMasks;
+uint32_t signalSemaphoreCount;
+const uint32_t* pSignalSemaphoreDeviceIndices;
+} VkDeviceGroupSubmitInfo;
+
+
+typedef struct VkMemoryAllocateFlagsInfo {
+VkStructureType sType; const void* pNext;
+VkMemoryAllocateFlags flags;
+uint32_t deviceMask;
+} VkMemoryAllocateFlagsInfo;
+
 */
