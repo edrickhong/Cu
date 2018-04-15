@@ -48,12 +48,13 @@ RemoveFromList (T)
 Parse (T)
 WriteTableToFile (T)
 FileToTable (T)
-SortByType (D)
-BakeToBuffer
-BakeToFile
+SortByType (T)
 BakeToExecutable
-Validate
+
+
+Additional:
 Additional Console Commands
+Validate
 
 
 P=Inprogress
@@ -61,17 +62,9 @@ D=written but not tested
 T=tested and working but not optimised
 O=optimised,working
 
-?: Do we need AddAssetAtPoint?
-(Does the order of assets matter?/Do we ever need to reorder the data buffer?)
 
-?: Can we run functions in functions? eg in Sort(), Print().
-
-?: What do we want Sort to do ? Only for displaying the list? or to bake as well ?
-
-?: Bake in sorted assets? 
-
-?: AssetTableEntry should probably store size rather than offset, so we can sort properly and also makes baking a lot easier.
-
+?:
+Can I run functions in functions? eg in Sort(), Print().
 Validating: What makes the data valid? checking the whole table for all attributes?
 Checking for duplicates: qsort, std::set, or comparing each element with nested for loop?
 *************
@@ -124,12 +117,11 @@ void FileToTable(const s8* asset_list, AssetTable* out_table) {
 }
 
 void AddAssetToList(const s8* asset, AssetTable* out_table) {
-	//check for duplicates and calculate offset
-	
+	//check for duplicates 
 	for (u32 i = 0; i < out_table->count; i++) {
 		auto entry = &out_table->container[i]; 
 		if (PHashString(asset) == entry->file_location_hash) {
-			printf("Warning! %s file exists! Resouce %s was not added.\n",asset, asset);
+			printf("Warning! %s file exists in the table! Resouce %s was not added.\n",asset, asset);
 			return;
 		//file already exists
 		}
@@ -137,22 +129,22 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 
 	AssetTableEntry entry = { ASSET_UNKNOWN };
 
-	//store offset
 	auto file = FOpenFile(asset, F_FLAG_READWRITE);
 	auto file_size = FGetFileSize(file);
 	entry.size = file_size;
 
+	//calculate offset
 	if (out_table->count > 0) {
 		entry.offset = out_table->container[out_table->count-1].offset + out_table->container[out_table->count - 1].size;
 	}
-	else
+	else {
 		entry.offset = 0;
+	}
 
 	u32 len = strlen(asset);
 
 
 	//label file type
-
 	auto file_extension = asset[len - 3] + asset[len - 2] + asset[len - 1];
 	if (file_extension == ('m' + 'd' + 'f')) {
 		entry.type = ASSET_MODEL;
@@ -171,6 +163,7 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	}
 
 	else {
+		printf("unknown asset type. exiting.");
 		_kill("unknown asset type\n", 1);
 	}
 	// location
@@ -343,7 +336,7 @@ s32 main(s32 argc,s8** argv){
   else if(PHashString(argv[2]) == PHashString("-remove")){
 
 	 if (PHashString(argv[3]) == PHashString("-all")) {
-		  for (u32 p = 0; asset_table.count > 0; p++) {
+		  for (; asset_table.count > 0;) {
 			  RemoveAssetFromList(asset_table.container[0].file_location, &asset_table);
 			  printf("Removed %s\n", asset_table.container[0].file_location);
 			  //PrintAssetList(&asset_table);
@@ -384,7 +377,7 @@ s32 main(s32 argc,s8** argv){
 
     printf("exec size %d\n",(u32)exec_size);
 
-	s8 offset = PFindStringInString("patchthisvalueinatassetpacktime", exec_buffer);
+	auto offset = PFindStringInString("patchthisvalueinatassetpacktime", exec_buffer);
     _kill("couldn't find patch string",offset == (u32)-1);
     exec_buffer[offset] = '!';
 
