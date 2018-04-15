@@ -37,5 +37,28 @@ struct REFLCOMPONENT PointLight{
     f32 R;
     f32 G;
     f32 B;
+    
+    f32 radius;
+    f32 intensity;
+};
+
+
+// soft angle is the outer circle where it starts to drop off
+//effective angle is hard_angle + soft_angle
+struct REFLCOMPONENT SpotLight{
+    ObjectID id;
+    
+    f32 R;
+    f32 G;
+    f32 B;
+    
+    f32 dir_x;
+    f32 dir_y;
+    f32 dir_z;
+    
+    f32 full_angle;
+    f32 hard_angle;
+    f32 radius;
+    
     f32 intensity;
 };

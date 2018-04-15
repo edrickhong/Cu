@@ -5,7 +5,7 @@
 #include "semaphore.h"
 
 struct TThreadContext{
-  pthread_t handle;
+    pthread_t handle;
 };
 
 typedef sem_t* TSemaphore;

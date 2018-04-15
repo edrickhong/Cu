@@ -1,5 +1,12 @@
 #include "libload.h"
 
+/*
+#define VK_VERSION_MAJOR(version) ((uint32_t)(version) >> 22)
+#define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
+#define VK_VERSION_PATCH(version) ((uint32_t)(version) & 0xfff)
+*/
+
+
 void* vkenumerateinstanceextensionproperties;
 void* vkenumerateinstancelayerproperties;
 void* vkcreateinstance;
@@ -117,6 +124,9 @@ void* vkgetphysicaldeviceimageformatproperties;
 void* vkcmdcopyimagetobuffer;
 void* vkgetpipelinecachedata;
 
+//vulkan 1.1
+void* vkenumeratephysicaldevicegroups;
+
 #ifdef _WIN32
 
 #define _surface_extension VK_KHR_WIN32_SURFACE_EXTENSION_NAME
@@ -178,22 +188,22 @@ void ErrorString(VkResult errorCode){
 
 #define _vktest(condition) {VkResult result = condition;if((result != VK_SUCCESS)) {ErrorString(condition);*(s32 *)0 = 0;}}
 
-#define _instanceproc(fptr,inst, entrypoint)				\
+#define _instproc(fptr,inst,entrypoint)				\
 {									\
-    fptr = (PFN_vk##entrypoint) vkGetInstanceProcAddr(inst, "vk"#entrypoint); \
+    fptr = (void*)vkGetInstanceProcAddr(inst, ""#entrypoint); \
     if (!fptr)								\
     {									\
-        _kill("",1);							\
+        _kill("failed to get function\n",1);							\
     }									\
 }
 
 // Macro to get a procedure address based on a vulkan device
-#define _deviceproc(fptr,dev, entrypoint)				\
+#define _deviceproc(fptr,dev,entrypoint)				\
 {									\
-    fptr = (PFN_vk##entrypoint) vkGetDeviceProcAddr(dev, "vk"#entrypoint); \
+    fptr = (void*)vkGetDeviceProcAddr(dev, ""#entrypoint); \
     if (!fptr)								\
     {									\
-        _kill("",1)							\
+        _kill("failed to get function\n",1)							\
     }								\
 }
 
@@ -212,6 +222,7 @@ void InternalLoadVulkanLib(){
         "vulkan-1.dll",
         "vulkan.dll",
 #else
+        "libvulkan.so.1.1.70", // required for 1.1
         
         "libvulkan.so.1.0.66",
         "libvulkan.so.1.0.65",
@@ -248,6 +259,7 @@ void InternalLoadVulkanLib(){
         vklib = LLoadLibrary(vklib_array[i]);
         
         if(vklib){
+            _dprint("using vkloader %s\n",vklib_array[i]);
             break;
         }
         
@@ -270,20 +282,58 @@ void InternalLoadVulkanLib(){
 }
 
 _persist VkInstance global_instance = 0;
+_persist u32 global_version_no = 0;
 
-#define _initfunc(func,var) var = (void*)vkGetInstanceProcAddr(global_instance,""#func)
+#if _debug 
+_persist VkDevice global_device = 0;
+#endif
 
-void InternalLoadVulkanFunctions(){
+void InternalLoadVulkanInstanceLevelFunctions(){
     
-    _initfunc(vkEnumeratePhysicalDevices,vkenumeratephysicaldevices);
-    _initfunc(vkGetPhysicalDeviceProperties,vkgetphysicaldeviceproperties);
-    _initfunc(vkEnumerateDeviceLayerProperties,vkenumeratedevicelayerproperties);
-    _initfunc(vkEnumerateDeviceExtensionProperties,vkenumeratedeviceextensionproperties);
-    _initfunc(vkGetPhysicalDeviceQueueFamilyProperties,vkgetphysicaldevicequeuefamilyproperties);
-    _initfunc(vkGetPhysicalDeviceFeatures,vkgetphysicaldevicefeatures);
-    _initfunc(vkCreateDevice,vkcreatedevice);
-    _initfunc(vkGetPhysicalDeviceFormatProperties,vkgetphysicaldeviceformatproperties);
-    _initfunc(vkGetPhysicalDeviceMemoryProperties,vkgetphysicaldevicememoryproperties);
+    _instproc(vkenumeratephysicaldevices,global_instance,vkEnumeratePhysicalDevices);
+    
+    _instproc(vkgetphysicaldevicequeuefamilyproperties,global_instance,vkGetPhysicalDeviceQueueFamilyProperties);
+    
+    _instproc(vkgetphysicaldeviceproperties,global_instance,vkGetPhysicalDeviceProperties);
+    
+    _instproc(vkgetphysicaldevicememoryproperties,global_instance,vkGetPhysicalDeviceMemoryProperties);
+    
+    _instproc(vkgetphysicaldevicefeatures,global_instance,vkGetPhysicalDeviceFeatures);
+    
+    _instproc(vkcreatedevice,global_instance,vkCreateDevice);
+    
+    _instproc(vkgetphysicaldevicesurfacesupportkhr,global_instance,vkGetPhysicalDeviceSurfaceSupportKHR);
+    
+    _instproc(vkenumeratedevicelayerproperties,global_instance,vkEnumerateDeviceLayerProperties);
+    
+    _instproc(vkenumeratedeviceextensionproperties,global_instance,vkEnumerateDeviceExtensionProperties);
+    
+    _instproc(vkgetphysicaldeviceformatproperties,global_instance,vkGetPhysicalDeviceFormatProperties);
+    
+    _instproc(vkgetphysicaldeviceimageformatproperties,global_instance,vkGetPhysicalDeviceImageFormatProperties);
+    
+    //vulkan 1.1 here
+    
+    if(VK_VERSION_MINOR(global_version_no)){
+        
+        //TODO: deprecated 1.0 functions (set them to -1)
+        
+        _instproc(vkenumeratephysicaldevicegroups,global_instance,vkEnumeratePhysicalDeviceGroups);
+    }
+}
+
+void InternalLoadVulkanFunctions(void* k,void* load_fptr){
+    
+    
+    _kill("",!vkenumeratephysicaldevices);
+    
+    auto load = (void* (*)(void*,const s8*))load_fptr;
+    
+#define _initfunc(func,var) var = (void*)load(k,""#func); _kill("failed to load function\n",!func)
+    
+    //TODO: remove instance level functions and run them in instance creation
+    
+    
     _initfunc(vkCmdPipelineBarrier,vkcmdpipelinebarrier);
     _initfunc(vkCreateShaderModule,vkcreateshadermodule);
     _initfunc(vkCreateBuffer,vkcreatebuffer);
@@ -380,15 +430,18 @@ void InternalLoadVulkanFunctions(){
     _initfunc(vkGetSwapchainImagesKHR,vkgetswapchainimageskhr);
     _initfunc(vkQueuePresentKHR,vkqueuepresentkhr);
     
-    
-    _initfunc(vkGetPhysicalDeviceSurfaceSupportKHR,vkgetphysicaldevicesurfacesupportkhr);
-    
     _initfunc(vkCmdClearColorImage,vkcmdclearcolorimage);
-    _initfunc(vkGetPhysicalDeviceImageFormatProperties,vkgetphysicaldeviceimageformatproperties);
     
     _initfunc(vkCmdCopyImageToBuffer,vkcmdcopyimagetobuffer);
     
     _initfunc(vkGetPipelineCacheData,vkgetpipelinecachedata);
+    
+    //vulkan 1.1 here
+    if(VK_VERSION_MINOR(global_version_no)){
+        //TODO: deprecated 1.0 functions (set them to -1)
+    }
+    
+#undef _initfunc
     
 }
 
@@ -437,15 +490,23 @@ VkBool32 VkDebugMessageCallback(VkDebugReportFlagsEXT flags,
 
 PFN_vkDestroyDebugReportCallbackEXT CreateVkDebug(VkInstance instance){
     
+    
+    
     PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback;
     PFN_vkDestroyDebugReportCallbackEXT DestroyDebugReportCallback;
     VkDebugReportCallbackEXT DebugReportCallback;
     
-    _instanceproc(CreateDebugReportCallback,instance,
-                  CreateDebugReportCallbackEXT);
+    void* fptr = 0;
     
-    _instanceproc(DestroyDebugReportCallback,instance,
-                  DestroyDebugReportCallbackEXT);
+    _instproc(fptr,instance,
+              vkCreateDebugReportCallbackEXT);
+    
+    CreateDebugReportCallback = (PFN_vkCreateDebugReportCallbackEXT)fptr;
+    
+    _instproc(fptr,instance,
+              vkDestroyDebugReportCallbackEXT);
+    
+    DestroyDebugReportCallback = (PFN_vkDestroyDebugReportCallbackEXT)fptr;
     
     VkDebugReportCallbackCreateInfoEXT debug_info = {};
     debug_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
@@ -669,7 +730,7 @@ u32 memtype = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT){
     auto device = vdevice->device;
     
     VkPhysicalDeviceMemoryProperties 
-        memoryproperties = *(vdevice->memoryproperties);
+        memoryproperties = *(vdevice->phys_info->memoryproperties);
     
     context.buffer = 
         CreateBuffer(device,0,data_size,usage,VK_SHARING_MODE_EXCLUSIVE,0,0);
@@ -803,11 +864,11 @@ VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
     
     context.size = memoryreq.size;
     
-    auto typeindex = VGetMemoryTypeIndex(*vdevice->memoryproperties,
+    auto typeindex = VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,
                                          memoryreq.memoryTypeBits,flags);
     
     if(typeindex == (u32)-1 && (add_flags == V_AMD_DEVICE_HOST_VISIBLE)){
-        typeindex = VGetMemoryTypeIndex(*vdevice->memoryproperties,
+        typeindex = VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,
                                         memoryreq.memoryTypeBits,flags);
     }
     
@@ -820,8 +881,7 @@ VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
 }
 
 
-VkInstance CreateInstance(const s8* _restrict name,
-                          u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver,
+VkInstance CreateInstance(const s8* _restrict name,u32 api_version,
                           const s8** layer_array,ptrsize layer_count,
                           const s8** extension_array,ptrsize extension_count){
     
@@ -830,7 +890,7 @@ VkInstance CreateInstance(const s8* _restrict name,
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = name;
     app_info.pEngineName = name;
-    app_info.apiVersion = VK_MAKE_VERSION(firstno_apiver,secondno_apiver,thirdno_apiver);
+    app_info.apiVersion = api_version;
     
     VkInstanceCreateInfo instance_info = {};
     
@@ -896,8 +956,6 @@ VkSurfaceKHR CreateSurface(VkInstance instance,HINSTANCE connection,HWND window)
     surface_info.hinstance = connection;
     surface_info.hwnd = window;
     
-    _initfunc(vkCreateWin32SurfaceKHR,vkcreate_xlib_wayland_win32surfacekhr);
-    
     _vktest(vkCreateWin32SurfaceKHR(instance,&surface_info,global_allocator,&surface));
     
     return surface;
@@ -916,8 +974,6 @@ VkSurfaceKHR CreateSurface(VkInstance instance,Display* display,Window window){
     surface_info.pNext = 0;
     surface_info.dpy = display;
     surface_info.window = window;
-    
-    _initfunc(vkCreateXlibSurfaceKHR,vkcreate_xlib_wayland_win32surfacekhr);
     
     _vktest(vkCreateXlibSurfaceKHR(instance, &surface_info,global_allocator,&surface));
     
@@ -1014,14 +1070,22 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR GetSurfaceCapabilities;
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR GetSurfacePresentModes;  
     
-    _instanceproc(GetSurfaceCapabilities,instance,
-                  GetPhysicalDeviceSurfaceCapabilitiesKHR);
+    void* fptr = 0;
     
-    _instanceproc(GetSurfaceFormats,instance,
-                  GetPhysicalDeviceSurfaceFormatsKHR);
+    _instproc(fptr,instance,
+              vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
     
-    _instanceproc(GetSurfacePresentModes,instance,
-                  GetPhysicalDeviceSurfacePresentModesKHR);
+    GetSurfaceCapabilities = (PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR)fptr;
+    
+    _instproc(fptr,instance,
+              vkGetPhysicalDeviceSurfaceFormatsKHR);
+    
+    GetSurfaceFormats = (PFN_vkGetPhysicalDeviceSurfaceFormatsKHR)fptr;
+    
+    _instproc(fptr,instance,
+              vkGetPhysicalDeviceSurfacePresentModesKHR);
+    
+    GetSurfacePresentModes = (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR)fptr;
     
     VkSurfaceCapabilitiesKHR surfacecapabilities;
     
@@ -1354,8 +1418,7 @@ void VSetDeviceAllocator(VkDeviceMemory (*allocator)(VkDevice,VkDeviceSize,u32))
     deviceallocator = allocator;
 }
 
-void VCreateInstance(const s8* applicationname_string,logic validation_enable,
-                     u32 firstno_apiver,u32 secondno_apiver,u32 thirdno_apiver){
+u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,u32 v_inst_flags){
     
     _kill("instance already active\n",global_instance);
     
@@ -1399,17 +1462,69 @@ void VCreateInstance(const s8* applicationname_string,logic validation_enable,
     
     _kill("failed to load lib\n",!vkcreateinstance);
     
+    if(VK_MAKE_VERSION(1,0,0) != api_version){
+        
+        PFN_vkEnumerateInstanceVersion EnumerateInstanceVersion_fptr =
+        
+            (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(
+            VK_NULL_HANDLE,"vkEnumerateInstanceVersion");
+        
+        if(EnumerateInstanceVersion_fptr){
+            
+            u32 latest_version = 0;
+            
+            EnumerateInstanceVersion_fptr(&latest_version);
+            
+            _dprint("VULKAN\nLatest supported: %d.%d.%d\nRequested: %d.%d.%d\n",VK_VERSION_MAJOR(latest_version),VK_VERSION_MINOR(latest_version),VK_VERSION_PATCH(latest_version),VK_VERSION_MAJOR(api_version),VK_VERSION_MINOR(api_version),VK_VERSION_PATCH(api_version));
+            
+            if(api_version > latest_version){
+                
+                if(V_INSTANCE_FLAGS_API_VERSION_OPTIONAL & v_inst_flags){
+                    
+                    api_version = latest_version;
+                }
+                
+                else{
+                    return (u32)-1;
+                }
+                
+            }
+            
+        }
+        
+        else if(V_INSTANCE_FLAGS_API_VERSION_OPTIONAL & v_inst_flags){
+            
+            _dprint("Only 1.0 loader found. Falling back to version 1.0\n%s","");
+            
+            
+            api_version = VK_MAKE_VERSION(1,0,0);
+        }
+        
+        else{
+            return (u32)-1;
+        }
+    }
+    
+    _dprint("Using: %d.%d.%d\n",VK_VERSION_MAJOR(api_version),VK_VERSION_MINOR(api_version),VK_VERSION_PATCH(api_version));
     
     global_instance = CreateInstance(applicationname_string,
-                                     firstno_apiver,secondno_apiver,thirdno_apiver,
+                                     api_version,
                                      layer_array,layer_count,
                                      extension_array,extension_count);
     
-    InternalLoadVulkanFunctions();
+    global_version_no = api_version;
+    
+    InternalLoadVulkanInstanceLevelFunctions();
+    
+    if(!(v_inst_flags & V_INSTANCE_FLAGS_SINGLE_VKDEVICE)){
+        InternalLoadVulkanFunctions(global_instance,(void*)vkGetInstanceProcAddr);
+    }
     
     if(validation_enable){
         CreateVkDebug(global_instance);
     }
+    
+    return api_version;
 }
 
 VkQueue VGetQueue(const VDeviceContext* _restrict vdevice,VQueueType type){
@@ -1432,68 +1547,29 @@ u32 VGetQueueFamilyIndex(VQueueType type){
 }
 
 
-VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
-                                    u32 physicaldevice_index){
+VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array,u32 physdevice_count,u32 vdevice_flags,
+                                    u32 createqueue_bits){
     
-    VDeviceContext context;
+    _kill("we do not support this yet\n",physdevice_count > 1);
     
-    VkPhysicalDevice device_array[3];
-    u32 count;
+    VDeviceContext context = {};
     
-    u32 swapchain_enable = false;
+    context.phys_info = (VDeviceContext::PhysDeviceInfo*)alloc(sizeof(VDeviceContext::PhysDeviceInfo));
     
-    _vktest(vkEnumeratePhysicalDevices(global_instance,(u32*)&count,0));
-    
-    _vktest(vkEnumeratePhysicalDevices(global_instance,(u32*)&count,device_array));
-    
-    if(window){
-        
-        swapchain_enable = true;
-        
-        auto famindex = global_queuefamilyinfo_array[VQUEUETYPE_ROOT].familyindex;
-        
-        for(u32 i = 0; i < count; i++){
-            
-            auto physdevice = device_array[i];
-            
-#if _debug
-            
-            u32 tcount;
-            
-            vkGetPhysicalDeviceQueueFamilyProperties(physdevice,&tcount,0);
-            
-#endif
-            
-#ifdef _WIN32
-            _initfunc(vkGetPhysicalDeviceWin32PresentationSupportKHR,vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr);
-#else
-            _initfunc(vkGetPhysicalDeviceXlibPresentationSupportKHR,vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr);
-#endif
-            
-            auto res = _get_present_support(physdevice,window,famindex);
-            
-            if(res){
-                physicaldevice_index = i;
-                break;
-            }
-            
-        }
-        
-    }
-    
-    context.physicaldevice = device_array[physicaldevice_index];
+    //TODOO: handle multi gpu
+    memcpy(&context.phys_info->physicaldevice_array[0],&physdevice_array[0],sizeof(VkPhysicalDevice) * physdevice_count);
     
 #if 1
     VkPhysicalDeviceProperties physproperties;
-    vkGetPhysicalDeviceProperties(context.physicaldevice,&physproperties);
+    vkGetPhysicalDeviceProperties(context.phys_info->physicaldevice_array[0],&physproperties);
     
     _dprint("gpu:%s\n",physproperties.deviceName);
 #endif
     
-    context.memoryproperties =
+    context.phys_info->memoryproperties =
         (VkPhysicalDeviceMemoryProperties*)alloc(sizeof(VkPhysicalDeviceMemoryProperties));
     
-    vkGetPhysicalDeviceMemoryProperties(context.physicaldevice,context.memoryproperties);
+    vkGetPhysicalDeviceMemoryProperties(context.phys_info->physicaldevice_array[0],context.phys_info->memoryproperties);
     
     VkDeviceQueueCreateInfo queueinfo_array[5];
     u32 queueinfo_count = 0;
@@ -1501,10 +1577,10 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     VkQueueFamilyProperties queue_properties[5] = {};
     u32 queueproperties_count = 0;
     
-    vkGetPhysicalDeviceQueueFamilyProperties(context.physicaldevice,
+    vkGetPhysicalDeviceQueueFamilyProperties(context.phys_info->physicaldevice_array[0],
                                              &queueproperties_count,0);
     
-    vkGetPhysicalDeviceQueueFamilyProperties(context.physicaldevice,
+    vkGetPhysicalDeviceQueueFamilyProperties(context.phys_info->physicaldevice_array[0],
                                              &queueproperties_count,queue_properties);
     
     f32 queue_priority = 1.0f;
@@ -1594,7 +1670,7 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     }
     
     VkPhysicalDeviceFeatures devicefeatures;
-    vkGetPhysicalDeviceFeatures(context.physicaldevice,&devicefeatures);
+    vkGetPhysicalDeviceFeatures(context.phys_info->physicaldevice_array[0],&devicefeatures);
     
     
     const s8* extension_array[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -1603,7 +1679,7 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     const s8* layer_array[] = {"VK_LAYER_LUNARG_standard_validation"};
     u32 layer_count = 0;
     
-    if(swapchain_enable){
+    if(vdevice_flags & V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW){
         extension_count++;
     }
     
@@ -1612,8 +1688,21 @@ VDeviceContext VCreateDeviceContext(WWindowContext* window,u32 createqueue_bits,
     }
     
     context.device =
-        CreateDevice(context.physicaldevice,queueinfo_array,queueinfo_count,layer_array,
+        CreateDevice(context.phys_info->physicaldevice_array[0],queueinfo_array,queueinfo_count,layer_array,
                      layer_count,extension_array,extension_count,&devicefeatures); 
+    
+    if(!vkcreategraphicspipelines){
+        
+#if _debug
+        
+        _kill("V_L_SINGLE_VKDEVICE specified but another VkDevice was created\n",global_device);
+        global_device = context.device;
+        
+        InternalLoadVulkanFunctions(context.device,(void*)vkGetDeviceProcAddr);
+        
+#endif
+        
+    }
     
     return context;
 }
@@ -1627,10 +1716,14 @@ VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _restrict vdevic
     
 #ifdef _WIN32
     
+    _instproc(vkcreate_xlib_wayland_win32surfacekhr,global_instance,vkCreateWin32SurfaceKHR);
+    
     VkSurfaceKHR surface =
         CreateSurface(global_instance,windowcontext.handle, windowcontext.rootwindow);
     
 #else
+    
+    _instproc(vkcreate_xlib_wayland_win32surfacekhr,global_instance,vkCreateXlibSurfaceKHR);
     
     VkSurfaceKHR surface =
         CreateSurface(global_instance,windowcontext.x11_handle, windowcontext.x11_rootwindow);
@@ -1643,14 +1736,14 @@ VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _restrict vdevic
     
     //this is to shut the validation layer up
     
-    vkGetPhysicalDeviceSurfaceSupportKHR(vdevice->physicaldevice,
+    vkGetPhysicalDeviceSurfaceSupportKHR(vdevice->phys_info->physicaldevice_array[0],
                                          0,surface,&supported);
 #endif
     
     
     VSwapchainContext context =
-        CreateSwapchain(global_instance,vdevice->physicaldevice,vdevice->device,
-                        *(vdevice->memoryproperties),surface,windowcontext.width,
+        CreateSwapchain(global_instance,vdevice->phys_info->physicaldevice_array[0],vdevice->device,
+                        *(vdevice->phys_info->memoryproperties),surface,windowcontext.width,
                         windowcontext.height,swapcount,oldswapchain,sync_type);
     
     context.internal->surface = surface;
@@ -2133,7 +2226,7 @@ VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdev
     
     
     u32 typeindex = 
-        VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+        VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                             memreq.memoryTypeBits,flag);
     
     _kill("invalid memory type\n",typeindex == (u32)-1);
@@ -2184,7 +2277,7 @@ u32 data_size,logic is_devicelocal,logic is_coherrent){
     
     
     u32 typeindex = 
-        VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+        VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                             memreq.memoryTypeBits,flag);
     
     _kill("invalid memory type\n",typeindex == (u32)-1);
@@ -2245,14 +2338,14 @@ VkFormat format){
                     1,1,VK_SAMPLE_COUNT_1_BIT,tiling,
                     usage,
                     VK_SHARING_MODE_EXCLUSIVE,0,0,
-                    layout,vdevice->physicaldevice);
+                    layout,vdevice->phys_info->physicaldevice_array[0]);
     
     VkMemoryRequirements memoryreq;
     
     vkGetImageMemoryRequirements(vdevice->device,context.image,&memoryreq);
     
     //MARK:
-    u32 typeindex = VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+    u32 typeindex = VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                                         memoryreq.memoryTypeBits,
                                         memory_property);
     
@@ -2312,7 +2405,7 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
     
     
     
-    auto typeindex = VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+    auto typeindex = VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                                          memoryreq.memoryTypeBits,
                                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     
@@ -2340,7 +2433,7 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
                     1,1,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_SHARING_MODE_EXCLUSIVE,0,0,VK_IMAGE_LAYOUT_UNDEFINED,
-                    vdevice->physicaldevice);
+                    vdevice->phys_info->physicaldevice_array[0]);
     
     
     auto layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2348,7 +2441,7 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
     
     vkGetImageMemoryRequirements(vdevice->device,handle.image,&memoryreq);
     
-    typeindex = VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+    typeindex = VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                                     memoryreq.memoryTypeBits,
                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
@@ -2461,12 +2554,12 @@ VTextureContext VCreateTextureCache(const  VDeviceContext* _restrict vdevice,u32
                     1,1,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_SHARING_MODE_EXCLUSIVE,0,0,VK_IMAGE_LAYOUT_UNDEFINED,
-                    vdevice->physicaldevice);
+                    vdevice->phys_info->physicaldevice_array[0]);
     
     
     vkGetImageMemoryRequirements(vdevice->device,handle.image,&memoryreq);
     
-    auto typeindex = VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+    auto typeindex = VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                                          memoryreq.memoryTypeBits,
                                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
@@ -2557,11 +2650,11 @@ VTextureContext VCreateTexturePageTable(const  VDeviceContext* _restrict vdevice
                     VK_SHARING_MODE_EXCLUSIVE,
                     0,0,
                     VK_IMAGE_LAYOUT_UNDEFINED,
-                    vdevice->physicaldevice);
+                    vdevice->phys_info->physicaldevice_array[0]);
     
     vkGetImageMemoryRequirements(vdevice->device,context.image,&memoryreq);
     
-    auto typeindex = VGetMemoryTypeIndex(*(vdevice->memoryproperties),
+    auto typeindex = VGetMemoryTypeIndex(*(vdevice->phys_info->memoryproperties),
                                          memoryreq.memoryTypeBits,
                                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
@@ -3171,4 +3264,92 @@ VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* in
 void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,ptrsize* init_size){
     
     _vktest(vkGetPipelineCacheData(vdevice->device,cache,(size_t*)init_size,init_data));
+}
+
+
+//TODO: allow filtering out presentable devices only
+void VEnumeratePhysicalDevices(VkPhysicalDevice* array,u32* count,WWindowContext* window){
+    
+    u32 c = 0;
+    
+    VkPhysicalDevice device_array[16];
+    u32 device_count = 0;
+    
+    _vktest(vkEnumeratePhysicalDevices(global_instance,&device_count,0));
+    
+    _kill("too many devices\n",device_count > _arraycount(device_array));
+    
+    _vktest(vkEnumeratePhysicalDevices(global_instance,&device_count,device_array));
+    
+    for(u32 i = 0; i < device_count; i++){
+        
+        auto d = device_array[i];
+        
+        VkPhysicalDeviceProperties physproperties;
+        vkGetPhysicalDeviceProperties(d,&physproperties);
+        
+        if(physproperties.apiVersion >= global_version_no){
+            
+            if(window){
+                
+                u32 p_count = 0;
+                VkQueueFamilyProperties p_array[8] = {};
+                
+                vkGetPhysicalDeviceQueueFamilyProperties(d,
+                                                         &p_count,0);
+                
+                _kill("",p_count > _arraycount(p_array));
+                
+                vkGetPhysicalDeviceQueueFamilyProperties(d,
+                                                         &p_count,&p_array[0]);
+                
+                u32 famindex = (u32)-1;
+                
+                for(u32 j = 0; j < p_count; j++){
+                    
+                    if(p_array[j].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+                        famindex = j;
+                        break;
+                    }
+                }
+                
+                if(famindex == (u32)-1){
+                    continue;
+                }
+                
+#ifdef _WIN32
+                
+                _instproc(vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr,global_instance,vkGetPhysicalDeviceWin32PresentationSupportKHR);
+#else
+                
+                
+                _instproc(vkgetphysicaldevice_xlib_wayland_win32_presentationsupportkhr,global_instance,vkGetPhysicalDeviceXlibPresentationSupportKHR);
+#endif
+                
+                if(_get_present_support(d,window,famindex)){
+                    
+                    if(array){
+                        array[c] = d;
+                    }
+                    
+                    c++;
+                }
+                
+            }
+            
+            else {
+                
+                if(array){
+                    array[c] = d;
+                }
+                
+                c++;
+            }
+            
+            
+        }
+    }
+    
+    *count = c;
+    
 }

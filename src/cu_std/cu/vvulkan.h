@@ -19,6 +19,8 @@
 #include "ttype.h"
 #include "ccolor.h"
 
+#include "tthreadx.h"
+
 
 extern void* vkenumerateinstanceextensionproperties;
 extern void* vkenumerateinstancelayerproperties;
@@ -136,6 +138,9 @@ extern void* vkcmdclearcolorimage;
 extern void* vkgetphysicaldeviceimageformatproperties;
 extern void* vkcmdcopyimagetobuffer;
 extern void* vkgetpipelinecachedata;
+
+//vulkan 1.1
+extern void* vkenumeratephysicaldevicegroups;
 
 //defines
 #define vkEnumerateInstanceExtensionProperties ((PFN_vkEnumerateInstanceExtensionProperties)(vkenumerateinstanceextensionproperties))
@@ -271,6 +276,9 @@ extern void* vkgetpipelinecachedata;
 
 #define vkGetPipelineCacheData ((PFN_vkGetPipelineCacheData)vkgetpipelinecachedata)
 
+//vulkan 1.1
+#define vkEnumeratePhysicalDeviceGroups ((PFN_vkEnumeratePhysicalDeviceGroups)vkenumeratephysicaldevicegroups)
+
 
 #if _debug
 #define _vk_inject_cmdbuffers 1
@@ -373,9 +381,15 @@ enum VQueueType{
 
 
 struct VDeviceContext{
-    VkPhysicalDevice physicaldevice;
+    
+    struct PhysDeviceInfo{
+        
+        VkPhysicalDevice physicaldevice_array[8];
+        VkPhysicalDeviceMemoryProperties* memoryproperties;
+        u32 physicaldevice_count;
+    };
+    PhysDeviceInfo* phys_info;
     VkDevice device;
-    VkPhysicalDeviceMemoryProperties* memoryproperties;
 };
 
 struct VModel{
@@ -483,12 +497,21 @@ void VPushBackSubpassDependencySpec(VSubpassDependencySpec* spec,
                                     VkAccessFlags src_accessmask,VkAccessFlags dst_accessmask,
                                     VkDependencyFlags dependencyflags);
 
-void VCreateInstance(const s8* applicationname_string,logic validation_enable,
-                     u32 major_apiversion,u32 minor_apiversion,u32 revision_apiversion);
+enum V_Instance_Flags{
+    V_INSTANCE_FLAGS_NONE = 0,
+    V_INSTANCE_FLAGS_SINGLE_VKDEVICE = 1,
+    V_INSTANCE_FLAGS_API_VERSION_OPTIONAL = 2,
+};
 
-VDeviceContext VCreateDeviceContext(WWindowContext* window = 0,
-                                    u32 createqueue_bits = VCREATEQUEUEBIT_ALL,
-                                    u32 physicaldevice_index = 0);
+enum V_VDeviceContext_Flags{
+    V_VDEVICECONTEXT_FLAGS_NONE = 0,
+    V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW = 1,
+};
+
+u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,u32 v_inst_flags = V_INSTANCE_FLAGS_NONE);
+
+VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array = 0,u32 physdevice_count = 1,u32 vdevice_flags = V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW,
+                                    u32 createqueue_bits = VCREATEQUEUEBIT_ALL);
 
 VkQueue VGetQueue(const VDeviceContext* _in_ vdevice,VQueueType type);
 
@@ -507,7 +530,16 @@ VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _in_ vdevice,
                                           VPresentSyncType sync_type = VSYNC_NONE,
                                           VSwapchainContext* oldswapchain = 0);
 
-void VEnumeratedPhysicalDevices();
+struct VPhysicalDevice_Index{
+    VkPhysicalDevice physicaldevice;
+    u32 index;
+};
+
+struct VPhysicalDeviceGroups{};
+
+void VEnumeratePhysicalDevices(VkPhysicalDevice * array,u32* count,WWindowContext* window = 0);
+
+void VEnumeratePhysicalDeviceGroups(VPhysicalDeviceGroups* array,u32* count,WWindowContext* window = 0);
 
 VkFence VCreateFence(VDeviceContext* _in_ vdevice,VkFenceCreateFlags flags);
 
@@ -697,16 +729,7 @@ struct VThreadCommandbufferList{
 void _ainline VPushThreadCommandbufferList(VThreadCommandbufferList* list,
                                            VkCommandBuffer cmdbuffer){
     
-    u32 index;
-    u32 actual_index;
-    
-    do{
-        
-        index = list->count;
-        
-        actual_index = LockedCmpXchg(&list->count,index,index + 1);
-        
-    }while(actual_index != index);
+    u32 index = TGetEntryIndex(&list->count);
     
     //FIXME: we sometimes get null cmdbuffers
     _kill("submitted null cmdbuffer\n",!cmdbuffer);
