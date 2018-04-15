@@ -6,6 +6,59 @@
 _persist auto ustring = "patchthisvalueinatassetpacktime";
 
 
+//TODO: move this to pparse (rename it to BufferList to Array String)
+void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
+    
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    
+    ptrsize size = 0;
+    
+    auto buffer = FReadFileToBuffer(file,&size);
+    
+    FCloseFile(file);
+    
+    printf("const s8* %s[] = {\n",name);
+    
+    for(u32 i = 0;;){
+        
+        if(i >= size){
+            break;
+        }
+        
+        s8 dst_buffer[512] ={};
+        u32 len = 0;
+        
+        PGetLine(&dst_buffer[0],&buffer[0],&i,&len);
+        
+        if(len){
+            
+            s8 out_string[512] = {};
+            out_string[0] = '"';
+            
+            for(u32 j = 0; j < len;j++){
+                
+                if(dst_buffer[j] == '\r'){
+                    continue;
+                }
+                
+                out_string[j + 1] = dst_buffer[j];
+            }
+            
+            out_string[len] = '"';
+            out_string[len + 1] = ',';
+            out_string[len + 2] = '\n';
+            
+            printf(&out_string[0]);
+        }
+    }
+    
+    printf("}\n");
+    
+    unalloc(buffer);
+    
+}
+
+
 s32 main(s32 argc,s8** argv){
     
 #if  0

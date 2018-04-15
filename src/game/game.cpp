@@ -636,6 +636,7 @@ extern "C" {
                     FWrite(outfile,&entry->type_hash,sizeof(entry->type_hash));
                     //size
                     FWrite(outfile,&entry->size,sizeof(entry->size));
+                    
                     //name hash
                     FWrite(outfile,&entry->name_hash,sizeof(entry->name_hash));	
                     
