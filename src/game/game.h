@@ -44,17 +44,21 @@ enum PipelineType{
     PSTATIC= 1,
 };
 
+#define _max_objects 512
+
 struct SOAOrientationData{
     
-    f32 pos_x[300];
-    f32 pos_y[300];
-    f32 pos_z[300];
+    f32 pos_x[_max_objects];
+    f32 pos_y[_max_objects];
+    f32 pos_z[_max_objects];
     
-    Quaternion rot[300];
+    Quaternion rot[_max_objects];
     
-    f32 scale[300];
+    f32 scale[_max_objects];
     
-    u8 skip_array[300] = {};
+    u8 skip_array[_max_objects] = {};
+    
+    s8 obj_name[_max_objects][256] = {};
     u32 count = 0;
 };
 
@@ -67,13 +71,54 @@ struct GameData{
     f32 roty;
     logic running = true;
     
-#if _debug
-    logic draw_profiler;
-#endif
-    
     //These are entity registers
     SOAOrientationData orientation;
     void* components;
+    
+#if _debug
+    //GUI state variables
+    
+    
+    Vector2 prev_mpos;
+    u32 widget_type = 0;
+    u32 obj_id = 0;
+    u32 dirlight_id = 0;
+    
+    logic draw_profiler;
+    logic show_object_list = false;
+    logic show_object_editor = false;
+    logic show_dir_light_editor = false;
+    logic show_ambient_light_editor = false;
+    logic write_orientation = true;
+    
+    GUIVec2 pos_control = {-1.0f,1.0f};
+    GUIDim2 dim_control = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
+    
+    GUIVec2 pos_obj_list = {-0.16f,GUIDEFAULT_Y};
+    GUIDim2 dim_obj_list = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+    
+    GUIVec2 pos_obj_editor = {0.4f,GUIDEFAULT_Y};
+    GUIDim2 dim_obj_editor = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+    
+    GUIVec2 pos_dirlight = {-1.0f,1.0f};
+    GUIVec2 pos_ambient = {-1.0f,1.0f};
+    
+    s8 o_buffer[4][128] = {};
+    
+    Quaternion dir_light_rot[1024];
+    Color dir_light_color[1024];
+    f32 dir_light_intensity[1024];
+    
+    Color ambient_color;
+    f32 ambient_intensity;
+    
+#endif
+    
+};
+
+struct DirLight{
+    Vector4 dir;
+    Color color;
 };
 
 
@@ -95,6 +140,10 @@ struct SceneContext{
     void (*SetActiveCameraOrientation)(Vector4,Vector4);
     void (*SetObjectOrientation)(u32,Vector4,Quaternion,f32);
     void (*AddPointLight)(Vector3,Color,f32);
+    void (*AddSpotLight)(Vector3,Vector3,Color,f32,f32,f32);
+    
+    void (*GetDirLightList)(DirLight**,u32**);
+    void (*SetAmbientColor)(Color,f32);
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);
@@ -154,20 +203,3 @@ extern "C"{
     
     _dllexport void GameReload(GameReloadData*);
 }
-
-
-//MARK:light stuff (DEBUG) 
-//{
-//    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-//    light_ubo->point_count = 1;
-//    light_ubo->point_array[0] = {Vector4{-8.0f,-5.0f,0.0f,1.0f},White,0.2f};
-//    
-//    VkMappedMemoryRange range = {
-//        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-//        0,
-//        pdata->light_ubo.memory,
-//        0,
-//        sizeof(LightUBO)
-//    };
-//    
-//}

@@ -374,15 +374,15 @@ Quaternion operator-(Quaternion lhs,Quaternion rhs);
 Quaternion operator*(f32 lhs,Quaternion rhs);
 Quaternion operator*(Quaternion lhs,f32 rhs);
 Quaternion operator/(Quaternion lhs,f32 rhs);
+Quaternion operator*(Quaternion lhs,Quaternion rhs);
 
-//TODO: implement this
+Quaternion Inverse(Quaternion q);
+
 Vector3 RotateVector3(Vector3 v,Quaternion q);
 
 Quaternion ConstructQuaternion(Vector3 vector,f32 angle);
 
 Quaternion ConjugateQuaternion(Quaternion quaternion);
-
-Quaternion operator*(Quaternion lhs,Quaternion rhs);
 
 void DeconstructQuaternion(Quaternion quaternion,Vector3* vector,f32* angle);
 

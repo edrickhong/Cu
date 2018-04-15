@@ -36,7 +36,10 @@
 
 
 /*
-//TODO: separate sampler and texture
+TODO:
+light
+add a color picker
+separate sampler and texture
 */
 
 
@@ -96,7 +99,32 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->R = 1.0f;
                 light->G = 1.0f;
                 light->B = 1.0f;
-                light->intensity = 0.2f;
+                light->radius = 1.0f;
+                light->intensity = 1.0f;
+            }
+            
+            if(compname_hash == PHashString("SpotLight")){
+                
+                auto light = (SpotLight*)obj;
+                
+                light->R = 1.0f;
+                light->G = 1.0f;
+                light->B = 1.0f;
+                
+                
+                Vector3 dir = {0.0f,0.0f,1.0f,0.0f};
+                
+                dir = RotateVector3(dir,data->orientation.rot[obj_id]);
+                
+                light->dir_x = dir.x;
+                light->dir_y = dir.y;
+                light->dir_z = dir.z;
+                
+                light->radius = 1.0f;
+                light->intensity = 1.0f;
+                
+                light->full_angle = 60.0f;
+                light->hard_angle = 50.0f;
             }
             
             return obj;
@@ -183,7 +211,7 @@ u32 AddObject(SceneContext* context){
     data->orientation.pos_y[id] = pos.y;
     data->orientation.pos_z[id] = pos.z;
     
-    data->orientation.rot[id] = ConstructQuaternion({1,0,0,0},_radians(-90));
+    data->orientation.rot[id] = ConstructQuaternion({1,0,0,0},_radians(0));
     
     data->orientation.scale[id] = 1.0f;
     
@@ -250,6 +278,80 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     auto file = FOpenFile(_COMPFILE,F_FLAG_READONLY);
     
+    u32 metacount;
+    
+    FRead(file,&metacount,sizeof(metacount));
+    
+    for(u32 i = 0; i < metacount; i++){
+        
+        u32 comp_hash;
+        u32 comp_count;
+        u32 field_count;
+        
+        FRead(file,&comp_hash,sizeof(comp_hash));
+        FRead(file,&comp_count,sizeof(comp_count));
+        FRead(file,&field_count,sizeof(field_count));
+        
+        auto comp = MetaGetCompByNameHash(comp_hash);
+        
+        MetaDataCompOut out_comp;
+        
+        if(comp){
+            out_comp = GetComponentData(components,*comp);
+            (*out_comp.count) = comp_count;
+        }
+        
+        for(u32 j = 0; j < comp_count; j++){
+            
+            s8* obj;
+            
+            if(comp){
+                obj = out_comp.array + (j * out_comp.element_size);
+            }
+            
+            for(u32 k = 0; k < field_count; k++){
+                
+                u32 type_hash;
+                u32 type_size;
+                u32 name_hash;
+                u32 arraycount;
+                
+                
+                FRead(file,&type_hash,sizeof(type_hash));
+                FRead(file,&type_size,sizeof(type_size));
+                FRead(file,&name_hash,sizeof(name_hash));
+                FRead(file,&arraycount,sizeof(arraycount));
+                
+                for(u32 a = 0; a < arraycount; a++){
+                    
+                    s8 buffer[128] = {};
+                    
+                    FRead(file,&buffer[0],type_size);
+                    
+                    if(comp){
+                        if(MetaGetTypeByNameHash(name_hash,&out_comp.metadata_table[0],
+                                                 out_comp.metadata_count) == type_hash){
+                            MetaSetValueByNameHash(obj,a,&buffer[0],name_hash,
+                                                   &out_comp.metadata_table[0],out_comp.metadata_count);
+                        } 
+                    }
+                }
+                
+            }
+            
+        }
+        
+    }
+    
+    
+    for(u32 i = 0; i < components->entitydrawdata_count; i++){
+        
+        auto obj_id = components->entitydrawdata_array[i].id;
+        auto mat_id = components->entitydrawdata_array[i].material;
+        
+        context->SetObjectMaterial(obj_id,mat_id);
+    }
+    
     {
         
         FRead(file,&data->orientation.count,sizeof(data->orientation.count));
@@ -294,138 +396,32 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
             
         }
         
-    }
-    
-    u32 metacount;
-    
-    FRead(file,&metacount,sizeof(metacount));
-    
-    for(u32 i = 0; i < metacount; i++){
+        //ambient light
+        FRead(file,&data->ambient_color,sizeof(Color));
+        FRead(file,&data->ambient_intensity,sizeof(data->ambient_intensity));
         
-        u32 comp_hash;
-        u32 comp_count;
-        u32 field_count;
+        context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
         
-        FRead(file,&comp_hash,sizeof(comp_hash));
-        FRead(file,&comp_count,sizeof(comp_count));
-        FRead(file,&field_count,sizeof(field_count));
+        //dir light
         
-        auto comp = MetaGetCompByNameHash(comp_hash);
+        u32* dir_count = 0;
+        DirLight* dir_array = 0;
         
-        MetaDataCompOut out_comp;
+        ((SceneContext*)context)->GetDirLightList(&dir_array,&dir_count);
         
-        if(comp){
-            out_comp = GetComponentData(components,*comp);
-            (*out_comp.count) = comp_count;
+        for(u32 i = 0; i < (*dir_count); i++){
+            
+            auto k = &dir_array[i];
+            
+            FWrite(file,&k->dir,sizeof(k->dir));
+            FWrite(file,&k->color,sizeof(k->color));
         }
         
-        for(u32 j = 0; j < comp_count; j++){
-            
-            s8* obj;
-            
-            if(comp){
-                obj = out_comp.array + (j * out_comp.element_size);
-            }
-            
-            for(u32 k = 0; k < field_count; k++){
-                
-                u32 type_hash;
-                u32 type_size;
-                u32 name_hash;
-                s8 buffer[128] = {};
-                
-                FRead(file,&type_hash,sizeof(type_hash));
-                FRead(file,&type_size,sizeof(type_size));
-                FRead(file,&name_hash,sizeof(name_hash));
-                FRead(file,&buffer[0],type_size);
-                
-                if(comp){
-                    if(MetaGetTypeByNameHash(name_hash,&out_comp.metadata_table[0],
-                                             out_comp.metadata_count) == type_hash){
-                        MetaSetValueByNameHash(obj,&buffer[0],name_hash,
-                                               &out_comp.metadata_table[0],out_comp.metadata_count);
-                    } 
-                }
-                
-            }
-            
-        }
-        
-    }
-    
-    
-    for(u32 i = 0; i < components->entitydrawdata_count; i++){
-        
-        auto obj_id = components->entitydrawdata_array[i].id;
-        auto mat_id = components->entitydrawdata_array[i].material;
-        
-        context->SetObjectMaterial(obj_id,mat_id);
     }
     
     FCloseFile(file);
 }
 
-void ComponentStartInit(SceneContext* context){
-    
-    ((ComponentStruct*)data->components)->entityanimationdata_count = 2;
-    ((ComponentStruct*)data->components)->entityanimationdata_array[0] = {0,0,0,1,0.0f,1.0f};
-    ((ComponentStruct*)data->components)->entityanimationdata_array[1] = {1,0,0,1,0.0f,0.2f};
-    
-    auto quaternion = ConstructQuaternion({1,0,0,0},_radians(-90));
-    
-    data->orientation.pos_x[0] = -9.0f;
-    data->orientation.pos_y[0] = -1.5f;
-    data->orientation.pos_z[0] = 2.0f;
-    data->orientation.rot[0] = quaternion;
-    data->orientation.scale[0] = 0.001f;
-    
-    context->SetObjectOrientation(0,{-9.0f,-1.5f,2.0f,1.0f},quaternion,0.001f);
-    
-    data->orientation.pos_x[1] = -6.0f;
-    data->orientation.pos_y[1] = -1.5f;
-    data->orientation.pos_z[1] = 2.0f;
-    data->orientation.rot[1] = quaternion;
-    data->orientation.scale[1] = 0.001f;
-    
-    context->SetObjectOrientation(1,{-6.0f,-1.5f,2.0f,1.0f},quaternion,0.001f);
-    
-    auto quaternion1 = ConstructQuaternion({1,0,0,0},(22.0f/7.0f));
-    
-    data->orientation.pos_x[2] = 0.0f;
-    data->orientation.pos_y[2] = 0.0f;
-    data->orientation.pos_z[2] = 1.0f;
-    data->orientation.rot[1] = quaternion1;
-    data->orientation.scale[2] = 0.1f;
-    
-    
-    
-    context->SetObjectOrientation(2,{0.0f,0.0f,1.0f,1.0f},quaternion1,0.1f);
-    
-    data->orientation.count = 3;
-    
-    ((ComponentStruct*)data->components)->entitydrawdata_count = 3;
-    
-    auto drawdata = &((ComponentStruct*)data->components)->entitydrawdata_array[0];
-    drawdata->id = 0;
-    drawdata->model = 0;
-    // drawdata->texture = 0;
-    drawdata->group = 0;
-    
-    drawdata++;
-    
-    drawdata->id = 1;
-    drawdata->model = 0;
-    // drawdata->texture = 0;
-    drawdata->group = 0;
-    
-    
-    drawdata++;
-    
-    drawdata->id = 2;
-    drawdata->model = 1;
-    // drawdata->texture = 1;
-    drawdata->group = 1;
-}
 
 typedef u64 AudioToken;
 
@@ -455,7 +451,29 @@ void UpdateLightList(SceneContext* context){
         
         auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
         
-        context->AddPointLight(pos,Color{light->R,light->G,light->B,1.0f},light->intensity);
+        Vector4 c = {light->R,light->G,light->B,1.0f};
+        c =  c * light->intensity;
+        
+        context->AddPointLight(pos,Color{c.x,c.y,c.z,1.0f},light->radius);
+        
+#if _debug && 0
+        GUIDrawAxisSphere(pos,4.0f);
+#endif
+    }
+    
+    for(u32 i = 0; i < comp->spotlight_count; i++){
+        
+        auto light = &comp->spotlight_array[i];
+        
+        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
+        
+        auto dir = Vector3{light->dir_x,light->dir_y,light->dir_z,1.0f};
+        
+        Vector4 c = {light->R,light->G,light->B,1.0f};
+        c =  c * light->intensity;
+        
+        context->AddSpotLight(pos,dir,Color{c.x,c.y,c.z,1.0f},light->full_angle,light->hard_angle,light->radius);
+        
     }
 }
 
@@ -574,45 +592,6 @@ extern "C" {
         auto outfile = FOpenFile(_COMPFILE,F_FLAG_READWRITE |
                                  F_FLAG_TRUNCATE | F_FLAG_CREATE);
         
-        {
-            
-            FWrite(outfile,&data->orientation.count,sizeof(data->orientation.count));
-            
-            auto count = data->orientation.count;
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.pos_x[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.pos_y[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.pos_z[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.rot[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.scale[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-            //skip array
-            for(u32 i = 0; i < count; i++){
-                auto entry = data->orientation.skip_array[i];
-                FWrite(outfile,&entry,sizeof(entry));
-            }
-            
-        }
-        
         u32 metacount = _arraycount(METACOMP_ARRAY);
         
         FWrite(outfile,&metacount,sizeof(metacount));
@@ -653,11 +632,6 @@ extern "C" {
                     
                     auto entry = &out_comp.metadata_table[k];
                     
-                    s8 buffer[128] = {};
-                    
-                    MetaGetValueByNameHash(obj,&buffer[0],entry->name_hash,
-                                           &out_comp.metadata_table[0],out_comp.metadata_count);
-                    
                     //type hash
                     FWrite(outfile,&entry->type_hash,sizeof(entry->type_hash));
                     //size
@@ -665,14 +639,86 @@ extern "C" {
                     //name hash
                     FWrite(outfile,&entry->name_hash,sizeof(entry->name_hash));	
                     
-                    //value
-                    FWrite(outfile,&buffer[0],entry->size);
+                    //array count
+                    FWrite(outfile,&entry->arraycount,sizeof(entry->arraycount));
+                    
+                    for(u32 a = 0; a < entry->arraycount; a++){
+                        
+                        s8 buffer[128] = {};
+                        
+                        MetaGetValueByNameHash(obj,a,&buffer[0],entry->name_hash,
+                                               &out_comp.metadata_table[0],out_comp.metadata_count);
+                        
+                        //value
+                        FWrite(outfile,&buffer[0],entry->size);
+                    }
                 }
                 
                 
             }
             
         }
+        
+        
+        //static stuff can go here so we can just append stuff
+        {
+            
+            FWrite(outfile,&data->orientation.count,sizeof(data->orientation.count));
+            
+            auto count = data->orientation.count;
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.pos_x[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.pos_y[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.pos_z[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.rot[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.scale[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            //skip array
+            for(u32 i = 0; i < count; i++){
+                auto entry = data->orientation.skip_array[i];
+                FWrite(outfile,&entry,sizeof(entry));
+            }
+            
+            //ambient light
+            FWrite(outfile,&data->ambient_color,sizeof(Color));
+            FWrite(outfile,&data->ambient_intensity,sizeof(data->ambient_intensity));
+            
+            //dir light
+            
+            u32* dir_count = 0;
+            DirLight* dir_array = 0;
+            
+            ((SceneContext*)context)->GetDirLightList(&dir_array,&dir_count);
+            
+            for(u32 i = 0; i < (*dir_count); i++){
+                
+                auto k = &dir_array[i];
+                
+                FWrite(outfile,&k->dir,sizeof(k->dir));
+                FWrite(outfile,&k->color,sizeof(k->color));
+            }
+            
+        }
+        
         
         FCloseFile(outfile);
     }
@@ -686,6 +732,35 @@ extern "C" {
         
         data->camera_pos = Vector4{0.0f,0.0f,-4.0f,1.0f};
         data->camera_lookdir = Vector4{0.0f,0.0f,1.0f,0.0f};
+        
+        
+        //set gui state
+        data->prev_mpos = {};
+        data->widget_type = 0;
+        data->obj_id = 0;
+        data->show_object_list = false;
+        data->show_object_editor = false;
+        data->pos_control = {-1.0f,1.0f};
+        data->dim_control = {GUIDEFAULT_W * 6.8f,GUIDEFAULT_H * 0.22f};
+        
+        data->write_orientation = true;
+        
+        data->pos_obj_list = {-0.16f,GUIDEFAULT_Y};
+        data->dim_obj_list = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+        
+        data->pos_obj_editor = {0.4f,GUIDEFAULT_Y};
+        data->dim_obj_list = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+        
+        data->dirlight_id = (u32)-1;
+        
+        data->pos_dirlight = data->pos_obj_editor;
+        data->pos_ambient = data->pos_dirlight;
+        
+        data->ambient_color = White;
+        data->ambient_intensity = 0.4f;
+        
+        memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
+        
         
     }
     
@@ -951,20 +1026,20 @@ logic FindHash(u32 hash,u32* hash_array,u32 hash_count){
 
 void EditorKeyboard(SceneContext* context,u32* widget_type){
     
-    static Vector2 prev_mpos = {};
-    
     auto mousestate = context->mousestate;
     
     auto cur_mpos = GUIMouseCoordToScreenCoord();
     cur_mpos.y *= -1.0f;
     
-    auto x_len = cur_mpos.x - prev_mpos.x;
-    auto y_len = cur_mpos.y - prev_mpos.y;
+    auto x_len = cur_mpos.x - data->prev_mpos.x;
+    auto y_len = cur_mpos.y - data->prev_mpos.y;
     
     if(IsKeyDown(mousestate,MOUSEBUTTON_RIGHT)){
         
         auto x_angle = 0.0f;
         auto y_angle = 0.0f;
+        
+        Vector3 lookdir = data->camera_lookdir;
         
         if(x_len != 0){
             x_angle = atanf(x_len/1.0f);
@@ -975,20 +1050,27 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         }
         
         if(fabsf(x_angle) > fabsf(y_angle)){
-            data->camera_lookdir = RotateVector(data->camera_lookdir,
-                                                {0,x_angle});  
+            
+            lookdir = RotateVector(lookdir,
+                                   {0,x_angle});  
         }
         
         else{
-            data->camera_lookdir = RotateVector(data->camera_lookdir,
-                                                {y_angle});  
+            
+            auto k = RotateVector(lookdir,
+                                  {y_angle});  
+            
+            if((1.0f - Vec3::Dot(k,Vector3{0.0f,-1.0f,0.0f,0.0f})) > 0.01f){
+                lookdir = k;
+            }
         }
         
+        lookdir = Vec3::Normalize(lookdir);
         
-        data->camera_lookdir = Vec3::Normalize(data->camera_lookdir);
+        data->camera_lookdir = lookdir;
     }
     
-    prev_mpos = cur_mpos;
+    data->prev_mpos = cur_mpos;
     
     KeyboardState* keyboardstate = context->keyboardstate;
     f32 delta_time = context->prev_frametime;
@@ -1066,7 +1148,28 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
 
 logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
     
+    //Mark out obj
+    for(u32 i = 0; i < data->orientation.count; i++){
+        
+        if(i != obj_id && !data->orientation.skip_array[i]){
+            
+            Vector3 pos = {
+                data->orientation.pos_x[i],
+                data->orientation.pos_y[i],
+                data->orientation.pos_z[i],
+            };
+            
+            
+            GUIDrawPosMarker(pos,White);
+        }
+    }
+    
     logic to_update = false;
+    
+    if(obj_id == (u32)-1){
+        return false;
+    }
+    
     
     Vector3 pos = {
         data->orientation.pos_x[obj_id],
@@ -1096,18 +1199,41 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                 data->orientation.scale[obj_id] = scale;
                 to_update = true;
             }
-            GUIDrawPosMarker(pos);
+            GUIDrawPosMarker(pos,Red);
         }break;
         
         case 3:{
             if(GUIRotationGizmo(pos,&rot)){
+                
                 data->orientation.rot[obj_id] = rot;
                 to_update = true;
+                
+                //rotate spot lights. we will not tread dir lights as objects
+                
+                auto comp = (ComponentStruct*)data->components;
+                
+                for(u32 i = 0; i < comp->spotlight_count; i++){
+                    
+                    auto light = &comp->spotlight_array[i];
+                    
+                    if(obj_id == light->id){
+                        
+                        Vector3 dir = {0.0f,0.0f,1.0f,1.0f};
+                        
+                        dir = RotateVector3(dir,data->orientation.rot[obj_id]);
+                        
+                        light->dir_x = dir.x;
+                        light->dir_y = dir.y;
+                        light->dir_z = dir.z;
+                        
+                        break;
+                    }
+                }
             }  
         }break;
         
         default:{
-            GUIDrawPosMarker(pos);
+            GUIDrawPosMarker(pos,Red);
         }break;
         
     }
@@ -1121,49 +1247,220 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
 
 void EditorGUI(SceneContext* context){
     
-    static u32 widget_type = 0;
-    static u32 obj_id = 2;
-    
-    auto to_update_view = EditorWidget(context,obj_id,widget_type);
-    
-    static logic show_object_list = false;
-    static logic show_object_editor = false;
+    auto to_update_view = EditorWidget(context,data->obj_id,data->widget_type);
     
     //control panel
     
     {
-        static GUIVec2 pos = {-1.0f,1.0f};
-        static GUIDim2 dim = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};
         
-        GUIBeginWindow("Control Panel",&pos,&dim);
+        GUIBeginWindow("Control Panel",&data->pos_control,&data->dim_control);
         
         if(GUIButton("Obj List")){
-            show_object_list = !show_object_list;
+            data->show_object_list = !data->show_object_list;
         }
         
-        if(GUIButton("Obj Editor")){
-            show_object_editor = !show_object_editor;  
+        if(GUIButton("Obj Editor") && data->obj_id != (u32)-1){
+            data->show_object_editor = !data->show_object_editor;  
         }
         
         if(GUIButton("Profiler")){
             data->draw_profiler = !data->draw_profiler;
         }
         
+        if(GUIButton("Dir Light")){
+            data->show_dir_light_editor = !data->show_dir_light_editor;
+            data->dirlight_id = (u32)-1;
+        }
+        
+        if(GUIButton("Ambient Light")){
+            
+            data->show_ambient_light_editor = !data->show_ambient_light_editor;
+        }
+        
     }
     
-    static logic write_orientation = true;
     
-    //object list
-    if(show_object_list){
+    if(data->show_ambient_light_editor){
         
-        static GUIVec2 pos = {-0.16f,GUIDEFAULT_Y};
-        static GUIDim2 dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H};
+        GUIBeginWindow("Ambient Light",&data->pos_ambient,&data->dim_obj_list);
+        
+        auto color = &data->ambient_color;
+        auto intensity = &data->ambient_intensity;
+        
+        auto write_values = false;
+        
+        s8 buffer[128] = {};
+        
+        sprintf(&buffer[0],"%f",color->R);
+        
+        if(GUITextField("R",&buffer[0])){
+            color->R = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        sprintf(&buffer[0],"%f",color->G);
+        
+        if(GUITextField("G",&buffer[0])){
+            color->G = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        sprintf(&buffer[0],"%f",color->B);
+        
+        if(GUITextField("B",&buffer[0])){
+            color->B = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        sprintf(&buffer[0],"%f",*intensity);
+        
+        if(GUITextField("intensity",&buffer[0])){
+            *intensity = (f32)atof(&buffer[0]);
+            write_values = true;
+        }
+        
+        memset(&buffer[0],0,sizeof(buffer));
+        
+        if(write_values){
+            
+            context->SetAmbientColor(*color,*intensity);
+        }
+    }
+    
+    //directional light list (this should overwrite the regular widgets)
+    if(data->show_dir_light_editor){
         
         s8 title_buffer[128] = {};
         
-        sprintf(title_buffer,"Object List(%d)",obj_id);
+        sprintf(&title_buffer[0],"Directional Lights(%d)",data->dirlight_id);
         
-        GUIBeginWindow(title_buffer,&pos,&dim);
+        GUIBeginWindow(&title_buffer[0],&data->pos_dirlight,&data->dim_obj_list);
+        
+        //MARK: if you think about it, directional lights are constant. maybe we should just have a dir light register instead of using AddDirLight that clears every frame
+        
+        auto comp = (ComponentStruct*)data->components;
+        
+        u32* dir_count = 0;
+        DirLight* dir_array = 0;
+        
+        context->GetDirLightList(&dir_array,&dir_count);
+        
+        //list lights
+        for(u32 i = 0; i < *dir_count; i++){
+            
+            s8 buffer[128] = {};
+            
+            sprintf(&buffer[0],"light: %d",i);
+            
+            if(GUIButton(&buffer[0])){
+                data->dirlight_id = i;
+            }
+        }
+        
+        if(GUIButton("Add Light")){
+            dir_array[*dir_count] = {Vector3{0.0f,0.0f,1.0f,1.0f},White};
+            data->dir_light_rot[*dir_count] = ConstructQuaternion(Vector3{0.0f,1.0f,0.0f,1.0f},0.0f);
+            
+            data->dir_light_color[*dir_count] = White;
+            data->dir_light_intensity[*dir_count] = 1.0f;
+            
+            data->dirlight_id = (*dir_count);
+            (*dir_count)++;
+        }
+        
+        if(GUIButton("Remove Light")){
+            (*dir_count)--;
+            dir_array[data->dirlight_id] = dir_array[*dir_count];
+            
+            data->dirlight_id = (*dir_count) - 1;
+        }
+        
+        
+        
+        if(data->dirlight_id != (u32)-1){
+            
+            auto light = &dir_array[data->dirlight_id];
+            auto rot = &data->dir_light_rot[data->dirlight_id];
+            Vector4 dir = Vector3{0.0f,0.0f,1.0f,0.0f};
+            
+            auto color = &data->dir_light_color[data->dirlight_id];
+            auto intensity = &data->dir_light_intensity[data->dirlight_id];
+            
+            logic write_values = false;
+            
+            //dir light fields
+            s8 buffer[128] = {};
+            
+            sprintf(&buffer[0],"%f",color->R);
+            
+            if(GUITextField("R",&buffer[0])){
+                color->R = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            sprintf(&buffer[0],"%f",color->G);
+            
+            if(GUITextField("G",&buffer[0])){
+                color->G = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            
+            sprintf(&buffer[0],"%f",color->B);
+            
+            if(GUITextField("B",&buffer[0])){
+                color->B = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            
+            sprintf(&buffer[0],"%f",*intensity);
+            
+            if(GUITextField("intensity",&buffer[0])){
+                *intensity = (f32)atof(&buffer[0]);
+                write_values = true;
+            }
+            
+            memset(&buffer[0],0,sizeof(buffer));
+            
+            if(write_values){
+                auto c = Vector4{color->R,color->G,color->B,color->A} * (*intensity);
+                light->color = Color{c.x,c.y,c.z,1.0f};
+            }
+            
+            //rotation widget and maybe scale to control intensity
+            
+            auto pos = data->camera_pos + (Vec3::Normalize(data->camera_lookdir) * 2.0f);
+            
+            if(GUIRotationGizmo(pos,rot)){
+                
+                light->dir = RotateVector3(dir,*rot);
+            }
+        }
+        
+        
+    }
+    
+    //object list
+    if(data->show_object_list){
+        
+        s8 title_buffer[128] = {};
+        
+        sprintf(title_buffer,"Object List(%d)",data->obj_id);
+        
+        GUIBeginWindow(title_buffer,&data->pos_obj_list,&data->dim_obj_list);
         
         for(u32 i = 0; i < data->orientation.count; i++){
             
@@ -1176,29 +1473,29 @@ void EditorGUI(SceneContext* context){
             sprintf(buffer,"obj_id:%d",i);
             
             if(GUIButton(&buffer[0])){
-                write_orientation = true;
-                obj_id = i;
+                data->write_orientation = true;
+                data->obj_id = i;
             }
             
         }
         
         if(GUIButton("Add Object")){
-            obj_id = AddObject(context);
+            data->obj_id = AddObject(context);
         }
         
         if(GUIButton("Remove Object")){
             
-            RemoveObject(obj_id,context);
+            RemoveObject(data->obj_id,context);
             
-            auto tid = obj_id;
+            auto tid = data->obj_id;
             
-            obj_id = 0;
+            data->obj_id = (u32)-1;
             
             if(tid > (data->orientation.count >> 1)){
                 for(u32 j = data->orientation.count - 1; j != (u32)-1 ; j--){
                     
                     if(!data->orientation.skip_array[j]){
-                        obj_id = j;
+                        data->obj_id = j;
                         break;
                     }
                     
@@ -1210,7 +1507,7 @@ void EditorGUI(SceneContext* context){
                 for(u32 j = 0; j < data->orientation.count ; j++){
                     
                     if(!data->orientation.skip_array[j]){
-                        obj_id = j;
+                        data->obj_id = j;
                         break;
                     }
                     
@@ -1224,99 +1521,90 @@ void EditorGUI(SceneContext* context){
     
     
     //component editor view
-    if(show_object_editor){
+    if(data->show_object_editor){
         
-        static GUIVec2 w_pos = {0.4f,GUIDEFAULT_Y};
-        static GUIDim2 w_dim = {GUIDEFAULT_W * 2.2f,GUIDEFAULT_H * 2.5f};
+        if(data->obj_id == (u32)-1){
+            data->show_object_editor = false;
+        }
         
-        GUIBeginWindow("Object Editor",&w_pos,&w_dim);
+        GUIBeginWindow("Object Editor",&data->pos_obj_editor,&data->dim_obj_list);
         
         //orientation fields
         {
             
-            //TODO: I will admit I was lazy, I'll do it individually at some point
-            auto init_orientation_field = [](s8* b1,s8* b2,s8* b3,s8* b4)->void {
-                sprintf(b1,"%f",data->orientation.pos_x[obj_id]);
-                sprintf(b2,"%f",data->orientation.pos_y[obj_id]);
-                sprintf(b3,"%f",data->orientation.pos_z[obj_id]);
-                sprintf(b4,"%f",data->orientation.scale[obj_id]);
-            };
+            sprintf(&data->o_buffer[0][0],"%f",data->orientation.pos_x[data->obj_id]);
             
-            static s8 o_buffer[4][128] = {};
+            sprintf(&data->o_buffer[1][0],"%f",data->orientation.pos_y[data->obj_id]);
             
-            if(write_orientation || to_update_view){
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
-                write_orientation = false;
-            }
+            sprintf(&data->o_buffer[2][0],"%f",data->orientation.pos_z[data->obj_id]);
             
-            if(GUITextField("x",&o_buffer[0][0],false,_pos_width)){
+            sprintf(&data->o_buffer[3][0],"%f",data->orientation.scale[data->obj_id]);
+            
+            if(GUITextField("x",&data->o_buffer[0][0],false,_pos_width)){
                 
-                if(PIsStringFloat(&o_buffer[0][0])){
+                if(PIsStringFloat(&data->o_buffer[0][0])){
                     
-                    auto value = (f32)atof(&o_buffer[0][0]);
+                    auto value = (f32)atof(&data->o_buffer[0][0]);
                     
-                    memcpy(&data->orientation.pos_x[obj_id],&value,
-                           sizeof(data->orientation.pos_x[obj_id]));
+                    memcpy(&data->orientation.pos_x[data->obj_id],&value,
+                           sizeof(data->orientation.pos_x[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
             }
             
             
-            if(GUITextField("y",&o_buffer[1][0],false,_pos_width)){
+            if(GUITextField("y",&data->o_buffer[1][0],false,_pos_width)){
                 
-                if(PIsStringFloat(&o_buffer[1][0])){
+                if(PIsStringFloat(&data->o_buffer[1][0])){
                     
-                    auto value = (f32)atof(&o_buffer[1][0]);
+                    auto value = (f32)atof(&data->o_buffer[1][0]);
                     
-                    memcpy(&data->orientation.pos_y[obj_id],&value,
-                           sizeof(data->orientation.pos_y[obj_id]));
+                    memcpy(&data->orientation.pos_y[data->obj_id],&value,
+                           sizeof(data->orientation.pos_y[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
             }
             
-            if(GUITextField("z",&o_buffer[2][0],false,_pos_width)){
+            if(GUITextField("z",&data->o_buffer[2][0],false,_pos_width)){
                 
-                if(PIsStringFloat(&o_buffer[2][0])){
+                if(PIsStringFloat(&data->o_buffer[2][0])){
                     
-                    auto value = (f32)atof(&o_buffer[2][0]);
+                    auto value = (f32)atof(&data->o_buffer[2][0]);
                     
-                    memcpy(&data->orientation.pos_z[obj_id],&value,
-                           sizeof(data->orientation.pos_z[obj_id]));
+                    memcpy(&data->orientation.pos_z[data->obj_id],&value,
+                           sizeof(data->orientation.pos_z[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
             }
             
-            if(GUITextField("scale",&o_buffer[3][0])){
+            if(GUITextField("scale",&data->o_buffer[3][0])){
                 
-                if(PIsStringFloat(&o_buffer[3][0])){
+                if(PIsStringFloat(&data->o_buffer[3][0])){
                     
-                    auto value = (f32)atof(&o_buffer[3][0]);
+                    auto value = (f32)atof(&data->o_buffer[3][0]);
                     
-                    memcpy(&data->orientation.scale[obj_id],&value,
-                           sizeof(data->orientation.scale[obj_id]));
+                    memcpy(&data->orientation.scale[data->obj_id],&value,
+                           sizeof(data->orientation.scale[data->obj_id]));
                     
-                    write_orientation = true;
+                    data->write_orientation = true;
                 }
-                init_orientation_field(&o_buffer[0][0],&o_buffer[1][0],&o_buffer[2][0],&o_buffer[3][0]);
             }
             
-            if(write_orientation){
+            if(data->write_orientation){
                 
-                Vector4 pos = {data->orientation.pos_x[obj_id],data->orientation.pos_y[obj_id],
-                    data->orientation.pos_z[obj_id],1.0f};
+                data->write_orientation = false;
                 
-                auto scale = data->orientation.scale[obj_id];
+                Vector4 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
+                    data->orientation.pos_z[data->obj_id],1.0f};
                 
-                auto rot = data->orientation.rot[obj_id];
+                auto scale = data->orientation.scale[data->obj_id];
                 
-                context->SetObjectOrientation(obj_id,pos,rot,scale);
+                auto rot = data->orientation.rot[data->obj_id];
+                
+                context->SetObjectOrientation(data->obj_id,pos,rot,scale);
             } 
             
         }
@@ -1339,10 +1627,10 @@ void EditorGUI(SceneContext* context){
                 //check object id
                 u32 id;
                 
-                MetaGetValueByName(comp_data_entry,&id,"id",comp_meta.metadata_table,
+                MetaGetValueByName(comp_data_entry,0,&id,"id",comp_meta.metadata_table,
                                    comp_meta.metadata_count);
                 
-                if(id != obj_id){
+                if(id != data->obj_id){
                     continue;
                 }
                 
@@ -1355,7 +1643,7 @@ void EditorGUI(SceneContext* context){
                 if(comp_meta.comp_name_hash != PHashString("EntityAnimationData")){
                     
                     if(GUIButton("X")){
-                        RemoveComponent(comp_meta.comp_name_hash,obj_id,context);
+                        RemoveComponent(comp_meta.comp_name_hash,data->obj_id,context);
                     }
                     
                 }
@@ -1368,62 +1656,59 @@ void EditorGUI(SceneContext* context){
                         continue;
                     }
                     
-                    s8 buffer[256] = {};
-                    
-                    MetaGetValueByName(comp_data_entry,&buffer[0],comp_meta_entry.name_string,
-                                       comp_meta.metadata_table,comp_meta.metadata_count);
-                    
-                    if(IsIntType(comp_meta_entry.type_hash)){
-                        sprintf(&buffer[0],"%d",*((u32*)(&buffer[0])));
-                    }
-                    
-                    else if(IsFloatType(comp_meta_entry.type_hash)){
-                        sprintf(&buffer[0],"%f",*((f32*)(&buffer[0])));
-                    }
-                    
-                    else if(InspectorIsOpaqueType(comp_meta_entry.type_hash)){
+                    for(u32 a = 0; a < comp_meta_entry.arraycount; a++){
                         
-                        u32 ret_id =
-                            InspectorHandleOpaqueTypes(comp_meta_entry.type_hash,*((u32*)(&buffer[0])),
-                                                       obj_id,context);
+                        s8 buffer[256] = {};
                         
-                        if(ret_id != (u32)-1){
-                            
-                            MetaSetValueByName(comp_data_entry,&ret_id,comp_meta_entry.name_string,
-                                               comp_meta.metadata_table,comp_meta.metadata_count);
+                        MetaGetValueByName(comp_data_entry,a,&buffer[0],comp_meta_entry.name_string,
+                                           comp_meta.metadata_table,comp_meta.metadata_count);
+                        
+                        if(IsIntType(comp_meta_entry.type_hash)){
+                            sprintf(&buffer[0],"%d",*((u32*)(&buffer[0])));
                         }
                         
-                        continue;
-                    }
-                    
-                    auto cur_buffer = &buffer[0];
-                    static s8 in_buffer[128] = {};
-                    
-                    if(GUIIsElementActive(comp_meta_entry.name_string)){
-                        cur_buffer = &in_buffer[0];
-                    }
-                    
-                    if(GUITextField(comp_meta_entry.name_string,cur_buffer)){
+                        else if(IsFloatType(comp_meta_entry.type_hash)){
+                            sprintf(&buffer[0],"%f",*((f32*)(&buffer[0])));
+                        }
                         
-                        if(PIsStringFloat(&in_buffer[0])){
+                        else if(InspectorIsOpaqueType(comp_meta_entry.type_hash)){
                             
-                            auto value = (f32)atof(&in_buffer[0]);
+                            u32 ret_id =
+                                InspectorHandleOpaqueTypes(comp_meta_entry.type_hash,*((u32*)(&buffer[0])),
+                                                           data->obj_id,context);
                             
-                            if(IsIntType(comp_meta_entry.type_hash)){
+                            if(ret_id != (u32)-1){
                                 
-                                auto v = (u32)value;
-                                memcpy(&in_buffer[0],&v,sizeof(v)); 
+                                MetaSetValueByName(comp_data_entry,a,&ret_id,comp_meta_entry.name_string,
+                                                   comp_meta.metadata_table,comp_meta.metadata_count);
                             }
                             
-                            if(IsFloatType(comp_meta_entry.type_hash)){
-                                memcpy(&in_buffer[0],&value,sizeof(value)); 
-                            }
-                            
-                            MetaSetValueByName(comp_data_entry,&in_buffer[0],comp_meta_entry.name_string,
-                                               comp_meta.metadata_table,comp_meta.metadata_count);
+                            continue;
                         }
                         
-                        memset(&in_buffer[0],0,sizeof(in_buffer));
+                        auto cur_buffer = &buffer[0];
+                        
+                        if(GUITextField(comp_meta_entry.name_string,cur_buffer)){
+                            
+                            if(PIsStringFloat(&cur_buffer[0])){
+                                
+                                auto value = (f32)atof(&cur_buffer[0]);
+                                
+                                if(IsIntType(comp_meta_entry.type_hash)){
+                                    
+                                    auto v = (u32)value;
+                                    memcpy(&cur_buffer[0],&v,sizeof(v)); 
+                                }
+                                
+                                if(IsFloatType(comp_meta_entry.type_hash)){
+                                    memcpy(&cur_buffer[0],&value,sizeof(value)); 
+                                }
+                                
+                                MetaSetValueByName(comp_data_entry,a,&cur_buffer[0],comp_meta_entry.name_string,
+                                                   comp_meta.metadata_table,comp_meta.metadata_count);
+                            }
+                        }
+                        
                     }
                     
                 }
@@ -1458,7 +1743,7 @@ void EditorGUI(SceneContext* context){
         if(GUIComboBox("Comp",(const s8**)&entry_array[0],entry_count,&id)){
             
             if(id){
-                AddComponent(PHashString(entry_array[id]),obj_id,context);
+                AddComponent(PHashString(entry_array[id]),data->obj_id,context);
             }
             
         }
@@ -1473,7 +1758,7 @@ void EditorGUI(SceneContext* context){
 #endif
     
     if(!GUIIsAnyElementActive()){
-        EditorKeyboard(context,&widget_type);  
+        EditorKeyboard(context,&data->widget_type);  
     }
     
 }

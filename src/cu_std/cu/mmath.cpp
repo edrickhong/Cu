@@ -1507,14 +1507,40 @@ logic Vec3::Intersect(Line3 a,Plane b,Point3* out_point){
 }
 
 Vector3 RotateVector3(Vector3 v,Quaternion q){
+    
     /*
       the rotated vector v' is given by
       v' = q * v * inverse(q)
       we are gonna optimize this case so we're not gonna do this verbatim
     */
-#if 0
+    
+#if 1
+    
+    //better version? we need to condense the math
+    Vector3 q_v = {q.x,q.y,q.z,1.0f};
+    f32 q_w =q.w;
+    
+    auto r = (2.0f * Vec3::Dot(q_v,v) * q_v) + (((q_w * q_w) - Vec3::Dot(q_v,q_v)) * v) + (2.0f * q_w * Vec3::Cross(q_v,v));
+    
+    return r;
+    
 #else
-    _kill("TODO: implement this\n",1);
+    
+    //non-optimal (verbatim formula above)
+    Quaternion t = {0.0f,v.x,v.y,v.z};
+    auto q_inv = Inverse(q);
+    
+    auto k = q * t * q_inv;
+    
+    return Vector3{k.x,k.y,k.z,1.0f};
+    
 #endif
-    return {};
+}
+
+
+Quaternion Inverse(Quaternion q){
+    
+    q.w *= -1.0f;
+    
+    return q * -1.0f;
 }
