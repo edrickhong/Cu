@@ -64,6 +64,14 @@ O=optimised,working
 ?: Do we need AddAssetAtPoint?
 (Does the order of assets matter?/Do we ever need to reorder the data buffer?)
 
+?: Can we run functions in functions? eg in Sort(), Print().
+
+?: What do we want Sort to do ? Only for displaying the list? or to bake as well ?
+
+?: Bake in sorted assets? 
+
+?: AssetTableEntry should probably store size rather than offset, so we can sort properly and also makes baking a lot easier.
+
 Validating: What makes the data valid? checking the whole table for all attributes?
 Checking for duplicates: qsort, std::set, or comparing each element with nested for loop?
 *************
@@ -84,7 +92,7 @@ struct AssetTableEntry {
 	s8 file_location[256] = {};
 	u64 file_location_hash = 0;
 	FileNode file_node;
-	//u32 size;
+	u32 size;
 	u32 offset;
 };
 
@@ -121,7 +129,7 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	for (u32 i = 0; i < out_table->count; i++) {
 		auto entry = &out_table->container[i]; 
 		if (PHashString(asset) == entry->file_location_hash) {
-			printf("Warning! %s file exists!\n",asset);
+			printf("Warning! %s file exists! Resouce %s was not added.\n",asset, asset);
 			return;
 		//file already exists
 		}
@@ -132,9 +140,10 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	//store offset
 	auto file = FOpenFile(asset, F_FLAG_READWRITE);
 	auto file_size = FGetFileSize(file);
+	entry.size = file_size;
 
 	if (out_table->count > 0) {
-		entry.offset = out_table->container[out_table->count-1].offset + file_size;
+		entry.offset = out_table->container[out_table->count-1].offset + out_table->container[out_table->count - 1].size;
 	}
 	else
 		entry.offset = 0;
@@ -177,41 +186,47 @@ void RemoveAssetFromList(const s8* asset, AssetTable* out_table) {
 	for (u32 i = 0; i < out_table->count; i++) {
 
 		auto entry = &out_table->container[i];
-
+		//printf("entryhash:%llu, toremove:%s, r3.spx:%llu\n", entry->file_location_hash, asset, PHashString("r3.spx"));
 		if (entry->file_location_hash == PHashString(asset)) {
 			out_table->Remove(entry);
 			return;
 		}
 
 	}
-
 	printf("WARNING: %s doesn't exist\n", asset);
-
-
 }
 
 
 	
-void SortListByType(const s8* assetlist, AssetTable* out_table) {
+void SortListByType(AssetTable* out_table) {
 	
 	printf("Table Count: %d\n\n", (u32)out_table->count);
 
 	//sort by type
 	qsort(out_table->container, out_table->count,
 		sizeof(AssetTableEntry),
-		[](const void * a, const void* b)->s32
-	{
-		auto block_a = (AssetTableEntry*)a;
-		auto block_b = (AssetTableEntry*)b;
+		[](const void * a, const void* b)->s32{
 
+			auto block_a = (AssetTableEntry*)a;
+			auto block_b = (AssetTableEntry*)b;
 
-		return block_a->type - block_b->type;
-	}
+			return block_a->type - block_b->type;
+		}
 	);
-	//PrintAssetList(out_table);
-	return;
 
+	//reset the offsets
+	u32 offset = (u32)0;
+	for (u32 i = 0; i < out_table->count; i++) {
+		auto entry = &out_table->container[i];
+
+		entry->offset = offset;
+		offset += entry->size;
+	}
+
+	return;
 }
+
+
 void WriteToFile(const s8* assetlist, AssetTable* out_table) {
 	auto file = FOpenFile(assetlist, F_FLAG_WRITEONLY | F_FLAG_TRUNCATE);
 
@@ -232,7 +247,7 @@ void ValidateList(const s8* assetlist, AssetTable* out_table) {
 void PrintAssetList(AssetTable* table){
 
   u32 t = (u32)-1;
-  
+  printf("\n\nTABLESTART\n\n");
   for(u32 i = 0; i < table->count; i++){
     
     auto entry = &table->container[i];
@@ -242,10 +257,10 @@ void PrintAssetList(AssetTable* table){
       t = entry->type;
     }
     
-    printf("%d %d %d %s %llu\n",i,entry->type,entry->offset,entry->file_location,entry->file_location_hash);
+    printf("SN%d TYPE%d SIZE%d OFFSET%d %s %llu\n",i,entry->type,entry->size,entry->offset,entry->file_location,entry->file_location_hash);
     
   }
-  
+  printf("\n\nTABLEEND\n\n");
 }
 
 /*
@@ -295,6 +310,9 @@ s32 main(s32 argc,s8** argv){
 
 	}
 
+	//printf("%llu,%llu,%llu,%llu", PHashString("-list"), PHashString("-sort"), PHashString("-sirt"), PHashString("-lort"));
+
+
   if(argc < 3){
     printf("not enough arguments\n");
     PrintHelp();
@@ -326,8 +344,9 @@ s32 main(s32 argc,s8** argv){
 
 	 if (PHashString(argv[3]) == PHashString("-all")) {
 		  for (u32 p = 0; asset_table.count > 0; p++) {
-			  printf("removing %s\n", asset_table.container[p].file_location);
-			  RemoveAssetFromList(asset_table.container[p].file_location, &asset_table);
+			  RemoveAssetFromList(asset_table.container[0].file_location, &asset_table);
+			  printf("Removed %s\n", asset_table.container[0].file_location);
+			  //PrintAssetList(&asset_table);
 		  }
 	 }
 	 else {
@@ -340,7 +359,13 @@ s32 main(s32 argc,s8** argv){
   }
 
   else if(PHashString(argv[2]) == PHashString("-list")){
-    PrintAssetList(&asset_table);
+	  PrintAssetList(&asset_table);
+  }
+  else if(PHashString(argv[2]) == PHashString("-arrange")) {
+	  PrintAssetList(&asset_table);
+	  SortListByType(&asset_table);
+	  PrintAssetList(&asset_table);
+	  WriteToFile(argv[1], &asset_table);
   }
 
   else if(PHashString(argv[2]) == PHashString("-bake")){
