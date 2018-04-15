@@ -29,6 +29,38 @@
   NOTE: stb_vorbis_decode_filename("somefile.ogg", &channels, &sample_rate, &output);
 */
 
+
+//TODO: Make this easier to log with
+
+#if _debug
+
+
+struct DebugRenderEntry{
+    u32 batch_index;
+    u32 group_no;
+    u32 obj_index_in_batch;
+    s8* obj_assetfile;
+};
+
+struct DebugRenderRefEntry{
+    DebugRenderEntry* entry_array;
+    u32 entry_count;
+    ThreadID thread;
+};
+
+
+_persist DebugRenderRefEntry global_debugentry_array[32];
+_persist u32 global_debugentry_count = 0;
+
+void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
+    
+    u32 expected_count;
+    u32 actual_count = TGetEntryIndexD(&global_debugentry_count,_arraycount(global_debugentry_array));
+    
+    global_debugentry_array[actual_count] = {array,count,tid};
+    
+}
+
 void _ainline DebugPlane(Vertex* vert_array,u32* index_array){
     
     Vertex vert[] = {
@@ -45,6 +77,8 @@ void _ainline DebugPlane(Vertex* vert_array,u32* index_array){
     memcpy(vert_array,vert,sizeof(vert));
     memcpy(index_array,index,sizeof(index));
 }
+
+#endif
 
 struct PrimaryRenderCommandbuffer{
     VkCommandBuffer buffer;
@@ -112,7 +146,7 @@ struct RenderContext{
 };
 
 _persist RenderBatch* renderbatch_array[16];
-_persist u32 renderbatch_count = 0;
+_persist u32 renderbatch_cur = 0;
 _persist u32 renderbatch_completed_count = 0;
 _persist u32 renderbatch_total_count = 0;
 
@@ -150,7 +184,7 @@ void _ainline Clear(RenderContext* context){
         group->cmdbufferlist.count = 0;    
     }
     
-    renderbatch_count = 0;
+    renderbatch_cur = 0;
     renderbatch_completed_count = 0;
     renderbatch_total_count = 0;
 }
@@ -213,6 +247,13 @@ struct ThreadRenderData{
     VkCommandBuffer cmdbuffer[2 * _rendergroupcount];//MARK: swapchain 2 by rendergroup
     u32 active_group;
     u8 group_submit_count[4];
+    
+#if _debug
+    
+    DebugRenderEntry debugentry_array[32] = {};
+    u32 debugentry_count = 0;
+    
+#endif
 };
 
 ThreadRenderData CreateThreadRenderData(VDeviceContext* vdevice){
@@ -237,17 +278,17 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
     
     TIMEBLOCK(Wheat);
     
-    auto count = renderbatch_count;
-    
-    if(!count){
+    if(renderbatch_cur == renderbatch_total_count){
         return false;
     }
     
-    auto actual_count = LockedCmpXchg(&renderbatch_count,count,count -1);
+    auto count = renderbatch_cur;
+    
+    auto actual_count = LockedCmpXchg(&renderbatch_cur,count,count + 1);
     
     if(count == actual_count){
         
-        auto index = count - 1;
+        auto index = count;
         
         auto batch = renderbatch_array[index];
         
@@ -262,6 +303,8 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
             VStartCommandBuffer(cmdbuffer,
                                 VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
                                 context->renderpass,context->subpass_index,context->framebuffer,VK_FALSE,0,0);
+            
+            render->debugentry_count = 0;
         }
         
         _kill("a trivial non program will always have these\n",
@@ -310,6 +353,15 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
                                     &batch->descriptorset_array[0],1,&offsets);
             
             InternalDraw(cmdbuffer,vertexbuffer,indexbuffer,instancebuffer,obj.count);
+            
+#if _debug
+            
+            render->debugentry_array[render->debugentry_count] = {
+                index,batch->group,i,obj.handle->assetfile
+            };
+            render->debugentry_count++;
+            
+#endif
         }
         
         render->group_submit_count[batch->group]++;
@@ -330,6 +382,11 @@ void ExecuteRenderBatch(RenderContext* context,
         return;
     }
     
+#if _debug
+    
+    DebugSubmitDebugEntryRef(TGetThisThreadID(),&render->debugentry_array[0],render->debugentry_count);
+#endif
+    
     u32 count = _typebitcount(render->active_group) - BSR(render->active_group);
     
     for(u32 i = 0; i < count; i++){
@@ -345,6 +402,8 @@ void ExecuteRenderBatch(RenderContext* context,
             
             VPushThreadCommandbufferList(&context->rendergroup[i].cmdbufferlist,
                                          cmdbuffer);
+            
+            _kill("exceeds total\n",(renderbatch_completed_count + render->group_submit_count[i]) > renderbatch_total_count);
             
             LockedAdd(&renderbatch_completed_count,render->group_submit_count[i]);
         }
@@ -362,20 +421,26 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
     //FIXME:
     //we can get a hang here sometimes (renderbatch_completed_count > renderbatch_total_count)
     //Change the way completion is done. we will do this right after we revamp gui
+    
+    
     while(renderbatch_completed_count != renderbatch_total_count){
         _kill("",renderbatch_completed_count > renderbatch_total_count);
         _mm_pause();
     }
     
+#if _debug
+    
+    global_debugentry_count = 0;
+    
+#endif
 }
 
 void _ainline InternalDispatchRenderBatch(RenderBatch* batch,TSemaphore sem){
     
-    _kill("too many batches\n",renderbatch_count >= _arraycount(renderbatch_array));
+    _kill("too many batches\n",renderbatch_total_count >= _arraycount(renderbatch_array));
     
-    renderbatch_array[renderbatch_count] = batch;
+    renderbatch_array[renderbatch_total_count] = batch;
     renderbatch_total_count++;
-    renderbatch_count++;
     
     TSignalSemaphore(sem);
 }
@@ -504,11 +569,33 @@ struct LightUBO{
     struct PointLight{
         Vector4 pos;
         Color color;
-        f32 intensity;
+        
+        f32 radius;
     };
-    u32 point_count;
     
+    struct SpotLight{
+        
+        Vector4 pos;
+        Vector4 dir;
+        Color color;
+        
+        f32 cos_angle;
+        f32 hard_cos_angle;
+        
+        f32 radius;
+    };
+    
+    u32 dir_count;
+    u32 point_count;
+    u32 spot_count;
+    
+    
+    DirLight dir_array[_lightcount];
     PointLight point_array[_lightcount];
+    SpotLight spot_array[_lightcount];
+    
+    Color ambient_color;
+    
 };
 
 struct PlatformData{
@@ -1471,20 +1558,57 @@ void CompileAllPipelines(PlatformData* pdata){
 void ClearLightList(){
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     light_ubo->point_count = 0;
+    light_ubo->spot_count = 0;
 }
 
-void AddPointLight(Vector3 pos,Color color,f32 intensity){
+void SetAmbientColor(Color color ,f32 intensity){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
+    Vector4 c = Vector4{color.R,color.G,color.B,color.A} * intensity;
+    
+    light_ubo->ambient_color = Color{c.x,c.y,c.z,1.0f};
+}
+
+void GetDirLightList(DirLight** array,u32** count){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    *count = &light_ubo->dir_count;
+    *array = &light_ubo->dir_array[0];
+}
+
+void AddPointLight(Vector3 pos,Color color,f32 radius){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    //TODO: make radius into a proper distance cut off
+    
     light_ubo->point_array[light_ubo->point_count] = {
-        pos,color,intensity
+        pos,color,radius
     };
     
     light_ubo->point_count++;
 }
 
+void AddDirLight(Vector3 dir,Color color){
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    light_ubo->dir_array[light_ubo->dir_count] = {dir,color};
+    light_ubo->dir_count ++;
+}
 
+void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
+    
+    _kill("hard must be less than full\n",hard_angle > full_angle);
+    
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+    light_ubo->spot_array[light_ubo->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
+    light_ubo->spot_count ++;
+    
+}
 
 //MARK:
 void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
@@ -1679,6 +1803,10 @@ void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     pdata->scenecontext.SetActiveCameraOrientation = SetActiveCameraOrientation;
     pdata->scenecontext.SetObjectOrientation = SetObjectOrientation;
     pdata->scenecontext.AddPointLight = AddPointLight;
+    pdata->scenecontext.AddSpotLight = AddSpotLight;
+    
+    pdata->scenecontext.GetDirLightList = GetDirLightList;
+    pdata->scenecontext.SetAmbientColor = SetAmbientColor;
     
     
     //asset stuff

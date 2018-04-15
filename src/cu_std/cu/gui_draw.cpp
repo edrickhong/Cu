@@ -15,6 +15,8 @@
 #include "wwindow.h"
 #include "ffileio.h"
 
+//TODO: do not draw widgets if the pos is not within the screen
+
 struct InternalGUIFontHeader{
     u32 width;
     u32 height;
@@ -556,6 +558,9 @@ struct GUIContext{
             Point3 rot_intersection_point;
             Quaternion start_rot;
         };
+        
+        //textbox
+        s8 text_buffer[1024 * 2];
         
     };
     
@@ -1838,13 +1843,21 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
     
     if(gui->internal_active_state == token){
         
+        in_buffer = &gui->text_buffer[0];
+        
         if((GUIMouseClickL() || gui->internal_curkeystate[KCODE_KEY_ENTER]) &&
            gui->internal_active_state == token){
+            
             gui->internal_active_state = false;
+            
+            auto len = strlen(&gui->text_buffer[0]) + 1;
+            
+            memcpy((void*)&buffer[0],&gui->text_buffer[0],len);
+            
             return true;  
         }
         
-        u32 len = strlen(buffer);
+        u32 len = strlen(in_buffer);
         
         KeyboardState state;
         
@@ -1887,8 +1900,7 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
         InternalSetActiveState(label);
         
         //temp behavior
-        auto len = strlen(buffer);
-        memset(&in_buffer[0],0,len);
+        memset(&gui->text_buffer[0],0,strlen(&gui->text_buffer[0]));
     }
     
     
@@ -1896,7 +1908,7 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
     
     GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,{w,h});
     
-    InternalDrawString(buffer,-1.0f,1.0f,gui->default_font_size,gui->default_font,gui->text_color);
+    InternalDrawString(in_buffer,-1.0f,1.0f,gui->default_font_size,gui->default_font,gui->text_color);
     return false;
 }
 
@@ -2305,6 +2317,9 @@ logic GUITranslateGizmo(GUIVec3* world_pos){
     auto obj_w = *world_pos;
     auto obj_c = WorldSpaceToClipSpace(obj_w,viewproj);
     
+    //TODO: return if out of screen space (use a mask)
+    
+    
     auto x_c = WorldSpaceToClipSpace(obj_w + Vector4{1,0,0,0},viewproj);
     auto y_c = WorldSpaceToClipSpace(obj_w + Vector4{0,1,0,0},viewproj);
     auto z_c = WorldSpaceToClipSpace(obj_w + Vector4{0,0,1,0},viewproj);
@@ -2442,10 +2457,77 @@ void GUIDrawCube(){
     
 }
 
+#define _circle_granularity 32
+
+void GUIDrawAxisSphere(Vector3 obj_w,f32 radius,Color c_x,Color c_y,Color c_z){
+    
+    GUISetRenderMode(GUI_RENDER_LINE);
+    GUISetCameraMode(GUI_CAMERA_NONE);
+    
+    GUIInternalMakeSubmission();
+    
+    auto viewproj = gui->proj_matrix * gui->view_matrix;
+    
+    struct DrawRotAxisData{
+        u32 axis_index;
+        Vector3 dir;
+        Color color;
+    };
+    
+    DrawRotAxisData rotaxis[] = {
+        {0,{0,1},c_x},//x
+        {1,{1},c_y},//y
+        {2,{1},c_z},//z
+    };
+    
+    //draw circles
+    
+    Vector3 points[3][_circle_granularity] = {};
+    
+    for(u32 i = 0; i < 3; i++){
+        
+        auto axis = rotaxis[i];
+        
+        for(u32 j = 0; j < _circle_granularity; j++){
+            
+            auto dir = axis.dir;
+            Vector3 rot_axis = {};
+            
+            rot_axis.floats[axis.axis_index] = j * ((_twopi)/(f32)_circle_granularity);
+            
+            
+            auto p = Vec3::Normalize(RotateVector(dir,rot_axis));
+            
+            points[i][j] = WorldSpaceToClipSpace(p + obj_w,viewproj);
+        }
+        
+    }
+    
+    for(u32 i = 0; i < 3; i++){
+        
+        auto color = rotaxis[i].color;
+        
+        for(u32 j = 0; j < _circle_granularity; j++){
+            
+            auto a = points[i][j];
+            
+            auto next = j + 1;
+            
+            if(next > _circle_granularity - 1){
+                next = 0;
+            }
+            
+            auto b = points[i][next];
+            
+            InternalGUIDrawLine(a,b,color);
+        }
+        
+    }
+    
+}
+
 void InternalGUIDrawRotAxis(Vector3 obj_w,Matrix4b4 viewproj,u32 selected_id,
                             logic draw_unselected){
-    
-#define _granularity 32
     
     struct DrawRotAxisData{
         u32 axis_index;
@@ -2461,18 +2543,18 @@ void InternalGUIDrawRotAxis(Vector3 obj_w,Matrix4b4 viewproj,u32 selected_id,
     
     //draw circles
     
-    Vector3 points[3][_granularity] = {};
+    Vector3 points[3][_circle_granularity] = {};
     
     for(u32 i = 0; i < 3; i++){
         
         auto axis = rotaxis[i];
         
-        for(u32 j = 0; j < _granularity; j++){
+        for(u32 j = 0; j < _circle_granularity; j++){
             
             auto dir = axis.dir;
             Vector3 rot_axis = {};
             
-            rot_axis.floats[axis.axis_index] = j * ((_twopi)/(f32)_granularity);
+            rot_axis.floats[axis.axis_index] = j * ((_twopi)/(f32)_circle_granularity);
             
             
             auto p = Vec3::Normalize(RotateVector(dir,rot_axis));
@@ -2494,13 +2576,13 @@ void InternalGUIDrawRotAxis(Vector3 obj_w,Matrix4b4 viewproj,u32 selected_id,
             continue;
         }
         
-        for(u32 j = 0; j < _granularity; j++){
+        for(u32 j = 0; j < _circle_granularity; j++){
             
             auto a = points[i][j];
             
             auto next = j + 1;
             
-            if(next > _granularity - 1){
+            if(next > _circle_granularity - 1){
                 next = 0;
             }
             
@@ -2642,7 +2724,7 @@ void GUIDebugGetCurrentHolder(){
     printf("GUI current holder %s\n",gui->internal_state_string);
 }
 
-void GUIDrawPosMarker(GUIVec3 world_pos){
+void GUIDrawPosMarker(GUIVec3 world_pos,Color color){
     
     GUISetRenderMode(GUI_RENDER_LINE);
     GUISetCameraMode(GUI_CAMERA_NONE);
@@ -2658,7 +2740,7 @@ void GUIDrawPosMarker(GUIVec3 world_pos){
     auto c = WorldSpaceToClipSpace(obj_w + Vector4{0,1,0,0},viewproj);
     auto obj_c = WorldSpaceToClipSpace(obj_w,viewproj);
     
-    InternalGUIDrawLine(obj_c,a,Red);
-    InternalGUIDrawLine(obj_c,b,Red);
-    InternalGUIDrawLine(obj_c,c,Red);
+    InternalGUIDrawLine(obj_c,a,color);
+    InternalGUIDrawLine(obj_c,b,color);
+    InternalGUIDrawLine(obj_c,c,color);
 }
