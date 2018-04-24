@@ -278,7 +278,7 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
     
     TIMEBLOCK(Wheat);
     
-    if(renderbatch_cur == renderbatch_total_count){
+    if(renderbatch_cur >= renderbatch_total_count){
         return false;
     }
     
@@ -286,7 +286,7 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
     
     auto actual_count = LockedCmpXchg(&renderbatch_cur,count,count + 1);
     
-    if(count == actual_count){
+    if(count == actual_count && count < renderbatch_total_count){
         
         auto index = count;
         
