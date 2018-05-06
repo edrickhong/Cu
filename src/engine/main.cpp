@@ -134,6 +134,8 @@ s32 main(s32 argc,s8** argv){
         
     }
     
+    
+    //FIXME: wayland forces vsync on our app. forced vsync, the lighting is not getting updated correctly. Renderdoc and fix?
     pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
                                                VSYNC_NORMAL);
     
