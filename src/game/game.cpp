@@ -1522,7 +1522,7 @@ void EditorGUI(SceneContext* context){
     
     
     //component editor view
-    if(data->show_object_editor){
+    if(data->show_object_editor && data->orientation.count){
         
         if(data->obj_id == (u32)-1){
             data->show_object_editor = false;
