@@ -1079,6 +1079,7 @@ void ProcessObjUpdateList(){
         return;
     }
     
+    
     qsort(pdata->objupdate_array,pdata->objupdate_count,
           sizeof(ObjUpdateEntry),
           [](const void * a, const void* b)->s32 {
@@ -1089,12 +1090,12 @@ void ProcessObjUpdateList(){
           return entry_a->offset - entry_b->offset;
           });
     
-    auto tcount = pdata->objupdate_count + 1;
+    pdata->objupdate_count++;
     
     auto range_array =
-        TAlloc(VkMappedMemoryRange,tcount);
+        TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
     
-    range_array[pdata->objupdate_count] = {
+    range_array[0] = {
         VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
         0,
         pdata->light_ubo.memory,
@@ -1103,7 +1104,7 @@ void ProcessObjUpdateList(){
     };
     
     
-    for(u32 i = 0; i < pdata->objupdate_count; i++){
+    for(u32 i = 1; i < pdata->objupdate_count; i++){
         
         auto entry = pdata->objupdate_array[i];
         
@@ -1119,7 +1120,11 @@ void ProcessObjUpdateList(){
     
     {
         TIMEBLOCKTAGGED("vkFlush",Green);
-        vkFlushMappedMemoryRanges(pdata->vdevice.device,tcount,range_array);
+        vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,range_array);
+        
+        auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+        
+        _kill("DEBUG\n",light_ubo->point_count == 0);
     }
     
 }

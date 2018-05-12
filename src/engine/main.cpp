@@ -271,15 +271,6 @@ s32 main(s32 argc,s8** argv){
                 
                 EXECTIMEBLOCK(Black);
                 
-                {
-                    TIMEBLOCKTAGGED("AcquireImage",Orange);
-                    vkAcquireNextImageKHR(pdata->vdevice.device,
-                                          pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
-                                          pdata->waitacquireimage_semaphore,
-                                          0,(u32*)&pdata->swapchain.image_index);  
-                }
-                
-                
                 
                 UpdateAllocatorTimeStamp();
                 Clear(&pdata->threadqueue);
@@ -331,8 +322,6 @@ s32 main(s32 argc,s8** argv){
                     ptr(context);
                 }
                 
-                ProcessDrawList();
-                
                 auto frames = AAudioDeviceWriteAvailable(pdata->audio);
                 
                 if(frames >= pdata->submit_audiobuffer.size_frames){
@@ -346,9 +335,7 @@ s32 main(s32 argc,s8** argv){
                     
                 }
                 
-                GUIEnd();
-                
-                BuildRenderCommandBuffer(pdata);
+                ProcessDrawList();
                 
                 MainThreadDoWorkQueue(&pdata->threadqueue,0);
                 
@@ -356,6 +343,18 @@ s32 main(s32 argc,s8** argv){
                 //2. MainThreadDoWorkQueue is not synced
                 //3. Someone is writing into another person's data
                 ProcessObjUpdateList();
+                
+                GUIEnd();
+                
+                {
+                    TIMEBLOCKTAGGED("AcquireImage",Orange);
+                    vkAcquireNextImageKHR(pdata->vdevice.device,
+                                          pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
+                                          pdata->waitacquireimage_semaphore,
+                                          0,(u32*)&pdata->swapchain.image_index);  
+                }
+                
+                BuildRenderCommandBuffer(pdata);
                 
                 PresentBuffer(pdata);
             }
@@ -390,6 +389,9 @@ s32 main(s32 argc,s8** argv){
 
 /*
   TODO: 
+  
+  Setup a standard build environment for linux:
+  https://linuxconfig.org/how-to-debootstrap-on-centos-linux
   
   Compile all assets into an adb file (asset data base). We will build a function a constexpr
   function at compile time which translates filepaths to indices and an adb file w raw data.
