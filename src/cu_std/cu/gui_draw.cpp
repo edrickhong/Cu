@@ -1725,6 +1725,8 @@ void GUIEnd(){
     InternalGUIActiveProfiler();
     
     GUIInternalEndWindow();
+    
+    
     vkUnmapMemory(gui->internal_device,gui->vert_buffer.memory);
     vkUnmapMemory(gui->internal_device,gui->ind_buffer.memory);
 }

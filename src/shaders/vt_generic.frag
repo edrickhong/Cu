@@ -199,6 +199,12 @@ void main(){
         factor += vec4((diffuse + specular),0) * attenuation;
     }
     
+    if(light.point_count == 0){
+        outFragColor = vec4(1);
+        
+        return;
+    }
+    
     for(uint i = 0; i < light.spot_count; i++){
         
         SpotLight s_light = light.spot_array[i];
