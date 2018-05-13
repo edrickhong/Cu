@@ -15,7 +15,7 @@ typedef char logic; //MARK:should we make this 4 bytes long?
 typedef float f32;
 typedef double f64;
 
-#if __x86_64__
+#if __x86_64__ || _M_X64
 
 typedef unsigned long long ptrsize;
 
