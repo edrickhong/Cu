@@ -69,7 +69,11 @@ fi
 
 cd ../Make
 
-time -v make -j12
+#normal system build
+#time -v make -j12
+
+#build in a chroot environment
+schroot -c xenial -- time -v make -j12
 
 #manual compiling
 #cd ../
