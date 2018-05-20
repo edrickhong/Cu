@@ -416,8 +416,6 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         
         context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
         
-        //dir light FIXME: WTF is this doing here?
-        
         u32* dir_count = 0;
         DirLight* dir_array = 0;
         
@@ -597,6 +595,8 @@ void ProcessAudio(SceneContext* context){
 
 extern "C" {
     
+    
+    //FIXME: for some reason we are writing the spotlight when there aren't any
     _dllexport void GameComponentWrite(void* context){
         
         printf("HIT\n");

@@ -171,7 +171,7 @@ s32 main(s32 argc,s8** argv){
     
     SetupPipelineCache();
     
-#if 0
+#if 1
     
 #define _FLAG_ VMAPPED_NONE
     
