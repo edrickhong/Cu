@@ -700,8 +700,15 @@ void VEndRenderPass(VkCommandBuffer commandbuffer);
 
 VkSemaphore VCreateSemaphore(const  VDeviceContext* _restrict vdevice);
 
+enum VMappedBufferProperties{
+    VMAPPED_NONE = 0,
+    VMAPPED_COHERENT = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    VMAPPED_CACHED = VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+    
+};
+
 VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdevice,
-                                           u32 data_size,logic is_coherrent = true);
+                                           u32 data_size,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 void VUpdateUniformBuffer(const  VDeviceContext* _restrict vdevice,
                           VBufferContext context,void* data,u32 data_size);
