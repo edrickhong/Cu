@@ -2203,7 +2203,7 @@ VkSemaphore VCreateSemaphore(const  VDeviceContext* _restrict vdevice){
 }
 
 VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdevice,
-                                           u32 data_size,logic is_coherrent){
+                                           u32 data_size,VMappedBufferProperties prop){
     
     VBufferContext context;
     VkMemoryRequirements memreq;
@@ -2214,15 +2214,7 @@ VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdev
     
     vkGetBufferMemoryRequirements(vdevice->device,context.buffer,&memreq);
     
-    u32 flag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    
-    if(is_coherrent){
-        flag |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-    
-    else{
-        flag |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    }
+    u32 flag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | prop;
     
     
     u32 typeindex = 

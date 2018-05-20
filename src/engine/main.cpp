@@ -171,9 +171,19 @@ s32 main(s32 argc,s8** argv){
     
     SetupPipelineCache();
     
-    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),false);
+#if 0
     
-    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),false);
+#define _FLAG_ VMAPPED_NONE
+    
+#else
+    
+#define _FLAG_ VMAPPED_CACHED
+    
+#endif
+    
+    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),_FLAG_);
+    
+    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),_FLAG_);
     
     //MARK: keep the obj buffer permanently mapped
     vkMapMemory(pdata->vdevice.device,pdata->skel_ubo.memory,
@@ -181,6 +191,8 @@ s32 main(s32 argc,s8** argv){
     
     vkMapMemory(pdata->vdevice.device,pdata->light_ubo.memory,
                 0,pdata->light_ubo.size,0,(void**)&pdata->lightupdate_ptr);
+    
+    memset(pdata->lightupdate_ptr,0,pdata->light_ubo.size);
     
     
     {

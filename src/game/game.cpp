@@ -282,6 +282,8 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     FRead(file,&metacount,sizeof(metacount));
     
+    printf("meta count %d\n",metacount);
+    
     for(u32 i = 0; i < metacount; i++){
         
         u32 comp_hash;
@@ -292,6 +294,8 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         FRead(file,&comp_count,sizeof(comp_count));
         FRead(file,&field_count,sizeof(field_count));
         
+        printf("c_hash %d c_count %d c_field_count %d\n",comp_hash,comp_count,field_count);
+        
         auto comp = MetaGetCompByNameHash(comp_hash);
         
         MetaDataCompOut out_comp;
@@ -299,15 +303,15 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         if(comp){
             out_comp = GetComponentData(components,*comp);
             (*out_comp.count) = comp_count;
+            
+            printf("%d name %s\n",i,out_comp.comp_name_string);
+        }
+        
+        else{
+            printf("%d comp name not found\n",i);
         }
         
         for(u32 j = 0; j < comp_count; j++){
-            
-            s8* obj;
-            
-            if(comp){
-                obj = out_comp.array + (j * out_comp.element_size);
-            }
             
             for(u32 k = 0; k < field_count; k++){
                 
@@ -322,15 +326,25 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
                 FRead(file,&name_hash,sizeof(name_hash));
                 FRead(file,&arraycount,sizeof(arraycount));
                 
+                printf("t_hash %d t_size %d t_name_hash %d t_count %d\n",type_hash,type_size,name_hash,arraycount);
+                
+                
                 for(u32 a = 0; a < arraycount; a++){
                     
                     s8 buffer[128] = {};
                     
                     FRead(file,&buffer[0],type_size);
                     
+                    printf("read file %d\n",type_size);
+                    
                     if(comp){
+                        
                         if(MetaGetTypeByNameHash(name_hash,&out_comp.metadata_table[0],
                                                  out_comp.metadata_count) == type_hash){
+                            
+                            s8* obj = out_comp.array + (j * out_comp.element_size);
+                            
+                            
                             MetaSetValueByNameHash(obj,a,&buffer[0],name_hash,
                                                    &out_comp.metadata_table[0],out_comp.metadata_count);
                         } 
@@ -402,19 +416,21 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         
         context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
         
-        //dir light
+        //dir light FIXME: WTF is this doing here?
         
         u32* dir_count = 0;
         DirLight* dir_array = 0;
         
         ((SceneContext*)context)->GetDirLightList(&dir_array,&dir_count);
         
+        FRead(file,dir_count,sizeof(*dir_count));
+        
         for(u32 i = 0; i < (*dir_count); i++){
             
             auto k = &dir_array[i];
             
-            FWrite(file,&k->dir,sizeof(k->dir));
-            FWrite(file,&k->color,sizeof(k->color));
+            FRead(file,&k->dir,sizeof(k->dir));
+            FRead(file,&k->color,sizeof(k->color));
         }
         
     }
@@ -583,6 +599,8 @@ extern "C" {
     
     _dllexport void GameComponentWrite(void* context){
         
+        printf("HIT\n");
+        
         if(!data->components){
             return;
         }
@@ -710,6 +728,8 @@ extern "C" {
             
             ((SceneContext*)context)->GetDirLightList(&dir_array,&dir_count);
             
+            FWrite(outfile,dir_count,sizeof(*dir_count));
+            
             for(u32 i = 0; i < (*dir_count); i++){
                 
                 auto k = &dir_array[i];
@@ -792,6 +812,8 @@ extern "C" {
     
     
     _dllexport void GameReload(GameReloadData* reloaddata){
+        
+        printf("RELOAD!!\n");
         
         SetGUIContext(reloaddata->guicontext);
         SetAAllocatorContext(reloaddata->allocatorcontext);

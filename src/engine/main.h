@@ -1118,6 +1118,7 @@ void ProcessObjUpdateList(){
         
     }
     
+#if 0
     {
         TIMEBLOCKTAGGED("vkFlush",Green);
         vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,range_array);
@@ -1126,6 +1127,7 @@ void ProcessObjUpdateList(){
         
         _kill("DEBUG\n",light_ubo->point_count == 0);
     }
+#endif
     
 }
 
@@ -1435,7 +1437,7 @@ void SetupPipelineCache(){
     
     if(FIsFileExists(_PIPELINECACHE_FILE)){
         
-        auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READONLY);
+        auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READWRITE);
         cache_data = FReadFileToBuffer(file,&cache_size);
         
         FCloseFile(file);
@@ -1465,7 +1467,7 @@ void WritePipelineCache(){
     VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,write_cache_data,&write_cache_size);
     
     
-    auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_WRITEONLY | F_FLAG_CREATE | F_FLAG_TRUNCATE);
+    auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READWRITE | F_FLAG_CREATE | F_FLAG_TRUNCATE);
     
     FWrite(file,write_cache_data,write_cache_size);
     
