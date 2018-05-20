@@ -604,11 +604,14 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
 VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,
                                     const s8* filepath,VkCommandBuffer commandbuffer,VkQueue queue);
 
+
+//MARK:FOLLOW UNIFORM
 VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
                                 u32 width,u32 height,u32 usage,logic is_device_local = true,
                                 logic is_coherent = false,VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
                                 VkFormat format = VK_FORMAT_R8G8B8A8_UNORM);
 
+//MARK:FOLLOW UNIFORM
 VImageMemoryContext VCreateColorImageMemory(const  VDeviceContext* _restrict vdevice,
                                             u32 width,u32 height,u32 usage,logic is_device_local = true,
                                             logic is_coherent = false,
@@ -812,10 +815,10 @@ void VCreateComputePipelineArray(const  VDeviceContext* _restrict vdevice,
                                  VkPipelineCache cache,VComputePipelineSpec* spec_array,u32 spec_count,
                                  VkPipeline* pipeline_array);
 
-
+//MARK:FOLLOW UNIFORM
 VBufferContext VCreateShaderStorageBufferContext(
 const  VDeviceContext* _restrict vdevice,
-u32 data_size,logic is_devicelocal,logic is_coherrent = true);
+u32 data_size,logic is_devicelocal,logic is_coherent = true);
 
 VkDescriptorBufferInfo _ainline VGetBufferInfo(const VBufferContext* buffer,
                                                VkDeviceSize offset = 0,
