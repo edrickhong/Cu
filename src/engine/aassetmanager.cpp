@@ -1087,8 +1087,8 @@ void CommitAudio(AudioAssetHandle* handle){
 #define _height _kilobytes(8)
 #define _tpage_side 128
 #define _totalpages (_width/_tpage_side) * (_height/_tpage_side)
-#define _fetch_dim_scale_w 1 //9
-#define _fetch_dim_scale_h 1 //9
+#define _fetch_dim_scale_w 8
+#define _fetch_dim_scale_h 8
 
 _persist VTextureContext global_texturecache = {};
 
@@ -1320,7 +1320,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         
         //(FIXME:)MARK: do we really want to make this cached?
         vt_targetreadbackbuffer = VCreateColorImageMemory(vdevice,w,h,
-                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,VMAPPED_CACHED,
+                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,VMAPPED_NONE,
                                                           VK_IMAGE_TILING_LINEAR);
         
         vkMapMemory(global_device->device,vt_targetreadbackbuffer.memory,
@@ -2202,7 +2202,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
         
     }
     
-#elif 1
+#elif 0
     
     {
         
