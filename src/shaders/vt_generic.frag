@@ -76,15 +76,15 @@ layout(push_constant) uniform PushConsts{
 
 layout (location = 0) out vec4 outFragColor;
 
-//layout (constant_id = 0) const float framebuffer_w = 1440.0f;
-//layout (constant_id = 1) const float framebuffer_h = 1080.0f;
-//layout (constant_id = 2) const float feedback_w = 160.0f;
-//layout (constant_id = 3) const float feedback_h = 120.0f;
+layout (constant_id = 0) const float framebuffer_w = 1440.0f;
+layout (constant_id = 1) const float framebuffer_h = 1080.0f;
+layout (constant_id = 2) const float feedback_w = 160.0f;
+layout (constant_id = 3) const float feedback_h = 120.0f;
 
-layout (constant_id = 0) const float framebuffer_w = 1280.0f;
-layout (constant_id = 1) const float framebuffer_h = 720.0f;
-layout (constant_id = 2) const float feedback_w = 1280.0f;
-layout (constant_id = 3) const float feedback_h = 720.0f;
+//layout (constant_id = 0) const float framebuffer_w = 1280.0f;
+//layout (constant_id = 1) const float framebuffer_h = 720.0f;
+//layout (constant_id = 2) const float feedback_w = 1280.0f;
+//layout (constant_id = 3) const float feedback_h = 720.0f;
 
 layout (constant_id = 4) const float page_size = 128.0f;
 layout (constant_id = 5) const float phys_w = 16384.0f;
