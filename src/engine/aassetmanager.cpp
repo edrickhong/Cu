@@ -1087,8 +1087,8 @@ void CommitAudio(AudioAssetHandle* handle){
 #define _height _kilobytes(8)
 #define _tpage_side 128
 #define _totalpages (_width/_tpage_side) * (_height/_tpage_side)
-#define _fetch_dim_scale_w 9
-#define _fetch_dim_scale_h 9
+#define _fetch_dim_scale_w 1 //9
+#define _fetch_dim_scale_h 1 //9
 
 _persist VTextureContext global_texturecache = {};
 
@@ -1302,9 +1302,10 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     {
         
-        //MARK:
         auto w = swapchain->width/_fetch_dim_scale_w;
         auto h = swapchain->height/_fetch_dim_scale_h;
+        
+        printf("DEBUG:%d %d\n",w,h);
         
         auto img = VCreateColorImage(vdevice,w,h,
                                      VK_IMAGE_USAGE_STORAGE_BIT |
@@ -1317,8 +1318,9 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         vt_readbackbuffer.w = w;
         vt_readbackbuffer.h = h;
         
+        //(FIXME:)MARK: do we really want to make this cached?
         vt_targetreadbackbuffer = VCreateColorImageMemory(vdevice,w,h,
-                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,false,
+                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,VMAPPED_CACHED,
                                                           VK_IMAGE_TILING_LINEAR);
         
         vkMapMemory(global_device->device,vt_targetreadbackbuffer.memory,
@@ -1326,6 +1328,70 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         
         threadtexturefetch_array = (VTReadbackPixelFormat*)alloc(w * h *
                                                                  sizeof(VTReadbackPixelFormat));
+        
+        
+        //clear the image
+#if 0
+        {
+            auto queue = VGetQueue(vdevice,VQUEUETYPE_ROOT);
+            
+            auto pool =
+                VCreateCommandPool(vdevice,
+                                   VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                                   VGetQueueFamilyIndex(VQUEUETYPE_ROOT));
+            
+            auto cmdbuffer = VAllocateCommandBuffer(vdevice,pool,
+                                                    VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+            
+            VStartCommandBuffer(cmdbuffer,
+                                VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+            
+            VkImageMemoryBarrier transfer_membarrier = {
+                VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                0,
+                0,//srcAccessMask
+                VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                vt_targetreadbackbuffer.image,
+                {
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    0,
+                    1,
+                    0,
+                    1
+                },
+            };
+            
+            vkCmdPipelineBarrier(cmdbuffer,
+                                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0,
+                                 0,0,0,0,1,&transfer_membarrier);
+            
+            VkClearColorValue color = {};
+            
+            VkImageSubresourceRange range = {
+                VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1
+            };
+            
+            vkCmdClearColorImage(cmdbuffer,vt_targetreadbackbuffer.image,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&color,1,&range);
+            
+            
+            VEndCommandBuffer(cmdbuffer);
+            
+            VSubmitCommandBuffer(queue,cmdbuffer);
+            
+            
+            vkQueueWaitIdle(queue);
+            
+            vkDestroyCommandPool(vdevice->device,pool,0);
+        }
+        
+#endif
     }
     
     
@@ -2080,6 +2146,8 @@ void UpdateTextureFetchEntries(){
                                    _arraycount(range_array),&range_array[0]);
 }
 
+
+
 //we do not do temp page allocations anymore
 VkCommandBuffer GenerateTextureFetchRequests(
 ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
@@ -2094,23 +2162,88 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
         u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
         u32 count = 0;
         
+        logic to_write = false;
+        
         for(u32 i = 0; i < total_tiles; i++){
             
             auto a = &vt_readbackpixels[i];
             
-            if(a->texture_id){
-                a->value = (u32)-1;
-                
+            if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+                to_write = true;
+                break;
             }
             
         }
         
-        WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
-                 "test.bmp");
-        
-        exit(0);
+        if(to_write){
+            
+            for(u32 i = 0; i < total_tiles; i++){
+                
+                auto a = &vt_readbackpixels[i];
+                
+                if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+                    
+                    a->value = _encode_rgba(255,0,0,255);
+                }
+                
+                if(a->texture_id){
+                    a->value = (u32)-1;
+                    
+                }
+                
+            }
+            
+            WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
+                     "test.bmp");
+            
+            exit(0);
+            
+        }
         
     }
+    
+#elif 1
+    
+    {
+        
+        u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
+        u32 count = 0;
+        
+        static u32 hit_count = 0;
+        
+        if(hit_count){
+            
+            for(u32 i = 0; i < total_tiles; i++){
+                
+                auto a = &vt_readbackpixels[i];
+                
+                if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+                    
+                    a->value = _encode_rgba(255,0,0,255);
+                }
+                
+                if(a->texture_id){
+                    a->value = (u32)-1;
+                    
+                }
+                
+                else{
+                    a->value = _encode_rgba(0,0,255,255);
+                }
+                
+            }
+            
+            WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
+                     "test.bmp");
+            
+            exit(0);
+            
+        }
+        
+        hit_count++;
+        
+    }
+    
 #endif  
     
     u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
@@ -2298,7 +2431,7 @@ VkSpecializationInfo VTFragmentShaderSpecConst(){
     pdata[5] = (f32)_width;
     pdata[6] = (f32)_height;
     
-#if 0
+#if 1
     
     printf("%f %f %f %f %f %f %f\n",pdata[0],pdata[1],pdata[2],pdata[3],pdata[4],pdata[5],
            pdata[6]);

@@ -2235,7 +2235,7 @@ VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdev
 
 VBufferContext VCreateShaderStorageBufferContext(
 const  VDeviceContext* _restrict vdevice,
-u32 data_size,logic is_devicelocal,logic is_coherrent){
+u32 data_size,logic is_devicelocal,VMappedBufferProperties prop){
     VBufferContext context;
     VkMemoryRequirements memreq;
     
@@ -2257,13 +2257,7 @@ u32 data_size,logic is_devicelocal,logic is_coherrent){
         
         flag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         
-        if(is_coherrent){
-            flag |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        }
-        
-        else{
-            flag |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        }
+        flag |= prop;
         
     }
     
@@ -2300,7 +2294,7 @@ void VUpdateUniformBuffer(const  VDeviceContext* _restrict vdevice,VBufferContex
 
 VImageMemoryContext VCreateColorImageMemory(
 const  VDeviceContext* _restrict vdevice,u32 width,u32 height,u32 usage,
-logic is_device_local,logic is_coherent,VkImageTiling tiling,
+logic is_device_local,VMappedBufferProperties prop,VkImageTiling tiling,
 VkFormat format){
     
     VImageMemoryContext context = {};
@@ -2312,13 +2306,7 @@ VkFormat format){
         layout = VK_IMAGE_LAYOUT_PREINITIALIZED;
         memory_property = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         
-        if(is_coherent){
-            memory_property |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        }
-        
-        else{
-            memory_property |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        }
+        memory_property |= prop;
         
     }
     
@@ -2353,13 +2341,13 @@ VkFormat format){
 
 
 VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
-                                u32 width,u32 height,u32 usage,logic is_device_local,logic is_coherent,
+                                u32 width,u32 height,u32 usage,logic is_device_local,VMappedBufferProperties prop,
                                 VkImageTiling tiling,VkFormat format){
     
     VImageContext context = {};
     
     auto img_mm =
-        VCreateColorImageMemory(vdevice,width,height,usage,is_device_local,is_coherent,tiling,
+        VCreateColorImageMemory(vdevice,width,height,usage,is_device_local,prop,tiling,
                                 format);
     context.image = img_mm.image;
     context.memory = img_mm.memory;
