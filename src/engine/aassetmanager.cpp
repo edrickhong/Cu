@@ -13,6 +13,12 @@ _persist InternalTransferBuffer async_transferbuffer = {};
 VkDeviceSize AllocateTransferBuffer(InternalTransferBuffer* _restrict transferbuffer,
                                     u32 size){
     
+#if 0
+    
+    printf("TRANSFERBUFFER ALLOCATE\n");
+    
+#endif
+    
     VkDeviceSize offset;
     VkDeviceSize new_offset;
     VkDeviceSize actual_offset;
@@ -1305,8 +1311,6 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         auto w = swapchain->width/_fetch_dim_scale_w;
         auto h = swapchain->height/_fetch_dim_scale_h;
         
-        printf("DEBUG:%d %d\n",w,h);
-        
         auto img = VCreateColorImage(vdevice,w,h,
                                      VK_IMAGE_USAGE_STORAGE_BIT |
                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT |
@@ -2431,7 +2435,7 @@ VkSpecializationInfo VTFragmentShaderSpecConst(){
     pdata[5] = (f32)_width;
     pdata[6] = (f32)_height;
     
-#if 1
+#if 0
     
     printf("%f %f %f %f %f %f %f\n",pdata[0],pdata[1],pdata[2],pdata[3],pdata[4],pdata[5],
            pdata[6]);
