@@ -303,6 +303,13 @@ extern void* vkenumeratephysicaldevicegroups;
    
 */
 
+enum VMappedBufferProperties{
+    VMAPPED_NONE = 0,
+    VMAPPED_COHERENT = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    VMAPPED_CACHED = VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+    
+};
+
 
 struct VSwapchainContext{
     
@@ -605,16 +612,14 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,
                                     const s8* filepath,VkCommandBuffer commandbuffer,VkQueue queue);
 
 
-//MARK:FOLLOW UNIFORM
 VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
                                 u32 width,u32 height,u32 usage,logic is_device_local = true,
-                                logic is_coherent = false,VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
+                                VMappedBufferProperties prop = VMAPPED_COHERENT,VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
                                 VkFormat format = VK_FORMAT_R8G8B8A8_UNORM);
 
-//MARK:FOLLOW UNIFORM
 VImageMemoryContext VCreateColorImageMemory(const  VDeviceContext* _restrict vdevice,
                                             u32 width,u32 height,u32 usage,logic is_device_local = true,
-                                            logic is_coherent = false,
+                                            VMappedBufferProperties prop = VMAPPED_COHERENT,
                                             VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
                                             VkFormat format = VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -702,13 +707,6 @@ void VStartRenderpass(VkCommandBuffer commandbuffer,VkSubpassContents contents,
 void VEndRenderPass(VkCommandBuffer commandbuffer);
 
 VkSemaphore VCreateSemaphore(const  VDeviceContext* _restrict vdevice);
-
-enum VMappedBufferProperties{
-    VMAPPED_NONE = 0,
-    VMAPPED_COHERENT = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    VMAPPED_CACHED = VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-    
-};
 
 VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdevice,
                                            u32 data_size,VMappedBufferProperties prop = VMAPPED_COHERENT);
@@ -815,10 +813,9 @@ void VCreateComputePipelineArray(const  VDeviceContext* _restrict vdevice,
                                  VkPipelineCache cache,VComputePipelineSpec* spec_array,u32 spec_count,
                                  VkPipeline* pipeline_array);
 
-//MARK:FOLLOW UNIFORM
 VBufferContext VCreateShaderStorageBufferContext(
 const  VDeviceContext* _restrict vdevice,
-u32 data_size,logic is_devicelocal,logic is_coherent = true);
+u32 data_size,logic is_devicelocal,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 VkDescriptorBufferInfo _ainline VGetBufferInfo(const VBufferContext* buffer,
                                                VkDeviceSize offset = 0,
