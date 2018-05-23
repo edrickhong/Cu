@@ -850,10 +850,10 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                         ptrsize data_size);
 
 VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,u32 bindingno,logic isdevice_local = true);
+                                         ptrsize data_size,u32 bindingno,logic isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice,
-                                        ptrsize data_size,logic isdevice_local = true);
+                                        ptrsize data_size,logic isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 
 u32 _ainline VFormatHash(VkFormat* format_array,u32 count){
