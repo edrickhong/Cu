@@ -282,6 +282,16 @@ s32 main(s32 argc,s8** argv){
                 
                 EXECTIMEBLOCK(Black);
                 
+                {
+                    
+                    TIMEBLOCKTAGGED("AcquireImage",Orange);
+                    vkAcquireNextImageKHR(pdata->vdevice.device,
+                                          pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
+                                          pdata->waitacquireimage_semaphore,
+                                          0,(u32*)&pdata->swapchain.image_index);  
+                    
+                }
+                
                 
                 UpdateAllocatorTimeStamp();
                 Clear(&pdata->threadqueue);
@@ -356,14 +366,6 @@ s32 main(s32 argc,s8** argv){
                 ProcessObjUpdateList();
                 
                 GUIEnd();
-                
-                {
-                    TIMEBLOCKTAGGED("AcquireImage",Orange);
-                    vkAcquireNextImageKHR(pdata->vdevice.device,
-                                          pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
-                                          pdata->waitacquireimage_semaphore,
-                                          0,(u32*)&pdata->swapchain.image_index);  
-                }
                 
                 BuildRenderCommandBuffer(pdata);
                 
