@@ -3044,7 +3044,7 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGrap
             
             VkSpecializationInfo* spec_info = 0;
             
-            if(spec->spec_array[i].mapEntryCount){
+            if(spec->spec_array[j].mapEntryCount){
                 spec_info = &spec->spec_array[j];
             }
             
