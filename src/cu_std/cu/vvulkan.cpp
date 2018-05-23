@@ -805,13 +805,13 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
 
 
 VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,u32 bindingno,logic isdevice_local){
+                                         ptrsize data_size,u32 bindingno,logic isdevice_local,VMappedBufferProperties prop){
     
     u32 memtype = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
     if(!isdevice_local){
         memtype = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            prop;
     }
     
     
@@ -826,13 +826,13 @@ VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevic
 }
 
 VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice,
-                                        ptrsize size,logic isdevice_local){
+                                        ptrsize size,logic isdevice_local,VMappedBufferProperties prop){
     
     u32 memtype = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
     if(!isdevice_local){
         memtype = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            prop;
     }
     
     auto context = InternalCreateStaticBufferContext(vdevice,size,

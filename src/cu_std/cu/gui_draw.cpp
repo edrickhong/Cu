@@ -1073,9 +1073,15 @@ void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
     
     
     gui->vert_buffer =
-        VCreateStaticVertexBuffer(vdevice,sizeof(GUIVertex) * _reserve_count,0,false);
+        VCreateStaticVertexBuffer(vdevice,sizeof(GUIVertex) * _reserve_count,0,false,VMAPPED_NONE);
     
-    gui->ind_buffer = VCreateStaticIndexBuffer(vdevice,sizeof(u32) * _reserve_count,false);
+    gui->ind_buffer = VCreateStaticIndexBuffer(vdevice,sizeof(u32) * _reserve_count,false,VMAPPED_NONE);
+    
+    vkMapMemory(gui->internal_device,gui->vert_buffer.memory,0,gui->vert_buffer.size,0,
+                (void**)&gui->vert_mptr);
+    
+    vkMapMemory(gui->internal_device,gui->ind_buffer.memory,0,gui->ind_buffer.size,0,
+                (void**)&gui->ind_mptr);
 }
 
 
@@ -1540,11 +1546,7 @@ void GUIBegin(const s8* title,GUIVec2* pos,GUIDim2* dim){
     gui->submit_count = 0;
     gui->bounds_count = 0;
     
-    vkMapMemory(gui->internal_device,gui->vert_buffer.memory,0,gui->vert_buffer.size,0,
-                (void**)&gui->vert_mptr);
     
-    vkMapMemory(gui->internal_device,gui->ind_buffer.memory,0,gui->ind_buffer.size,0,
-                (void**)&gui->ind_mptr);
     
     if(title){
         GUIInternalBeginWindow(title,pos,dim);  
@@ -1725,16 +1727,33 @@ void GUIEnd(){
     InternalGUIActiveProfiler();
     
     GUIInternalEndWindow();
-    
-    
-    vkUnmapMemory(gui->internal_device,gui->vert_buffer.memory);
-    vkUnmapMemory(gui->internal_device,gui->ind_buffer.memory);
 }
 
 
 void GUIDraw(VkCommandBuffer cmdbuffer){
     
     TIMEBLOCK(Lime);
+    
+    VkMappedMemoryRange range_array[] = {
+        
+        {
+            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            0,
+            gui->vert_buffer.memory,
+            0,
+            gui->vert_offset * sizeof(GUIVertex)
+        },
+        
+        {
+            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            0,
+            gui->ind_buffer.memory,
+            0,
+            gui->ind_offset * sizeof(u32)
+        }
+    };
+    
+    vkFlushMappedMemoryRanges(gui->internal_device,_arraycount(range_array),&range_array[0]);
     
     vkCmdBindDescriptorSets(cmdbuffer,VK_PIPELINE_BIND_POINT_GRAPHICS,
                             gui->pipelinelayout,0,1,&gui->default_font->descset,0,0);

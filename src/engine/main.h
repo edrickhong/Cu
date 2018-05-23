@@ -1079,7 +1079,18 @@ void ProcessObjUpdateList(){
         return;
     }
     
+#if 1
+    {
+        auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+        
+        
+        _kill("DEBUG\n",light_ubo->point_count == 0);
+    }
+#endif
     
+    
+    
+    //MARK: why do we have to sort?
     qsort(pdata->objupdate_array,pdata->objupdate_count,
           sizeof(ObjUpdateEntry),
           [](const void * a, const void* b)->s32 {
@@ -1090,21 +1101,11 @@ void ProcessObjUpdateList(){
           return entry_a->offset - entry_b->offset;
           });
     
-    pdata->objupdate_count++;
-    
     auto range_array =
-        TAlloc(VkMappedMemoryRange,pdata->objupdate_count);
-    
-    range_array[0] = {
-        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        0,
-        pdata->light_ubo.memory,
-        0,
-        sizeof(LightUBO)
-    };
+        TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1);
     
     
-    for(u32 i = 1; i < pdata->objupdate_count; i++){
+    for(u32 i = 0; i < pdata->objupdate_count; i++){
         
         auto entry = pdata->objupdate_array[i];
         
@@ -1118,16 +1119,22 @@ void ProcessObjUpdateList(){
         
     }
     
-#if 0
+    range_array[pdata->objupdate_count] = {
+        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        0,
+        pdata->light_ubo.memory,
+        0,
+        sizeof(LightUBO)
+    };
+    
+    pdata->objupdate_count++;
+    
+    
     {
         TIMEBLOCKTAGGED("vkFlush",Green);
-        vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,range_array);
+        vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,&range_array[0]);
         
-        auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-        
-        _kill("DEBUG\n",light_ubo->point_count == 0);
     }
-#endif
     
 }
 
@@ -1567,9 +1574,17 @@ void CompileAllPipelines(PlatformData* pdata){
     }
 }
 
+#define _TEST_SPOT 1
+
 void ClearLightList(){
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+#if !(_TEST_SPOT)
+    
     light_ubo->point_count = 0;
+    
+#endif
+    
     light_ubo->spot_count = 0;
 }
 
@@ -1593,6 +1608,14 @@ void GetDirLightList(DirLight** array,u32** count){
 void AddPointLight(Vector3 pos,Color color,f32 radius){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
+#if (_TEST_SPOT)
+    
+    if(light_ubo->point_count){
+        return;
+    }
+    
+#endif
     
     //TODO: make radius into a proper distance cut off
     
