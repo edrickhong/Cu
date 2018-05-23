@@ -1574,7 +1574,7 @@ void CompileAllPipelines(PlatformData* pdata){
     }
 }
 
-#define _TEST_SPOT 1
+#define _TEST_SPOT 0
 
 void ClearLightList(){
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;

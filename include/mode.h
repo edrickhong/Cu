@@ -157,6 +157,9 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #define _align128(value) _alignpow2(value,128)
 #define _align256(value) _alignpow2(value,256)
 
+//kind of like rounding down by power of 2
+#define _dalignpow2(value,pow) ((value) & (~(pow -1)))
+
 #define REFLCOMPONENT
 #define IDREF(COMPONENT_STRUCT_NAME)
 
