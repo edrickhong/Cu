@@ -1727,12 +1727,7 @@ void GUIEnd(){
     InternalGUIActiveProfiler();
     
     GUIInternalEndWindow();
-}
-
-
-void GUIDraw(VkCommandBuffer cmdbuffer){
     
-    TIMEBLOCK(Lime);
     
     VkMappedMemoryRange range_array[] = {
         
@@ -1754,6 +1749,12 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
     };
     
     vkFlushMappedMemoryRanges(gui->internal_device,_arraycount(range_array),&range_array[0]);
+}
+
+
+void GUIDraw(VkCommandBuffer cmdbuffer){
+    
+    TIMEBLOCK(Lime);
     
     vkCmdBindDescriptorSets(cmdbuffer,VK_PIPELINE_BIND_POINT_GRAPHICS,
                             gui->pipelinelayout,0,1,&gui->default_font->descset,0,0);
