@@ -58,7 +58,6 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
     
 }
 
-
 s32 main(s32 argc,s8** argv){
     
 #if  0
