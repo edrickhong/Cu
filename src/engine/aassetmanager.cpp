@@ -23,12 +23,12 @@ VkDeviceSize AllocateTransferBuffer(InternalTransferBuffer* _restrict transferbu
     VkDeviceSize new_offset;
     VkDeviceSize actual_offset;
     
-    size = _align8(size);
+    size = _mapalign(size);
     
     do{
         
         offset = transferbuffer->offset;
-        new_offset = offset + size;
+        new_offset = _mapalign(offset + size);
         
         actual_offset = LockedCmpXchg(&transferbuffer->offset,offset,new_offset);
         
@@ -51,12 +51,6 @@ _persist VDeviceContext* global_device = {};
 #define _defarray_size 100
 
 #define _maxassets 2000
-
-u64 DeviceAlign(u64 value){
-    value = _align256(value);
-    _kill("is not aligned\n",(value % 256) != 0);
-    return value;
-}
 
 
 struct MemoryBlock{
@@ -676,7 +670,7 @@ void GPUInternalAllocateAsset(ModelAssetHandle* handle,u32 size){
     
     GPUMemorySlot slot = {};
     
-    auto allocsize = DeviceAlign(size);
+    auto allocsize = _devicealign(size);
     
     slot.block = AllocateBlockGPUBlock(allocsize);
     slot.id = -1;
@@ -878,10 +872,10 @@ void AllocateAssetAnimated(const s8* filepath,
     animbone->animationset_array =  mdf.animationset_array;
     animbone->animationset_count = mdf.animationset_count;
     
-    auto vertsize = DeviceAlign(mdf.vertex_size);
-    auto indexsize = DeviceAlign(mdf.index_size);
+    auto vertsize = _devicealign(mdf.vertex_size);
+    auto indexsize = _devicealign(mdf.index_size);
     
-    GPUInternalAllocateAsset(vertindex,DeviceAlign(vertsize + indexsize));
+    GPUInternalAllocateAsset(vertindex,_devicealign(vertsize + indexsize));
     
     auto transferbuffer = main_transferbuffer.buffer;
     auto transferbuffer_offset =
@@ -898,7 +892,7 @@ void AllocateAssetAnimated(const s8* filepath,
         VCreateStaticIndexBuffer(vdevice,
                                  commandbuffer,
                                  global_gpumemstate.global_ptr,
-                                 DeviceAlign(vertindex->gpuptr + mdf.vertex_size),
+                                 _devicealign(vertindex->gpuptr + mdf.vertex_size),
                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
                                  mdf.index_data,mdf.index_size);
     
@@ -929,10 +923,10 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
     vertindex.vert_fileoffset = mdf.vertexdata_offset;
     vertindex.index_fileoffset = mdf.indexdata_offset;
     
-    auto vertsize = DeviceAlign(mdf.vertex_size);
-    auto indexsize = DeviceAlign(mdf.index_size);
+    auto vertsize = _devicealign(mdf.vertex_size);
+    auto indexsize = _devicealign(mdf.index_size);
     
-    GPUInternalAllocateAsset(&vertindex,DeviceAlign(vertsize + indexsize));
+    GPUInternalAllocateAsset(&vertindex,_devicealign(vertsize + indexsize));
     
     auto transferbuffer = main_transferbuffer.buffer;
     auto transferbuffer_offset =
@@ -949,7 +943,7 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
         VCreateStaticIndexBuffer(vdevice,
                                  commandbuffer,
                                  global_gpumemstate.global_ptr,
-                                 DeviceAlign(vertindex.gpuptr + mdf.vertex_size),
+                                 _devicealign(vertindex.gpuptr + mdf.vertex_size),
                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
                                  mdf.index_data,mdf.index_size);
     
