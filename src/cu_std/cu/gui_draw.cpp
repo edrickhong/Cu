@@ -1736,7 +1736,7 @@ void GUIEnd(){
             0,
             gui->vert_buffer.memory,
             0,
-            gui->vert_offset * sizeof(GUIVertex)
+            _mapalign(gui->vert_offset * sizeof(GUIVertex))
         },
         
         {
@@ -1744,7 +1744,7 @@ void GUIEnd(){
             0,
             gui->ind_buffer.memory,
             0,
-            gui->ind_offset * sizeof(u32)
+            _mapalign(gui->ind_offset * sizeof(u32))
         }
     };
     
