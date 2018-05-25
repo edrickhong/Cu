@@ -812,6 +812,8 @@ VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevic
     if(!isdevice_local){
         memtype = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             prop;
+        
+        data_size = _mapalign(data_size);
     }
     
     
@@ -833,6 +835,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
     if(!isdevice_local){
         memtype = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             prop;
+        size = _mapalign(size);
     }
     
     auto context = InternalCreateStaticBufferContext(vdevice,size,
@@ -846,11 +849,13 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
 }
 
 VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
-                                     ptrsize size,u32 add_flags){
+                                     ptrsize size,VMappedBufferProperties prop){
     
-    auto flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | add_flags;
+    auto flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | prop;
     
     VBufferContext context = {};
+    
+    size = _mapalign(size);
     
     context.buffer = 
         CreateBuffer(vdevice->device,0,size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
@@ -867,7 +872,7 @@ VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
     auto typeindex = VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,
                                          memoryreq.memoryTypeBits,flags);
     
-    if(typeindex == (u32)-1 && (add_flags == V_AMD_DEVICE_HOST_VISIBLE)){
+    if(typeindex == (u32)-1 && (prop == VMAPPED_AMD_DEVICE_HOST_VISIBLE)){
         typeindex = VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,
                                         memoryreq.memoryTypeBits,flags);
     }
@@ -2208,6 +2213,8 @@ VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdev
     VBufferContext context;
     VkMemoryRequirements memreq;
     
+    data_size = _mapalign(data_size);
+    
     context.buffer = CreateBuffer(vdevice->device,0,data_size,
                                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                   VK_SHARING_MODE_EXCLUSIVE,0,0);
@@ -2238,6 +2245,8 @@ const  VDeviceContext* _restrict vdevice,
 u32 data_size,logic is_devicelocal,VMappedBufferProperties prop){
     VBufferContext context;
     VkMemoryRequirements memreq;
+    
+    data_size = _mapalign(data_size);
     
     context.buffer = CreateBuffer(vdevice->device,0,data_size,
                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -2332,7 +2341,7 @@ VkFormat format){
     _kill("invalid memory type\n",typeindex == (u32)-1);
     
     context.memory = 
-        deviceallocator(vdevice->device,memoryreq.size,typeindex);
+        deviceallocator(vdevice->device,_mapalign(memoryreq.size),typeindex);
     
     _vktest(vkBindImageMemory(vdevice->device,context.image,context.memory,0));
     
@@ -2347,8 +2356,8 @@ VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
     VImageContext context = {};
     
     auto img_mm =
-        VCreateColorImageMemory(vdevice,width,height,usage,is_device_local,prop,tiling,
-                                format);
+        VCreateColorImageMemory(vdevice,width,height,usage,is_device_local,prop,tiling,format);
+    
     context.image = img_mm.image;
     context.memory = img_mm.memory;
     
@@ -2364,7 +2373,6 @@ VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
 
 
 
-//TODO: make this bgra instead
 VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,void* data,
                                     u32 width,u32 height,VkCommandBuffer commandbuffer,VkQueue queue){
     

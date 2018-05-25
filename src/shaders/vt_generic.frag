@@ -12,7 +12,6 @@ layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
     mat4 world;
     mat4 bone_array[64];
     uint texture_id[16];
-    
 }ubo;
 
 

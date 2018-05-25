@@ -307,6 +307,7 @@ enum VMappedBufferProperties{
     VMAPPED_NONE = 0,
     VMAPPED_COHERENT = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
     VMAPPED_CACHED = VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+    VMAPPED_AMD_DEVICE_HOST_VISIBLE =(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
     
 };
 
@@ -718,11 +719,8 @@ void VSetDriverAllocator(VkAllocationCallbacks allocator);
 void VSetDeviceAllocator(VkDeviceMemory (*allocator)(VkDevice,VkDeviceSize,u32,
                                                      VkAllocationCallbacks*));
 
-#define V_AMD_DEVICE_HOST_VISIBLE (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-
 VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
-                                     ptrsize data_size,u32 add_flags =
-                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                     ptrsize data_size,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 
 struct _cachealign CacheAlignedCommandbuffer{

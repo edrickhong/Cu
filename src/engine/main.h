@@ -596,7 +596,7 @@ struct LightUBO{
     
     Color ambient_color;
     
-};
+}_align(128);
 
 struct PlatformData{
     
@@ -1101,8 +1101,10 @@ void ProcessObjUpdateList(){
           return entry_a->offset - entry_b->offset;
           });
     
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
+    
     auto range_array =
-        TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1);
+        TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + light_ubo->point_count + light_ubo->spot_count);
     
     
     for(u32 i = 0; i < pdata->objupdate_count; i++){
@@ -1113,8 +1115,8 @@ void ProcessObjUpdateList(){
             VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
             0,
             pdata->skel_ubo.memory,
-            entry.offset,
-            entry.data_size
+            (VkDeviceSize)_dmapalign(entry.offset),
+            (VkDeviceSize)_mapalign(entry.data_size)
         };
         
     }
@@ -1124,10 +1126,25 @@ void ProcessObjUpdateList(){
         0,
         pdata->light_ubo.memory,
         0,
-        sizeof(LightUBO)
+        _mapalign(sizeof(u32) * 4)
     };
     
     pdata->objupdate_count++;
+    
+    //MARK: hardcoded for now
+    range_array[pdata->objupdate_count] = {
+        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        0,
+        pdata->light_ubo.memory,
+        _dmapalign(offsetof(LightUBO,point_array)),
+        _mapalign(sizeof(LightUBO::PointLight) * light_ubo->point_count)
+    };
+    
+    pdata->objupdate_count++;
+    
+    
+    
+    
     
     
     {
