@@ -795,7 +795,7 @@ extern "C" {
         exit(0);
 #endif
         
-#if _debug
+#if _debug && _enable_gui
         EditorGUI(context);
 #endif
         

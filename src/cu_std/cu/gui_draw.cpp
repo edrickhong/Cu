@@ -566,7 +566,7 @@ struct GUIContext{
     
 };
 
-#define _reserve_count 1024 * 4
+#define _reserve_count 1024 * 2
 
 GUIContext* gui = 0;
 

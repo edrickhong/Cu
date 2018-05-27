@@ -93,6 +93,8 @@
 
 #define _COMPFILE "OBJ.comp"
 
+#define _enable_gui 1
+
 #define _renderbatchsize 128
 
 #define _rendergroupcount 3
