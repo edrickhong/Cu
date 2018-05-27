@@ -418,10 +418,6 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
     TIMEBLOCK(DeepSkyBlue);
     ExecuteRenderBatch(context,render);
     
-    //FIXME:
-    //we can get a hang here sometimes (renderbatch_completed_count > renderbatch_total_count)
-    //Change the way completion is done. we will do this right after we revamp gui
-    
     
     while(renderbatch_completed_count != renderbatch_total_count){
         _kill("",renderbatch_completed_count > renderbatch_total_count);
@@ -772,8 +768,11 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     VTStart(cmdbuffer);
     
+#if _enable_gui
     
     GameDrawGUI(context,&pdata->drawcmdbuffer,2);
+    
+#endif
     
     VkImageMemoryBarrier present_membarrier[] = {
         {
