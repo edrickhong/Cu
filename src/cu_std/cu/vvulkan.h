@@ -1041,3 +1041,53 @@ void _ainline VMapMemory(const VDeviceContext* _in_ vdevice,VkDeviceMemory memor
     
     VMapMemory(vdevice->device,memory,offset,size,ppData,flags);
 }
+
+struct VMemoryRangesArray{
+    
+    VkMappedMemoryRange range_array[16] = {};
+    u32 count = 0;
+};
+
+struct VMemoryRangesPtr{
+    
+    VkMappedMemoryRange* range_array = 0;
+    u32 count = 0;
+};
+
+void VPushBackMemoryRanges(VMemoryRangesArray* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size);
+
+void VPushBackMemoryRanges(VMemoryRangesPtr* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size);
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesArray* ranges);
+
+void _ainline VFlushMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesArray* ranges){
+    
+    VFlushMemoryRanges(vdevice->device,ranges);
+    
+}
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges);
+
+void _ainline VFlushMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesPtr* ranges){
+    
+    VFlushMemoryRanges(vdevice->device,ranges);
+    
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges);
+
+void _ainline VInvalidateMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesPtr* ranges){
+    
+    VInvalidateMemoryRanges(vdevice->device,ranges);
+    
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesArray* ranges);
+
+void _ainline VInvalidateMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesArray* ranges){
+    
+    VInvalidateMemoryRanges(vdevice->device,ranges);
+    
+}
