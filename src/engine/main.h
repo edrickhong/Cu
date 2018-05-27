@@ -659,6 +659,10 @@ struct PlatformData{
     ObjUpdateEntry objupdate_array[256];
     u32 objupdate_count;
     
+    //MARK:
+    u32 point_count;
+    u32 spot_count;
+    
 };
 
 _persist PlatformData* pdata;
@@ -1079,15 +1083,6 @@ void ProcessObjUpdateList(){
         return;
     }
     
-#if 1
-    {
-        auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-        
-        
-        _kill("DEBUG\n",light_ubo->point_count == 0);
-    }
-#endif
-    
     
     
     //MARK: why do we have to sort?
@@ -1103,7 +1098,11 @@ void ProcessObjUpdateList(){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-    VMemoryRangesPtr ranges = {TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + light_ubo->point_count + light_ubo->spot_count),0};
+    //write the light list
+    light_ubo->point_count = pdata->point_count;
+    light_ubo->spot_count = pdata->spot_count;
+    
+    VMemoryRangesPtr ranges = {TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + pdata->point_count + pdata->spot_count),0};
     
     
     for(u32 i = 0; i < pdata->objupdate_count; i++){
@@ -1120,7 +1119,7 @@ void ProcessObjUpdateList(){
     
     //MARK: hardcoded for now
     VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
-                          offsetof(LightUBO,point_array),sizeof(LightUBO::PointLight) * light_ubo->point_count);
+                          offsetof(LightUBO,point_array),sizeof(LightUBO::PointLight) * pdata->point_count);
     
     pdata->objupdate_count++;
     
@@ -1569,18 +1568,12 @@ void CompileAllPipelines(PlatformData* pdata){
     }
 }
 
-#define _TEST_SPOT 0
+
 
 void ClearLightList(){
-    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-#if !(_TEST_SPOT)
-    
-    light_ubo->point_count = 0;
-    
-#endif
-    
-    light_ubo->spot_count = 0;
+    pdata->point_count = 0;
+    pdata->spot_count = 0;
 }
 
 void SetAmbientColor(Color color ,f32 intensity){
@@ -1604,29 +1597,13 @@ void AddPointLight(Vector3 pos,Color color,f32 radius){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-#if (_TEST_SPOT)
-    
-    if(light_ubo->point_count){
-        return;
-    }
-    
-#endif
-    
     //TODO: make radius into a proper distance cut off
     
-    light_ubo->point_array[light_ubo->point_count] = {
+    light_ubo->point_array[pdata->point_count] = {
         pos,color,radius
     };
     
-    light_ubo->point_count++;
-}
-
-void AddDirLight(Vector3 dir,Color color){
-    
-    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-    
-    light_ubo->dir_array[light_ubo->dir_count] = {dir,color};
-    light_ubo->dir_count ++;
+    pdata->point_count++;
 }
 
 void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
@@ -1635,8 +1612,9 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-    light_ubo->spot_array[light_ubo->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
-    light_ubo->spot_count ++;
+    light_ubo->spot_array[pdata->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
+    
+    pdata->spot_count ++;
     
 }
 
