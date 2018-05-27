@@ -1726,27 +1726,13 @@ void GUIEnd(){
     
     GUIInternalEndWindow();
     
+    VMemoryRangesArray ranges = {};
     
-    VkMappedMemoryRange range_array[] = {
-        
-        {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            gui->vert_buffer.memory,
-            0,
-            _mapalign(gui->vert_offset * sizeof(GUIVertex))
-        },
-        
-        {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            gui->ind_buffer.memory,
-            0,
-            _mapalign(gui->ind_offset * sizeof(u32))
-        }
-    };
+    VPushBackMemoryRanges(&ranges,gui->vert_buffer.memory,0,gui->vert_offset * sizeof(GUIVertex));
     
-    vkFlushMappedMemoryRanges(gui->internal_device,_arraycount(range_array),&range_array[0]);
+    VPushBackMemoryRanges(&ranges,gui->ind_buffer.memory,0,gui->ind_offset * sizeof(u32));
+    
+    VFlushMemoryRanges(gui->internal_device,&ranges);
 }
 
 

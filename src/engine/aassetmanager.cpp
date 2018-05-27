@@ -2126,18 +2126,12 @@ void UpdateTextureFetchEntries(){
     
     TIMEBLOCK(Green);
     
-    VkMappedMemoryRange range_array[] = {
-        {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            vt_targetreadbackbuffer.memory,
-            0,
-            (VkDeviceSize)(vt_readbackbuffer.w * vt_readbackbuffer.h * sizeof(VTReadbackPixelFormat)),
-        }
-    };
+    VMemoryRangesArray ranges = {};
     
-    vkInvalidateMappedMemoryRanges(global_device->device,
-                                   _arraycount(range_array),&range_array[0]);
+    VPushBackMemoryRanges(&ranges,vt_targetreadbackbuffer.memory,
+                          0,(VkDeviceSize)(vt_readbackbuffer.w * vt_readbackbuffer.h * sizeof(VTReadbackPixelFormat)));
+    
+    VInvalidateMemoryRanges(global_device,&ranges);
 }
 
 
