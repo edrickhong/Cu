@@ -1000,11 +1000,8 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
             AllocateTransferBuffer(&main_transferbuffer,
                                    handle->vertexbuffer.size + handle->indexbuffer.size);
         
-        
-        
-        vkMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
-                    (handle->vertexbuffer.size + handle->indexbuffer.size),0,
-                    (void**)&mappedmemory_ptr);
+        VMapMemory(global_device,transferbuffer.memory,transferbuffer_offset,
+                   (handle->vertexbuffer.size + handle->indexbuffer.size),(void**)&mappedmemory_ptr);
         
         memcpy(mappedmemory_ptr,vert,handle->vertexbuffer.size);
         
@@ -1321,8 +1318,8 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
                                                           VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,VMAPPED_NONE,
                                                           VK_IMAGE_TILING_LINEAR);
         
-        vkMapMemory(global_device->device,vt_targetreadbackbuffer.memory,
-                    0,w * h * sizeof(VTReadbackPixelFormat),0,(void**)&vt_readbackpixels);
+        VMapMemory(global_device,vt_targetreadbackbuffer.memory,
+                   0,w * h * sizeof(VTReadbackPixelFormat),(void**)&vt_readbackpixels);
         
         threadtexturefetch_array = (VTReadbackPixelFormat*)alloc(w * h *
                                                                  sizeof(VTReadbackPixelFormat));
@@ -1892,9 +1889,8 @@ void FetchTextureTile(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                 
                 s8* mappedmemory_ptr;
                 
-                vkMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
-                            total_size + (sizeof(u32) * batch->fetchlist.fetch_count),0,
-                            (void**)&mappedmemory_ptr);
+                VMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
+                           total_size + (sizeof(u32) * batch->fetchlist.fetch_count),(void**)&mappedmemory_ptr);
                 
                 //Copy image data here
                 for(u32 i = 0; i < batch->fetchlist.fetch_count; i++){

@@ -185,11 +185,12 @@ s32 main(s32 argc,s8** argv){
     pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),_FLAG_);
     
     //MARK: keep the obj buffer permanently mapped
-    vkMapMemory(pdata->vdevice.device,pdata->skel_ubo.memory,
-                0,pdata->skel_ubo.size,0,(void**)&pdata->objupdate_ptr);
     
-    vkMapMemory(pdata->vdevice.device,pdata->light_ubo.memory,
-                0,pdata->light_ubo.size,0,(void**)&pdata->lightupdate_ptr);
+    VMapMemory(&pdata->vdevice,pdata->skel_ubo.memory,
+               0,pdata->skel_ubo.size,(void**)&pdata->objupdate_ptr);
+    
+    VMapMemory(&pdata->vdevice,pdata->light_ubo.memory,
+               0,pdata->light_ubo.size,(void**)&pdata->lightupdate_ptr);
     
     memset(pdata->lightupdate_ptr,0,pdata->light_ubo.size);
     

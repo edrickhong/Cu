@@ -706,7 +706,7 @@ VkBufferUsageFlags usage){
     
     vkBindBufferMemory(device,context.buffer,context.memory,offset);
     
-    vkMapMemory(device,src.memory,src_offset,context.size,0,&mappedmemory_ptr);
+    VMapMemory(device,src.memory,src_offset,context.size,&mappedmemory_ptr);
     
     memcpy(mappedmemory_ptr,data,data_size);
     
@@ -2296,7 +2296,7 @@ void VUpdateUniformBuffer(const  VDeviceContext* _restrict vdevice,VBufferContex
     
     void* mapped_ptr;
     
-    _vktest(vkMapMemory(vdevice->device,context.memory,0,context.size,0,&mapped_ptr));
+    VMapMemory(vdevice->device,context.memory,0,context.size,&mapped_ptr);
     
     
     memcpy(mapped_ptr,data,data_size);
@@ -2412,7 +2412,7 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
     
     void* mappedmemory_ptr;
     
-    vkMapMemory(vdevice->device,src.memory,0,src.size,0,&mappedmemory_ptr);
+    VMapMemory(vdevice,src.memory,0,src.size,&mappedmemory_ptr);
     
     memcpy(mappedmemory_ptr,data,data_size);
     
@@ -3344,4 +3344,10 @@ void VEnumeratePhysicalDevices(VkPhysicalDevice* array,u32* count,WWindowContext
     
     *count = c;
     
+}
+
+void VMapMemory(VkDevice device,VkDeviceMemory memory,
+                VkDeviceSize offset,VkDeviceSize size,void** ppData,VkMemoryMapFlags flags){
+    
+    _vktest(vkMapMemory(device,memory,offset,size,flags,ppData));
 }
