@@ -1103,53 +1103,31 @@ void ProcessObjUpdateList(){
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-    auto range_array =
-        TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + light_ubo->point_count + light_ubo->spot_count);
+    VMemoryRangesPtr ranges = {TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + light_ubo->point_count + light_ubo->spot_count),0};
     
     
     for(u32 i = 0; i < pdata->objupdate_count; i++){
         
         auto entry = pdata->objupdate_array[i];
         
-        range_array[i] = {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            pdata->skel_ubo.memory,
-            (VkDeviceSize)_dmapalign(entry.offset),
-            (VkDeviceSize)_mapalign(entry.data_size)
-        };
+        VPushBackMemoryRanges(&ranges,pdata->skel_ubo.memory,
+                              entry.offset,entry.data_size);
         
     }
     
-    range_array[pdata->objupdate_count] = {
-        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        0,
-        pdata->light_ubo.memory,
-        0,
-        _mapalign(sizeof(u32) * 4)
-    };
-    
-    pdata->objupdate_count++;
+    VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
+                          0,sizeof(u32) * 4);
     
     //MARK: hardcoded for now
-    range_array[pdata->objupdate_count] = {
-        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        0,
-        pdata->light_ubo.memory,
-        _dmapalign(offsetof(LightUBO,point_array)),
-        _mapalign(sizeof(LightUBO::PointLight) * light_ubo->point_count)
-    };
+    VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
+                          offsetof(LightUBO,point_array),sizeof(LightUBO::PointLight) * light_ubo->point_count);
     
     pdata->objupdate_count++;
-    
-    
-    
-    
     
     
     {
         TIMEBLOCKTAGGED("vkFlush",Green);
-        vkFlushMappedMemoryRanges(pdata->vdevice.device,pdata->objupdate_count,&range_array[0]);
+        VFlushMemoryRanges(&pdata->vdevice,&ranges);
         
     }
     

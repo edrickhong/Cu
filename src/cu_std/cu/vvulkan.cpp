@@ -3351,3 +3351,51 @@ void VMapMemory(VkDevice device,VkDeviceMemory memory,
     
     _vktest(vkMapMemory(device,memory,offset,size,flags,ppData));
 }
+
+void _ainline InternalPushBackMemoryRanges(VkMappedMemoryRange* range_array,u32* count,VkDeviceMemory memory,
+                                           VkDeviceSize offset,VkDeviceSize size,const void* next = 0){
+    range_array[(*count)] = {
+        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        next,
+        memory,
+        _dmapalign(offset),
+        _mapalign(size)
+    };
+    
+    (*count)++;
+}
+
+void VPushBackMemoryRanges(VMemoryRangesArray* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size){
+    
+    InternalPushBackMemoryRanges(&ranges->range_array[0],&ranges->count,memory,
+                                 offset,size);
+    
+}
+
+void VPushBackMemoryRanges(VMemoryRangesPtr* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size){
+    
+    InternalPushBackMemoryRanges(&ranges->range_array[0],&ranges->count,memory,
+                                 offset,size);
+}
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges){
+    
+    _vktest(vkFlushMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesArray* ranges){
+    
+    _vktest(vkFlushMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesArray* ranges){
+    
+    _vktest(vkInvalidateMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges){
+    
+    _vktest(vkInvalidateMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
