@@ -1115,8 +1115,8 @@ struct VTReadbackImageContext : VImageContext{
 };
 
 //MARK:nvidia is ok with linear if it is not a storage image
-_persist VTReadbackImageContext vt_readbackbuffer = {};
-_persist VImageMemoryContext vt_targetreadbackbuffer = {};
+_persist VTReadbackImageContext vt_readbackbuffer = {}; //device writes to this
+_persist VImageMemoryContext vt_targetreadbackbuffer = {}; // we copy to this for reading 
 _persist VTReadbackPixelFormat* vt_readbackpixels = 0;
 _persist VTReadbackPixelFormat* threadtexturefetch_array = 0;
 
@@ -2129,7 +2129,7 @@ void UpdateTextureFetchEntries(){
     VMemoryRangesArray ranges = {};
     
     VPushBackMemoryRanges(&ranges,vt_targetreadbackbuffer.memory,
-                          0,(VkDeviceSize)(vt_readbackbuffer.w * vt_readbackbuffer.h * sizeof(VTReadbackPixelFormat)));
+                          0, VK_WHOLE_SIZE);
     
     VInvalidateMemoryRanges(global_device,&ranges);
 }
