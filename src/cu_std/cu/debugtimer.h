@@ -8,7 +8,7 @@
 
 #include "ccolor.h"
 
-#if _debug
+#if _debug && _enable_gui
 
 #define _enable_debugtimer 1
 
@@ -50,7 +50,7 @@
 #define TIMEBLOCKTAGGED(NAME,COLOR)
 #define MASTERTIMEBLOCKSTART(COLOR)
 #define EXECTIMEBLOCK(COLOR)
-#define BUILDGUIGRAPH(GUI,FONT,UPPERBOUND)
+#define BUILDGUIGRAPH(to_draw)
 #define PRINTBLOCKS()
 #define PRINTTIMEBLOCK(COLOR)
 #define PAUSEGRAPH()
@@ -61,7 +61,7 @@
 struct DebugRecord{
     
     Color color;
-  
+    
     TimeSpec start_stamp;
     f32 timelen;
     u64 cyclelen;
@@ -96,9 +96,9 @@ void SetExecTime(f32 time);
 u32 GetThreadIndex(ThreadID tid);
 
 struct TimeBlock{
-  
-  TimeSpec start_stamp;
-  u64 start_cycle;
+    
+    TimeSpec start_stamp;
+    u64 start_cycle;
     
     const s8* file;
     const s8* function;
@@ -107,15 +107,15 @@ struct TimeBlock{
     
     
     TimeBlock(const s8* File,u32 Line,const s8* Function,Color c){
-      
-      file = File;
-      line = Line;
-      function = Function;
-      color = c;
-
-      start_cycle = Rdtsc();
-	
-      GetTime(&start_stamp);
+        
+        file = File;
+        line = Line;
+        function = Function;
+        color = c;
+        
+        start_cycle = Rdtsc();
+        
+        GetTime(&start_stamp);
     }
     
     ~TimeBlock(){
@@ -135,38 +135,38 @@ struct TimeBlock{
 };
 
 struct MasterTimeBlock : TimeBlock{
-
- MasterTimeBlock(const s8* File,u32 Line,const s8* Function,Color c) :
-  TimeBlock(File,Line,Function,c){
-    SetStartTimeBlock(start_stamp);
-  }
-
- ~MasterTimeBlock(){
-   
-   TimeSpec end;  
+    
+    MasterTimeBlock(const s8* File,u32 Line,const s8* Function,Color c) :
+    TimeBlock(File,Line,Function,c){
+        SetStartTimeBlock(start_stamp);
+    }
+    
+    ~MasterTimeBlock(){
         
-   GetTime(&end);
-   
-   SetFrameTime(GetTimeDifferenceMS(start_stamp,end));
-  }
-  
+        TimeSpec end;  
+        
+        GetTime(&end);
+        
+        SetFrameTime(GetTimeDifferenceMS(start_stamp,end));
+    }
+    
 };
 
 
 struct ExecTimeBlock : TimeBlock{
-
- ExecTimeBlock(const s8* File,u32 Line,const s8* Function,Color c) :
-  TimeBlock(File,Line,Function,c){}
-
-  ~ExecTimeBlock(){
-   
-    TimeSpec end;  
+    
+    ExecTimeBlock(const s8* File,u32 Line,const s8* Function,Color c) :
+    TimeBlock(File,Line,Function,c){}
+    
+    ~ExecTimeBlock(){
         
-    GetTime(&end);
-   
-    SetExecTime(GetTimeDifferenceMS(start_stamp,end));
-  }
-  
+        TimeSpec end;  
+        
+        GetTime(&end);
+        
+        SetExecTime(GetTimeDifferenceMS(start_stamp,end));
+    }
+    
 };
 
 struct PrintTimeBlock : TimeBlock{
@@ -199,20 +199,20 @@ void PauseTimer();
 
 
 struct _cachealign RecordArray{
-  DebugRecord array[100];
+    DebugRecord array[100];
     
-  DebugRecord& operator [](ptrsize index){
-    return array[index];
-  }
+    DebugRecord& operator [](ptrsize index){
+        return array[index];
+    }
 };
 
 struct DebugTable{
-  TimeSpec timestamp;
-  volatile ThreadID threadid_array[15] = {};//should set this to your threadcount
-  volatile u32 thread_count = 0;
+    TimeSpec timestamp;
+    volatile ThreadID threadid_array[15] = {};//should set this to your threadcount
+    volatile u32 thread_count = 0;
     
-  //We should cache align these
-  // DebugRecord record_array[15][100] = {};
-  RecordArray record_array[15];
-  u32 recordcount_array[15] = {};
+    //We should cache align these
+    // DebugRecord record_array[15][100] = {};
+    RecordArray record_array[15];
+    u32 recordcount_array[15] = {};
 };

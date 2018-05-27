@@ -138,7 +138,7 @@ s32 main(s32 argc,s8** argv){
     pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
                                                VSYNC_NORMAL);
     
-    InitAssetAllocator(_gigabytes(1),_megabytes(500),&pdata->vdevice,
+    InitAssetAllocator(_gigabytes(1),_megabytes(4),&pdata->vdevice,
                        &pdata->swapchain);
     
     pdata->present_fence = VCreateFence(&pdata->vdevice,(VkFenceCreateFlagBits)0);
@@ -237,8 +237,12 @@ s32 main(s32 argc,s8** argv){
         CreatePrimaryRenderCommandbuffer(&pdata->vdevice,
                                          pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
     
+#if _enable_gui
+    
     GUIInit(&pdata->vdevice,&pdata->swapchain,pdata->renderpass,pdata->transfer_queue,
             transfercmdbuffer,pdata->pipelinecache);
+    
+#endif
     
     GameInitData initdata = {
         &pdata->scenecontext,gdata,&pdata->window,pdata->vdevice,pdata->renderpass,
@@ -266,12 +270,18 @@ s32 main(s32 argc,s8** argv){
             Clear(&pdata->rendercontext);
             ClearLightList();
             
+#if _enable_gui
+            
             GUIUpdate(&pdata->window,&pdata->keyboardstate,&pdata->mousestate,
                       pdata->view,pdata->proj);
             
             GUIBegin();
             
+#endif
+            
             BUILDGUIGRAPH(gdata->draw_profiler);
+            
+            
             
             TimeSpec start,end;
             
@@ -364,9 +374,15 @@ s32 main(s32 argc,s8** argv){
                 //FIXME: if there is corruption, it is either because: 1. Flush is too slow,
                 //2. MainThreadDoWorkQueue is not synced
                 //3. Someone is writing into another person's data
+                
                 ProcessObjUpdateList();
                 
+                
+#if _enable_gui
+                
                 GUIEnd();
+                
+#endif
                 
                 BuildRenderCommandBuffer(pdata);
                 
