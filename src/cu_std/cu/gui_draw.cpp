@@ -411,7 +411,7 @@ void GUIGenFontFile(const s8* filepath,const s8* writepath,f32 fontsize){
 
 struct InternalGUISubmission{
     u16 to_make_window;
-    u16 ind_offset = 0;
+	u16 vert_offset = 0;
     GUIRenderMode rendermode = GUI_RENDER_SOLID;
     GUICameraMode cameramode = GUI_CAMERA_PERSPECTIVE;
     VkViewport viewport;
@@ -442,16 +442,12 @@ struct GUIContext{
     
     
     VBufferContext vert_buffer;
-    VBufferContext ind_buffer;
     
     GUIVertex guivert_array[_reserve_count];
-    u32 ind_array[_reserve_count];
     
     GUIVertex* vert_mptr;
-    u32* ind_mptr;
     
     u16 vert_offset;
-    u16 ind_offset;
     
     u16 internal_width;//of the screen
     u16 internal_height;
@@ -613,51 +609,48 @@ void InternalGUIDrawRect(f32 x,f32 y,f32 width,f32 height,Color color){
     y *= -1;
     
     u32 curvert = gui->vert_offset;
-    u32 curindex = gui->ind_offset;
     
+	//1
     gui->guivert_array[curvert] =
     {{x,y},{_blanktexcoord,-1.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
     
+	//2
     gui->guivert_array[curvert] =
     {{x,y + height},{_blanktexcoord, 0.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
     
+
+	//3
     gui->guivert_array[curvert] =
     {{x + width,y + height},{_blanktexcoord + _cellwidth, 0.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
+
+	//3
+	gui->guivert_array[curvert] =
+	{ { x + width,y + height },{ _blanktexcoord + _cellwidth, 0.0f },{ color.R, color.G, color.B,color.A } };
+
+	curvert++;
     
+
+	//4
     gui->guivert_array[curvert] =
     {{x + width,y},{_blanktexcoord + _cellwidth, -1.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
-    
-    gui->ind_array[curindex] = curvert - 4;
-    curindex++;
-    
-    gui->ind_array[curindex] = curvert - 3;
-    curindex++;
-    
-    gui->ind_array[curindex] = curvert - 2;
-    curindex++;
-    
-    gui->ind_array[curindex] = curvert - 2;
-    curindex++;
-    
-    gui->ind_array[curindex] = curvert - 1;
-    curindex++;
-    
-    gui->ind_array[curindex] = curvert - 4;
-    curindex++;
+
+	//1
+	gui->guivert_array[curvert] =
+	{ { x,y },{ _blanktexcoord,-1.0f },{ color.R, color.G, color.B,color.A } };
+
+	curvert++;
     
     gui->vert_offset = curvert;
-    gui->ind_offset = curindex;
     
     _kill("gui vertex overflow", curvert > _reserve_count);
-    _kill("gui index overflow",curindex > _reserve_count);
     
 #undef _blanktexcoord
 }
@@ -665,7 +658,6 @@ void InternalGUIDrawRect(f32 x,f32 y,f32 width,f32 height,Color color){
 void InternalGUIDrawLine(GUIVec3 a,GUIVec3 b,Color color = White){
     
     u32 curvert = gui->vert_offset;
-    u32 curindex = gui->ind_offset;
     
     gui->guivert_array[curvert] = {{a.x,a.y,a.z},{},{ color.R, color.G, color.B,color.A }};
     curvert++;
@@ -673,17 +665,10 @@ void InternalGUIDrawLine(GUIVec3 a,GUIVec3 b,Color color = White){
     gui->guivert_array[curvert] = {{b.x,b.y,b.z},{},{ color.R, color.G, color.B,color.A }};
     curvert++;
     
-    gui->ind_array[curindex] = curvert - 2;
-    curindex++;
-    
-    gui->ind_array[curindex] = curvert - 1;
-    curindex++;
     
     gui->vert_offset = curvert;
-    gui->ind_offset = curindex;
     
     _kill("gui vertex overflow", curvert > _reserve_count);
-    _kill("gui index overflow",curindex > _reserve_count);
 }
 
 _ainline
@@ -802,19 +787,32 @@ void InternalDrawString(const s8* string,f32 x,f32 y,f32 scale,GUIFont* font,Col
         
         auto count = gui->vert_offset;
         
-        gui->guivert_array[count - 4].uv[0] = code * _cellwidth;
-        gui->guivert_array[count - 4].uv[1] = -1.0f;
-        
-        gui->guivert_array[count - 3].uv[0] = code * _cellwidth;
-        gui->guivert_array[count - 3].uv[1] = 0.0f;
-        
-        gui->guivert_array[count - 2].uv[0] = code * _cellwidth + _cellwidth;
-        
-        gui->guivert_array[count - 2].uv[1] = 0.0f;
-        
-        gui->guivert_array[count - 1].uv[0] = code * _cellwidth + _cellwidth;
-        
-        gui->guivert_array[count - 1].uv[1] = -1.0f;
+		//1
+		gui->guivert_array[count - 6].uv[0] = code * _cellwidth;
+		gui->guivert_array[count - 6].uv[1] = -1.0f;
+
+
+		//2
+		gui->guivert_array[count - 5].uv[0] = code * _cellwidth;
+		gui->guivert_array[count - 5].uv[1] = 0.0f;
+
+
+		//3
+		gui->guivert_array[count - 4].uv[0] = code * _cellwidth + _cellwidth;
+		gui->guivert_array[count - 4].uv[1] = 0.0f;
+
+		//3
+		gui->guivert_array[count - 3].uv[0] = code * _cellwidth + _cellwidth;
+		gui->guivert_array[count - 3].uv[1] = 0.0f;
+
+
+		//4
+		gui->guivert_array[count - 2].uv[0] = code * _cellwidth + _cellwidth;
+		gui->guivert_array[count - 2].uv[1] = -1.0f;
+
+		//1
+		gui->guivert_array[count - 1].uv[0] = code * _cellwidth;
+		gui->guivert_array[count - 1].uv[1] = -1.0f;
         
         
         x += width;
@@ -1210,11 +1208,7 @@ void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
     gui->vert_buffer =
         VCreateStaticVertexBuffer(vdevice,sizeof(GUIVertex) * _reserve_count,0,false,VMAPPED_NONE);
     
-    gui->ind_buffer = VCreateStaticIndexBuffer(vdevice,sizeof(u32) * _reserve_count,false,VMAPPED_NONE);
-    
     VMapMemory(gui->internal_device,gui->vert_buffer.memory,0,gui->vert_buffer.size,(void**)&gui->vert_mptr);
-    
-    VMapMemory(gui->internal_device,gui->ind_buffer.memory,0,gui->ind_buffer.size,(void**)&gui->ind_mptr);
 }
 
 
@@ -1287,7 +1281,7 @@ GUIVec2 pos = {},GUIDim2 dim = {}){
     skip_translation:
     
     gui->submit_array[gui->submit_count] =
-    {to_make_window,gui->ind_offset,gui->cur_rendermode,gui->cur_cameramode,
+    {to_make_window,gui->vert_offset,gui->cur_rendermode,gui->cur_cameramode,
         {x,y,width,height,0,1},
         {{(s32)x,(s32)y},{(u32)width,(u32)height}}
     };
@@ -1571,7 +1565,6 @@ void GUIBegin(const s8* title,GUIVec2* pos,GUIDim2* dim){
     
     gui->internal_last_h = 0.0f;
     gui->vert_offset = 0;
-    gui->ind_offset = 0;
     gui->submit_count = 0;
     gui->bounds_count = 0;
     
@@ -1759,13 +1752,9 @@ void GUIEnd(){
     
     memcpy(gui->vert_mptr,&gui->guivert_array[0],gui->vert_offset * sizeof(GUIVertex));
     
-    memcpy(gui->ind_mptr,&gui->ind_array[0],gui->ind_offset * sizeof(u32));
-    
     VMemoryRangesArray ranges = {};
     
     VPushBackMemoryRanges(&ranges,gui->vert_buffer.memory,0,gui->vert_offset * sizeof(GUIVertex));
-    
-    VPushBackMemoryRanges(&ranges,gui->ind_buffer.memory,0,gui->ind_offset * sizeof(u32));
     
     VFlushMemoryRanges(gui->internal_device,&ranges);
 }
@@ -1783,8 +1772,6 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
     vkCmdBindVertexBuffers(cmdbuffer,gui->vert_buffer.attrib,1,&gui->vert_buffer.buffer,
                            &offset);
     
-    vkCmdBindIndexBuffer(cmdbuffer,gui->ind_buffer.buffer,0,VK_INDEX_TYPE_UINT32);
-    
     VkViewport viewport = {};
     VkRect2D scissor = {};
     
@@ -1797,7 +1784,8 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
             scissor = sub->scissor;
         }
         
-        Matrix4b4 camera;camera = IdentityMatrix4b4();
+        Matrix4b4 camera;
+		camera = IdentityMatrix4b4();
         
         if(sub->cameramode == GUI_CAMERA_NONE){
             camera = IdentityMatrix4b4();
@@ -1827,20 +1815,20 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
         vkCmdPushConstants(cmdbuffer,gui->pipelinelayout,VK_SHADER_STAGE_VERTEX_BIT,0,
                            sizeof(camera),&camera);
         
-        auto index_offset = sub->ind_offset;
+        auto vert_offset = sub->vert_offset;
         
-        u32 index_count;
+        u32 vert_count;
         
         if((i + 1) < gui->submit_count){
             auto next_sub = &gui->submit_array[i + 1];
-            index_count = next_sub->ind_offset - index_offset;
+            vert_count = next_sub->vert_offset - vert_offset;
         }
         
         else{
-            index_count = gui->ind_offset - index_offset;
+            vert_count = gui->vert_offset - vert_offset;
         }
         
-        vkCmdDrawIndexed(cmdbuffer,index_count,1,index_offset,0,0);  
+        vkCmdDraw(cmdbuffer,vert_count,1,vert_offset,0);
         
     }
     
