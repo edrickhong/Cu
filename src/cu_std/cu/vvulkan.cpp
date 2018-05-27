@@ -275,6 +275,8 @@ void InternalLoadVulkanLib(){
     
     vkcreateinstance = LGetLibFunction(vklib,"vkCreateInstance");
     
+    vkdestroyinstance = LGetLibFunction(vklib,"vkDestroyInstance");
+    
     
     vkgetinstanceprocaddress = LGetLibFunction(vklib,"vkGetInstanceProcAddr");
     vkgetdeviceprocaddress = LGetLibFunction(vklib,"vkGetDeviceProcAddr");
@@ -312,6 +314,8 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     
     _instproc(vkgetphysicaldeviceimageformatproperties,global_instance,vkGetPhysicalDeviceImageFormatProperties);
     
+    _instproc(vkdestroysurfacekhr,global_instance,vkDestroySurfaceKHR);
+    
     //vulkan 1.1 here
     
     if(VK_VERSION_MINOR(global_version_no)){
@@ -329,7 +333,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     
     auto load = (void* (*)(void*,const s8*))load_fptr;
     
-#define _initfunc(func,var) var = (void*)load(k,""#func); _kill("failed to load function\n",!func)
+#define _initfunc(func,var) var = (void*)load(k,""#func); if(!var){printf("%s %s %d :: Failed to load function %s\n",__FUNCTION__,__FILE__,__LINE__,""#func);*(int *)0 = 0;}
     
     //TODO: remove instance level functions and run them in instance creation
     
@@ -407,7 +411,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkDestroyPipelineLayout,vkdestroypipelinelayout);
     _initfunc(vkDestroyDescriptorSetLayout,vkdestroydescriptorsetlayout);
     _initfunc(vkDestroyDevice,vkdestroydevice);
-    _initfunc(vkDestroyInstance,vkdestroyinstance);
+    
     _initfunc(vkDestroyDescriptorPool,vkdestroydescriptorpool);
     _initfunc(vkFreeCommandBuffers,vkfreecommandbuffers);
     _initfunc(vkDestroyRenderPass,vkdestroyrenderpass);
@@ -422,7 +426,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkCmdResetQueryPool,vkcmdresetquerypool);
     _initfunc(vkCmdCopyQueryPoolResults,vkcmdcopyquerypoolresults);
     
-    _initfunc(vkDestroySurfaceKHR,vkdestroysurfacekhr);
+    
     _initfunc(vkCmdFillBuffer,vkcmdfillbuffer);
     _initfunc(vkAcquireNextImageKHR,vkacquirenextimagekhr);
     _initfunc(vkGetFenceStatus,vkgetfencestatus);
@@ -1703,9 +1707,9 @@ VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array,u32 physd
         _kill("V_L_SINGLE_VKDEVICE specified but another VkDevice was created\n",global_device);
         global_device = context.device;
         
-        InternalLoadVulkanFunctions(context.device,(void*)vkGetDeviceProcAddr);
-        
 #endif
+        
+        InternalLoadVulkanFunctions(context.device,(void*)vkGetDeviceProcAddr);
         
     }
     
