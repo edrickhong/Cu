@@ -1032,3 +1032,12 @@ void VPushBackPushConstRange(VShaderObj* _restrict obj,VkFormat* format_array,u3
 VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* init_data = 0,ptrsize init_size = 0);
 
 void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,ptrsize* init_size);
+
+void VMapMemory(VkDevice device,VkDeviceMemory memory,
+                VkDeviceSize offset,VkDeviceSize size,void** ppData,VkMemoryMapFlags flags = 0);
+
+void _ainline VMapMemory(const VDeviceContext* _in_ vdevice,VkDeviceMemory memory,
+                         VkDeviceSize offset,VkDeviceSize size,void** ppData,VkMemoryMapFlags flags = 0){
+    
+    VMapMemory(vdevice->device,memory,offset,size,ppData,flags);
+}

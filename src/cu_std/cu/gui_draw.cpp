@@ -1077,11 +1077,9 @@ void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
     
     gui->ind_buffer = VCreateStaticIndexBuffer(vdevice,sizeof(u32) * _reserve_count,false,VMAPPED_NONE);
     
-    vkMapMemory(gui->internal_device,gui->vert_buffer.memory,0,gui->vert_buffer.size,0,
-                (void**)&gui->vert_mptr);
+    VMapMemory(gui->internal_device,gui->vert_buffer.memory,0,gui->vert_buffer.size,(void**)&gui->vert_mptr);
     
-    vkMapMemory(gui->internal_device,gui->ind_buffer.memory,0,gui->ind_buffer.size,0,
-                (void**)&gui->ind_mptr);
+    VMapMemory(gui->internal_device,gui->ind_buffer.memory,0,gui->ind_buffer.size,(void**)&gui->ind_mptr);
 }
 
 
