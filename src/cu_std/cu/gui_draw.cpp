@@ -424,6 +424,10 @@ enum GUIType{
     GUITYPE_PROFILER,
 };
 
+#define _reserve_count 1024 * 2
+
+
+//TODO: remove the index buffer, we never reuse anyway
 struct GUIContext{
     
     GUIFont* default_font;
@@ -439,6 +443,9 @@ struct GUIContext{
     
     VBufferContext vert_buffer;
     VBufferContext ind_buffer;
+    
+    GUIVertex guivert_array[_reserve_count];
+    u32 ind_array[_reserve_count];
     
     GUIVertex* vert_mptr;
     u32* ind_mptr;
@@ -566,8 +573,6 @@ struct GUIContext{
     
 };
 
-#define _reserve_count 1024 * 2
-
 GUIContext* gui = 0;
 
 GUIContext* GetGUIContext(){
@@ -599,7 +604,87 @@ logic GUIMouseUpL(){
     return !gui->internal_mouse_curleft;
 }
 
+#define _cellwidth 1.0f/95.0f
 
+void InternalGUIDrawRect(f32 x,f32 y,f32 width,f32 height,Color color){
+    
+#define _blanktexcoord 94.0f/95.0f
+    
+    y *= -1;
+    
+    u32 curvert = gui->vert_offset;
+    u32 curindex = gui->ind_offset;
+    
+    gui->guivert_array[curvert] =
+    {{x,y},{_blanktexcoord,-1.0f}, { color.R, color.G, color.B,color.A }};
+    
+    curvert++;
+    
+    gui->guivert_array[curvert] =
+    {{x,y + height},{_blanktexcoord, 0.0f}, { color.R, color.G, color.B,color.A }};
+    
+    curvert++;
+    
+    gui->guivert_array[curvert] =
+    {{x + width,y + height},{_blanktexcoord + _cellwidth, 0.0f}, { color.R, color.G, color.B,color.A }};
+    
+    curvert++;
+    
+    gui->guivert_array[curvert] =
+    {{x + width,y},{_blanktexcoord + _cellwidth, -1.0f}, { color.R, color.G, color.B,color.A }};
+    
+    curvert++;
+    
+    gui->ind_array[curindex] = curvert - 4;
+    curindex++;
+    
+    gui->ind_array[curindex] = curvert - 3;
+    curindex++;
+    
+    gui->ind_array[curindex] = curvert - 2;
+    curindex++;
+    
+    gui->ind_array[curindex] = curvert - 2;
+    curindex++;
+    
+    gui->ind_array[curindex] = curvert - 1;
+    curindex++;
+    
+    gui->ind_array[curindex] = curvert - 4;
+    curindex++;
+    
+    gui->vert_offset = curvert;
+    gui->ind_offset = curindex;
+    
+    _kill("gui vertex overflow", curvert > _reserve_count);
+    _kill("gui index overflow",curindex > _reserve_count);
+    
+#undef _blanktexcoord
+}
+
+void InternalGUIDrawLine(GUIVec3 a,GUIVec3 b,Color color = White){
+    
+    u32 curvert = gui->vert_offset;
+    u32 curindex = gui->ind_offset;
+    
+    gui->guivert_array[curvert] = {{a.x,a.y,a.z},{},{ color.R, color.G, color.B,color.A }};
+    curvert++;
+    
+    gui->guivert_array[curvert] = {{b.x,b.y,b.z},{},{ color.R, color.G, color.B,color.A }};
+    curvert++;
+    
+    gui->ind_array[curindex] = curvert - 2;
+    curindex++;
+    
+    gui->ind_array[curindex] = curvert - 1;
+    curindex++;
+    
+    gui->vert_offset = curvert;
+    gui->ind_offset = curindex;
+    
+    _kill("gui vertex overflow", curvert > _reserve_count);
+    _kill("gui index overflow",curindex > _reserve_count);
+}
 
 _ainline
 void InternalPixelDimToNormalizedDim(f32 r_w,f32 r_h,f32 p_w,f32 p_h,
@@ -683,6 +768,56 @@ void _ainline InternalGetTextDim(GUIFont* font,f32* w,f32* h,f32 scale,const s8*
     
     if(h){
         *h = (((f32)font->height)/w_height) * scale;
+    }
+    
+}
+
+void InternalDrawString(const s8* string,f32 x,f32 y,f32 scale,GUIFont* font,Color color){
+    
+    f32 width;
+    f32 height;
+    
+    InternalGetTextDim(font,&width,&height,scale);
+    
+    auto o_x = x;
+    
+    for(u32 i = 0; i < strlen(string);i++){
+        
+        s8 code = string[i];
+        
+        if(code == ' ' || code == '\t'){
+            x += width;
+            continue;
+        }
+        
+        if(code == '\n'){
+            x = o_x;
+            y -= height;
+            continue;
+        }
+        
+        code -= 33;
+        
+        InternalGUIDrawRect(x,y,width,height,color);
+        
+        auto count = gui->vert_offset;
+        
+        gui->guivert_array[count - 4].uv[0] = code * _cellwidth;
+        gui->guivert_array[count - 4].uv[1] = -1.0f;
+        
+        gui->guivert_array[count - 3].uv[0] = code * _cellwidth;
+        gui->guivert_array[count - 3].uv[1] = 0.0f;
+        
+        gui->guivert_array[count - 2].uv[0] = code * _cellwidth + _cellwidth;
+        
+        gui->guivert_array[count - 2].uv[1] = 0.0f;
+        
+        gui->guivert_array[count - 1].uv[0] = code * _cellwidth + _cellwidth;
+        
+        gui->guivert_array[count - 1].uv[1] = -1.0f;
+        
+        
+        x += width;
     }
     
 }
@@ -1168,63 +1303,7 @@ GUIVec2 pos = {},GUIDim2 dim = {}){
     
 }
 
-#define _cellwidth 1.0f/95.0f
 
-void InternalGUIDrawRect(f32 x,f32 y,f32 width,f32 height,Color color){
-    
-#define _blanktexcoord 94.0f/95.0f
-    
-    y *= -1;
-    
-    u32 curvert = gui->vert_offset;
-    u32 curindex = gui->ind_offset;
-    
-    gui->vert_mptr[curvert] =
-    {{x,y},{_blanktexcoord,-1.0f}, { color.R, color.G, color.B,color.A }};
-    
-    curvert++;
-    
-    gui->vert_mptr[curvert] =
-    {{x,y + height},{_blanktexcoord, 0.0f}, { color.R, color.G, color.B,color.A }};
-    
-    curvert++;
-    
-    gui->vert_mptr[curvert] =
-    {{x + width,y + height},{_blanktexcoord + _cellwidth, 0.0f}, { color.R, color.G, color.B,color.A }};
-    
-    curvert++;
-    
-    gui->vert_mptr[curvert] =
-    {{x + width,y},{_blanktexcoord + _cellwidth, -1.0f}, { color.R, color.G, color.B,color.A }};
-    
-    curvert++;
-    
-    gui->ind_mptr[curindex] = curvert - 4;
-    curindex++;
-    
-    gui->ind_mptr[curindex] = curvert - 3;
-    curindex++;
-    
-    gui->ind_mptr[curindex] = curvert - 2;
-    curindex++;
-    
-    gui->ind_mptr[curindex] = curvert - 2;
-    curindex++;
-    
-    gui->ind_mptr[curindex] = curvert - 1;
-    curindex++;
-    
-    gui->ind_mptr[curindex] = curvert - 4;
-    curindex++;
-    
-    gui->vert_offset = curvert;
-    gui->ind_offset = curindex;
-    
-    _kill("gui vertex overflow", curvert > _reserve_count);
-    _kill("gui index overflow",curindex > _reserve_count);
-    
-#undef _blanktexcoord
-}
 
 void _ainline InternalGetWindowTextDim(GUIFont* font,f32* w,f32* h,f32 scale,
                                        const s8* string = 0){
@@ -1246,54 +1325,6 @@ void _ainline InternalGetWindowTextDim(GUIFont* font,f32* w,f32* h,f32 scale,
     if(h){
         *h = (((f32)font->height)/w_height) * scale;
     }  
-}
-
-void InternalDrawString(const s8* string,f32 x,f32 y,f32 scale,GUIFont* font,Color color){
-    
-    f32 width;
-    f32 height;
-    
-    InternalGetTextDim(font,&width,&height,scale);
-    
-    auto o_x = x;
-    
-    for(u32 i = 0; i < strlen(string);i++){
-        
-        s8 code = string[i];
-        
-        if(code == ' ' || code == '\t'){
-            x += width;
-            continue;
-        }
-        
-        if(code == '\n'){
-            x = o_x;
-            y -= height;
-            continue;
-        }
-        
-        code -= 33;
-        
-        InternalGUIDrawRect(x,y,width,height,color);
-        
-        auto count = gui->vert_offset;
-        
-        gui->vert_mptr[count - 4].uv[0] = code * _cellwidth;
-        gui->vert_mptr[count - 4].uv[1] = -1.0f;
-        
-        gui->vert_mptr[count - 3].uv[0] = code * _cellwidth;
-        gui->vert_mptr[count - 3].uv[1] = 0.0f;
-        
-        gui->vert_mptr[count - 2].uv[0] = code * _cellwidth + _cellwidth;
-        gui->vert_mptr[count - 2].uv[1] = 0.0f;
-        
-        gui->vert_mptr[count - 1].uv[0] = code * _cellwidth + _cellwidth;
-        gui->vert_mptr[count - 1].uv[1] = -1.0f;
-        
-        
-        x += width;
-    }
-    
 }
 
 void GUIUpdate(WWindowContext* window,KeyboardState* keyboardstate,
@@ -1725,6 +1756,10 @@ void GUIEnd(){
     InternalGUIActiveProfiler();
     
     GUIInternalEndWindow();
+    
+    memcpy(gui->vert_mptr,&gui->guivert_array[0],gui->vert_offset * sizeof(GUIVertex));
+    
+    memcpy(gui->ind_mptr,&gui->ind_array[0],gui->ind_offset * sizeof(u32));
     
     VMemoryRangesArray ranges = {};
     
@@ -2281,29 +2316,7 @@ logic GUIIsAnyElementActive(){
 
 //3D stuff
 
-void InternalGUIDrawLine(GUIVec3 a,GUIVec3 b,Color color = White){
-    
-    u32 curvert = gui->vert_offset;
-    u32 curindex = gui->ind_offset;
-    
-    gui->vert_mptr[curvert] = {{a.x,a.y,a.z},{},{ color.R, color.G, color.B,color.A }};
-    curvert++;
-    
-    gui->vert_mptr[curvert] = {{b.x,b.y,b.z},{},{ color.R, color.G, color.B,color.A }};
-    curvert++;
-    
-    gui->ind_mptr[curindex] = curvert - 2;
-    curindex++;
-    
-    gui->ind_mptr[curindex] = curvert - 1;
-    curindex++;
-    
-    gui->vert_offset = curvert;
-    gui->ind_offset = curindex;
-    
-    _kill("gui vertex overflow", curvert > _reserve_count);
-    _kill("gui index overflow",curindex > _reserve_count);
-}
+
 
 void InternalGUIDrawLine(GUIVec2 a,GUIVec2 b,Color color = White){
     InternalGUIDrawLine({a.x,a.y,0},{b.x,b.y,0},color);
