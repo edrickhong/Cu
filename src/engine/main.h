@@ -54,7 +54,6 @@ _persist u32 global_debugentry_count = 0;
 
 void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
     
-    u32 expected_count;
     u32 actual_count = TGetEntryIndexD(&global_debugentry_count,_arraycount(global_debugentry_array));
     
     global_debugentry_array[actual_count] = {array,count,tid};
