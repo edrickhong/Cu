@@ -8,31 +8,15 @@ os:
 compiler:
     - clang
 
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "ouxaBQ97378L6F18DZD8szmFtYl/dnnNsF7CN8Z7GaVD8zStu7FTDg9z/1rb+11GOxCE/Exb5tVIB+80Fov8x6lxjIiC1P2FdmlucQ2qEMKES7Cgvow5f1a/pDR/R9te5haQs62b5ThwT7rjAKoO52lZysZOU7G2SqLFSe8F+Ww9byz52Dav3O1UmV28N/7W/GAdWp3Lx/lm038lctUDQbB6hpTX646JuYBO8pESmcohEcPz61uM5pago5k7K7hn5QQnEnFcoBCGY+qj4cxVK+u6ij9A5ez4F2/okktGBv59EyeW94LPp6fid24Fm9JliojL5Y/bdLFRTMUcxqfxMHiWU4JpDEYIu9amlTrpIq6ibECam+0kFTP/FMtObRqs17SXQXypDxLhNkcUM0/RQHlef1nMffqzlvzMNkNYp+4+bjzjJf8pWWU3mHp0EXbZJojuu6dpOCU9W1mDbi50FRiISqk97+tp8eLioLl374CcriFHOnuHK4MnGLtqnNfIBdX/EyHSpczr0psgNKDV96ZsDnwhQG4twfYHSOXekS70iP0Qpnf5cbyE87NYrinC6PGCVtLyj2/v+8BU4vCAQ0w2pUaFURAPmg4IeO+0hj93rzO8gDN615um9UUvnrcdO2/cHRbbAm7Q/JRtaFOYeD1LxyIujcK9Iy4KiWl1SDI="
-
 before_install:  
   - sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main"
   - sudo apt-get update -qq
-  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
 
 
 install:
   - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev
   - sudo apt-get install --allow-unauthenticated -qq clang++-4.0
   - export CXX="clang++-4.0"
-
-addons:
-  coverity_scan:
-    project:
-      name: "edrickhong/Cu"
-      description: "<Your project description here>"
-    notification_email: edrickhong@yahoo.com.sg
-    build_command: "make"
-    branch_pattern: master
 
   
 script:
@@ -48,4 +32,3 @@ script:
   - cd Make
   - cmake ..
   - make
-
