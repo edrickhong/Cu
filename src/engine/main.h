@@ -752,15 +752,6 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
         context->rendergroup[i].pushconst_size = sizeof(PushConst);
     }
     
-    VkClearValue clearvalue[2];
-    
-    clearvalue[0] = {
-        {{context->clearcolor.R,context->clearcolor.G,context->clearcolor.B,context->clearcolor.A}},
-    };
-    
-    clearvalue[1].color = {};
-    clearvalue[1].depthStencil = {1.0f,0};
-    
     
     VStartCommandBuffer(cmdbuffer,0);
     
@@ -795,18 +786,27 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     };
     
     vkCmdPipelineBarrier(cmdbuffer,
-                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-                         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                          0,
                          0,0,0,0,_arraycount(present_membarrier),&present_membarrier[0]);
+    
+    
+    VkClearValue clearvalue[2] = {};
+    
+    clearvalue[0] = {
+        {{context->clearcolor.R,context->clearcolor.G,context->clearcolor.B,context->clearcolor.A}},
+    };
+    
+    clearvalue[1].color = {};
+    clearvalue[1].depthStencil = {1.0f,0};
     
     VStartRenderpass(cmdbuffer,
                      VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,renderpass,
                      framebuffer,
                      {{0,0},{pdata->swapchain.width,
                      pdata->swapchain.height}},
-                     clearvalue,_arraycount(clearvalue));
+                     &clearvalue[0],_arraycount(clearvalue));
     
     _vthreaddump("--------new frame-------------------%s\n","");
     
