@@ -118,7 +118,7 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
