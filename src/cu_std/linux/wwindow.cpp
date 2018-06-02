@@ -119,7 +119,6 @@ logic InternalLoadLibraryX11(){
     return true;
 }
 
-
 #define XStoreName ((s32 (*)(Display*,Window,s8*))wfptr_x11_xstorename)
 
 
@@ -433,10 +432,22 @@ logic InternalCreateX11Window(WWindowContext* context,const s8* title,WCreateFla
         XSetWMProtocols(context->x11_handle,context->x11_rootwindow,&atom_exit,1);  
     }
     
+    //Set window class
+    
+    auto XSetClassHint_fptr = (void (*)(Display*,Window,XClassHint*))LGetLibFunction(wwindowlib_handle,"XSetClassHint");
+    
+    
+    XClassHint hint = {(s8*)title,(s8*)title};
+    
+    XSetClassHint_fptr(context->x11_handle,context->x11_rootwindow,&hint);
+    
     
     XFlush(context->x11_handle);
     
     XMapWindow_fptr(context->x11_handle,context->x11_rootwindow);
+    
+    //MARK: we can set multiple with XSetWMProperties
+    
     
     return true;
 }
