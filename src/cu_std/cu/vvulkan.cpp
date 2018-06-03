@@ -478,7 +478,7 @@ VkBool32 VkDebugMessageCallback(VkDebugReportFlagsEXT flags,
     else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT){
         
         printf("WARNING: %s Code: %d:%s\n\n",pLayerPrefix,msgCode,pMsg);
-        // _kill("",tokill);
+        _kill("",tokill);
     }
     
     else
@@ -3398,9 +3398,4 @@ void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesArray* ranges){
 void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges){
     
     _vktest(vkInvalidateMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
-}
-
-void* VGetInstance(){
-    
-    return (void*)global_instance;
 }
