@@ -3399,3 +3399,8 @@ void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges){
     
     _vktest(vkInvalidateMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
 }
+
+void* VGetInstance(){
+    
+    return (void*)global_instance;
+}
