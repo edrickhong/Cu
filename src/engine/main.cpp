@@ -113,12 +113,12 @@ s32 main(s32 argc,s8** argv){
     
     SetupData((void**)&pdata,(void**)&gdata);
     
-    pdata->window = WCreateWindow("Cu",W_CREATE_NORESIZE,100,100,1280,720);
-    
     TInitTimer();
     INIT_DEBUG_TIMER();
     
     auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    
+    pdata->window = WCreateVulkanWindow("Cu",W_CREATE_NORESIZE,100,100,1280,720);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
@@ -134,7 +134,6 @@ s32 main(s32 argc,s8** argv){
     }
     
     
-    //FIXME: wayland forces vsync on our app. forced vsync, the lighting is not getting updated correctly. Renderdoc and fix?
     pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
                                                VSYNC_NORMAL);
     
@@ -170,19 +169,9 @@ s32 main(s32 argc,s8** argv){
     
     SetupPipelineCache();
     
-#if 1
+    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),VMAPPED_NONE);
     
-#define _FLAG_ VMAPPED_NONE
-    
-#else
-    
-#define _FLAG_ VMAPPED_CACHED
-    
-#endif
-    
-    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),_FLAG_);
-    
-    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),_FLAG_);
+    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),VMAPPED_NONE);
     
     //MARK: keep the obj buffer permanently mapped
     
@@ -293,6 +282,8 @@ s32 main(s32 argc,s8** argv){
                 
                 EXECTIMEBLOCK(Black);
                 
+                
+                //MARK: we should move this to buildrendercmdbuffer
                 {
                     
                     TIMEBLOCKTAGGED("AcquireImage",Orange);
@@ -383,7 +374,7 @@ s32 main(s32 argc,s8** argv){
                 GUIEnd();
                 
 #endif
-                
+                //we can thread this
                 BuildRenderCommandBuffer(pdata);
                 
                 PresentBuffer(pdata);

@@ -141,7 +141,7 @@ WWindowContext WCreateWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,u32 
                              u32 height);
 
 //TODO: implement this
-WWindowContext WCreateVulkanWindow(void* vk_instance,const s8* title,WCreateFlags flags,u32 x,u32 y,u32 width,
+WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,u32 width,
                                    u32 height);
 
 void WDestroyWindow(WWindowContext* windowcontext);
@@ -154,7 +154,4 @@ s8 WKeyCodeToASCII(u32 keycode);
 void WSetIcon(WWindowContext* windowcontext,void* icondata,u32 width,u32 height);
 
 void WSetTitle(WWindowContext* windowcontext,const s8* title_string);
-
-
-
 

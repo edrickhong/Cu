@@ -1091,3 +1091,5 @@ void _ainline VInvalidateMemoryRanges(const VDeviceContext* _in_ vdevice,VMemory
     VInvalidateMemoryRanges(vdevice->device,ranges);
     
 }
+
+void* VGetInstance();
