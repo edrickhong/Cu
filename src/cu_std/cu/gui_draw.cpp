@@ -424,7 +424,7 @@ enum GUIType{
     GUITYPE_PROFILER,
 };
 
-#define _reserve_count 1024 * 2
+#define _reserve_count 1024 * 4
 
 
 //TODO: remove the index buffer, we never reuse anyway
