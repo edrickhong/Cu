@@ -2214,7 +2214,6 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
 #endif
     
     
-    //TODO: just sort and break at the bottom
     u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
     u32 count = 0;
     
