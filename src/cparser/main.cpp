@@ -420,7 +420,7 @@ void WriteStructMetaData(FormedStruct* curstruct,FormedStruct* array,u32 array_c
     
 }
 
-#if 1
+#if 0
 
 s32 main(s32 argc,s8** argv){
     
@@ -956,12 +956,35 @@ logic IsCType(u64 hash){
 }
 
 //TODO: struct union and enum have the same parse structure (should we condense here?)
+
+struct GenericTypeDec{
+    
+    s8 type_string[16];
+    s8 name_string[32];
+    u64 name_hash;
+    CType type;
+};
+
+struct GenericTypeDef : GenericTypeDec{
+    
+    u8 indir_count;
+    u8 array_dim_count;
+    u16 array_dim[8];
+    
+};
+
+struct GenericStruct : GenericTypeDec{
+    
+    u32 members_count = 0;
+    GenericTypeDef members_array[256];
+    
+};
+
 enum ParseTags{
     TAG_SYMBOL = 0,
     TAG_CTYPE = 1,
     TAG_STRUCT = 2,
     TAG_KEY = 4,
-    TAG_KEY_TAG = 8,
     TAG_START_ARG = 16,
     TAG_END_ARG = 32,
     TAG_ENUM = 64,
@@ -978,20 +1001,15 @@ struct EvalChar{
 //Why not just condense it to keyword REFL() ?
 
 enum ParserKeyWord{
-    PARSERKEYWORD_REFLSTRUCT = PHashString("REFLSTRUCT"),
-    PARSERKEYWORD_REFLFUNC = PHashString("REFLFUNC"),
-    PARSERKEYWORD_REFLENUM = PHashString("REFLENUM"),
-    PARSERKEYWORD_REFLUNION = PHashString("REFLUNION"),
-    PARSERKEYWORD_TAGFIELD = PHashString("TAGFIELD"),
+    PARSERKEYWORD_REFL = PHashString("REFL"),
+    PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
 };
 
 logic IsParserKeyword(u64 hash){
     
     ParserKeyWord array[] = {
-        PARSERKEYWORD_REFLSTRUCT,
-        PARSERKEYWORD_REFLFUNC,
-        PARSERKEYWORD_REFLENUM,
-        PARSERKEYWORD_TAGFIELD,
+        PARSERKEYWORD_REFL,
+        PARSERKEYWORD_COMPONENT,
     };
     
     for(u32 i = 0; i < _arraycount(array); i++){
@@ -1007,8 +1025,6 @@ logic IsParserKeyword(u64 hash){
 void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
     u32 mask = 0;
-    
-    logic to_tag_key_tag = false;
     
     for(u32 i = 0; i < count; i++){
         
@@ -1046,23 +1062,10 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         else if(c->hash == PHashString("(")){
             c->tag = TAG_START_ARG;
-            
-            if((c - 1)->tag == TAG_KEY){
-                to_tag_key_tag = true;
-            }
         }
         
         else if(c->hash == PHashString(")")){
             c->tag = TAG_END_ARG;
-            
-            if(to_tag_key_tag){
-                to_tag_key_tag = false;
-            }
-        }
-        
-        else if(to_tag_key_tag){
-            c->tag = TAG_KEY_TAG;
-            //            printf("[key_tag] ");
         }
         
         else{
@@ -1170,31 +1173,7 @@ void SkipBracketBlock(s8* buffer,u32* a){
     *a = cur;
 }
 
-struct GenericTypeDec{
-    
-    u32 tag_count = 0;
-    u32 taghash_array[128];
-    s8 tagstring_array[128][128];
-    
-    s8 type_string[128];
-    s8 name_string[128];
-    u64 name_hash;
-    CType type;
-};
 
-struct GenericTypeDef : GenericTypeDec{
-    
-    u32 indir_count;
-    u32 array_dim[128];
-    u32 array_dim_count;
-};
-
-struct GenericStruct : GenericTypeDec{
-    
-    u32 members_count = 0;
-    GenericTypeDef members_array[256];
-    
-};
 
 logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 terminator){
     
@@ -1246,16 +1225,19 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 ter
         
     }
     
-    if(buffer[cur] == ';'){
-        evaluation_count = 0;
-    }
-    
     if(buffer[cur] == terminator){
         
         TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
         
         ret = true;
     }
+    
+    
+    else if(buffer[cur] == ';'){
+        evaluation_count = 0;
+    }
+    
+    
     
     *k = evaluation_count;
     *a = cur;
@@ -1275,15 +1257,6 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
-        
-        if(c->tag == TAG_KEY_TAG){
-            
-            memcpy(&t->tagstring_array[t->tag_count][0],&c->string[0],strlen(&c->string[0]));
-            
-            t->taghash_array[t->tag_count] = c->hash;
-            
-            t->tag_count++;
-        }
         
         if(c->tag == TAG_SYMBOL){
             
@@ -1313,9 +1286,14 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
             
             //evaluated the buffer etc
             
+            
+            
             if(fieldeval_count){
                 
+                //Should we have a field validator?
+                
                 auto member = &t->members_array[t->members_count];
+                t->members_count++;
                 
                 memset(member,0,sizeof(GenericTypeDef));
                 
@@ -1337,17 +1315,18 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                         
                     }
                     
-                    if(x.tag == TAG_KEY_TAG){
-                        
-                    }
-                    
                     //indirection
                     if(x.string[0] == '*'){
-                        
+                        member->indir_count++;
                     }
                     
-                    //is an array
+                    //is an array TODO: test for [] ?
                     if(PIsStringInt(&x.string[0])){
+                        
+                        _kill("too many dims\n",member->array_dim_count >= _arraycount(member->array_dim));
+                        
+                        member->array_dim[member->array_dim_count];
+                        member->array_dim_count++;
                         
                     }
                 }
@@ -1403,52 +1382,80 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     *a = cur;
 }
 
+void DebugPrintGenericStruct(GenericStruct* s){
+    
+    printf("Parsed struct %s that has %d members\n",s->name_string,s->members_count);
+    
+    for(u32 i = 0; i < s->members_count; i++){
+        
+        auto f = &s->members_array[i];
+        
+        printf("%s",f->type_string);
+        
+        for(u32 k = 0;k < f->indir_count;k++){
+            printf("*");
+        }
+        
+        printf(" ");
+        
+        printf("%s",f->name_string);
+        
+        for(u32 k = 0; k < f->array_dim_count;k++){
+            
+            printf("[%d]",f->array_dim[k]);
+        }
+        
+        printf("\n");
+    }
+}
+
 //TODO: we should handle unions as well
 s32 main(s32 argc,s8** argv){
     
-    {
-        
-        u32 evaluation_count = 0;
-        EvalChar evaluation_buffer[32] = {};
-        
-        auto string = R"FOO(
-        
-        #define REFLSTRUCT(TAG)
-#define REFLFUNC(TAG)
+    auto string = R"FOO(
+    
+    #define REFLCOMPONENT
+#define REFL
 
 /*
-  hello world
+hello world
 */
 
 //THIS IS A TEST COMMENT
 
 struct REFLCOMPONENT Character{
-    s8* name;
-    u32 health;
-    u32 atk;
+s8* name;
+u32 health;
+u32 atk;
 };
 
-struct REFLSTRUCT(COMP) BossCharacter{
-    Character character;//this is a char name
-    u32 special_ability;/*asdasd*/
+struct REFLCOMPONENT BossCharacter{
+Character character;//this is a char name
+u32 special_ability;/*asdasd*/
 };
 
-struct REFLSTRUCT(GENERIC) Foo{
-    u32 a;
-    u32 b;
-    u32 c;
+struct REFL Foo{
+u32 a;
+u32 b;
+u32 c;
 };
 
-s32 REFLFUNC(GENERIC) AddFunction(u32 a,u32 b){
+struct REFL Bar{
+u32* a = 0;
+u32 b[4];
+f32 c[4] = {};
+};
+
+s32 REFL AddFunction(u32 a,u32 b){
 
 return a + b;
 }
 
-u32 REFLFUNC(GENERIC) FOO(u32* a){
-    return *a;
+u32 REFL FOO(u32* a){
+return *a;
 }
 
-void REFLFUNC(GENERIC) BAR(u32 a[5],u32 count){
+void REFL BAR(u32 a[5],u32 count){
 
 for(u32 i = 0; i < count; i++){
 a[i] += 1;
@@ -1457,7 +1464,7 @@ a[i] += 1;
 }
 
 
-enum REFLENUM(GENERIC) ENUMT{
+enum REFL ENUMT{
 ENUMT_NONE,
 ENUMT_ONE,
 ENUMT_TWO,
@@ -1474,144 +1481,163 @@ typedef u32 RenderGroupIndex;
 typedef u32 MaterialID;
 
 //NOTE: we should not be able to edit core formats. this is because the engine depends not changing
-struct REFLSTRUCT(COMP) EntityAnimationData{
-    ObjectID id;
-    AnimationID animdata_id;
-    u16 animationindex;
-    u16 islooping;
-    f32 animationtime;
-    f32 speed;
+struct REFLCOMPONENT EntityAnimationData{
+ObjectID id;
+AnimationID animdata_id;
+u16 animationindex;
+u16 islooping;
+f32 animationtime;
+f32 speed;
 };
 
-struct REFLSTRUCT(COMP) EntityDrawData{
-    ObjectID id;
-    ModelID model;
-    MaterialID material;
-    RenderGroupIndex group;
+struct REFLCOMPONENT EntityDrawData{
+ObjectID id;
+ModelID model;
+MaterialID material;
+RenderGroupIndex group;
 };
 
-struct REFLSTRUCT(COMP) EntityAudioData{
-    ObjectID id;
-    AudioAssetHandle audioasset;
-    u16 islooping = 0;
-    u16 toremove = 0;
+struct REFLCOMPONENT EntityAudioData{
+ObjectID id;
+AudioAssetHandle audioasset;
+u16 islooping = 0;
+u16 toremove = 0;
 };
 
-struct REFLSTRUCT(COMP) PointLight{
-    ObjectID id;
-    f32 R;
-    f32 G;
-    f32 B;
-    
-    f32 radius;
-    f32 intensity;
+struct REFLCOMPONENT PointLight{
+ObjectID id;
+f32 R;
+f32 G;
+f32 B;
+
+f32 radius;
+f32 intensity;
 };
 
 
 // soft angle is the outer circle where it starts to drop off
 //effective angle is hard_angle + soft_angle
-struct REFLSTRUCT(COMP) SpotLight{
-    ObjectID id;
-    
-    f32 R; // replace w color
-    f32 G;
-    f32 B;
-    
-    f32 dir_x;
-    f32 dir_y;
-    f32 dir_z;
-    
-    f32 full_angle;
-    f32 hard_angle;
-    f32 radius;
-    
-    f32 intensity;
+struct REFLCOMPONENT SpotLight{
+ObjectID id;
+
+f32 R; // replace w color
+f32 G;
+f32 B;
+
+f32 dir_x;
+f32 dir_y;
+f32 dir_z;
+
+f32 full_angle;
+f32 hard_angle;
+f32 radius;
+
+f32 intensity;
 };
 
 )FOO";
+    
+    u32 evaluation_count = 0;
+    EvalChar evaluation_buffer[32] = {};
+    
+    auto struct_array = (GenericStruct*)alloc(sizeof(GenericStruct) * 1024);
+    u32 struct_count = 0;
+    
+    ptrsize size = strlen(string) + 1;
+    u32 cur = 0;
+    s8* buffer = (s8*)&string[0];
+    
+    
+    //TODO: we should abstract this away (so we can recurse this)
+    for(;;){
         
-        GenericStruct struct_array[1024] = {};
-        u32 struct_count = 0;
+        SanitizeString(buffer,&cur);
         
-        ptrsize size = strlen(string) + 1;
-        u32 cur = 0;
-        s8* buffer = (s8*)&string[0];
-        
-        
-        //TODO: we should abstract this away (so we can recurse this)
-        for(;;){
+        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{')){
             
-            SanitizeString(buffer,&cur);
+            //start evaluating
+            TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
             
-            if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{')){
+            if(IsReflStruct(&evaluation_buffer[0],evaluation_count)){
                 
-                //start evaluating
-                TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
+                //parse the struct
                 
-                if(IsReflStruct(&evaluation_buffer[0],evaluation_count)){
-                    //parse the struct
-                    
-                    printf("found struct:");
-                    
-                    for(u32 i = 0; i < evaluation_count; i++){
-                        printf("%s ",evaluation_buffer[i].string);
-                    }
-                    
-                    printf("\n");
-                    
-#if 0
-                    
-                    GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],&struct_count);
-                    
-                    _kill("examine struct",1);
-                    
+                printf("found struct:");
+                
+                for(u32 i = 0; i < evaluation_count; i++){
+                    printf("%s ",evaluation_buffer[i].string);
+                }
+                
+                printf("\n");
+                
+                
+                //works but it is fucking w the parsing
+                
+                /*
+                
+                I think this is fucking it up:
+                
+                struct REFLCOMPONENT BossCharacter{
+Character character;
+u32 special_ability;
+            };
+*/
+#if 1
+                
+                GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],&struct_count);
+                
+                auto k = &struct_array[0];
+                
+                DebugPrintGenericStruct(k);
+                
 #endif
-                }
-                
-                if(IsReflEnum(&evaluation_buffer[0],evaluation_count)){
-                    
-                    
-                    //parse the enum
-                    
-                    printf("found enum:");
-                    
-                    for(u32 i = 0; i < evaluation_count; i++){
-                        printf("%s ",evaluation_buffer[i].string);
-                    }
-                    
-                    printf("\n");
-                    
-                    
-                }
-                
-                if(IsReflFunc(&evaluation_buffer[0],evaluation_count)){
-                    //parse the function
-                    
-                    printf("found function:");
-                    
-                    for(u32 i = 0; i < evaluation_count; i++){
-                        printf("%s ",evaluation_buffer[i].string);
-                    }
-                    
-                    printf("\n");
-                }
-                
-                SkipBracketBlock(buffer,&cur);
-                
-                
-                
-                evaluation_count = 0;
             }
             
-            cur++;
-            
-            if(cur >= size){
-                break;
+            if(IsReflEnum(&evaluation_buffer[0],evaluation_count)){
+                
+                
+                //parse the enum
+                
+                printf("found enum:");
+                
+                for(u32 i = 0; i < evaluation_count; i++){
+                    printf("%s ",evaluation_buffer[i].string);
+                }
+                
+                printf("\n");
+                
+                
             }
+            
+            if(IsReflFunc(&evaluation_buffer[0],evaluation_count)){
+                //parse the function
+                
+                printf("found function:");
+                
+                for(u32 i = 0; i < evaluation_count; i++){
+                    printf("%s ",evaluation_buffer[i].string);
+                }
+                
+                printf("\n");
+            }
+            
+            SkipBracketBlock(buffer,&cur);
+            
+            
+            
+            evaluation_count = 0;
+        }
+        
+        cur++;
+        
+        if(cur >= size){
+            break;
         }
     }
     
     printf("\n");
+    
+    unalloc(struct_array);
     
     return 0;
 }
