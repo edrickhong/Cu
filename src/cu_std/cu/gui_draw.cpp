@@ -1286,6 +1286,12 @@ GUIVec2 pos = {},GUIDim2 dim = {}){
         {{(s32)x,(s32)y},{(u32)width,(u32)height}}
     };
     
+    
+    //DEBUG:
+    if(gui->submit_count){
+        _kill("",(gui->vert_offset == gui->submit_array[gui->submit_count - 1].vert_offset) && gui->vert_offset != 0);
+    }
+    
     gui->submit_count++;
     
     if(to_make_window & WINDOWSTATE_MAINWINDOW){
