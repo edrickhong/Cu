@@ -494,3 +494,55 @@ u32 WWaitForWindowEvent(WWindowContext* windowcontext,
 void WSetTitle(WWindowContext* context,const s8* title){
     impl_wsettitle(context,title);
 }
+
+#include "vvulkan.h"
+#include "pparse.h"
+
+WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,u32 width,
+                                   u32 height){
+    
+    WWindowContext context = {};
+    
+    
+    VkExtensionProperties extension_array[32] = {};
+    u32 count = 0;
+    
+    _kill("VCreateInstance must be called before calling this function\n",vkEnumerateInstanceExtensionProperties == 0);
+    
+    vkEnumerateInstanceExtensionProperties(0,&count,0);
+    
+    _kill("too many\n",count > _arraycount(extension_array));
+    
+    vkEnumerateInstanceExtensionProperties(0,&count,&extension_array[0]);
+    
+    logic wayland_enabled = false;
+    
+    for(u32 i = 0; i < count; i++){
+        
+        if(PHashString(extension_array[i].extensionName) == PHashString("VK_KHR_wayland_surface")){
+            wayland_enabled = true;
+            break;
+        }
+    }
+    
+#if (_disable_wayland_path)
+    
+    wayland_enabled = false;
+    
+#endif
+    
+    logic res = false;
+    
+    if(wayland_enabled){
+        
+        res = InternalCreateWaylandWindow(&context,title,flags,x,y,width,height);
+    }
+    
+    if(!res){
+        res = InternalCreateX11Window(&context,title,flags,x,y,width,height);  
+    }
+    
+    _kill("Create window failed: either failed to load window lib,failed to connect to window manager or failed to get a hw enabled window\n",!res);
+    
+    return context;
+}

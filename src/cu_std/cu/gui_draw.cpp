@@ -411,7 +411,7 @@ void GUIGenFontFile(const s8* filepath,const s8* writepath,f32 fontsize){
 
 struct InternalGUISubmission{
     u16 to_make_window;
-	u16 vert_offset = 0;
+    u16 vert_offset = 0;
     GUIRenderMode rendermode = GUI_RENDER_SOLID;
     GUICameraMode cameramode = GUI_CAMERA_PERSPECTIVE;
     VkViewport viewport;
@@ -610,43 +610,43 @@ void InternalGUIDrawRect(f32 x,f32 y,f32 width,f32 height,Color color){
     
     u32 curvert = gui->vert_offset;
     
-	//1
+    //1
     gui->guivert_array[curvert] =
     {{x,y},{_blanktexcoord,-1.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
     
-	//2
+    //2
     gui->guivert_array[curvert] =
     {{x,y + height},{_blanktexcoord, 0.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
     
-
-	//3
+    
+    //3
     gui->guivert_array[curvert] =
     {{x + width,y + height},{_blanktexcoord + _cellwidth, 0.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
-
-	//3
-	gui->guivert_array[curvert] =
-	{ { x + width,y + height },{ _blanktexcoord + _cellwidth, 0.0f },{ color.R, color.G, color.B,color.A } };
-
-	curvert++;
     
-
-	//4
+    //3
+    gui->guivert_array[curvert] =
+    { { x + width,y + height },{ _blanktexcoord + _cellwidth, 0.0f },{ color.R, color.G, color.B,color.A } };
+    
+    curvert++;
+    
+    
+    //4
     gui->guivert_array[curvert] =
     {{x + width,y},{_blanktexcoord + _cellwidth, -1.0f}, { color.R, color.G, color.B,color.A }};
     
     curvert++;
-
-	//1
-	gui->guivert_array[curvert] =
-	{ { x,y },{ _blanktexcoord,-1.0f },{ color.R, color.G, color.B,color.A } };
-
-	curvert++;
+    
+    //1
+    gui->guivert_array[curvert] =
+    { { x,y },{ _blanktexcoord,-1.0f },{ color.R, color.G, color.B,color.A } };
+    
+    curvert++;
     
     gui->vert_offset = curvert;
     
@@ -787,32 +787,32 @@ void InternalDrawString(const s8* string,f32 x,f32 y,f32 scale,GUIFont* font,Col
         
         auto count = gui->vert_offset;
         
-		//1
-		gui->guivert_array[count - 6].uv[0] = code * _cellwidth;
-		gui->guivert_array[count - 6].uv[1] = -1.0f;
-
-
-		//2
-		gui->guivert_array[count - 5].uv[0] = code * _cellwidth;
-		gui->guivert_array[count - 5].uv[1] = 0.0f;
-
-
-		//3
-		gui->guivert_array[count - 4].uv[0] = code * _cellwidth + _cellwidth;
-		gui->guivert_array[count - 4].uv[1] = 0.0f;
-
-		//3
-		gui->guivert_array[count - 3].uv[0] = code * _cellwidth + _cellwidth;
-		gui->guivert_array[count - 3].uv[1] = 0.0f;
-
-
-		//4
-		gui->guivert_array[count - 2].uv[0] = code * _cellwidth + _cellwidth;
-		gui->guivert_array[count - 2].uv[1] = -1.0f;
-
-		//1
-		gui->guivert_array[count - 1].uv[0] = code * _cellwidth;
-		gui->guivert_array[count - 1].uv[1] = -1.0f;
+        //1
+        gui->guivert_array[count - 6].uv[0] = code * _cellwidth;
+        gui->guivert_array[count - 6].uv[1] = -1.0f;
+        
+        
+        //2
+        gui->guivert_array[count - 5].uv[0] = code * _cellwidth;
+        gui->guivert_array[count - 5].uv[1] = 0.0f;
+        
+        
+        //3
+        gui->guivert_array[count - 4].uv[0] = code * _cellwidth + _cellwidth;
+        gui->guivert_array[count - 4].uv[1] = 0.0f;
+        
+        //3
+        gui->guivert_array[count - 3].uv[0] = code * _cellwidth + _cellwidth;
+        gui->guivert_array[count - 3].uv[1] = 0.0f;
+        
+        
+        //4
+        gui->guivert_array[count - 2].uv[0] = code * _cellwidth + _cellwidth;
+        gui->guivert_array[count - 2].uv[1] = -1.0f;
+        
+        //1
+        gui->guivert_array[count - 1].uv[0] = code * _cellwidth;
+        gui->guivert_array[count - 1].uv[1] = -1.0f;
         
         
         x += width;
@@ -1785,7 +1785,7 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
         }
         
         Matrix4b4 camera;
-		camera = IdentityMatrix4b4();
+        camera = IdentityMatrix4b4();
         
         if(sub->cameramode == GUI_CAMERA_NONE){
             camera = IdentityMatrix4b4();
