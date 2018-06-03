@@ -1084,6 +1084,8 @@ void CommitAudio(AudioAssetHandle* handle){
 #define _height _kilobytes(8)
 #define _tpage_side 128
 #define _totalpages (_width/_tpage_side) * (_height/_tpage_side)
+
+
 #define _fetch_dim_scale_w 8
 #define _fetch_dim_scale_h 8
 
@@ -1124,6 +1126,12 @@ _persist VTReadbackPixelFormat* threadtexturefetch_array = 0;
 _persist VkCommandPool fetch_pool[2];
 _persist VkCommandBuffer fetch_cmdbuffer[2];
 _persist u32 fetch_count = 0;
+
+#if _debug
+
+_persist VTReadbackPixelFormat* debug_pixels = 0;
+
+#endif
 
 void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
                         VDeviceContext* _restrict vdevice,VSwapchainContext* swapchain){
@@ -1312,6 +1320,11 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         vt_readbackbuffer.memory = img.memory;
         vt_readbackbuffer.w = w;
         vt_readbackbuffer.h = h;
+        
+#if _debug
+        
+        debug_pixels = (VTReadbackPixelFormat*)alloc(w * h * 4);
+#endif
         
         //(FIXME:)MARK: do we really want to make this cached?
         vt_targetreadbackbuffer = VCreateColorImageMemory(vdevice,w,h,
@@ -2145,52 +2158,6 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
     UpdateTextureFetchEntries();
     
 #if 0
-    {
-        
-        u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
-        u32 count = 0;
-        
-        logic to_write = false;
-        
-        for(u32 i = 0; i < total_tiles; i++){
-            
-            auto a = &vt_readbackpixels[i];
-            
-            if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
-                to_write = true;
-                break;
-            }
-            
-        }
-        
-        if(to_write){
-            
-            for(u32 i = 0; i < total_tiles; i++){
-                
-                auto a = &vt_readbackpixels[i];
-                
-                if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
-                    
-                    a->value = _encode_rgba(255,0,0,255);
-                }
-                
-                if(a->texture_id){
-                    a->value = (u32)-1;
-                    
-                }
-                
-            }
-            
-            WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
-                     "test.bmp");
-            
-            exit(0);
-            
-        }
-        
-    }
-    
-#elif 0
     
     {
         
@@ -2210,7 +2177,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
                     a->value = _encode_rgba(255,0,0,255);
                 }
                 
-                if(a->texture_id){
+                else if(a->texture_id){
                     a->value = (u32)-1;
                     
                 }
@@ -2232,8 +2199,22 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
         
     }
     
+    
+    
 #endif  
     
+#if _debug 
+    
+    {
+        
+        memcpy(debug_pixels,vt_readbackpixels,
+               vt_readbackbuffer.w * vt_readbackbuffer.h * 4);
+    }
+    
+#endif
+    
+    
+    //TODO: just sort and break at the bottom
     u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
     u32 count = 0;
     
@@ -2245,14 +2226,6 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             a->texture_id--;
             threadtexturefetch_array[count] = *a;
             count++;
-            
-#if  0
-            
-            if(a->texture_id == 0){
-                printf("r %d %d %d\n",a->mip,a->x,a->y);
-            }
-            
-#endif
             
         }
         
@@ -2286,7 +2259,47 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             auto tid = threadtexturefetch_array[i].texture_id;
             
-            _kill("invalid tid generated\n",tid >= _arraycount(texturehandle_array));
+#if _debug
+            
+            if(tid >= _arraycount(texturehandle_array))
+            {
+                
+                u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
+                
+                for(u32 i = 0; i < total_tiles; i++)
+                {
+                    
+                    auto a = &vt_readbackpixels[i];
+                    
+                    if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+                        
+                        a->value = _encode_rgba(255,0,0,255);
+                        printf("hit invalid %d\n",a->texture_id);
+                    }
+                    
+                    else if(a->texture_id)
+                    {
+                        a->value = (u32)-1;
+                        
+                    }
+                    
+                    else
+                    {
+                        a->value = 0;
+                    }
+                    
+                }
+                
+                printf("Error: invalid tid generated\n");
+                
+                WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
+                         "test.bmp");
+                
+                exit(0);
+            }
+            
+            
+#endif
             
             auto cur = &texturehandle_array[tid];
             

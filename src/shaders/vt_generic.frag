@@ -161,6 +161,19 @@ float Specular(vec3 normal,vec3 lightdir,vec3 eyepos,float factor,float intensit
 
 void main(){
     
+    
+    //DEBUG: if invalid textureid
+#if 0
+    
+    if(ubo.texture_id[0] > 16){
+        
+        outFragColor = vec4(1,0,0,1);
+        
+        return;
+    }
+    
+#endif
+    
     uint texture_id = ubo.texture_id[_Diffuse_ID];
     
     vec4 color = VTInternalReadTexture(samplerColor,vec2(phys_w,phys_h),
