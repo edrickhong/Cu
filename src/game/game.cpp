@@ -75,6 +75,8 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 
                 auto model = &context->modelasset_array[drawobj->model];
                 
+                context->SetObjectMaterial(obj_id,drawobj->material);
+                
                 
                 if(model->vert_component == 7){
                     auto comp =
@@ -270,6 +272,8 @@ void KeyboardInput(SceneContext* context){
     
 }
 
+#define _enable_read_log 0
+
 void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     if(!FIsFileExists(_COMPFILE)){
@@ -282,7 +286,11 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     FRead(file,&metacount,sizeof(metacount));
     
+#if _enable_read_log
+    
     printf("meta count %d\n",metacount);
+    
+#endif
     
     for(u32 i = 0; i < metacount; i++){
         
@@ -294,7 +302,11 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         FRead(file,&comp_count,sizeof(comp_count));
         FRead(file,&field_count,sizeof(field_count));
         
+#if _enable_read_log
+        
         printf("c_hash %d c_count %d c_field_count %d\n",comp_hash,comp_count,field_count);
+        
+#endif
         
         auto comp = MetaGetCompByNameHash(comp_hash);
         
@@ -304,11 +316,21 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
             out_comp = GetComponentData(components,*comp);
             (*out_comp.count) = comp_count;
             
+#if _enable_read_log
+            
             printf("%d name %s\n",i,out_comp.comp_name_string);
+            
+#endif
         }
         
         else{
+            
+#if _enable_read_log
+            
+            
             printf("%d comp name not found\n",i);
+            
+#endif
         }
         
         for(u32 j = 0; j < comp_count; j++){
@@ -326,7 +348,12 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
                 FRead(file,&name_hash,sizeof(name_hash));
                 FRead(file,&arraycount,sizeof(arraycount));
                 
+#if _enable_read_log
+                
+                
                 printf("t_hash %d t_size %d t_name_hash %d t_count %d\n",type_hash,type_size,name_hash,arraycount);
+                
+#endif
                 
                 
                 for(u32 a = 0; a < arraycount; a++){
@@ -335,7 +362,12 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
                     
                     FRead(file,&buffer[0],type_size);
                     
+#if _enable_read_log
+                    
+                    
                     printf("read file %d\n",type_size);
+                    
+#endif
                     
                     if(comp){
                         
@@ -593,13 +625,33 @@ void ProcessAudio(SceneContext* context){
     
 }
 
+
+u32 GetNumberOfUsedComponents(){
+    
+    u32 count = 0;
+    
+    u32 metacount = _arraycount(METACOMP_ARRAY);
+    
+    for(u32 i = 0; i < _arraycount(METACOMP_ARRAY); i++){
+        
+        auto component = &METACOMP_ARRAY[i];
+        
+        auto out_comp = GetComponentData((ComponentStruct*)data->components,*component);
+        
+        if((*out_comp.count)){
+            count++;
+        }
+    }
+    
+    return count;
+}
+
 extern "C" {
     
     
     //FIXME: for some reason we are writing the spotlight when there aren't any
     _dllexport void GameComponentWrite(void* context){
         
-        printf("HIT\n");
         
         if(!data->components){
             return;
@@ -612,7 +664,13 @@ extern "C" {
         
         u32 metacount = _arraycount(METACOMP_ARRAY);
         
-        FWrite(outfile,&metacount,sizeof(metacount));
+        {
+            auto count = GetNumberOfUsedComponents();
+            
+            FWrite(outfile,&count,sizeof(count));
+        }
+        
+        
         
         for(u32 i = 0; i < _arraycount(METACOMP_ARRAY); i++){
             
@@ -629,6 +687,10 @@ extern "C" {
                   
                   return (*id_a) - (*id_b);
                   });
+            
+            if(!(*out_comp.count)){
+                continue;
+            }
             
             //comp name hash
             FWrite(outfile,&out_comp.comp_name_hash,sizeof(out_comp.comp_name_hash));
@@ -812,8 +874,6 @@ extern "C" {
     
     
     _dllexport void GameReload(GameReloadData* reloaddata){
-        
-        printf("RELOAD!!\n");
         
         SetGUIContext(reloaddata->guicontext);
         SetAAllocatorContext(reloaddata->allocatorcontext);
