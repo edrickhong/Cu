@@ -56,8 +56,27 @@ enum CType{
     
     CType_STRUCT = PHashString("struct"),
     CType_ENUM = PHashString("enum"),
-    CType_UNION = PHashString("union"),
+    CType_UNION = PHashString("union"),//Do we support unions?
 };
+
+logic IsIntType(u32 type){
+    
+    return type == CType_U8 ||
+        type == CType_U16 ||
+        type == CType_U32 ||
+        type == CType_U64 ||
+        type == CType_S8||
+        type == CType_S16||
+        type == CType_S32||
+        type == CType_S64;
+}
+
+logic IsFloatType(u32 type){
+    return type == CType_F32 ||
+        type == CType_F64;
+}
+
+
 
 enum Keyword{
     Keyword_STRUCT = PHashString("struct"),
@@ -971,11 +990,17 @@ struct GenericTypeDef : GenericTypeDec{
     
     u8 indir_count;
     u8 dim_array_count;
-    u8 default_count;
+    u8 default_count;//MARK: -1 is {}
     
     
     u16 dim_array[8];
-    u64 default_array[8];
+    
+    union{
+        u64 default_array[8];
+        double defaultf_array[8];
+    };
+    
+    
     
 };
 
@@ -1200,8 +1225,7 @@ void SkipBracketBlock(s8* buffer,u32* a){
 }
 
 
-
-logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 terminator){
+logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count){
     
     auto cur = *a;
     
@@ -1261,15 +1285,19 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 ter
         evaluation_count++;
     }
     
-    if(buffer[cur] == terminator){
+    for(u32 j = 0; j < terminator_count;j++){
         
-        TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
+        if(buffer[cur] == terminator_array[j]){
+            
+            TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
+            ret = true;
+        }
         
-        ret = true;
     }
     
     
-    else if(buffer[cur] == ';'){
+    //TODO: do we need this?
+    if(buffer[cur] == ';' && !ret){
         evaluation_count = 0;
     }
     
@@ -1279,6 +1307,13 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 ter
     *a = cur;
     
     return ret;
+}
+
+
+
+logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 terminator){
+    
+    return FillEvalBuffer(buffer,a,evaluation_buffer,k,&terminator,1);
 }
 
 
@@ -1358,6 +1393,8 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                 
                 memset(member,0,sizeof(GenericTypeDef));
                 
+                logic is_assign = false;
+                
                 for(u32 j = 0; j < membereval_count;j++){
                     
                     
@@ -1371,6 +1408,8 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                     
                     
                     if(j == 0){
+                        
+                        //TODO: handle anonymous structs
                         
                         if(x->tag == TAG_SYMBOL){
                             
@@ -1400,39 +1439,52 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                         member->indir_count++;
                     }
                     
+                    if(x->tag == TAG_ASSIGN){
+                        is_assign = true;
+                    }
                     
-                    //FIXME: this is messy. deal explicitly w arrays
-                    if(PIsStringInt(&x->string[0])){
+                    if(is_assign){
                         
-                        logic is_assign = false;
+                        //TODO: assign default value
                         
-                        if(prev_x){
+                        _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
+                        
+                        auto hash = PHashString(member->type_string);
+                        
+                        if(PIsStringFloat(&x->string[0])){
                             
-                            if(prev_x->tag == TAG_ASSIGN){
+                            if(IsIntType(hash)){
                                 
-                                is_assign = true;
+                                member->default_array[member->default_count] = atoi(x->string);
+                                member->default_count++;
+                            }
+                            
+                            if(IsFloatType(hash)){
+                                
+                                member->defaultf_array[member->default_count] = atof(x->string);
+                                member->default_count++;
                                 
                             }
-                        }
-                        
-                        if(is_assign){
-                            //TODO: assign default value
-                            
-                            _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
                             
                         }
+                    }
+                    
+                    else{
                         
-                        
-                        else{
+                        //FIXME: this is messy. deal explicitly w arrays
+                        if(PIsStringInt(&x->string[0])){
                             
                             _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
                             
                             member->dim_array[member->dim_array_count] = atoi(&x->string[0]);
                             member->dim_array_count++;
+                            
+                            
                         }
-                        
-                        
                     }
+                    
+                    
+                    
                     
                 }
                 
@@ -1513,6 +1565,37 @@ void DebugPrintGenericStruct(GenericStruct* s){
             
             printf("[%d]",f->dim_array[k]);
         }
+        
+        if(f->default_count){
+            
+            if(f->default_count == (u8)-1){
+                
+                printf("= {}");
+            }
+            
+            else{
+                
+                printf("= {");
+                
+                //TODO:
+                for(u32 j = 0; j < f->default_count; j++){
+                    
+                    
+                    if(IsIntType(PHashString(f->type_string))){
+                        printf(" %d ",(u32)f->default_array[j]);
+                    }
+                    
+                    if(IsFloatType(PHashString(f->type_string))){
+                        printf("%f ",f->defaultf_array[j]);
+                    }
+                }
+                
+                printf("}");
+            }
+            
+        }
+        
+        
         
         printf("\n");
     }
