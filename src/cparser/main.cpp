@@ -1,3 +1,5 @@
+
+
 #include "stdio.h"
 #include "stdlib.h"
 
@@ -968,8 +970,12 @@ struct GenericTypeDec{
 struct GenericTypeDef : GenericTypeDec{
     
     u8 indir_count;
-    u8 array_dim_count;
-    u16 array_dim[8];
+    u8 dim_array_count;
+    u8 default_count;
+    
+    
+    u16 dim_array[8];
+    u64 default_array[8];
     
 };
 
@@ -982,15 +988,22 @@ struct GenericStruct : GenericTypeDec{
 
 enum ParseTags{
     TAG_SYMBOL = 0,
-    TAG_CTYPE = 1,
-    TAG_STRUCT = 2,
-    TAG_KEY = 4,
-    TAG_VALUE = 8,
-    TAG_START_ARG = 16,
-    TAG_END_ARG = 32,
-    TAG_ENUM = 64,
-    TAG_UNION = 128,
-    TAG_INDIR = 256,
+    TAG_CTYPE,
+    TAG_STRUCT,
+    TAG_KEY,
+    TAG_VALUE,
+    TAG_START_ARG,
+    TAG_END_ARG,
+    TAG_ENUM,
+    TAG_UNION,
+    TAG_INDIR,
+    TAG_ASSIGN,
+    
+    //TODO: implement this
+    TAG_START_SQUARE,
+    TAG_END_SQUARE,
+    TAG_START_CURLY,
+    TAG_END_CURLY,
 };
 
 struct EvalChar{
@@ -1026,8 +1039,6 @@ logic IsParserKeyword(u64 hash){
 
 void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
-    u32 mask = 0;
-    
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
@@ -1036,28 +1047,24 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         if(c->hash == PHashString("struct")){
             c->tag = TAG_STRUCT;
-            mask |= TAG_STRUCT;
             
             //            printf("[struct] ");
         }
         
         else if(c->hash == PHashString("enum")){
             c->tag = TAG_ENUM;
-            mask |= TAG_ENUM;
             
             //            printf("[struct] ");
         }
         
         else if(IsCType(c->hash)){
             c->tag = TAG_CTYPE;
-            mask |= TAG_CTYPE;
             
             //            printf("[type] ");
         }
         
         else if(IsParserKeyword(c->hash)){
             c->tag = TAG_KEY;
-            mask |= TAG_KEY;
             
             //            printf("[key] ");
         }
@@ -1072,6 +1079,10 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         else if(c->hash == PHashString("*")){
             c->tag = TAG_INDIR;
+        }
+        
+        else if(c->hash == PHashString("=")){
+            c->tag = TAG_ASSIGN;
         }
         
         else if(PIsStringFloat(c->string) || PIsStringInt(c->string)){
@@ -1157,6 +1168,8 @@ logic IsReflFunc(EvalChar* eval_buffer,u32 count){
     return has_return_type && has_arg_brackets;
 }
 
+
+//NOTE: we will crash if we encounter a '}' first
 void SkipBracketBlock(s8* buffer,u32* a){
     
     auto cur = *a;
@@ -1172,6 +1185,9 @@ void SkipBracketBlock(s8* buffer,u32* a){
         }
         
         if(c == '}'){
+            
+            _kill("incomplete scope error\n",!k);
+            
             k --;
         }
         
@@ -1200,7 +1216,9 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 ter
     
     if(symbol_len){
         
-        //                printf("%s\n",&symbol_buffer[0]);
+        //printf("%s\n",&symbol_buffer[0]);
+        
+        
         
         evaluation_buffer[evaluation_count] =
         {PHashString(&symbol_buffer[0])};
@@ -1235,6 +1253,14 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 ter
         
     }
     
+    if(buffer[cur] == '='){
+        
+        evaluation_buffer[evaluation_count] =
+        {PHashString("="),"="};
+        
+        evaluation_count++;
+    }
+    
     if(buffer[cur] == terminator){
         
         TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
@@ -1256,14 +1282,46 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 ter
 }
 
 
+void ExtractScope(s8* scope_buffer,s8* buffer,u32* a){
+    
+    u32 scope_count = 0;
+    u32 count = *a;
+    u32 i = 0;
+    
+    for(;;){
+        
+        auto c = buffer[count];
+        scope_buffer[i] = c;
+        
+        if(c == '{'){
+            scope_count++;
+        }
+        
+        if(c == '}'){
+            scope_count--;
+        }
+        
+        
+        count++;
+        i++;
+        
+        
+        if(!scope_count){
+            break;
+        }
+    }
+    
+    *a = count;
+}
+
+
 //TODO: test this function
 void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count){
     
     auto t = &struct_array[*struct_count];
     (*struct_count)++;
     
-    //get general info
-    
+    //Struct info
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
@@ -1278,118 +1336,159 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
         }
     }
     
-    auto cur = *a;
+    s8 scope_buffer[1024 * 4] = {};
     
-    u32 k = 0;
+    ExtractScope(&scope_buffer[0],buffer,a);
     
+    EvalChar membereval_array[256] = {};
+    u32 membereval_count = 0;
     
-    EvalChar fieldeval_array[256] = {};
-    u32 fieldeval_count = 0;
-    
-    for(;;cur++){
+    for(u32 i = 0;;i++){
         
-        SanitizeString(buffer,&cur);
+        SanitizeString(&scope_buffer[0],&i);
         
-        auto c = buffer[cur];
+        auto c = scope_buffer[i];
         
-        if(FillEvalBuffer(buffer,&cur,&fieldeval_array[0],&fieldeval_count,';')){
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,';')){
             
-            //evaluated the buffer etc
-            
-            
-            
-            if(fieldeval_count){
-                
-                //Should we have a field validator?
+            if(membereval_count){
                 
                 auto member = &t->members_array[t->members_count];
                 t->members_count++;
                 
                 memset(member,0,sizeof(GenericTypeDef));
                 
-                for(u32 i = 0; i < fieldeval_count; i++){
+                for(u32 j = 0; j < membereval_count;j++){
                     
-                    auto x = fieldeval_array[i];
                     
-                    if(x.tag == TAG_CTYPE){
-                        member->type = (CType)x.hash;
-                        
-                        memcpy(&member->type_string[0],&x.string[0],strlen(&x.string[0]));
+                    auto prev_x = &membereval_array[j - 1];
+                    
+                    if(i == 0){
+                        prev_x = 0;
                     }
                     
-                    if(x.tag == TAG_SYMBOL){
+                    auto x = &membereval_array[j];
+                    
+                    
+                    if(j == 0){
                         
-                        member->name_hash = x.hash;
+                        if(x->tag == TAG_SYMBOL){
+                            
+                            //TODO: lookup
+                            member->type = CType_STRUCT;
+                        }
                         
-                        memcpy(&member->name_string[0],&x.string[0],strlen(&x.string[0]));
+                        if(x->tag == TAG_CTYPE){
+                            member->type = (CType)x->hash;
+                        }
+                        
+                        memcpy(&member->type_string[0],&x->string[0],strlen(&x->string[0]));
                         
                     }
+                    
+                    else if(x->tag == TAG_SYMBOL){
+                        
+                        member->name_hash = x->hash;
+                        
+                        memcpy(&member->name_string[0],&x->string[0],strlen(&x->string[0]));
+                        
+                    }
+                    
                     
                     //indirection
-                    if(x.tag == TAG_INDIR){
+                    if(x->tag == TAG_INDIR){
                         member->indir_count++;
                     }
                     
-                    //is an array TODO: test for [] ?
-                    if(PIsStringInt(&x.string[0])){
+                    
+                    //FIXME: this is messy. deal explicitly w arrays
+                    if(PIsStringInt(&x->string[0])){
                         
-                        _kill("too many dims\n",member->array_dim_count >= _arraycount(member->array_dim));
+                        logic is_assign = false;
                         
-                        member->array_dim[member->array_dim_count];
-                        member->array_dim_count++;
+                        if(prev_x){
+                            
+                            if(prev_x->tag == TAG_ASSIGN){
+                                
+                                is_assign = true;
+                                
+                            }
+                        }
+                        
+                        if(is_assign){
+                            //TODO: assign default value
+                            
+                            _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
+                            
+                        }
+                        
+                        
+                        else{
+                            
+                            _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
+                            
+                            member->dim_array[member->dim_array_count] = atoi(&x->string[0]);
+                            member->dim_array_count++;
+                        }
+                        
                         
                     }
+                    
                 }
                 
-            }
-            
-            fieldeval_count = 0;
-            continue;
-        }
-        
-        if(c == '{'){
-            
-            if(fieldeval_count){
                 
-                TagEvalBuffer(&fieldeval_array[0],fieldeval_count);
                 
-                for(u32 i = 0; i < fieldeval_count; i++){
+                if(member->type == CType_STRUCT){
+                    //Lookup
                     
-                    auto x = fieldeval_array[i];
+                    GenericStruct* sptr = 0;
                     
-                    if(x.tag == TAG_SYMBOL){
+                    for(u32 j = 0; j < (*struct_count);j++){
                         
-                        //this is NOT  an anonymouse struct
+                        auto s = &struct_array[j];
                         
-                        s8 buffer[512] = {};
-                        
-                        sprintf(&buffer[0],"%s::%s",&t->name_string[0],&x.string[0]);
-                        
-                        memcpy(&x.string[0],&buffer[0],strlen(&buffer[0]));
-                        
-                        GenerateGenericStruct(&fieldeval_array[0],fieldeval_count,buffer,&cur,struct_array,struct_count);
-                        break;
+                        if(s->name_hash == PHashString(member->type_string)){
+                            sptr = s;
+                            break;
+                        }
                     }
+                    
+                    if(sptr){
+                        
+                        for(u32 j = 0; j < sptr->members_count;j++){
+                            
+                            auto c_m = &t->members_array[t->members_count];
+                            t->members_count++;
+                            
+                            auto m = &sptr->members_array[j];
+                            
+                            memcpy(c_m,m,sizeof(GenericTypeDef));
+                            
+                            s8 tbuffer[1024] = {};
+                            
+                            sprintf(&tbuffer[0],"%s::%s",member->name_string,m->name_string);
+                            
+                            memcpy(c_m->name_string,tbuffer,strlen(tbuffer));
+                            
+                        }
+                        
+                        
+                    }
+                    
+                    
                 }
                 
-                fieldeval_count = 0;
+                membereval_count = 0;
             }
-            
-            k++;
         }
         
-        if(c == '}'){
-            
-            k --;
-        }
-        
-        if(!k){
+        if(!c){
             break;
         }
     }
     
     
-    *a = cur;
+    
 }
 
 void DebugPrintGenericStruct(GenericStruct* s){
@@ -1410,9 +1509,9 @@ void DebugPrintGenericStruct(GenericStruct* s){
         
         printf("%s",f->name_string);
         
-        for(u32 k = 0; k < f->array_dim_count;k++){
+        for(u32 k = 0; k < f->dim_array_count;k++){
             
-            printf("[%d]",f->array_dim[k]);
+            printf("[%d]",f->dim_array[k]);
         }
         
         printf("\n");
@@ -1439,6 +1538,13 @@ u32 health;
 u32 atk;
 };
 
+    struct REFLCOMPONENT BossCharacter{
+            Character character;
+            u32 special_ability;
+        };
+        
+        
+//FIXME: we are skipping Foo
 struct REFL Foo{
 u32 a;
 u32 b;
@@ -1448,7 +1554,9 @@ u32 c;
 struct REFL Bar{
 u32* a = 0;
 u32 b[4];
-f32 c[4] = {};
+
+//TODO: handle this case
+//f32 c[4] = {};
 };
 
 s32 REFL AddFunction(u32 a,u32 b){
@@ -1456,7 +1564,7 @@ s32 REFL AddFunction(u32 a,u32 b){
 return a + b;
 }
 
-u32 REFL FOO(u32* a){
+u32 REFL K(u32* a){
 return *a;
 }
 
@@ -1566,14 +1674,6 @@ f32 intensity;
                 
                 //parse the struct
                 
-                printf("found struct:");
-                
-                for(u32 i = 0; i < evaluation_count; i++){
-                    printf("%s ",evaluation_buffer[i].string);
-                }
-                
-                printf("\n");
-                
                 
                 //works but it is fucking w the parsing
                 
@@ -1583,17 +1683,23 @@ f32 intensity;
                 
                 I think this is fucking it up:
                 
-                struct REFLCOMPONENT BossCharacter{
-Character character;
-u32 special_ability;
-            };
-            
             fix parsing 
             
             
 */
+                
+                
+                printf("found struct:");
+                
+                for(u32 i = 0; i < evaluation_count; i++){
+                    printf("%s ",evaluation_buffer[i].string);
+                }
+                
+                printf("\n");
+                
 #if 1
                 
+                //FIXME: we are overparsing
                 GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],&struct_count);
                 
                 auto k = &struct_array[struct_count - 1];
@@ -1601,6 +1707,9 @@ u32 special_ability;
                 DebugPrintGenericStruct(k);
                 
 #endif
+                
+                printf("(%d)\n",cur);
+                
             }
             
             if(IsReflEnum(&evaluation_buffer[0],evaluation_count)){
