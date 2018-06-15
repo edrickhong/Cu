@@ -1774,7 +1774,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
 
 #if 1
 
-#define FWrite(file,buffer,len) printf("%s",buffer);
+#define FWrite(file,buffer,len) printf("%s",(s8*)(buffer));
 
 #endif
 
