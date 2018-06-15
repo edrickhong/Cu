@@ -11,6 +11,8 @@
 
 #include "ctype.h"
 
+#define _autoexpand_structs 1
+
 /*
   TODO: 
   handle inheritance and enums.
@@ -1612,14 +1614,17 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     }
     
     
+    //MARK: Should we auto expand structs?
     
-    if(member->type == CType_STRUCT){
+#if _autoexpand_structs
+    
+    if(member->type == CType_STRUCT && !member->dim_array_count){
         //Lookup
         
         GenericStruct* sptr = 0;
         
         s8 buffer[256] = {};
-        sprintf(buffer,"%s___%s",t->name_string,member->type_string);
+        sprintf(buffer,"%s__%s",t->name_string,member->type_string);
         
         auto struct_hash = PHashString(member->type_string);
         auto sub_struct_hash = PHashString(buffer);
@@ -1659,11 +1664,11 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         
     }
     
+#endif
+    
     *cur = i;
 }
 
-
-//TODO: test this function
 void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,const s8* parent_name = 0){
     
     auto t = &struct_array[*struct_count];
@@ -1681,7 +1686,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
             s8 name_buffer[256] = {};
             
             if(parent_name){
-                sprintf(&name_buffer[0],"%s___%s",parent_name,&c->string[0]);
+                sprintf(&name_buffer[0],"%s__%s",parent_name,&c->string[0]);
             }
             
             else{
@@ -1890,7 +1895,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
                 
                 //TODO: support more than 1d arrays
                 //Remove ref_metadatacomp_index
-                sprintf(buffer,"{%d,%d,\"%s\",\"%s\",sizeof(%s),offsetof(%s,%s),%d,(u32)-1},\n"
+                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)offsetof(%s,%s),%d,(u32)-1},\n"
                         ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,m->dim_array[0]);
                 
                 FWrite(file,(void*)buffer,strlen(buffer));
@@ -2206,6 +2211,7 @@ u32 atk;
 
     struct REFLCOMPONENT BossCharacter{
             Character character = {};
+            Character test[2] = {};
             u32 special_ability;
         };
         
