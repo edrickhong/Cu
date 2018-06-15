@@ -1,5 +1,3 @@
-
-
 #include "stdio.h"
 #include "stdlib.h"
 
@@ -996,19 +994,24 @@ struct GenericTypeDef : GenericTypeDec{
     u16 dim_array[8];
     
     union{
-        u64 default_array[8];
-        double defaultf_array[8];
+        s8 default_string[256];
+        u64 default_array[32];
+        double defaultf_array[32];
     };
     
     
     
 };
 
+enum ParserKeyWord{
+    PARSERKEYWORD_REFL = PHashString("REFL"),
+    PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
+};
+
 struct GenericStruct : GenericTypeDec{
-    
+    ParserKeyWord pkey;
     u32 members_count = 0;
     GenericTypeDef members_array[256];
-    
 };
 
 enum ParseTags{
@@ -1029,20 +1032,14 @@ enum ParseTags{
     TAG_END_SQUARE,
     TAG_START_CURLY,
     TAG_END_CURLY,
+    
+    TAG_DOUBLE_QUOTE,
 };
 
 struct EvalChar{
     u64 hash;
     s8 string[128] = {};
     ParseTags tag;
-};
-
-
-//Why not just condense it to keyword REFL() ?
-
-enum ParserKeyWord{
-    PARSERKEYWORD_REFL = PHashString("REFL"),
-    PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
 };
 
 logic IsParserKeyword(u64 hash){
@@ -1108,6 +1105,10 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         else if(c->hash == PHashString("=")){
             c->tag = TAG_ASSIGN;
+        }
+        
+        else if(c->hash == PHashString("\"")){
+            c->tag = TAG_DOUBLE_QUOTE;
         }
         
         else if(PIsStringFloat(c->string) || PIsStringInt(c->string)){
@@ -1285,12 +1286,44 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
         evaluation_count++;
     }
     
+    if(buffer[cur] == '"'){
+        
+        for(;;){
+            
+            s8 t[2] = {buffer[cur],0};
+            
+            evaluation_buffer[evaluation_count] =
+            {PHashString(&t[0]),buffer[cur]};
+            evaluation_count++;
+            
+            //printf("%c",buffer[cur]);
+            
+            cur++;
+            
+            if(buffer[cur] == '"'){
+                
+                s8 t[2] = {buffer[cur],0};
+                
+                evaluation_buffer[evaluation_count] =
+                {PHashString(&t[0]),buffer[cur]};
+                evaluation_count++;
+                
+                //printf("%c",buffer[cur]);
+                
+                break;
+            }
+        }
+    }
+    
+    
+    
     for(u32 j = 0; j < terminator_count;j++){
         
         if(buffer[cur] == terminator_array[j]){
             
             TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
             ret = true;
+            break;
         }
         
     }
@@ -1349,198 +1382,25 @@ void ExtractScope(s8* scope_buffer,s8* buffer,u32* a){
     *a = count;
 }
 
-
-//TODO: test this function
-void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count){
+void InternalBufferGetString(s8* default_string,EvalChar* membereval_array,u32 membereval_count,u32* j){
     
-    auto t = &struct_array[*struct_count];
-    (*struct_count)++;
+    auto string = default_string;
     
-    //Struct info
-    for(u32 i = 0; i < count; i++){
-        
-        auto c = &eval_buffer[i];
-        
-        if(c->tag == TAG_SYMBOL){
-            
-            memcpy(&t->name_string[0],&c->string[0],strlen(&c->string[0]));
-            t->name_hash = c->hash;
-            
-            t->type = CType_STRUCT;
-            memcpy(&t->type_string[0],"struct",strlen("struct"));
-        }
-    }
+    u32 i = (*j) + 1;
     
-    s8 scope_buffer[1024 * 4] = {};
-    
-    ExtractScope(&scope_buffer[0],buffer,a);
-    
-    EvalChar membereval_array[256] = {};
-    u32 membereval_count = 0;
-    
-    for(u32 i = 0;;i++){
+    for(;;i++){
         
-        SanitizeString(&scope_buffer[0],&i);
+        auto e = &membereval_array[i];
         
-        auto c = scope_buffer[i];
-        
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,';')){
-            
-            if(membereval_count){
-                
-                auto member = &t->members_array[t->members_count];
-                t->members_count++;
-                
-                memset(member,0,sizeof(GenericTypeDef));
-                
-                logic is_assign = false;
-                
-                for(u32 j = 0; j < membereval_count;j++){
-                    
-                    
-                    auto prev_x = &membereval_array[j - 1];
-                    
-                    if(i == 0){
-                        prev_x = 0;
-                    }
-                    
-                    auto x = &membereval_array[j];
-                    
-                    
-                    if(j == 0){
-                        
-                        //TODO: handle anonymous structs
-                        
-                        if(x->tag == TAG_SYMBOL){
-                            
-                            //TODO: lookup
-                            member->type = CType_STRUCT;
-                        }
-                        
-                        if(x->tag == TAG_CTYPE){
-                            member->type = (CType)x->hash;
-                        }
-                        
-                        memcpy(&member->type_string[0],&x->string[0],strlen(&x->string[0]));
-                        
-                    }
-                    
-                    else if(x->tag == TAG_SYMBOL){
-                        
-                        member->name_hash = x->hash;
-                        
-                        memcpy(&member->name_string[0],&x->string[0],strlen(&x->string[0]));
-                        
-                    }
-                    
-                    
-                    //indirection
-                    if(x->tag == TAG_INDIR){
-                        member->indir_count++;
-                    }
-                    
-                    if(x->tag == TAG_ASSIGN){
-                        is_assign = true;
-                    }
-                    
-                    if(is_assign){
-                        
-                        //TODO: assign default value
-                        
-                        _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
-                        
-                        auto hash = PHashString(member->type_string);
-                        
-                        if(PIsStringFloat(&x->string[0])){
-                            
-                            if(IsIntType(hash)){
-                                
-                                member->default_array[member->default_count] = atoi(x->string);
-                                member->default_count++;
-                            }
-                            
-                            if(IsFloatType(hash)){
-                                
-                                member->defaultf_array[member->default_count] = atof(x->string);
-                                member->default_count++;
-                                
-                            }
-                            
-                        }
-                    }
-                    
-                    else{
-                        
-                        //FIXME: this is messy. deal explicitly w arrays
-                        if(PIsStringInt(&x->string[0])){
-                            
-                            _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
-                            
-                            member->dim_array[member->dim_array_count] = atoi(&x->string[0]);
-                            member->dim_array_count++;
-                            
-                            
-                        }
-                    }
-                    
-                    
-                    
-                    
-                }
-                
-                
-                
-                if(member->type == CType_STRUCT){
-                    //Lookup
-                    
-                    GenericStruct* sptr = 0;
-                    
-                    for(u32 j = 0; j < (*struct_count);j++){
-                        
-                        auto s = &struct_array[j];
-                        
-                        if(s->name_hash == PHashString(member->type_string)){
-                            sptr = s;
-                            break;
-                        }
-                    }
-                    
-                    if(sptr){
-                        
-                        for(u32 j = 0; j < sptr->members_count;j++){
-                            
-                            auto c_m = &t->members_array[t->members_count];
-                            t->members_count++;
-                            
-                            auto m = &sptr->members_array[j];
-                            
-                            memcpy(c_m,m,sizeof(GenericTypeDef));
-                            
-                            s8 tbuffer[1024] = {};
-                            
-                            sprintf(&tbuffer[0],"%s::%s",member->name_string,m->name_string);
-                            
-                            memcpy(c_m->name_string,tbuffer,strlen(tbuffer));
-                            
-                        }
-                        
-                        
-                    }
-                    
-                    
-                }
-                
-                membereval_count = 0;
-            }
-        }
-        
-        if(!c){
+        if(e->tag == TAG_DOUBLE_QUOTE){
             break;
         }
+        
+        *string = e->string[0];
+        string++;
     }
     
-    
-    
+    *j = i;
 }
 
 void DebugPrintGenericStruct(GenericStruct* s){
@@ -1573,11 +1433,15 @@ void DebugPrintGenericStruct(GenericStruct* s){
                 printf("= {}");
             }
             
+            else if(f->default_count == (u8)-2){
+                
+                printf("= \"%s\"",&f->default_string[0]);
+            }
+            
             else{
                 
                 printf("= {");
                 
-                //TODO:
                 for(u32 j = 0; j < f->default_count; j++){
                     
                     
@@ -1601,6 +1465,723 @@ void DebugPrintGenericStruct(GenericStruct* s){
     }
 }
 
+void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,u32* cur){
+    auto i = *cur;
+    
+    auto member = &t->members_array[t->members_count];
+    t->members_count++;
+    
+    memset(member,0,sizeof(GenericTypeDef));
+    
+    logic is_assign = false;
+    
+    
+    for(u32 j = 0; j < _arraycount(member->dim_array);j++){
+        member->dim_array[j] = 1;
+    }
+    
+    
+    
+    
+    for(u32 j = 0; j < membereval_count;j++){
+        
+        
+        auto prev_x = &membereval_array[j - 1];
+        
+        if(i == 0){
+            prev_x = 0;
+        }
+        
+        auto x = &membereval_array[j];
+        
+        //                    printf("::%s ",&x->string[0]);
+        
+        
+        if(j == 0){
+            
+            //TODO: handle anonymous structs
+            
+            if(x->tag == TAG_SYMBOL){
+                
+                member->type = CType_STRUCT;
+            }
+            
+            if(x->tag == TAG_CTYPE){
+                member->type = (CType)x->hash;
+            }
+            
+            memcpy(&member->type_string[0],&x->string[0],strlen(&x->string[0]));
+            
+        }
+        
+        else if(x->tag == TAG_SYMBOL){
+            
+            member->name_hash = x->hash;
+            
+            memcpy(&member->name_string[0],&x->string[0],strlen(&x->string[0]));
+            
+        }
+        
+        
+        //indirection
+        if(x->tag == TAG_INDIR){
+            member->indir_count++;
+        }
+        
+        if(x->tag == TAG_ASSIGN){
+            
+            if(member->type == CType_STRUCT){
+                
+                printf("WARNING: struct initialization ignored:");
+                
+                for(u32 k = 0; k < membereval_count; k++){
+                    
+                    printf("%s ",&membereval_array[k].string[0]);
+                }
+                
+                printf("\n");
+                
+                break;
+            }
+            
+            else{
+                is_assign = true;
+            }
+            
+        }
+        
+        
+        /*
+        TODO: I do not like how initialization is done rn
+        How do we handle many dimensionds?
+*/
+        if(is_assign){
+            
+            _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
+            
+            auto hash = PHashString(member->type_string);
+            
+            if(x->tag == TAG_DOUBLE_QUOTE){
+                
+                s8 abc[256] = {};
+                
+                InternalBufferGetString(&member->default_string[0],&membereval_array[0],membereval_count,&j);
+                
+                member->default_count = (u8)-2;
+            }
+            
+            if(PIsStringFloat(&x->string[0])){
+                
+                if(IsIntType(hash)){
+                    
+                    member->default_array[member->default_count] = atoi(x->string);
+                    member->default_count++;
+                }
+                
+                if(IsFloatType(hash)){
+                    
+                    member->defaultf_array[member->default_count] = atof(x->string);
+                    member->default_count++;
+                    
+                }
+                
+            }
+        }
+        
+        else{
+            
+            //FIXME: this is messy. deal explicitly w arrays
+            if(PIsStringInt(&x->string[0])){
+                
+                _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
+                
+                member->dim_array[member->dim_array_count] = atoi(&x->string[0]);
+                member->dim_array_count++;
+                
+                
+            }
+        }
+        
+        
+        
+        
+    }
+    
+    if(is_assign && !member->default_count){
+        member->default_count = (u8)-1;
+    }
+    
+    
+    
+    if(member->type == CType_STRUCT){
+        //Lookup
+        
+        GenericStruct* sptr = 0;
+        
+        s8 buffer[256] = {};
+        sprintf(buffer,"%s___%s",t->name_string,member->type_string);
+        
+        auto struct_hash = PHashString(member->type_string);
+        auto sub_struct_hash = PHashString(buffer);
+        
+        for(u32 j = 0; j < (*struct_count);j++){
+            
+            auto s = &struct_array[j];
+            
+            if(s->name_hash == struct_hash || s->name_hash == sub_struct_hash){
+                sptr = s;
+                break;
+            }
+        }
+        
+        if(sptr){
+            
+            for(u32 j = 0; j < sptr->members_count;j++){
+                
+                auto c_m = &t->members_array[t->members_count];
+                t->members_count++;
+                
+                auto m = &sptr->members_array[j];
+                
+                memcpy(c_m,m,sizeof(GenericTypeDef));
+                
+                s8 tbuffer[1024] = {};
+                
+                sprintf(&tbuffer[0],"%s::%s",member->name_string,m->name_string);
+                
+                memcpy(c_m->name_string,tbuffer,strlen(tbuffer));
+                
+            }
+            
+            
+        }
+        
+        
+    }
+    
+    *cur = i;
+}
+
+
+//TODO: test this function
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,const s8* parent_name = 0){
+    
+    auto t = &struct_array[*struct_count];
+    (*struct_count)++;
+    
+    t->pkey = PARSERKEYWORD_REFL;
+    
+    //Struct info
+    for(u32 i = 0; i < count; i++){
+        
+        auto c = &eval_buffer[i];
+        
+        if(c->tag == TAG_SYMBOL){
+            
+            s8 name_buffer[256] = {};
+            
+            if(parent_name){
+                sprintf(&name_buffer[0],"%s___%s",parent_name,&c->string[0]);
+            }
+            
+            else{
+                memcpy(&name_buffer[0],&c->string[0],strlen(&c->string[0]));
+            }
+            
+            
+            
+            memcpy(&t->name_string[0],&name_buffer[0],strlen(&name_buffer[0]));
+            
+            t->name_hash = PHashString(name_buffer);
+            
+            t->type = CType_STRUCT;
+            memcpy(&t->type_string[0],"struct",strlen("struct"));
+        }
+        
+        if(c->tag == TAG_KEY){
+            t->pkey = (ParserKeyWord)c->hash;
+        }
+    }
+    
+    s8 scope_buffer[1024 * 4] = {};
+    
+    ExtractScope(&scope_buffer[0],buffer,a);
+    
+    EvalChar membereval_array[256] = {};
+    u32 membereval_count = 0;
+    
+    for(u32 i = 0;;i++){
+        
+        SanitizeString(&scope_buffer[0],&i);
+        
+        auto c = scope_buffer[i];
+        
+        s8 terminator_array[] = {';','{'};
+        
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array))){
+            
+            if(membereval_count){
+                
+                
+                //Handle internal structs
+                if(membereval_array[0].tag == TAG_STRUCT){
+                    
+                    logic named_struct = false;
+                    
+                    for(u32 k = 0; k < membereval_count;k++){
+                        
+                        auto d = &membereval_array[k];
+                        
+                        if(d->tag == TAG_SYMBOL){
+                            named_struct = true;
+                            break;
+                        }
+                    }
+                    
+                    if(named_struct){
+                        
+                        GenerateGenericStruct(&membereval_array[0],membereval_count,scope_buffer,&i,struct_array,struct_count,&t->name_string[0]);
+                    }
+                }
+                
+                else{
+                    
+                    InternalHandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count,&i);
+                    
+                }
+                
+                membereval_count = 0;
+            }
+        }
+        
+        if(!c){
+            break;
+        }
+    }
+    
+    
+    //DebugPrintGenericStruct(t);
+    
+}
+
+
+#define _testing 1
+
+#if 1
+
+#define FWrite(file,buffer,len) printf("%s",buffer);
+
+#endif
+
+void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u32 struct_count){
+    
+#if !(_testing)
+    
+    auto file = FOpenFile(file_string,F_FLAG_READWRITE |
+                          F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    
+#endif
+    
+    auto initialcontents = R"FOO(
+  /*This file is generated by the preprocessor*/ 
+  #pragma once
+  #include"pparse.h"
+  #include "aassetmanager.h"
+  
+  struct MetaDataEntry{
+  u32 type_hash;
+  u32 name_hash;
+  s8 type_string[128];
+  s8 name_string[128];
+  u32 size;
+  u32 offset;
+  u32 arraycount;
+  // for referencing other components to access.
+  u32 ref_metadatacomp_index; 
+  };
+  
+  struct MetaDataCompEntry{
+  u32 array; //offset to component array
+  u32 count;//offset to component count
+  u32 element_size;
+  s8 comp_name_string[128];
+  u32 comp_name_hash;
+  MetaDataEntry* metadata_table;
+  u32 metadata_count;
+  };
+  
+  enum CType{
+  CType_U8 = PHashString("u8"),
+  CType_U16 = PHashString("u16"),
+  CType_U32 = PHashString("u32"),
+  CType_U64 = PHashString("u64"),
+  CType_S8 = PHashString("s8"),
+  CType_S16 = PHashString("s16"),
+  CType_S32 = PHashString("s32"),
+  CType_S64 = PHashString("s64"),
+  CType_LOGIC = PHashString("logic"),
+  CType_F32 = PHashString("f32"),
+  CType_F64 = PHashString("f64"),
+  CType_PTRSIZE = PHashString("ptrsize"),
+  CType_VOID = PHashString("void"),
+  CType_STRUCT,
+  };
+  
+  #define _component_count 200
+  
+  )FOO";
+    
+    
+    {
+        FWrite(file,(void*)initialcontents,strlen(initialcontents));
+        
+        auto comp_struct_string =  "\n\nstruct ComponentStruct{";
+        
+        FWrite(file,(void*)comp_struct_string,strlen(comp_struct_string));
+        
+        for(u32 i = 0; i < struct_count;i++){
+            
+            auto s = &struct_array[i];
+            
+            s8 outbuffer[256] = {};
+            
+            s8 lowercasebuffer[256] = {};
+            
+            u32 len = strlen(s->name_string);
+            
+            for(u32 j = 0; j < len; j++){
+                lowercasebuffer[j] = tolower(s->name_string[j]);
+            }
+            
+            sprintf(outbuffer,"\n\n\n%s %s_array[_component_count];\nu32 %s_count = 0;\n",
+                    s->name_string,lowercasebuffer,lowercasebuffer);
+            
+            FWrite(file,(void*)outbuffer,strlen(outbuffer));
+            
+        }
+        
+        comp_struct_string =  "\n};\n\n";
+        
+        FWrite(file,(void*)comp_struct_string,strlen(comp_struct_string));
+    }
+    
+    for(u32 i = 0; i < struct_count; i++){
+        
+        auto s = &struct_array[i];
+        
+        {
+            
+            s8 buffer[256] = {};
+            
+            sprintf(buffer,"\n\n_persist MetaDataEntry %s_METACOMP_STRUCT[] = {\n",s->name_string);
+            
+            FWrite(file,(void*)buffer,strlen(buffer));
+            
+        }
+        
+        {
+            
+            
+            for(u32 j = 0; j < s->members_count;j++){
+                
+                auto m = &s->members_array[j];
+                
+                s8 buffer[256] = {};
+                
+                //TODO: support more than 1d arrays
+                //Remove ref_metadatacomp_index
+                sprintf(buffer,"{%d,%d,\"%s\",\"%s\",sizeof(%s),offsetof(%s,%s),%d,(u32)-1},\n"
+                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,m->dim_array[0]);
+                
+                FWrite(file,(void*)buffer,strlen(buffer));
+            }
+            
+            
+            auto end_struct = "};";
+            FWrite(file,(void*)end_struct,strlen(end_struct));
+            
+        }
+    }
+    
+    {
+        auto metacomp_string = "\n\n\nMetaDataCompEntry METACOMP_ARRAY[] = {\n";
+        
+        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+        
+        for(u32 i = 0; i < struct_count; i++){
+            
+            auto s = &struct_array[i];
+            
+            u32 len = strlen(s->name_string);
+            
+            s8 outbuffer[2048] = {};
+            s8 lowercasebuffer[256] = {};
+            
+            for(u32 j = 0; j < len; j++){
+                lowercasebuffer[j] = tolower(s->name_string[j]);
+            }
+            
+            sprintf(outbuffer,
+                    "{offsetof(ComponentStruct,%s_array),offsetof(ComponentStruct,%s_count),sizeof(ComponentStruct::%s_array[0]),\"%s\",(u32)%d,&%s_METACOMP_STRUCT[0],_arraycount(%s_METACOMP_STRUCT)},\n",
+                    lowercasebuffer,lowercasebuffer,lowercasebuffer,s->name_string,
+                    (u32)s->name_hash,s->name_string,
+                    s->name_string);
+            
+            FWrite(file,(void*)outbuffer,strlen(outbuffer));
+        }
+        
+        metacomp_string = "\n};\n";
+        
+        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+    }
+    
+    
+    
+    
+    
+    auto function_string = R"FOO(
+    
+  struct MetaDataCompOut{
+  s8* array; //array ptr
+  u32* count;// ptr to array count
+  u32 element_size;
+  const s8* comp_name_string;
+  u32 comp_name_hash;
+  MetaDataEntry* metadata_table;
+  u32 metadata_count;
+  };
+  
+  MetaDataCompOut GetComponentData(ComponentStruct* components,
+  MetaDataCompEntry metacomp){
+  
+  auto data = (s8*)components;
+  
+  MetaDataCompOut output = 
+  {(data + metacomp.array),(u32*)(data + metacomp.count),metacomp.element_size,
+  metacomp.comp_name_string,metacomp.comp_name_hash,metacomp.metadata_table,
+  metacomp.metadata_count};
+  
+  return output;
+  }
+  
+  MetaDataCompEntry* MetaGetCompByNameHash(u32 hash){
+  
+  for(u32 i = 0; i < _arraycount(METACOMP_ARRAY); i++){
+  auto entry = &METACOMP_ARRAY[i];
+  
+  if(hash == entry->comp_name_hash){
+  return entry;
+  }
+  
+  }
+  
+  return 0;
+  }
+  
+  MetaDataCompEntry* MetaGetCompByNameHash(const s8* name){
+  return MetaGetCompByNameHash(PHashString(name));
+  }
+  
+  u32 MetaGetTypeByNameHash(u32 hash,MetaDataEntry* array,
+  u32 array_count){
+  
+  for(u32 i = 0; i < array_count; i++){
+  MetaDataEntry* entry = &array[i];
+  if(entry->name_hash == hash){
+  return entry->type_hash;
+  }
+  }
+  return (u32)-1;
+  }
+  
+  
+  u32 MetaGetTypeByName(const s8* name,MetaDataEntry* array,
+  u32 array_count){
+  
+  return MetaGetTypeByNameHash(PHashString(name),array,array_count);
+  }
+  
+  
+  logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaDataEntry* array,
+  u32 array_count){
+  
+  for(u32 i = 0; i < array_count; i++){
+  MetaDataEntry* entry = &array[i];
+  if(entry->name_hash == hash){
+  
+  _kill("index exceeds arraycount\n",index >= entry->arraycount);
+  
+  auto data = (s8*)obj;
+  memcpy(outdata,data + entry->offset + (entry->size * index),entry->size);
+  return true;
+  }
+  }
+  
+  return false;
+  }
+  
+  logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaDataEntry* array,
+  u32 array_count){
+  
+  return MetaGetValueByNameHash(obj,index,outdata,PHashString(name),array,array_count);
+  }
+  
+  logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaDataEntry* array,
+  u32 array_count){
+  
+  for(u32 i = 0; i < array_count; i++){
+  
+  MetaDataEntry* entry = &array[i];
+  
+  if(entry->name_hash == hash){
+  
+  _kill("index exceeds arraycount\n",index >= entry->arraycount);
+  
+  
+  auto data = (s8*)obj;
+  memcpy(data + entry->offset + (entry->size * index),value,entry->size);
+  return true;
+  }
+  }
+  
+  return false;
+  }
+  
+  logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaDataEntry* array,
+  u32 array_count){
+  
+  return MetaSetValueByNameHash(obj,index,value,PHashString(name),array,array_count);
+  }
+  
+  logic MetaIsCType(u32 hash){
+  return hash == CType_U8 || hash == CType_U16 || hash == CType_U32  || hash == CType_U64 ||
+  hash == CType_S8 || hash == CType_S16 || hash == CType_S32 || hash == CType_S64 ||
+  hash == CType_LOGIC || hash == CType_F32 || hash == CType_F64 || hash == CType_PTRSIZE ||
+  hash == CType_VOID;
+  }
+  
+  logic MetaIsCType(const s8* string){
+  return MetaIsCType(PHashString(string));
+  }
+  
+  u32 _ainline MetaStringToType(const s8* string){
+  return PHashString(string);
+  }
+  
+  logic IsIntType(u32 type){
+  
+  return type == CType_U8 ||
+          type == CType_U16 ||
+          type == CType_U32 ||
+          type == CType_U64 ||
+          type == CType_S8||
+          type == CType_S16||
+          type == CType_S32||
+          type == CType_S64;
+  }
+  
+  logic IsFloatType(u32 type){
+  return type == CType_F32 ||
+        type == CType_F64;
+  }
+  
+  
+  void MetaDumpComponents(ComponentStruct* compstruct){
+  
+    auto metacomp_array = &METACOMP_ARRAY[0];
+    u32 metacomp_count = _arraycount(METACOMP_ARRAY);
+    
+    for(u32 i = 0; i < metacomp_count; i++){
+    
+      printf("--COMPTYPE--\n");
+      
+      auto entry = metacomp_array[i];
+      
+      auto outdata = GetComponentData(compstruct,entry);
+      
+      auto array = outdata.array;
+      auto count = *outdata.count;
+      
+      for(u32 j = 0; j < count; j++){
+      
+        printf("--COMP--\n");
+        
+        auto comp_entry_data = array + (j * outdata.element_size);
+        
+        for(u32 k = 0; k < outdata.metadata_count; k++){
+        
+   auto comp_meta_entry = outdata.metadata_table[k];
+   
+   printf("%s %s : ",comp_meta_entry.type_string,comp_meta_entry.name_string);
+   
+   for(u32 k = 0; k < comp_meta_entry.arraycount; k++){
+   
+   s8 buffer[256] = {};
+   
+   MetaGetValueByName(comp_entry_data,k,&buffer[0],comp_meta_entry.name_string,
+        outdata.metadata_table,outdata.metadata_count);
+        
+   if(
+      comp_meta_entry.type_hash == CType_U8 ||
+      comp_meta_entry.type_hash == CType_U16 ||
+      comp_meta_entry.type_hash == CType_U32 ||
+      comp_meta_entry.type_hash == CType_U64 ||
+      comp_meta_entry.type_hash == CType_S8||
+      comp_meta_entry.type_hash == CType_S16||
+      comp_meta_entry.type_hash == CType_S32||
+      comp_meta_entry.type_hash == CType_S64
+      ){
+     printf("%d\n",*((u32*)(&buffer[0])));
+   }
+   
+   else if(comp_meta_entry.type_hash == CType_F32 ||
+    comp_meta_entry.type_hash == CType_F64){
+     printf("%f\n",*((f32*)(&buffer[0])));
+   }
+   
+   else{
+     printf("%d\n",*((u32*)(&buffer[0])));
+   }
+   
+}
+
+        }
+        
+      }
+      
+    }
+    
+  }
+  
+  void MetaDump(){
+  
+    for(u32 i = 0; i < _arraycount(METACOMP_ARRAY); i++){
+    
+      auto meta_comp = &METACOMP_ARRAY[i];
+      
+      printf("\nCOMP: %s\n",meta_comp->comp_name_string);
+      
+      for(u32 j = 0; j < meta_comp->metadata_count; j++){
+      
+        auto field_entry = &meta_comp->metadata_table[j];
+        
+        printf("%s %s\n",field_entry->type_string,field_entry->name_string);
+      }
+      
+    }
+    
+  }
+  
+  
+  )FOO";
+    
+#if !(_testing)
+    
+    FCloseFile(file);
+    
+#endif
+}
+
 //TODO: we should handle unions as well
 s32 main(s32 argc,s8** argv){
     
@@ -1616,17 +2197,55 @@ hello world
 //THIS IS A TEST COMMENT
 
 struct REFLCOMPONENT Character{
-s8* name;
+s8* name = "hello world";
 u32 health;
 u32 atk;
 };
 
+//MARK: we will not handle struct
+
     struct REFLCOMPONENT BossCharacter{
-            Character character;
+            Character character = {};
             u32 special_ability;
         };
         
+        struct REFLCOMPONENT SAILOR{
         
+        struct HELLO{
+        u32 a;
+        u32 b;
+};
+
+HELLO s;
+f32 k;
+
+        };
+        
+        struct REFL ABC{
+        
+        struct DEF{
+        
+        u32 d;
+        u32 e;
+        u32 f;
+        
+};
+
+u32 a;
+        u32 b;
+        u32 c;
+        
+        DEF k;
+        
+        struct{
+        u32 g;
+        u32 h;
+        u32 i;
+};
+
+};
+
+
 //FIXME: we are skipping Foo
 struct REFL Foo{
 u32 a;
@@ -1636,7 +2255,7 @@ u32 c;
 
 struct REFL Bar{
 u32* a = 0;
-u32 b[4];
+u32 b[4] = {};
 
 //TODO: handle this case
 //f32 c[4] = {};
@@ -1755,21 +2374,7 @@ f32 intensity;
             
             if(IsReflStruct(&evaluation_buffer[0],evaluation_count)){
                 
-                //parse the struct
-                
-                
-                //works but it is fucking w the parsing
-                
-                /*
-                
-                TODO: add struct lookup
-                
-                I think this is fucking it up:
-                
-            fix parsing 
-            
-            
-*/
+#if 0
                 
                 
                 printf("found struct:");
@@ -1780,18 +2385,9 @@ f32 intensity;
                 
                 printf("\n");
                 
-#if 1
-                
-                //FIXME: we are overparsing
-                GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],&struct_count);
-                
-                auto k = &struct_array[struct_count - 1];
-                
-                DebugPrintGenericStruct(k);
-                
 #endif
                 
-                printf("(%d)\n",cur);
+                GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],&struct_count);
                 
             }
             
@@ -1837,9 +2433,37 @@ f32 intensity;
         }
     }
     
-    printf("\n");
+    {
+        
+        qsort(struct_array,struct_count,
+              sizeof(GenericStruct),
+              [](const void * a, const void* b)->s32 {
+              
+              auto block_a = (GenericStruct*)a;
+              auto block_b = (GenericStruct*)b;
+              
+              return block_a->pkey - block_b->pkey;
+              });
+        
+        u32 count = 0;
+        u32 k = 0;
+        
+        for(u32 i = 0; i < struct_count;i++){
+            
+            if(struct_array[i].pkey == PARSERKEYWORD_COMPONENT){
+                count = struct_count - i;
+                k = i;
+                break;
+            }
+        }
+        
+        WriteComponentMetaData("test.txt",&struct_array[k],count);
+        
+    }
     
     unalloc(struct_array);
+    
+    
     
     return 0;
 }
