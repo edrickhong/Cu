@@ -303,6 +303,14 @@ extern void* vkenumeratephysicaldevicegroups;
    
 */
 
+enum VMappedBufferProperties{
+    VMAPPED_NONE = 0,
+    VMAPPED_COHERENT = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    VMAPPED_CACHED = VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+    VMAPPED_AMD_DEVICE_HOST_VISIBLE =(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+    
+};
+
 
 struct VSwapchainContext{
     
@@ -604,14 +612,15 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
 VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,
                                     const s8* filepath,VkCommandBuffer commandbuffer,VkQueue queue);
 
+
 VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
                                 u32 width,u32 height,u32 usage,logic is_device_local = true,
-                                logic is_coherent = false,VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
+                                VMappedBufferProperties prop = VMAPPED_COHERENT,VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
                                 VkFormat format = VK_FORMAT_R8G8B8A8_UNORM);
 
 VImageMemoryContext VCreateColorImageMemory(const  VDeviceContext* _restrict vdevice,
                                             u32 width,u32 height,u32 usage,logic is_device_local = true,
-                                            logic is_coherent = false,
+                                            VMappedBufferProperties prop = VMAPPED_COHERENT,
                                             VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
                                             VkFormat format = VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -701,7 +710,7 @@ void VEndRenderPass(VkCommandBuffer commandbuffer);
 VkSemaphore VCreateSemaphore(const  VDeviceContext* _restrict vdevice);
 
 VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdevice,
-                                           u32 data_size,logic is_coherrent = true);
+                                           u32 data_size,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 void VUpdateUniformBuffer(const  VDeviceContext* _restrict vdevice,
                           VBufferContext context,void* data,u32 data_size);
@@ -710,11 +719,8 @@ void VSetDriverAllocator(VkAllocationCallbacks allocator);
 void VSetDeviceAllocator(VkDeviceMemory (*allocator)(VkDevice,VkDeviceSize,u32,
                                                      VkAllocationCallbacks*));
 
-#define V_AMD_DEVICE_HOST_VISIBLE (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-
 VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
-                                     ptrsize data_size,u32 add_flags =
-                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                     ptrsize data_size,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 
 struct _cachealign CacheAlignedCommandbuffer{
@@ -805,10 +811,9 @@ void VCreateComputePipelineArray(const  VDeviceContext* _restrict vdevice,
                                  VkPipelineCache cache,VComputePipelineSpec* spec_array,u32 spec_count,
                                  VkPipeline* pipeline_array);
 
-
 VBufferContext VCreateShaderStorageBufferContext(
 const  VDeviceContext* _restrict vdevice,
-u32 data_size,logic is_devicelocal,logic is_coherrent = true);
+u32 data_size,logic is_devicelocal,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 VkDescriptorBufferInfo _ainline VGetBufferInfo(const VBufferContext* buffer,
                                                VkDeviceSize offset = 0,
@@ -843,10 +848,10 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                         ptrsize data_size);
 
 VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,u32 bindingno,logic isdevice_local = true);
+                                         ptrsize data_size,u32 bindingno,logic isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice,
-                                        ptrsize data_size,logic isdevice_local = true);
+                                        ptrsize data_size,logic isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);
 
 
 u32 _ainline VFormatHash(VkFormat* format_array,u32 count){
@@ -1027,3 +1032,62 @@ void VPushBackPushConstRange(VShaderObj* _restrict obj,VkFormat* format_array,u3
 VkPipelineCache VCreatePipelineCache(const VDeviceContext* _in_ vdevice,void* init_data = 0,ptrsize init_size = 0);
 
 void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache cache,void* init_data,ptrsize* init_size);
+
+void VMapMemory(VkDevice device,VkDeviceMemory memory,
+                VkDeviceSize offset,VkDeviceSize size,void** ppData,VkMemoryMapFlags flags = 0);
+
+void _ainline VMapMemory(const VDeviceContext* _in_ vdevice,VkDeviceMemory memory,
+                         VkDeviceSize offset,VkDeviceSize size,void** ppData,VkMemoryMapFlags flags = 0){
+    
+    VMapMemory(vdevice->device,memory,offset,size,ppData,flags);
+}
+
+struct VMemoryRangesArray{
+    
+    VkMappedMemoryRange range_array[16] = {};
+    u32 count = 0;
+};
+
+struct VMemoryRangesPtr{
+    
+    VkMappedMemoryRange* range_array = 0;
+    u32 count = 0;
+};
+
+void VPushBackMemoryRanges(VMemoryRangesArray* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size);
+
+void VPushBackMemoryRanges(VMemoryRangesPtr* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size);
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesArray* ranges);
+
+void _ainline VFlushMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesArray* ranges){
+    
+    VFlushMemoryRanges(vdevice->device,ranges);
+    
+}
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges);
+
+void _ainline VFlushMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesPtr* ranges){
+    
+    VFlushMemoryRanges(vdevice->device,ranges);
+    
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges);
+
+void _ainline VInvalidateMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesPtr* ranges){
+    
+    VInvalidateMemoryRanges(vdevice->device,ranges);
+    
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesArray* ranges);
+
+void _ainline VInvalidateMemoryRanges(const VDeviceContext* _in_ vdevice,VMemoryRangesArray* ranges){
+    
+    VInvalidateMemoryRanges(vdevice->device,ranges);
+    
+}

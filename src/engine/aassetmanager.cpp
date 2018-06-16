@@ -13,16 +13,22 @@ _persist InternalTransferBuffer async_transferbuffer = {};
 VkDeviceSize AllocateTransferBuffer(InternalTransferBuffer* _restrict transferbuffer,
                                     u32 size){
     
+#if 0
+    
+    printf("TRANSFERBUFFER ALLOCATE\n");
+    
+#endif
+    
     VkDeviceSize offset;
     VkDeviceSize new_offset;
     VkDeviceSize actual_offset;
     
-    size = _align8(size);
+    size = _mapalign(size);
     
     do{
         
         offset = transferbuffer->offset;
-        new_offset = offset + size;
+        new_offset = _mapalign(offset + size);
         
         actual_offset = LockedCmpXchg(&transferbuffer->offset,offset,new_offset);
         
@@ -45,12 +51,6 @@ _persist VDeviceContext* global_device = {};
 #define _defarray_size 100
 
 #define _maxassets 2000
-
-u64 DeviceAlign(u64 value){
-    value = _align256(value);
-    _kill("is not aligned\n",(value % 256) != 0);
-    return value;
-}
 
 
 struct MemoryBlock{
@@ -670,7 +670,7 @@ void GPUInternalAllocateAsset(ModelAssetHandle* handle,u32 size){
     
     GPUMemorySlot slot = {};
     
-    auto allocsize = DeviceAlign(size);
+    auto allocsize = _devicealign(size);
     
     slot.block = AllocateBlockGPUBlock(allocsize);
     slot.id = -1;
@@ -872,10 +872,10 @@ void AllocateAssetAnimated(const s8* filepath,
     animbone->animationset_array =  mdf.animationset_array;
     animbone->animationset_count = mdf.animationset_count;
     
-    auto vertsize = DeviceAlign(mdf.vertex_size);
-    auto indexsize = DeviceAlign(mdf.index_size);
+    auto vertsize = _devicealign(mdf.vertex_size);
+    auto indexsize = _devicealign(mdf.index_size);
     
-    GPUInternalAllocateAsset(vertindex,DeviceAlign(vertsize + indexsize));
+    GPUInternalAllocateAsset(vertindex,_devicealign(vertsize + indexsize));
     
     auto transferbuffer = main_transferbuffer.buffer;
     auto transferbuffer_offset =
@@ -892,7 +892,7 @@ void AllocateAssetAnimated(const s8* filepath,
         VCreateStaticIndexBuffer(vdevice,
                                  commandbuffer,
                                  global_gpumemstate.global_ptr,
-                                 DeviceAlign(vertindex->gpuptr + mdf.vertex_size),
+                                 _devicealign(vertindex->gpuptr + mdf.vertex_size),
                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
                                  mdf.index_data,mdf.index_size);
     
@@ -923,10 +923,10 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
     vertindex.vert_fileoffset = mdf.vertexdata_offset;
     vertindex.index_fileoffset = mdf.indexdata_offset;
     
-    auto vertsize = DeviceAlign(mdf.vertex_size);
-    auto indexsize = DeviceAlign(mdf.index_size);
+    auto vertsize = _devicealign(mdf.vertex_size);
+    auto indexsize = _devicealign(mdf.index_size);
     
-    GPUInternalAllocateAsset(&vertindex,DeviceAlign(vertsize + indexsize));
+    GPUInternalAllocateAsset(&vertindex,_devicealign(vertsize + indexsize));
     
     auto transferbuffer = main_transferbuffer.buffer;
     auto transferbuffer_offset =
@@ -943,7 +943,7 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
         VCreateStaticIndexBuffer(vdevice,
                                  commandbuffer,
                                  global_gpumemstate.global_ptr,
-                                 DeviceAlign(vertindex.gpuptr + mdf.vertex_size),
+                                 _devicealign(vertindex.gpuptr + mdf.vertex_size),
                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
                                  mdf.index_data,mdf.index_size);
     
@@ -1000,11 +1000,8 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
             AllocateTransferBuffer(&main_transferbuffer,
                                    handle->vertexbuffer.size + handle->indexbuffer.size);
         
-        
-        
-        vkMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
-                    (handle->vertexbuffer.size + handle->indexbuffer.size),0,
-                    (void**)&mappedmemory_ptr);
+        VMapMemory(global_device,transferbuffer.memory,transferbuffer_offset,
+                   (handle->vertexbuffer.size + handle->indexbuffer.size),(void**)&mappedmemory_ptr);
         
         memcpy(mappedmemory_ptr,vert,handle->vertexbuffer.size);
         
@@ -1087,8 +1084,10 @@ void CommitAudio(AudioAssetHandle* handle){
 #define _height _kilobytes(8)
 #define _tpage_side 128
 #define _totalpages (_width/_tpage_side) * (_height/_tpage_side)
-#define _fetch_dim_scale_w 9
-#define _fetch_dim_scale_h 9
+
+
+#define _fetch_dim_scale_w 8
+#define _fetch_dim_scale_h 8
 
 _persist VTextureContext global_texturecache = {};
 
@@ -1118,8 +1117,8 @@ struct VTReadbackImageContext : VImageContext{
 };
 
 //MARK:nvidia is ok with linear if it is not a storage image
-_persist VTReadbackImageContext vt_readbackbuffer = {};
-_persist VImageMemoryContext vt_targetreadbackbuffer = {};
+_persist VTReadbackImageContext vt_readbackbuffer = {}; //device writes to this
+_persist VImageMemoryContext vt_targetreadbackbuffer = {}; // we copy to this for reading 
 _persist VTReadbackPixelFormat* vt_readbackpixels = 0;
 _persist VTReadbackPixelFormat* threadtexturefetch_array = 0;
 
@@ -1127,6 +1126,12 @@ _persist VTReadbackPixelFormat* threadtexturefetch_array = 0;
 _persist VkCommandPool fetch_pool[2];
 _persist VkCommandBuffer fetch_cmdbuffer[2];
 _persist u32 fetch_count = 0;
+
+#if _debug
+
+_persist VTReadbackPixelFormat* debug_pixels = 0;
+
+#endif
 
 void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
                         VDeviceContext* _restrict vdevice,VSwapchainContext* swapchain){
@@ -1302,7 +1307,6 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     {
         
-        //MARK:
         auto w = swapchain->width/_fetch_dim_scale_w;
         auto h = swapchain->height/_fetch_dim_scale_h;
         
@@ -1317,15 +1321,85 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         vt_readbackbuffer.w = w;
         vt_readbackbuffer.h = h;
         
+#if _debug
+        
+        debug_pixels = (VTReadbackPixelFormat*)alloc(w * h * 4);
+#endif
+        
+        //(FIXME:)MARK: do we really want to make this cached?
         vt_targetreadbackbuffer = VCreateColorImageMemory(vdevice,w,h,
-                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,false,
+                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,VMAPPED_NONE,
                                                           VK_IMAGE_TILING_LINEAR);
         
-        vkMapMemory(global_device->device,vt_targetreadbackbuffer.memory,
-                    0,w * h * sizeof(VTReadbackPixelFormat),0,(void**)&vt_readbackpixels);
+        VMapMemory(global_device,vt_targetreadbackbuffer.memory,
+                   0,w * h * sizeof(VTReadbackPixelFormat),(void**)&vt_readbackpixels);
         
         threadtexturefetch_array = (VTReadbackPixelFormat*)alloc(w * h *
                                                                  sizeof(VTReadbackPixelFormat));
+        
+        
+        //clear the image
+#if 0
+        {
+            auto queue = VGetQueue(vdevice,VQUEUETYPE_ROOT);
+            
+            auto pool =
+                VCreateCommandPool(vdevice,
+                                   VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                                   VGetQueueFamilyIndex(VQUEUETYPE_ROOT));
+            
+            auto cmdbuffer = VAllocateCommandBuffer(vdevice,pool,
+                                                    VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+            
+            VStartCommandBuffer(cmdbuffer,
+                                VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+            
+            VkImageMemoryBarrier transfer_membarrier = {
+                VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                0,
+                0,//srcAccessMask
+                VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                vt_targetreadbackbuffer.image,
+                {
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    0,
+                    1,
+                    0,
+                    1
+                },
+            };
+            
+            vkCmdPipelineBarrier(cmdbuffer,
+                                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0,
+                                 0,0,0,0,1,&transfer_membarrier);
+            
+            VkClearColorValue color = {};
+            
+            VkImageSubresourceRange range = {
+                VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1
+            };
+            
+            vkCmdClearColorImage(cmdbuffer,vt_targetreadbackbuffer.image,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&color,1,&range);
+            
+            
+            VEndCommandBuffer(cmdbuffer);
+            
+            VSubmitCommandBuffer(queue,cmdbuffer);
+            
+            
+            vkQueueWaitIdle(queue);
+            
+            vkDestroyCommandPool(vdevice->device,pool,0);
+        }
+        
+#endif
     }
     
     
@@ -1828,9 +1902,8 @@ void FetchTextureTile(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                 
                 s8* mappedmemory_ptr;
                 
-                vkMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
-                            total_size + (sizeof(u32) * batch->fetchlist.fetch_count),0,
-                            (void**)&mappedmemory_ptr);
+                VMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
+                           total_size + (sizeof(u32) * batch->fetchlist.fetch_count),(void**)&mappedmemory_ptr);
                 
                 //Copy image data here
                 for(u32 i = 0; i < batch->fetchlist.fetch_count; i++){
@@ -2066,19 +2139,15 @@ void UpdateTextureFetchEntries(){
     
     TIMEBLOCK(Green);
     
-    VkMappedMemoryRange range_array[] = {
-        {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            vt_targetreadbackbuffer.memory,
-            0,
-            (VkDeviceSize)(vt_readbackbuffer.w * vt_readbackbuffer.h * sizeof(VTReadbackPixelFormat)),
-        }
-    };
+    VMemoryRangesArray ranges = {};
     
-    vkInvalidateMappedMemoryRanges(global_device->device,
-                                   _arraycount(range_array),&range_array[0]);
+    VPushBackMemoryRanges(&ranges,vt_targetreadbackbuffer.memory,
+                          0, VK_WHOLE_SIZE);
+    
+    VInvalidateMemoryRanges(global_device,&ranges);
 }
+
+
 
 //we do not do temp page allocations anymore
 VkCommandBuffer GenerateTextureFetchRequests(
@@ -2089,29 +2158,61 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
     UpdateTextureFetchEntries();
     
 #if 0
+    
     {
         
         u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
         u32 count = 0;
         
-        for(u32 i = 0; i < total_tiles; i++){
+        static u32 hit_count = 0;
+        
+        if(hit_count){
             
-            auto a = &vt_readbackpixels[i];
-            
-            if(a->texture_id){
-                a->value = (u32)-1;
+            for(u32 i = 0; i < total_tiles; i++){
+                
+                auto a = &vt_readbackpixels[i];
+                
+                if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+                    
+                    a->value = _encode_rgba(255,0,0,255);
+                }
+                
+                else if(a->texture_id){
+                    a->value = (u32)-1;
+                    
+                }
+                
+                else{
+                    a->value = _encode_rgba(0,0,255,255);
+                }
                 
             }
             
+            WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
+                     "test.bmp");
+            
+            exit(0);
+            
         }
         
-        WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
-                 "test.bmp");
-        
-        exit(0);
+        hit_count++;
         
     }
+    
+    
+    
 #endif  
+    
+#if _debug 
+    
+    {
+        
+        memcpy(debug_pixels,vt_readbackpixels,
+               vt_readbackbuffer.w * vt_readbackbuffer.h * 4);
+    }
+    
+#endif
+    
     
     u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
     u32 count = 0;
@@ -2124,14 +2225,6 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             a->texture_id--;
             threadtexturefetch_array[count] = *a;
             count++;
-            
-#if  0
-            
-            if(a->texture_id == 0){
-                printf("r %d %d %d\n",a->mip,a->x,a->y);
-            }
-            
-#endif
             
         }
         
@@ -2165,7 +2258,47 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             auto tid = threadtexturefetch_array[i].texture_id;
             
-            _kill("invalid tid generated\n",tid >= _arraycount(texturehandle_array));
+#if _debug
+            
+            if(tid >= _arraycount(texturehandle_array))
+            {
+                
+                u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
+                
+                for(u32 i = 0; i < total_tiles; i++)
+                {
+                    
+                    auto a = &vt_readbackpixels[i];
+                    
+                    if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+                        
+                        a->value = _encode_rgba(255,0,0,255);
+                        printf("hit invalid %d\n",a->texture_id);
+                    }
+                    
+                    else if(a->texture_id)
+                    {
+                        a->value = (u32)-1;
+                        
+                    }
+                    
+                    else
+                    {
+                        a->value = 0;
+                    }
+                    
+                }
+                
+                printf("Error: invalid tid generated\n");
+                
+                WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
+                         "test.bmp");
+                
+                exit(0);
+            }
+            
+            
+#endif
             
             auto cur = &texturehandle_array[tid];
             
