@@ -78,49 +78,49 @@ u32 spotlight_count = 0;
 
 
 _persist MetaDataEntry EntityAnimationData_METACOMP_STRUCT[] = {
-{(u32)83011,(u32)7787,"ObjectID","id",sizeof(ObjectID),offsetof(EntityAnimationData,id),1,(u32)-1},
-{(u32)8035783,(u32)358616,"AnimationID","animdata_id",sizeof(AnimationID),offsetof(EntityAnimationData,animdata_id),1,(u32)-1},
-{(u32)11688,(u32)13693461,"u16","animationindex",sizeof(u16),offsetof(EntityAnimationData,animationindex),1,(u32)-1},
-{(u32)11688,(u32)1149457,"u16","islooping",sizeof(u16),offsetof(EntityAnimationData,islooping),1,(u32)-1},
-{(u32)4753,(u32)6382439,"f32","animationtime",sizeof(f32),offsetof(EntityAnimationData,animationtime),1,(u32)-1},
-{(u32)4753,(u32)114023,"f32","speed",sizeof(f32),offsetof(EntityAnimationData,speed),1,(u32)-1},
+{(u32)83011,(u32)7787,"ObjectID","id",(u32)sizeof(ObjectID),(u32)offsetof(EntityAnimationData,id),1,(u32)-1},
+{(u32)8035783,(u32)358616,"AnimationID","animdata_id",(u32)sizeof(AnimationID),(u32)offsetof(EntityAnimationData,animdata_id),1,(u32)-1},
+{(u32)11688,(u32)13693461,"u16","animationindex",(u32)sizeof(u16),(u32)offsetof(EntityAnimationData,animationindex),1,(u32)-1},
+{(u32)11688,(u32)1149457,"u16","islooping",(u32)sizeof(u16),(u32)offsetof(EntityAnimationData,islooping),1,(u32)-1},
+{(u32)4753,(u32)6382439,"f32","animationtime",(u32)sizeof(f32),(u32)offsetof(EntityAnimationData,animationtime),1,(u32)-1},
+{(u32)4753,(u32)114023,"f32","speed",(u32)sizeof(f32),(u32)offsetof(EntityAnimationData,speed),1,(u32)-1},
 };
 
 _persist MetaDataEntry EntityDrawData_METACOMP_STRUCT[] = {
-{(u32)83011,(u32)7787,"ObjectID","id",sizeof(ObjectID),offsetof(EntityDrawData,id),1,(u32)-1},
-{(u32)377568,(u32)88048,"ModelID","model",sizeof(ModelID),offsetof(EntityDrawData,model),1,(u32)-1},
-{(u32)421387,(u32)101812,"MaterialID","material",sizeof(MaterialID),offsetof(EntityDrawData,material),1,(u32)-1},
-{(u32)241635364,(u32)46885,"RenderGroupIndex","group",sizeof(RenderGroupIndex),offsetof(EntityDrawData,group),1,(u32)-1},
+{(u32)83011,(u32)7787,"ObjectID","id",(u32)sizeof(ObjectID),(u32)offsetof(EntityDrawData,id),1,(u32)-1},
+{(u32)377568,(u32)88048,"ModelID","model",(u32)sizeof(ModelID),(u32)offsetof(EntityDrawData,model),1,(u32)-1},
+{(u32)421387,(u32)101812,"MaterialID","material",(u32)sizeof(MaterialID),(u32)offsetof(EntityDrawData,material),1,(u32)-1},
+{(u32)241635364,(u32)46885,"RenderGroupIndex","group",(u32)sizeof(RenderGroupIndex),(u32)offsetof(EntityDrawData,group),1,(u32)-1},
 };
 
 _persist MetaDataEntry EntityAudioData_METACOMP_STRUCT[] = {
-{(u32)83011,(u32)7787,"ObjectID","id",sizeof(ObjectID),offsetof(EntityAudioData,id),1,(u32)-1},
-{(u32)81069624,(u32)298334,"AudioAssetHandle","audioasset",sizeof(AudioAssetHandle),offsetof(EntityAudioData,audioasset),1,(u32)-1},
-{(u32)11688,(u32)1149457,"u16","islooping",sizeof(u16),offsetof(EntityAudioData,islooping),1,(u32)-1},
-{(u32)11688,(u32)947865,"u16","toremove",sizeof(u16),offsetof(EntityAudioData,toremove),1,(u32)-1},
+{(u32)83011,(u32)7787,"ObjectID","id",(u32)sizeof(ObjectID),(u32)offsetof(EntityAudioData,id),1,(u32)-1},
+{(u32)81069624,(u32)298334,"AudioAssetHandle","audioasset",(u32)sizeof(AudioAssetHandle),(u32)offsetof(EntityAudioData,audioasset),1,(u32)-1},
+{(u32)11688,(u32)1149457,"u16","islooping",(u32)sizeof(u16),(u32)offsetof(EntityAudioData,islooping),1,(u32)-1},
+{(u32)11688,(u32)947865,"u16","toremove",(u32)sizeof(u16),(u32)offsetof(EntityAudioData,toremove),1,(u32)-1},
 };
 
 _persist MetaDataEntry PointLight_METACOMP_STRUCT[] = {
-{(u32)83011,(u32)7787,"ObjectID","id",sizeof(ObjectID),offsetof(PointLight,id),1,(u32)-1},
-{(u32)4753,(u32)3479,"f32","R",sizeof(f32),offsetof(PointLight,R),1,(u32)-1},
-{(u32)4753,(u32)2900,"f32","G",sizeof(f32),offsetof(PointLight,G),1,(u32)-1},
-{(u32)4753,(u32)1271,"f32","B",sizeof(f32),offsetof(PointLight,B),1,(u32)-1},
-{(u32)4753,(u32)26417,"f32","radius",sizeof(f32),offsetof(PointLight,radius),1,(u32)-1},
-{(u32)4753,(u32)2062714,"f32","intensity",sizeof(f32),offsetof(PointLight,intensity),1,(u32)-1},
+{(u32)83011,(u32)7787,"ObjectID","id",(u32)sizeof(ObjectID),(u32)offsetof(PointLight,id),1,(u32)-1},
+{(u32)4753,(u32)3479,"f32","R",(u32)sizeof(f32),(u32)offsetof(PointLight,R),1,(u32)-1},
+{(u32)4753,(u32)2900,"f32","G",(u32)sizeof(f32),(u32)offsetof(PointLight,G),1,(u32)-1},
+{(u32)4753,(u32)1271,"f32","B",(u32)sizeof(f32),(u32)offsetof(PointLight,B),1,(u32)-1},
+{(u32)4753,(u32)26417,"f32","radius",(u32)sizeof(f32),(u32)offsetof(PointLight,radius),1,(u32)-1},
+{(u32)4753,(u32)2062714,"f32","intensity",(u32)sizeof(f32),(u32)offsetof(PointLight,intensity),1,(u32)-1},
 };
 
 _persist MetaDataEntry SpotLight_METACOMP_STRUCT[] = {
-{(u32)83011,(u32)7787,"ObjectID","id",sizeof(ObjectID),offsetof(SpotLight,id),1,(u32)-1},
-{(u32)4753,(u32)3479,"f32","R",sizeof(f32),offsetof(SpotLight,R),1,(u32)-1},
-{(u32)4753,(u32)2900,"f32","G",sizeof(f32),offsetof(SpotLight,G),1,(u32)-1},
-{(u32)4753,(u32)1271,"f32","B",sizeof(f32),offsetof(SpotLight,B),1,(u32)-1},
-{(u32)4753,(u32)86075,"f32","dir_x",sizeof(f32),offsetof(SpotLight,dir_x),1,(u32)-1},
-{(u32)4753,(u32)85772,"f32","dir_y",sizeof(f32),offsetof(SpotLight,dir_y),1,(u32)-1},
-{(u32)4753,(u32)85911,"f32","dir_z",sizeof(f32),offsetof(SpotLight,dir_z),1,(u32)-1},
-{(u32)4753,(u32)3047467,"f32","full_angle",sizeof(f32),offsetof(SpotLight,full_angle),1,(u32)-1},
-{(u32)4753,(u32)163611,"f32","hard_angle",sizeof(f32),offsetof(SpotLight,hard_angle),1,(u32)-1},
-{(u32)4753,(u32)26417,"f32","radius",sizeof(f32),offsetof(SpotLight,radius),1,(u32)-1},
-{(u32)4753,(u32)2062714,"f32","intensity",sizeof(f32),offsetof(SpotLight,intensity),1,(u32)-1},
+{(u32)83011,(u32)7787,"ObjectID","id",(u32)sizeof(ObjectID),(u32)offsetof(SpotLight,id),1,(u32)-1},
+{(u32)4753,(u32)3479,"f32","R",(u32)sizeof(f32),(u32)offsetof(SpotLight,R),1,(u32)-1},
+{(u32)4753,(u32)2900,"f32","G",(u32)sizeof(f32),(u32)offsetof(SpotLight,G),1,(u32)-1},
+{(u32)4753,(u32)1271,"f32","B",(u32)sizeof(f32),(u32)offsetof(SpotLight,B),1,(u32)-1},
+{(u32)4753,(u32)86075,"f32","dir_x",(u32)sizeof(f32),(u32)offsetof(SpotLight,dir_x),1,(u32)-1},
+{(u32)4753,(u32)85772,"f32","dir_y",(u32)sizeof(f32),(u32)offsetof(SpotLight,dir_y),1,(u32)-1},
+{(u32)4753,(u32)85911,"f32","dir_z",(u32)sizeof(f32),(u32)offsetof(SpotLight,dir_z),1,(u32)-1},
+{(u32)4753,(u32)3047467,"f32","full_angle",(u32)sizeof(f32),(u32)offsetof(SpotLight,full_angle),1,(u32)-1},
+{(u32)4753,(u32)163611,"f32","hard_angle",(u32)sizeof(f32),(u32)offsetof(SpotLight,hard_angle),1,(u32)-1},
+{(u32)4753,(u32)26417,"f32","radius",(u32)sizeof(f32),(u32)offsetof(SpotLight,radius),1,(u32)-1},
+{(u32)4753,(u32)2062714,"f32","intensity",(u32)sizeof(f32),(u32)offsetof(SpotLight,intensity),1,(u32)-1},
 };
 
 
