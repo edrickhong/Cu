@@ -109,7 +109,7 @@ void FileToTable(const s8* asset_list, AssetTable* out_table) {
 	list_count /= sizeof(AssetTableEntry);
 	//store the list count
 
-	printf("initial list count %d\n", (u32)list_count);
+	//printf("initial list count %d\n", (u32)list_count);
 
 	//populate the table
 	for (u32 i = 0; i < list_count; i++) {
@@ -303,23 +303,17 @@ the [patch string].
 }
 
 void BakeExecutable(AssetTable* asset_table, FileHandle exec_file) {
-	u32 t = (u32)-1;
 	printf("\n\nBAKING DATA\n\n");
 	for (u32 i = 0; i < asset_table->count; i++) {
 		auto entry = asset_table->container[i];
-		printf("WRITING %d of %s\n\n", entry.size, entry.file_location);
 		auto entry_file = FOpenFile(entry.file_location, F_FLAG_READWRITE);
 		ptrsize entry_size;
 		auto entry_data = FReadFileToBuffer(entry_file, &entry_size);
-		printf("WROTE %d of %s\n\n", (u32)entry_size, entry.file_location);
-
-		if (t != entry.type) {
-			printf("----BAKING OF %s TYPE %d-------------------\n", entry.file_location, entry.type);
-			t = entry.type;
-		}
-
+		_kill("data written and entry size does not match", (u32)entry_size != (u32)entry.size);
+		//printf("baked %s, %d , %d\n\n",entry.file_location,entry_size,entry.size);
 		FWrite(exec_file, &entry_data[0], entry.size);
-
+		FCloseFile(entry_file);
+		entry_data = "";
 	}
 	printf("\n\nDONE BAKING DATA\n\n");
 
@@ -402,7 +396,9 @@ s32 main(s32 argc,s8** argv){
     s8* exec_buffer;
   
     auto exec_string = argv[3];
-    
+
+	
+	_kill("no file entered", strlen(exec_string) == (u32)0);
     auto exec_file = FOpenFile(exec_string,F_FLAG_READWRITE);
     
 
@@ -426,7 +422,8 @@ s32 main(s32 argc,s8** argv){
 
     FWrite(exec_file,&exec_buffer[0],exec_size);
 
-
+	//sort by type before baking
+	SortListByType(&asset_table);
 	BakeExecutable(&asset_table, exec_file);
 	/*
 	u32 t = (u32)-1;
