@@ -176,7 +176,7 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	// hash
 	entry.file_location_hash = PHashString(asset);
 	//assign file node?
-	entry.file_node.filehandle = 0;
+	//entry.file_node.filehandle = 0;
 	
 
 	out_table->PushBack(entry);
@@ -311,7 +311,7 @@ void BakeExecutable(AssetTable* asset_table, FileHandle exec_file) {
 		auto entry_file = FOpenFile(entry.file_location, F_FLAG_READWRITE);
 		ptrsize entry_size;
 		auto entry_data = FReadFileToBuffer(entry_file, &entry_size);
-		printf("WROTE %d of %s\n\n", entry_size, entry.file_location);
+		printf("WROTE %d of %s\n\n", (u32)entry_size, entry.file_location);
 
 		if (t != entry.type) {
 			printf("----BAKING OF %s TYPE %d-------------------\n", entry.file_location, entry.type);
