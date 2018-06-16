@@ -687,7 +687,9 @@ s32 main(s32 argc,s8** argv){
         }
     }
     
-    WriteComponentMetaData(componentfile,&struct_array[k],count);
+    WriteMetaFile(metafile,struct_array,struct_count);
+    
+    WriteComponentMetaData(componentfile,&struct_array[k],count,metafile);
     
     unalloc(struct_array);
     
