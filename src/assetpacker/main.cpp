@@ -74,7 +74,8 @@ Checking for duplicates: qsort, std::set, or comparing each element with nested 
 *************
 */
 
-enum AssetType{
+enum AssetType : u32 {
+	
 	ASSET_AUDIO = 0,
     ASSET_TEXTURE = 1,
     ASSET_MODEL = 2,
