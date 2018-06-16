@@ -313,7 +313,7 @@ void BakeExecutable(AssetTable* asset_table, FileHandle exec_file) {
 		//printf("baked %s, %d , %d\n\n",entry.file_location,entry_size,entry.size);
 		FWrite(exec_file, &entry_data[0], entry.size);
 		FCloseFile(entry_file);
-		entry_data = "";
+		//entry_data = "";
 	}
 	printf("\n\nDONE BAKING DATA\n\n");
 
