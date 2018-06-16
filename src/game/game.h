@@ -18,10 +18,10 @@ struct PushConst{
 };
 
 struct SkelUBO{
-    Matrix4b4 world;
-    Matrix4b4 bone_array[64];
+    f32 world[16];
+    f32 bone_array[64 * 16];
     u32 texture_array[16];
-    u8 padding[128];
+    
 }_align(256);
 
 struct Vertex{

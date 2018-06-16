@@ -15,7 +15,7 @@ cd /d %mypath:~0,-1%
 
 cd src\shaders\
 echo "BUILDING METADATA"
-..\..\bin\Debug\cparser ..\game\gamecomp.h ..\game\gamecomp_meta.h
+..\..\bin\Debug\cparser ..\game\gamecomp.h -c ..\game\gamecomp_meta.h -m ..\..\include\meta.h
 
 echo "BUILDING SHADERS"
 

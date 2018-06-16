@@ -6,6 +6,58 @@
 _persist auto ustring = "patchthisvalueinatassetpacktime";
 
 
+//TODO: move this to pparse (rename it to BufferList to Array String)
+void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
+    
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    
+    ptrsize size = 0;
+    
+    auto buffer = FReadFileToBuffer(file,&size);
+    
+    FCloseFile(file);
+    
+    printf("const s8* %s[] = {\n",name);
+    
+    for(u32 i = 0;;){
+        
+        if(i >= size){
+            break;
+        }
+        
+        s8 dst_buffer[512] ={};
+        u32 len = 0;
+        
+        PGetLine(&dst_buffer[0],&buffer[0],&i,&len);
+        
+        if(len){
+            
+            s8 out_string[512] = {};
+            out_string[0] = '"';
+            
+            for(u32 j = 0; j < len;j++){
+                
+                if(dst_buffer[j] == '\r'){
+                    continue;
+                }
+                
+                out_string[j + 1] = dst_buffer[j];
+            }
+            
+            out_string[len] = '"';
+            out_string[len + 1] = ',';
+            out_string[len + 2] = '\n';
+            
+            printf(&out_string[0]);
+        }
+    }
+    
+    printf("}\n");
+    
+    unalloc(buffer);
+    
+}
+
 s32 main(s32 argc,s8** argv){
     
 #if  0
@@ -61,12 +113,12 @@ s32 main(s32 argc,s8** argv){
     
     SetupData((void**)&pdata,(void**)&gdata);
     
-    pdata->window = WCreateWindow("Cu",W_CREATE_NORESIZE,100,100,1280,720);
-    
     TInitTimer();
     INIT_DEBUG_TIMER();
     
     auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    
+    pdata->window = WCreateVulkanWindow("Cu",W_CREATE_NORESIZE,100,100,1280,720);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
@@ -81,10 +133,11 @@ s32 main(s32 argc,s8** argv){
         
     }
     
+    
     pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
                                                VSYNC_NORMAL);
     
-    InitAssetAllocator(_gigabytes(1),_megabytes(500),&pdata->vdevice,
+    InitAssetAllocator(_gigabytes(1),_megabytes(4),&pdata->vdevice,
                        &pdata->swapchain);
     
     pdata->present_fence = VCreateFence(&pdata->vdevice,(VkFenceCreateFlagBits)0);
@@ -116,16 +169,19 @@ s32 main(s32 argc,s8** argv){
     
     SetupPipelineCache();
     
-    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),false);
+    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),VMAPPED_NONE);
     
-    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),false);
+    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),VMAPPED_NONE);
     
     //MARK: keep the obj buffer permanently mapped
-    vkMapMemory(pdata->vdevice.device,pdata->skel_ubo.memory,
-                0,pdata->skel_ubo.size,0,(void**)&pdata->objupdate_ptr);
     
-    vkMapMemory(pdata->vdevice.device,pdata->light_ubo.memory,
-                0,pdata->light_ubo.size,0,(void**)&pdata->lightupdate_ptr);
+    VMapMemory(&pdata->vdevice,pdata->skel_ubo.memory,
+               0,pdata->skel_ubo.size,(void**)&pdata->objupdate_ptr);
+    
+    VMapMemory(&pdata->vdevice,pdata->light_ubo.memory,
+               0,pdata->light_ubo.size,(void**)&pdata->lightupdate_ptr);
+    
+    memset(pdata->lightupdate_ptr,0,pdata->light_ubo.size);
     
     
     {
@@ -170,8 +226,12 @@ s32 main(s32 argc,s8** argv){
         CreatePrimaryRenderCommandbuffer(&pdata->vdevice,
                                          pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
     
+#if _enable_gui
+    
     GUIInit(&pdata->vdevice,&pdata->swapchain,pdata->renderpass,pdata->transfer_queue,
             transfercmdbuffer,pdata->pipelinecache);
+    
+#endif
     
     GameInitData initdata = {
         &pdata->scenecontext,gdata,&pdata->window,pdata->vdevice,pdata->renderpass,
@@ -199,12 +259,18 @@ s32 main(s32 argc,s8** argv){
             Clear(&pdata->rendercontext);
             ClearLightList();
             
+#if _enable_gui
+            
             GUIUpdate(&pdata->window,&pdata->keyboardstate,&pdata->mousestate,
                       pdata->view,pdata->proj);
             
             GUIBegin();
             
+#endif
+            
             BUILDGUIGRAPH(gdata->draw_profiler);
+            
+            
             
             TimeSpec start,end;
             
@@ -216,14 +282,17 @@ s32 main(s32 argc,s8** argv){
                 
                 EXECTIMEBLOCK(Black);
                 
+                
+                //MARK: we should move this to buildrendercmdbuffer
                 {
+                    
                     TIMEBLOCKTAGGED("AcquireImage",Orange);
                     vkAcquireNextImageKHR(pdata->vdevice.device,
                                           pdata->swapchain.swap,0xFFFFFFFFFFFFFFFF,
                                           pdata->waitacquireimage_semaphore,
                                           0,(u32*)&pdata->swapchain.image_index);  
+                    
                 }
-                
                 
                 
                 UpdateAllocatorTimeStamp();
@@ -276,8 +345,6 @@ s32 main(s32 argc,s8** argv){
                     ptr(context);
                 }
                 
-                ProcessDrawList();
-                
                 auto frames = AAudioDeviceWriteAvailable(pdata->audio);
                 
                 if(frames >= pdata->submit_audiobuffer.size_frames){
@@ -291,16 +358,24 @@ s32 main(s32 argc,s8** argv){
                     
                 }
                 
-                GUIEnd();
-                
-                BuildRenderCommandBuffer(pdata);
+                ProcessDrawList();
                 
                 MainThreadDoWorkQueue(&pdata->threadqueue,0);
                 
                 //FIXME: if there is corruption, it is either because: 1. Flush is too slow,
                 //2. MainThreadDoWorkQueue is not synced
                 //3. Someone is writing into another person's data
+                
                 ProcessObjUpdateList();
+                
+                
+#if _enable_gui
+                
+                GUIEnd();
+                
+#endif
+                //we can thread this
+                BuildRenderCommandBuffer(pdata);
                 
                 PresentBuffer(pdata);
             }
@@ -335,6 +410,9 @@ s32 main(s32 argc,s8** argv){
 
 /*
   TODO: 
+  
+  Setup a standard build environment for linux:
+  https://linuxconfig.org/how-to-debootstrap-on-centos-linux
   
   Compile all assets into an adb file (asset data base). We will build a function a constexpr
   function at compile time which translates filepaths to indices and an adb file w raw data.

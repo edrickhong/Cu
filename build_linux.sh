@@ -4,7 +4,8 @@ cd $WORK_DIR
 cd src/shaders/
 echo "BUILDING METADATA"
 #build meta data
-./../../bin/cparser ../game/gamecomp.h ../game/gamecomp_meta.h
+
+./../../bin/cparser ../game/gamecomp.h -c ../game/gamecomp_meta.h -m ../../include/meta.h
 
 echo "BUILDING SHADERS"
 
@@ -69,7 +70,12 @@ fi
 
 cd ../Make
 
-time -v make -j12
+#normal system build
+#time -v make -j12
+make -j12
+
+#build in a chroot environment
+#schroot -c xenial -- time -v make -j12
 
 #manual compiling
 #cd ../
