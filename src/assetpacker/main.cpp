@@ -41,7 +41,7 @@ listtofile
 
 
 
-TODO stuff/PROGRESS:
+PROGRESS:
 
 AddToList (T)(note: assign FileNode)
 RemoveFromList (T)
@@ -49,7 +49,11 @@ Parse (T)
 WriteTableToFile (T)
 FileToTable (T)
 SortByType (T)
-BakeToExecutable
+BakeToExecutable (P)
+
+
+TODO:
+VerifyData[by comparing each byte]
 
 
 Additional:
@@ -171,6 +175,8 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
 	// hash
 	entry.file_location_hash = PHashString(asset);
 	//assign file node?
+	entry.file_node.filehandle = 0;
+	
 
 	out_table->PushBack(entry);
 }
@@ -295,6 +301,30 @@ the [patch string].
   
 }
 
+void BakeExecutable(AssetTable* asset_table, FileHandle exec_file) {
+	u32 t = (u32)-1;
+	printf("\n\nBAKING DATA\n\n");
+	for (u32 i = 0; i < asset_table->count; i++) {
+		auto entry = asset_table->container[i];
+		printf("WRITING %d of %s\n\n", entry.size, entry.file_location);
+		auto entry_file = FOpenFile(entry.file_location, F_FLAG_READWRITE);
+		ptrsize entry_size;
+		auto entry_data = FReadFileToBuffer(entry_file, &entry_size);
+		printf("WROTE %d of %s\n\n", entry_size, entry.file_location);
+
+		if (t != entry.type) {
+			printf("----BAKING OF %s TYPE %d-------------------\n", entry.file_location, entry.type);
+			t = entry.type;
+		}
+
+		FWrite(exec_file, &entry_data[0], entry.size);
+
+	}
+	printf("\n\nDONE BAKING DATA\n\n");
+
+
+}
+
 s32 main(s32 argc,s8** argv){
 
 
@@ -366,6 +396,7 @@ s32 main(s32 argc,s8** argv){
     //TODO: we should check if file is an executable
     
     //executable data
+
     ptrsize exec_size;
     s8* exec_buffer;
   
@@ -373,7 +404,12 @@ s32 main(s32 argc,s8** argv){
     
     auto exec_file = FOpenFile(exec_string,F_FLAG_READWRITE);
     
+
+
     exec_buffer = FReadFileToBuffer(exec_file,&exec_size);
+
+
+
 
     printf("exec size %d\n",(u32)exec_size);
 
@@ -389,7 +425,33 @@ s32 main(s32 argc,s8** argv){
 
     FWrite(exec_file,&exec_buffer[0],exec_size);
 
-    auto poem = R"FOO(
+
+	BakeExecutable(&asset_table, exec_file);
+	/*
+	u32 t = (u32)-1;
+	printf("\n\nBAKING DATA\n\n");
+	for (u32 i = 0; i < asset_table.count; i++) {
+		auto entry = asset_table.container[i];
+		printf("WRITING %d of %s\n\n", entry.size, entry.file_location);
+		auto entry_file = FOpenFile(entry.file_location, F_FLAG_READWRITE);
+		ptrsize entry_size;
+		auto entry_data = FReadFileToBuffer(entry_file, &entry_size);
+		printf("WROTE %d of %s\n\n", entry_size, entry.file_location);
+
+		if (t != entry.type) {
+			printf("----BAKING OF %s TYPE %d-------------------\n", entry.file_location, entry.type);
+			t = entry.type;
+		}
+
+		FWrite(exec_file, &entry_data[0], entry.size);
+
+	}
+	printf("\n\nDONE BAKING DATA\n\n");
+
+	*/
+
+
+	auto poem = R"FOO(
 I'm nobody! Who are you?
 Are you nobody, too?
 Then there's a pair of us -- don't tell!
@@ -406,6 +468,9 @@ To an admiring bog!
     FWrite(exec_file,&len,sizeof(len));
 
     FWrite(exec_file,(void*)&poem[0],len);
+
+
+
 
     FCloseFile(exec_file);
     unalloc(exec_buffer); 
