@@ -275,6 +275,8 @@ void InternalLoadVulkanLib(){
     
     vkcreateinstance = LGetLibFunction(vklib,"vkCreateInstance");
     
+    vkdestroyinstance = LGetLibFunction(vklib,"vkDestroyInstance");
+    
     
     vkgetinstanceprocaddress = LGetLibFunction(vklib,"vkGetInstanceProcAddr");
     vkgetdeviceprocaddress = LGetLibFunction(vklib,"vkGetDeviceProcAddr");
@@ -312,6 +314,8 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     
     _instproc(vkgetphysicaldeviceimageformatproperties,global_instance,vkGetPhysicalDeviceImageFormatProperties);
     
+    _instproc(vkdestroysurfacekhr,global_instance,vkDestroySurfaceKHR);
+    
     //vulkan 1.1 here
     
     if(VK_VERSION_MINOR(global_version_no)){
@@ -329,7 +333,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     
     auto load = (void* (*)(void*,const s8*))load_fptr;
     
-#define _initfunc(func,var) var = (void*)load(k,""#func); _kill("failed to load function\n",!func)
+#define _initfunc(func,var) var = (void*)load(k,""#func); if(!var){printf("%s %s %d :: Failed to load function %s\n",__FUNCTION__,__FILE__,__LINE__,""#func);*(int *)0 = 0;}
     
     //TODO: remove instance level functions and run them in instance creation
     
@@ -407,7 +411,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkDestroyPipelineLayout,vkdestroypipelinelayout);
     _initfunc(vkDestroyDescriptorSetLayout,vkdestroydescriptorsetlayout);
     _initfunc(vkDestroyDevice,vkdestroydevice);
-    _initfunc(vkDestroyInstance,vkdestroyinstance);
+    
     _initfunc(vkDestroyDescriptorPool,vkdestroydescriptorpool);
     _initfunc(vkFreeCommandBuffers,vkfreecommandbuffers);
     _initfunc(vkDestroyRenderPass,vkdestroyrenderpass);
@@ -422,7 +426,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     _initfunc(vkCmdResetQueryPool,vkcmdresetquerypool);
     _initfunc(vkCmdCopyQueryPoolResults,vkcmdcopyquerypoolresults);
     
-    _initfunc(vkDestroySurfaceKHR,vkdestroysurfacekhr);
+    
     _initfunc(vkCmdFillBuffer,vkcmdfillbuffer);
     _initfunc(vkAcquireNextImageKHR,vkacquirenextimagekhr);
     _initfunc(vkGetFenceStatus,vkgetfencestatus);
@@ -474,7 +478,7 @@ VkBool32 VkDebugMessageCallback(VkDebugReportFlagsEXT flags,
     else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT){
         
         printf("WARNING: %s Code: %d:%s\n\n",pLayerPrefix,msgCode,pMsg);
-        // _kill("",tokill);
+        _kill("",tokill);
     }
     
     else
@@ -702,7 +706,7 @@ VkBufferUsageFlags usage){
     
     vkBindBufferMemory(device,context.buffer,context.memory,offset);
     
-    vkMapMemory(device,src.memory,src_offset,context.size,0,&mappedmemory_ptr);
+    VMapMemory(device,src.memory,src_offset,context.size,&mappedmemory_ptr);
     
     memcpy(mappedmemory_ptr,data,data_size);
     
@@ -805,13 +809,15 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
 
 
 VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,u32 bindingno,logic isdevice_local){
+                                         ptrsize data_size,u32 bindingno,logic isdevice_local,VMappedBufferProperties prop){
     
     u32 memtype = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
     if(!isdevice_local){
         memtype = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            prop;
+        
+        data_size = _mapalign(data_size);
     }
     
     
@@ -826,13 +832,14 @@ VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevic
 }
 
 VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice,
-                                        ptrsize size,logic isdevice_local){
+                                        ptrsize size,logic isdevice_local,VMappedBufferProperties prop){
     
     u32 memtype = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
     if(!isdevice_local){
         memtype = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            prop;
+        size = _mapalign(size);
     }
     
     auto context = InternalCreateStaticBufferContext(vdevice,size,
@@ -846,11 +853,13 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
 }
 
 VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
-                                     ptrsize size,u32 add_flags){
+                                     ptrsize size,VMappedBufferProperties prop){
     
-    auto flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | add_flags;
+    auto flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | prop;
     
     VBufferContext context = {};
+    
+    size = _mapalign(size);
     
     context.buffer = 
         CreateBuffer(vdevice->device,0,size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
@@ -867,7 +876,7 @@ VBufferContext VCreateTransferBuffer(const  VDeviceContext* _restrict vdevice,
     auto typeindex = VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,
                                          memoryreq.memoryTypeBits,flags);
     
-    if(typeindex == (u32)-1 && (add_flags == V_AMD_DEVICE_HOST_VISIBLE)){
+    if(typeindex == (u32)-1 && (prop == VMAPPED_AMD_DEVICE_HOST_VISIBLE)){
         typeindex = VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,
                                         memoryreq.memoryTypeBits,flags);
     }
@@ -1698,9 +1707,9 @@ VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array,u32 physd
         _kill("V_L_SINGLE_VKDEVICE specified but another VkDevice was created\n",global_device);
         global_device = context.device;
         
-        InternalLoadVulkanFunctions(context.device,(void*)vkGetDeviceProcAddr);
-        
 #endif
+        
+        InternalLoadVulkanFunctions(context.device,(void*)vkGetDeviceProcAddr);
         
     }
     
@@ -2203,10 +2212,12 @@ VkSemaphore VCreateSemaphore(const  VDeviceContext* _restrict vdevice){
 }
 
 VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdevice,
-                                           u32 data_size,logic is_coherrent){
+                                           u32 data_size,VMappedBufferProperties prop){
     
     VBufferContext context;
     VkMemoryRequirements memreq;
+    
+    data_size = _mapalign(data_size);
     
     context.buffer = CreateBuffer(vdevice->device,0,data_size,
                                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -2214,15 +2225,7 @@ VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdev
     
     vkGetBufferMemoryRequirements(vdevice->device,context.buffer,&memreq);
     
-    u32 flag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    
-    if(is_coherrent){
-        flag |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-    
-    else{
-        flag |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    }
+    u32 flag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | prop;
     
     
     u32 typeindex = 
@@ -2243,9 +2246,11 @@ VBufferContext VCreateUniformBufferContext(const  VDeviceContext* _restrict vdev
 
 VBufferContext VCreateShaderStorageBufferContext(
 const  VDeviceContext* _restrict vdevice,
-u32 data_size,logic is_devicelocal,logic is_coherrent){
+u32 data_size,logic is_devicelocal,VMappedBufferProperties prop){
     VBufferContext context;
     VkMemoryRequirements memreq;
+    
+    data_size = _mapalign(data_size);
     
     context.buffer = CreateBuffer(vdevice->device,0,data_size,
                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -2265,13 +2270,7 @@ u32 data_size,logic is_devicelocal,logic is_coherrent){
         
         flag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         
-        if(is_coherrent){
-            flag |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        }
-        
-        else{
-            flag |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        }
+        flag |= prop;
         
     }
     
@@ -2297,7 +2296,7 @@ void VUpdateUniformBuffer(const  VDeviceContext* _restrict vdevice,VBufferContex
     
     void* mapped_ptr;
     
-    _vktest(vkMapMemory(vdevice->device,context.memory,0,context.size,0,&mapped_ptr));
+    VMapMemory(vdevice->device,context.memory,0,context.size,&mapped_ptr);
     
     
     memcpy(mapped_ptr,data,data_size);
@@ -2308,7 +2307,7 @@ void VUpdateUniformBuffer(const  VDeviceContext* _restrict vdevice,VBufferContex
 
 VImageMemoryContext VCreateColorImageMemory(
 const  VDeviceContext* _restrict vdevice,u32 width,u32 height,u32 usage,
-logic is_device_local,logic is_coherent,VkImageTiling tiling,
+logic is_device_local,VMappedBufferProperties prop,VkImageTiling tiling,
 VkFormat format){
     
     VImageMemoryContext context = {};
@@ -2320,13 +2319,7 @@ VkFormat format){
         layout = VK_IMAGE_LAYOUT_PREINITIALIZED;
         memory_property = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         
-        if(is_coherent){
-            memory_property |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        }
-        
-        else{
-            memory_property |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        }
+        memory_property |= prop;
         
     }
     
@@ -2352,7 +2345,7 @@ VkFormat format){
     _kill("invalid memory type\n",typeindex == (u32)-1);
     
     context.memory = 
-        deviceallocator(vdevice->device,memoryreq.size,typeindex);
+        deviceallocator(vdevice->device,_mapalign(memoryreq.size),typeindex);
     
     _vktest(vkBindImageMemory(vdevice->device,context.image,context.memory,0));
     
@@ -2361,14 +2354,14 @@ VkFormat format){
 
 
 VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
-                                u32 width,u32 height,u32 usage,logic is_device_local,logic is_coherent,
+                                u32 width,u32 height,u32 usage,logic is_device_local,VMappedBufferProperties prop,
                                 VkImageTiling tiling,VkFormat format){
     
     VImageContext context = {};
     
     auto img_mm =
-        VCreateColorImageMemory(vdevice,width,height,usage,is_device_local,is_coherent,tiling,
-                                format);
+        VCreateColorImageMemory(vdevice,width,height,usage,is_device_local,prop,tiling,format);
+    
     context.image = img_mm.image;
     context.memory = img_mm.memory;
     
@@ -2384,7 +2377,6 @@ VImageContext VCreateColorImage(const  VDeviceContext* _restrict vdevice,
 
 
 
-//TODO: make this bgra instead
 VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,void* data,
                                     u32 width,u32 height,VkCommandBuffer commandbuffer,VkQueue queue){
     
@@ -2420,7 +2412,7 @@ VTextureContext VCreateTextureImage(const  VDeviceContext* _restrict vdevice,voi
     
     void* mappedmemory_ptr;
     
-    vkMapMemory(vdevice->device,src.memory,0,src.size,0,&mappedmemory_ptr);
+    VMapMemory(vdevice,src.memory,0,src.size,&mappedmemory_ptr);
     
     memcpy(mappedmemory_ptr,data,data_size);
     
@@ -3064,7 +3056,7 @@ void VCreateGraphicsPipelineArray(const  VDeviceContext* _restrict vdevice,VGrap
             
             VkSpecializationInfo* spec_info = 0;
             
-            if(spec->spec_array[i].mapEntryCount){
+            if(spec->spec_array[j].mapEntryCount){
                 spec_info = &spec->spec_array[j];
             }
             
@@ -3352,4 +3344,58 @@ void VEnumeratePhysicalDevices(VkPhysicalDevice* array,u32* count,WWindowContext
     
     *count = c;
     
+}
+
+void VMapMemory(VkDevice device,VkDeviceMemory memory,
+                VkDeviceSize offset,VkDeviceSize size,void** ppData,VkMemoryMapFlags flags){
+    
+    _vktest(vkMapMemory(device,memory,offset,size,flags,ppData));
+}
+
+void _ainline InternalPushBackMemoryRanges(VkMappedMemoryRange* range_array,u32* count,VkDeviceMemory memory,
+                                           VkDeviceSize offset,VkDeviceSize size,const void* next = 0){
+    range_array[(*count)] = {
+        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        next,
+        memory,
+        _dmapalign(offset),
+        _mapalign(size)
+    };
+    
+    (*count)++;
+}
+
+void VPushBackMemoryRanges(VMemoryRangesArray* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size){
+    
+    InternalPushBackMemoryRanges(&ranges->range_array[0],&ranges->count,memory,
+                                 offset,size);
+    
+}
+
+void VPushBackMemoryRanges(VMemoryRangesPtr* ranges,VkDeviceMemory memory,
+                           VkDeviceSize offset,VkDeviceSize size){
+    
+    InternalPushBackMemoryRanges(&ranges->range_array[0],&ranges->count,memory,
+                                 offset,size);
+}
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges){
+    
+    _vktest(vkFlushMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
+
+void VFlushMemoryRanges(VkDevice device,VMemoryRangesArray* ranges){
+    
+    _vktest(vkFlushMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesArray* ranges){
+    
+    _vktest(vkInvalidateMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
+}
+
+void VInvalidateMemoryRanges(VkDevice device,VMemoryRangesPtr* ranges){
+    
+    _vktest(vkInvalidateMappedMemoryRanges(device,ranges->count,&ranges->range_array[0]));
 }

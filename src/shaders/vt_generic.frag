@@ -12,7 +12,6 @@ layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
     mat4 world;
     mat4 bone_array[64];
     uint texture_id[16];
-    
 }ubo;
 
 
@@ -80,6 +79,11 @@ layout (constant_id = 0) const float framebuffer_w = 1440.0f;
 layout (constant_id = 1) const float framebuffer_h = 1080.0f;
 layout (constant_id = 2) const float feedback_w = 160.0f;
 layout (constant_id = 3) const float feedback_h = 120.0f;
+
+//layout (constant_id = 0) const float framebuffer_w = 1280.0f;
+//layout (constant_id = 1) const float framebuffer_h = 720.0f;
+//layout (constant_id = 2) const float feedback_w = 1280.0f;
+//layout (constant_id = 3) const float feedback_h = 720.0f;
 
 layout (constant_id = 4) const float page_size = 128.0f;
 layout (constant_id = 5) const float phys_w = 16384.0f;
@@ -156,6 +160,19 @@ float Specular(vec3 normal,vec3 lightdir,vec3 eyepos,float factor,float intensit
 
 
 void main(){
+    
+    
+    //DEBUG: if invalid textureid
+#if 0
+    
+    if(ubo.texture_id[0] > 16){
+        
+        outFragColor = vec4(1,0,0,1);
+        
+        return;
+    }
+    
+#endif
     
     uint texture_id = ubo.texture_id[_Diffuse_ID];
     

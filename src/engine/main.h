@@ -54,7 +54,6 @@ _persist u32 global_debugentry_count = 0;
 
 void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
     
-    u32 expected_count;
     u32 actual_count = TGetEntryIndexD(&global_debugentry_count,_arraycount(global_debugentry_array));
     
     global_debugentry_array[actual_count] = {array,count,tid};
@@ -278,7 +277,7 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
     
     TIMEBLOCK(Wheat);
     
-    if(renderbatch_cur == renderbatch_total_count){
+    if(renderbatch_cur >= renderbatch_total_count){
         return false;
     }
     
@@ -286,7 +285,7 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
     
     auto actual_count = LockedCmpXchg(&renderbatch_cur,count,count + 1);
     
-    if(count == actual_count){
+    if(count == actual_count && count < renderbatch_total_count){
         
         auto index = count;
         
@@ -417,10 +416,6 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
     
     TIMEBLOCK(DeepSkyBlue);
     ExecuteRenderBatch(context,render);
-    
-    //FIXME:
-    //we can get a hang here sometimes (renderbatch_completed_count > renderbatch_total_count)
-    //Change the way completion is done. we will do this right after we revamp gui
     
     
     while(renderbatch_completed_count != renderbatch_total_count){
@@ -596,7 +591,7 @@ struct LightUBO{
     
     Color ambient_color;
     
-};
+}_align(128);
 
 struct PlatformData{
     
@@ -658,6 +653,10 @@ struct PlatformData{
     s8* lightupdate_ptr;
     ObjUpdateEntry objupdate_array[256];
     u32 objupdate_count;
+    
+    //MARK:
+    u32 point_count;
+    u32 spot_count;
     
 };
 
@@ -753,23 +752,17 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
         context->rendergroup[i].pushconst_size = sizeof(PushConst);
     }
     
-    VkClearValue clearvalue[2];
-    
-    clearvalue[0] = {
-        {{context->clearcolor.R,context->clearcolor.G,context->clearcolor.B,context->clearcolor.A}},
-    };
-    
-    clearvalue[1].color = {};
-    clearvalue[1].depthStencil = {1.0f,0};
-    
     
     VStartCommandBuffer(cmdbuffer,0);
     
     
     VTStart(cmdbuffer);
     
+#if _enable_gui
     
     GameDrawGUI(context,&pdata->drawcmdbuffer,2);
+    
+#endif
     
     VkImageMemoryBarrier present_membarrier[] = {
         {
@@ -793,18 +786,27 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     };
     
     vkCmdPipelineBarrier(cmdbuffer,
-                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-                         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                          0,
                          0,0,0,0,_arraycount(present_membarrier),&present_membarrier[0]);
+    
+    
+    VkClearValue clearvalue[2] = {};
+    
+    clearvalue[0] = {
+        {{context->clearcolor.R,context->clearcolor.G,context->clearcolor.B,context->clearcolor.A}},
+    };
+    
+    clearvalue[1].color = {};
+    clearvalue[1].depthStencil = {1.0f,0};
     
     VStartRenderpass(cmdbuffer,
                      VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,renderpass,
                      framebuffer,
                      {{0,0},{pdata->swapchain.width,
                      pdata->swapchain.height}},
-                     clearvalue,_arraycount(clearvalue));
+                     &clearvalue[0],_arraycount(clearvalue));
     
     _vthreaddump("--------new frame-------------------%s\n","");
     
@@ -1079,6 +1081,9 @@ void ProcessObjUpdateList(){
         return;
     }
     
+    
+    
+    //MARK: why do we have to sort?
     qsort(pdata->objupdate_array,pdata->objupdate_count,
           sizeof(ObjUpdateEntry),
           [](const void * a, const void* b)->s32 {
@@ -1089,37 +1094,38 @@ void ProcessObjUpdateList(){
           return entry_a->offset - entry_b->offset;
           });
     
-    auto tcount = pdata->objupdate_count + 1;
+    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-    auto range_array =
-        TAlloc(VkMappedMemoryRange,tcount);
+    //write the light list
+    light_ubo->point_count = pdata->point_count;
+    light_ubo->spot_count = pdata->spot_count;
     
-    range_array[pdata->objupdate_count] = {
-        VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        0,
-        pdata->light_ubo.memory,
-        0,
-        sizeof(LightUBO)
-    };
+    VMemoryRangesPtr ranges = {TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + pdata->point_count + pdata->spot_count),0};
     
     
     for(u32 i = 0; i < pdata->objupdate_count; i++){
         
         auto entry = pdata->objupdate_array[i];
         
-        range_array[i] = {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            0,
-            pdata->skel_ubo.memory,
-            entry.offset,
-            entry.data_size
-        };
+        VPushBackMemoryRanges(&ranges,pdata->skel_ubo.memory,
+                              entry.offset,entry.data_size);
         
     }
     
+    VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
+                          0,sizeof(u32) * 4);
+    
+    //MARK: hardcoded for now
+    VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
+                          offsetof(LightUBO,point_array),sizeof(LightUBO::PointLight) * pdata->point_count);
+    
+    pdata->objupdate_count++;
+    
+    
     {
         TIMEBLOCKTAGGED("vkFlush",Green);
-        vkFlushMappedMemoryRanges(pdata->vdevice.device,tcount,range_array);
+        VFlushMemoryRanges(&pdata->vdevice,&ranges);
+        
     }
     
 }
@@ -1430,7 +1436,7 @@ void SetupPipelineCache(){
     
     if(FIsFileExists(_PIPELINECACHE_FILE)){
         
-        auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READONLY);
+        auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READWRITE);
         cache_data = FReadFileToBuffer(file,&cache_size);
         
         FCloseFile(file);
@@ -1443,6 +1449,11 @@ void SetupPipelineCache(){
     }
 }
 
+
+/*
+FIXME: 
+Run-Time Check Failure #2 - Stack around the variable 'write_cache_size' was corrupted
+*/
 void WritePipelineCache(){
     
     ptrsize write_cache_size = 0;
@@ -1455,7 +1466,7 @@ void WritePipelineCache(){
     VGetPipelineCacheData(&pdata->vdevice,pdata->pipelinecache,write_cache_data,&write_cache_size);
     
     
-    auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_WRITEONLY | F_FLAG_CREATE | F_FLAG_TRUNCATE);
+    auto file = FOpenFile(_PIPELINECACHE_FILE,F_FLAG_READWRITE | F_FLAG_CREATE | F_FLAG_TRUNCATE);
     
     FWrite(file,write_cache_data,write_cache_size);
     
@@ -1555,10 +1566,12 @@ void CompileAllPipelines(PlatformData* pdata){
     }
 }
 
+
+
 void ClearLightList(){
-    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-    light_ubo->point_count = 0;
-    light_ubo->spot_count = 0;
+    
+    pdata->point_count = 0;
+    pdata->spot_count = 0;
 }
 
 void SetAmbientColor(Color color ,f32 intensity){
@@ -1584,19 +1597,11 @@ void AddPointLight(Vector3 pos,Color color,f32 radius){
     
     //TODO: make radius into a proper distance cut off
     
-    light_ubo->point_array[light_ubo->point_count] = {
+    light_ubo->point_array[pdata->point_count] = {
         pos,color,radius
     };
     
-    light_ubo->point_count++;
-}
-
-void AddDirLight(Vector3 dir,Color color){
-    
-    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-    
-    light_ubo->dir_array[light_ubo->dir_count] = {dir,color};
-    light_ubo->dir_count ++;
+    pdata->point_count++;
 }
 
 void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
@@ -1605,8 +1610,9 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-    light_ubo->spot_array[light_ubo->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
-    light_ubo->spot_count ++;
+    light_ubo->spot_array[pdata->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
+    
+    pdata->spot_count ++;
     
 }
 
