@@ -591,8 +591,8 @@ s32 main(s32 argc,s8** argv){
     
     for(s32 i = 1; i < argc; i++){
         
-        if(PHashString(argv[i]) == PHashString("-h")){
-            printf("Format:cparser src1 src2 src3 -c componentfile -m metafile\n");
+        if(PHashString(argv[i]) == PHashString("-help") || argc == 1){
+            printf("Format:cparser src1 src2 src3 -component componentfile -meta metafile\n");
             return 0;
         }
         
@@ -618,11 +618,6 @@ s32 main(s32 argc,s8** argv){
     
     if(!componentfile && !metafile){
         printf("Error: No output files specified\n");
-        return 0;
-    }
-    
-    if(!componentfile){
-        printf("Error: No component file specified\n");
         return 0;
     }
     

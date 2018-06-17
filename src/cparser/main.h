@@ -505,7 +505,7 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
         
         auto hash = PHashString(argv[i]);
         
-        if(hash == PHashString("-c") || hash == PHashString("-m")){
+        if(hash == PHashString("-component") || hash == PHashString("-meta")){
             break;
         }
     }
@@ -516,7 +516,9 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
         *source_array = &argv[1];
     }
     
-    if((argc - (*source_count) - 1) != 4){
+    u32 k = (argc - (*source_count) - 1);
+    
+    if(k != 4 && k != 2){
         
         *source_count = (u32)-1;
         
@@ -525,12 +527,12 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
     
     for(; i < argc; i++){
         
-        if(PHashString(argv[i]) == PHashString("-c")){
+        if(PHashString(argv[i]) == PHashString("-component")){
             i++;
             *componentfile = argv[i];
         }
         
-        if(PHashString(argv[i]) == PHashString("-m")){
+        if(PHashString(argv[i]) == PHashString("-meta")){
             i++;
             *metafile = argv[i];
         }
