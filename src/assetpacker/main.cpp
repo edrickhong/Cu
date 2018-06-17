@@ -185,6 +185,9 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
     
     memset(&entry.opaque_file_node_padding[0],0,sizeof(entry.opaque_file_node_padding));
     
+    
+    FCloseFile(file);
+    
     FFileChanged(asset,&entry.file_node);
     
     
