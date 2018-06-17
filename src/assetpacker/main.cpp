@@ -304,7 +304,7 @@ void PrintHelp(){
         -remove : removes asset(s) to the asset list
         -bake : bakes asset data either into an executable or a file
         -cmp: byte compares the data in the list to that in the file
-        -arrange: arrange the entries by type
+        -sort: sorts the table by type
         
         The syntax for bake is a little different:
         
@@ -409,7 +409,7 @@ s32 main(s32 argc,s8** argv){
     else if(PHashString(argv[2]) == PHashString("-list")){
         PrintAssetList(&asset_table);
     }
-    else if(PHashString(argv[2]) == PHashString("-arrange")) {
+    else if(PHashString(argv[2]) == PHashString("-sort")) {
         PrintAssetList(&asset_table);
         SortListByType(&asset_table);
         PrintAssetList(&asset_table);
