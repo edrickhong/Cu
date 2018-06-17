@@ -25,81 +25,81 @@ typedef HANDLE FileHandle;
 typedef HANDLE* DirectoryHandle;
 
 struct FileNode{
-  FileHandle filehandle = 0;
-  FILETIME timestamp = {};
+    FileHandle filehandle = 0;
+    FILETIME timestamp = {};
 };
 
 struct FileInfo{
-  s8 filename[256];
-  u32 type;
+    s8 filename[256];
+    u32 type;
 };
 
 FileHandle _ainline FOpenFile(const s8* filepath,u32 flags){
-
-  u32 exflags = OPEN_EXISTING;
-
-  if(flags & F_FLAG_CREATE){
-    exflags = OPEN_ALWAYS;
-    flags ^= F_FLAG_CREATE;
-  }
-
-  if(flags & F_FLAG_TRUNCATE){
-    exflags = CREATE_ALWAYS;
-    flags ^= F_FLAG_TRUNCATE;
-  }
-
-  FileHandle filehandle =
-    CreateFile(filepath,flags,FILE_SHARE_READ,NULL,exflags,FILE_ATTRIBUTE_NORMAL,NULL);
-  
-  return filehandle;
+    
+    u32 exflags = OPEN_EXISTING;
+    
+    if(flags & F_FLAG_CREATE){
+        exflags = OPEN_ALWAYS;
+        flags ^= F_FLAG_CREATE;
+    }
+    
+    if(flags & F_FLAG_TRUNCATE){
+        exflags = CREATE_ALWAYS;
+        flags ^= F_FLAG_TRUNCATE;
+    }
+    
+    FileHandle filehandle =
+        CreateFile(filepath,flags,FILE_SHARE_READ,NULL,exflags,FILE_ATTRIBUTE_NORMAL,NULL);
+    
+    return filehandle;
 }
 
 FileHandle _ainline FOpenFileDebug(const s8* filepath,u32 flags){
-  auto filehandle = FOpenFile(filepath,flags);
-  _kill("Invalid file\n", filehandle == F_FILE_INVALID);
-  return filehandle;
+    auto filehandle = FOpenFile(filepath,flags);
+    _kill("Invalid file\n", filehandle == F_FILE_INVALID);
+    return filehandle;
 }
 
 void _ainline FCloseFile(FileHandle filehandle){
-  CloseHandle(filehandle);
+    CloseHandle(filehandle);
 }
 
 logic _ainline FIsFileExists(const s8* filepath){
-  auto file = FOpenFile(filepath,F_FLAG_READONLY);
-  logic ret = file != F_FILE_INVALID;
-  FCloseFile(file);
-  return ret;
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    logic ret = file != F_FILE_INVALID;
+    FCloseFile(file);
+    return ret;
 }
 
 void _ainline FRead(FileHandle filehandle,void* buffer,ptrsize size){
-  DWORD dwRead;
-  ReadFile(filehandle, buffer, size, &dwRead, NULL);
+    DWORD dwRead;
+    ReadFile(filehandle, buffer, size, &dwRead, NULL);
 }
 
 void _ainline FWrite(FileHandle filehandle,void* buffer,ptrsize size){
-  DWORD dwWritten;
-  WriteFile(filehandle, buffer, size, &dwWritten, NULL);
+    DWORD dwWritten;
+    WriteFile(filehandle, buffer, size, &dwWritten, NULL);
 }
 
 ptrsize _ainline FSeekFile(FileHandle filehandle,ptrsize move_size,u32 movemethod){
-  if(movemethod == F_METHOD_START){
-    SetFilePointer(filehandle, 0, NULL, SEEK_SET);
-    movemethod = F_METHOD_CUR;
-  }
-  return SetFilePointer(filehandle, move_size, NULL, movemethod);
+    if(movemethod == F_METHOD_START){
+        SetFilePointer(filehandle, 0, NULL, SEEK_SET);
+        movemethod = F_METHOD_CUR;
+    }
+    return SetFilePointer(filehandle, move_size, NULL, movemethod);
 }
 
 ptrsize _ainline FCurFilePosition(FileHandle filehandle){
-  return FSeekFile(filehandle,0,F_METHOD_CUR);
+    return FSeekFile(filehandle,0,F_METHOD_CUR);
 }
 
 ptrsize _ainline FGetFileSize(FileHandle filehandle){
-  
-  ptrsize size = FSeekFile(filehandle,0,F_METHOD_END);
-
-  FSeekFile(filehandle,0,F_METHOD_START);
-
-  return size;
+    
+    ptrsize size = FSeekFile(filehandle,0,F_METHOD_END);
+    
+    FSeekFile(filehandle,0,F_METHOD_START);
+    
+    return size;
 }
 
 s8* FReadFileToBuffer(FileHandle filehandle,ptrsize* size);

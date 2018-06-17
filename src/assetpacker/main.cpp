@@ -89,7 +89,13 @@ struct AssetTableEntry {
     AssetType type;
     s8 file_location[256] = {};
     u64 file_location_hash = 0;
-    FileNode file_node;
+    
+    union{
+        FileNode file_node;
+        s8 opaque_file_node_padding[32];
+    };
+    
+    
     u32 size;
     u32 offset;
 };
@@ -176,7 +182,10 @@ void AddAssetToList(const s8* asset, AssetTable* out_table) {
     // hash
     entry.file_location_hash = PHashString(asset);
     //assign file node?
-    //entry.file_node.filehandle = 0;
+    
+    memset(&entry.opaque_file_node_padding[0],0,sizeof(entry.opaque_file_node_padding));
+    
+    FFileChanged(asset,&entry.file_node);
     
     
     out_table->PushBack(entry);
