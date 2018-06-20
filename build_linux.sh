@@ -2,10 +2,6 @@ WORK_DIR="$(dirname "$0")"
 cd $WORK_DIR
 
 cd src/shaders/
-echo "BUILDING METADATA"
-#build meta data
-
-./../../bin/cparser ../game/gamecomp.h -component ../game/gamecomp_meta.h -meta ../../include/meta.h
 
 echo "BUILDING SHADERS"
 
