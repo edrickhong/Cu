@@ -3,24 +3,8 @@ cd $WORK_DIR
 
 cd src/shaders/
 
-echo "BUILDING SHADERS"
-
-for file in *
-
-do
-    glslc -I ../shadercommon -std=450 --target-env=vulkan $file -o ../../rsrc/shaders/$file.spv
-    ./../../bin/glslparser $file ../../rsrc/shaders/$file.spv
-done
-
 #specific vert files to process
-glslc -I ../shadercommon -std=450 --target-env=vulkan -DUSE_SKEL model.vert -o ../../rsrc/shaders/model_skel.vert.spv
-./../../bin/glslparser -DUSE_SKEL model.vert ../../rsrc/shaders/model_skel.vert.spv
 
-glslc -I ../shadercommon -std=450 --target-env=vulkan -DUSE_SKEL tfetch_region.vert -o ../../rsrc/shaders/tfetch_region_skel.vert.spv
-./../../bin/glslparser -DUSE_SKEL tfetch_region.vert ../../rsrc/shaders/tfetch_region_skel.vert.spv
-
-glslc -I ../shadercommon -std=450 --target-env=vulkan -DUSE_TEXTURE m_gui.frag -o ../../rsrc/shaders/m_gui_tex.frag.spv
-./../../bin/glslparser -DUSE_TEXTURE m_gui.frag ../../rsrc/shaders/m_gui_tex.frag.spv
 
 BUILD_GUI_BIN_DATA=false
 
