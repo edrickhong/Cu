@@ -2,17 +2,20 @@ cmake_minimum_required(VERSION 2.8)
 
 project(copper)
 
+option(BUILD_STEP "" ON)
+
 if(UNIX)
+
+if(BUILD_STEP)
 
    set(CMAKE_C_COMPILER /usr/bin/clang)
    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
-  #set(CMAKE_C_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang)
-  #set(CMAKE_CXX_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang++)
-
   set(PLATFORM_INCLUDES
     "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
     )
+
+endif()
 
   #set(CLANG_DEBUG "-fsanitize=address,memory,undefined,safe-stack,thread")
   set(CLANG_DEBUG "") #break here __asan::ReportGenericError
@@ -89,8 +92,6 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 
 #BUILD STEP
-
-option(BUILD_STEP "" ON)
 
 if(BUILD_STEP)
 
