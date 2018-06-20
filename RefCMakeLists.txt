@@ -88,10 +88,73 @@ target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
 target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 
-#COMMANDS
-add_custom_target(CPARSING ALL cparser ../src/game/gamecomp.h -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
+#CPARSING
+
+get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+
+
+set(C_INCLUDES "")
+
+foreach(inc ${RAW_C_INCLUDES})
+
+list(APPEND C_INCLUDES "-I${inc}")
+
+endforeach()
+
+if(UNIX)
+
+add_custom_command(
+OUTPUT game.i
+COMMAND ${CMAKE_CXX_COMPILER} -E ${GAME} ${C_INCLUDES} -o game.i
+COMMENT "META GAME"
+VERBATIM
+)
+
+else(UNIX)
+
+add_custom_command(
+OUTPUT game.i
+COMMAND ${CMAKE_CXX_COMPILER} /P ${GAME} ${C_INCLUDES} -o game.i
+COMMENT "META GAME"
+VERBATIM
+)
+
+endif(UNIX)
+
+add_custom_target(CJOBS ALL cparser ../src/game/gamecomp.h -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
+DEPENDS game.i
+)
+
+#SHADER COMPILING
+file(GLOB SHADERS src/shaders/*)
+
+foreach(shader ${SHADERS})
+
+get_filename_component(SHADERNAME ${shader} NAME)
+
+add_custom_command(TARGET CJOBS PRE_BUILD
+
+COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/${SHADERNAME}.spv
+
+COMMAND glslparser ../src/shaders/${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.spv
 
 )
+
+endforeach()
+
+#SHADER COMPILING SPECIAL CASES
+add_custom_command(TARGET CJOBS PRE_BUILD
+
+COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_SKEL ../src/shaders/model.vert -o ../rsrc/shaders/model_skel.vert.spv
+COMMAND glslparser -DUSE_SKEL ../src/shaders/model.vert ../rsrc/shaders/model_skel.vert.spv
+
+COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.spv
+COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui_tex.frag.spv
+
+)
+
+
+
 
 
 #for these we do not want to have stdc++
