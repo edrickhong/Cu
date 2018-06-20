@@ -88,7 +88,11 @@ target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
 target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 
-#CPARSING
+#BUILD STEP
+
+option(BUILD_STEP "" ON)
+
+if(BUILD_STEP)
 
 get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 
@@ -122,6 +126,7 @@ VERBATIM
 endif(UNIX)
 
 add_custom_target(CJOBS ALL cparser ../src/game/gamecomp.h -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
+COMMAND echo EXECUTING BUILD STEP
 DEPENDS game.i
 )
 
@@ -154,7 +159,7 @@ COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui
 )
 
 
-
+endif()
 
 
 #for these we do not want to have stdc++
