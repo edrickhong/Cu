@@ -20,7 +20,7 @@ before_build:
    - type RefCMakeLists.txt > CMakeLists.txt
    - mkdir Make
    - cd Make
-   - cmake -G "Visual Studio 15 2017 Win64" ..
+   - cmake -DBUILD_STEP=OFF -G "Visual Studio 15 2017 Win64" ..
 
 build:
    project: Make\ALL_BUILD.vcxproj

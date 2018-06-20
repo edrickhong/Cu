@@ -30,5 +30,5 @@ script:
   - cat RefCMakeLists.txt > CMakeLists.txt
   - mkdir Make
   - cd Make
-  - cmake ..
+  - cmake -DBUILD_STEP=OFF ..
   - make
