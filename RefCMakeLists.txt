@@ -4,11 +4,11 @@ project(copper)
 
 if(UNIX)
 
-  # set(CMAKE_C_COMPILER /usr/bin/clang)
-  # set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+   set(CMAKE_C_COMPILER /usr/bin/clang)
+   set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
-  # set(CMAKE_C_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang)
-  # set(CMAKE_CXX_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang++)
+  #set(CMAKE_C_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang)
+  #set(CMAKE_CXX_COMPILER /home/pluto/storage/Linux/svn/clang-compiler/build/bin/clang++)
 
   set(PLATFORM_INCLUDES
     "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
@@ -86,6 +86,13 @@ target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
 target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
 target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
 target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
+
+
+#COMMANDS
+add_custom_target(CPARSING ALL cparser ../src/game/gamecomp.h -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
+
+)
+
 
 #for these we do not want to have stdc++
 add_executable(cu_engine ${ENGINE})
