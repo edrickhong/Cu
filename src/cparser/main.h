@@ -228,6 +228,29 @@ struct GenericTypeDef : GenericTypeDec{
     
 };
 
+struct GenericEnumEntry{
+    u64 name_hash;
+    s8 name_string[128];
+    
+    u64 value;
+};
+
+struct GenericEnum{
+    u64 name_hash;
+    s8 name_string[128];
+    
+    GenericEnumEntry members_array[256];
+    u32 members_count;
+};
+
+struct GenericFunction{
+    u64 name_hash;
+    s8 name_string[128];
+    
+    GenericTypeDef args_array[256];
+    u32 args_count;
+};
+
 enum ParserKeyWord{
     PARSERKEYWORD_REFL = PHashString("REFL"),
     PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
