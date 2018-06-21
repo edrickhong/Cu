@@ -3,6 +3,18 @@
 #define _encode_rgba(r,g,b,a) ((u8(r)) | ((u8(g)) << 8) | ((u8(b)) << 16) | ((u8(a)) << 24))
 #define _encode_bgra(b,g,r,a) ((u8(b)) | ((u8(g)) << 8) | ((u8(r)) << 16) | ((u8(a)) << 24))
 
+#ifdef CPP_PASS
+
+#define REFL REFL
+#define REFLCOMPONENT REFLCOMPONENT
+
+#else
+
+#define REFL
+#define REFLCOMPONENT
+
+#endif
+
 #ifdef _WIN32
 
 
@@ -165,9 +177,6 @@ relevant function. Getting better cache performance when using lambdas cos of th
 //kind of like rounding down by power of 2
 #define _dalignpow2(value,pow) ((value) & (~(pow -1)))
 #define _dmapalign(value) _dalignpow2(value,128)
-
-#define REFLCOMPONENT
-#define IDREF(COMPONENT_STRUCT_NAME)
 
 #if _debug
 

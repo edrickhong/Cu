@@ -406,21 +406,38 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     *cur = i;
 }
 
+logic IsDuplicateStruct(GenericStruct* struct_array,u32 struct_count,const s8* name){
+
+  auto name_hash = PHashString(name);
+
+  for(u32 i = 0; i < struct_count; i++){
+    
+    if(name_hash == struct_array[i].name_hash){
+      return true;
+    }
+    
+  }
+
+
+  return false;
+}
+
 void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,const s8* parent_name = 0){
-    
-    auto t = &struct_array[*struct_count];
-    (*struct_count)++;
-    
-    t->pkey = PARSERKEYWORD_REFL;
-    
-    //Struct info
+
+
+  //Struct info
+
+  ParserKeyWord pkey = PARSERKEYWORD_REFL;
+  s8 name_buffer[256] = {};
+
+  {
+
+
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
         
         if(c->tag == TAG_SYMBOL){
-            
-            s8 name_buffer[256] = {};
             
             if(parent_name){
                 sprintf(&name_buffer[0],"%s__%s",parent_name,&c->string[0]);
@@ -431,19 +448,30 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
             }
             
             
-            
-            memcpy(&t->name_string[0],&name_buffer[0],strlen(&name_buffer[0]));
-            
-            t->name_hash = PHashString(name_buffer);
-            
-            t->type = CType_STRUCT;
-            memcpy(&t->type_string[0],"struct",strlen("struct"));
         }
         
         if(c->tag == TAG_KEY){
-            t->pkey = (ParserKeyWord)c->hash;
+            pkey = (ParserKeyWord)c->hash;
         }
+	
     }
+    
+  }
+
+  if(IsDuplicateStruct(struct_array,*struct_count,name_buffer)){
+    return;
+  }
+    
+    auto t = &struct_array[*struct_count];
+    (*struct_count)++;
+
+    memcpy(&t->name_string[0],&name_buffer[0],strlen(&name_buffer[0]));
+    t->name_hash = PHashString(name_buffer);
+
+    t->type = CType_STRUCT;
+    memcpy(&t->type_string[0],"struct",strlen("struct"));
+
+	t->pkey = pkey;
     
     s8 scope_buffer[1024 * 4] = {};
     
@@ -510,7 +538,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
 void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count){
     
     u32 evaluation_count = 0;
-    EvalChar evaluation_buffer[32] = {};
+    EvalChar evaluation_buffer[256] = {};
     
     u32 cur = 0;
     

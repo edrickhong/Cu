@@ -47,7 +47,7 @@ set(OPT_FLAGS "/Od /EHsc")
     set(FLAGS "/Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
   
 endif(UNIX)
-
+  
   set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
   set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
 
@@ -109,8 +109,15 @@ endforeach()
 if(UNIX)
 
 add_custom_command(
+OUTPUT engine.i
+COMMAND ${CMAKE_CXX_COMPILER} -DCPP_PASS -E ${ENGINE} ${C_INCLUDES} -o engine.i
+COMMENT "META ENGINE"
+VERBATIM
+)
+
+add_custom_command(
 OUTPUT game.i
-COMMAND ${CMAKE_CXX_COMPILER} -E ${GAME} ${C_INCLUDES} -o game.i
+COMMAND ${CMAKE_CXX_COMPILER} -DCPP_PASS -E ${GAME} ${C_INCLUDES} -o game.i
 COMMENT "META GAME"
 VERBATIM
 )
@@ -118,17 +125,24 @@ VERBATIM
 else(UNIX)
 
 add_custom_command(
+OUTPUT engine.i
+COMMAND ${CMAKE_CXX_COMPILER} /DCPP_PASS /P ${ENGINE} ${C_INCLUDES} /Fiengine.i
+COMMENT "META ENGINE"
+VERBATIM
+)
+
+add_custom_command(
 OUTPUT game.i
-COMMAND ${CMAKE_CXX_COMPILER} /P ${GAME} ${C_INCLUDES} -o game.i
+COMMAND ${CMAKE_CXX_COMPILER} /DCPP_PASS /P ${GAME} ${C_INCLUDES} /Figame.i
 COMMENT "META GAME"
 VERBATIM
 )
 
 endif(UNIX)
 
-add_custom_target(CJOBS ALL cparser ../src/game/gamecomp.h -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
+add_custom_target(CJOBS ALL cparser engine.i game.i -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
 COMMAND echo EXECUTING BUILD STEP
-DEPENDS game.i
+DEPENDS game.i engine.i
 )
 
 #SHADER COMPILING
