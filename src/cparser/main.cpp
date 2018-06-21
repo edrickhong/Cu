@@ -210,7 +210,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     auto member = &t->members_array[t->members_count];
     t->members_count++;
     
-    memset(member,0,sizeof(GenericTypeDef));
+    
     
     logic is_assign = false;
     
@@ -407,32 +407,41 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
 }
 
 logic IsDuplicateStruct(GenericStruct* struct_array,u32 struct_count,const s8* name){
-
-  auto name_hash = PHashString(name);
-
-  for(u32 i = 0; i < struct_count; i++){
     
-    if(name_hash == struct_array[i].name_hash){
-      return true;
+    auto name_hash = PHashString(name);
+    
+    for(u32 i = 0; i < struct_count; i++){
+        
+        if(name_hash == struct_array[i].name_hash){
+            return true;
+        }
+        
     }
     
-  }
-
-
-  return false;
+    
+    return false;
 }
 
-void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,const s8* parent_name = 0){
+logic IsDuplicateEnum(GenericEnum* enum_array,u32 enum_count,const s8* name){
+    
+    auto name_hash = PHashString(name);
+    
+    for(u32 i = 0; i < enum_count; i++){
+        
+        if(name_hash == enum_array[i].name_hash){
+            return true;
+        }
+        
+    }
+    
+    
+    return false;
+}
 
-
-  //Struct info
-
-  ParserKeyWord pkey = PARSERKEYWORD_REFL;
-  s8 name_buffer[256] = {};
-
-  {
-
-
+void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
+    
+    s8 name_buffer[256] = {};
+    
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
@@ -447,31 +456,110 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                 memcpy(&name_buffer[0],&c->string[0],strlen(&c->string[0]));
             }
             
+            break;
+        }
+    }
+    
+    if(IsDuplicateEnum(enum_array,*enum_count,name_buffer)){
+        
+        return;
+    }
+    
+    auto e = &enum_array[(*enum_count)];
+    (*enum_count)++;
+    
+    e->name_hash = PHashString(name_buffer);
+    memcpy(e->name_string,name_buffer,strlen(name_buffer));
+    
+    s8 scope_buffer[1024 * 4] = {};
+    
+    ExtractScope(&scope_buffer[0],buffer,a);
+    
+    EvalChar membereval_array[256] = {};
+    u32 membereval_count = 0;
+    
+    for(u32 i;;i++){
+        
+        SanitizeString(&scope_buffer[0],&i);
+        
+        auto c = scope_buffer[i];
+        
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,',')){
+            
+            if(membereval_count){
+                
+                auto k = &membereval_array[0];
+                
+                _kill("Invalid enum\n",k->tag != TAG_SYMBOL);
+                
+                auto m = &e->members_array[e->members_count];
+                e->members_count++;
+                
+                m->name_hash = k->hash;
+                memcpy(m->name_string,k->string,strlen(k->string));
+                
+                membereval_count = 0;
+            }
+        }
+        
+        if(!c){
+            break;
+        }
+    }
+    
+    //DebugPrintGenericEnum(e);
+}
+
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,const s8* parent_name = 0){
+    
+    
+    //Struct info
+    
+    ParserKeyWord pkey = PARSERKEYWORD_REFL;
+    s8 name_buffer[256] = {};
+    
+    {
+        
+        
+        for(u32 i = 0; i < count; i++){
+            
+            auto c = &eval_buffer[i];
+            
+            if(c->tag == TAG_SYMBOL){
+                
+                if(parent_name){
+                    sprintf(&name_buffer[0],"%s__%s",parent_name,&c->string[0]);
+                }
+                
+                else{
+                    memcpy(&name_buffer[0],&c->string[0],strlen(&c->string[0]));
+                }
+                
+                
+            }
+            
+            if(c->tag == TAG_KEY){
+                pkey = (ParserKeyWord)c->hash;
+            }
             
         }
         
-        if(c->tag == TAG_KEY){
-            pkey = (ParserKeyWord)c->hash;
-        }
-	
     }
     
-  }
-
-  if(IsDuplicateStruct(struct_array,*struct_count,name_buffer)){
-    return;
-  }
+    if(IsDuplicateStruct(struct_array,*struct_count,name_buffer)){
+        return;
+    }
     
     auto t = &struct_array[*struct_count];
     (*struct_count)++;
-
+    
     memcpy(&t->name_string[0],&name_buffer[0],strlen(&name_buffer[0]));
     t->name_hash = PHashString(name_buffer);
-
+    
     t->type = CType_STRUCT;
     memcpy(&t->type_string[0],"struct",strlen("struct"));
-
-	t->pkey = pkey;
+    
+    t->pkey = pkey;
     
     s8 scope_buffer[1024 * 4] = {};
     
@@ -535,7 +623,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
 }
 
 
-void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count){
+void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count){
     
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
@@ -554,18 +642,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
             
             if(IsReflStruct(&evaluation_buffer[0],evaluation_count)){
                 
-#if 0
                 
-                
-                printf("found struct:");
-                
-                for(u32 i = 0; i < evaluation_count; i++){
-                    printf("%s ",evaluation_buffer[i].string);
-                }
-                
-                printf("\n");
-                
-#endif
                 
                 GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],struct_count);
                 
@@ -574,15 +651,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
             if(IsReflEnum(&evaluation_buffer[0],evaluation_count)){
                 
                 
-                //parse the enum
-                
-                //                printf("found enum:");
-                //                
-                //                for(u32 i = 0; i < evaluation_count; i++){
-                //                    printf("%s ",evaluation_buffer[i].string);
-                //                }
-                //                
-                //                printf("\n");
+                GenerateGenericEnum(&evaluation_buffer[0],evaluation_count,buffer,&cur,enum_array,enum_count);
                 
                 
             }
@@ -671,8 +740,12 @@ s32 main(s32 argc,s8** argv){
     
     auto struct_array = (GenericStruct*)alloc(sizeof(GenericStruct) * 1024);
     u32 struct_count = 0;
-
+    
+    auto enum_array = (GenericEnum*)alloc(sizeof(GenericEnum) * 1024);
+    u32 enum_count = 0;
+    
     memset(struct_array,0,sizeof(GenericStruct) * 1024);
+    memset(enum_array,0,sizeof(GenericEnum) * 1024);
     
     for(u32 i = 0; i < source_count;i++){
         
@@ -681,7 +754,7 @@ s32 main(s32 argc,s8** argv){
         ptrsize size;
         auto buffer = FReadFileToBuffer(file,&size);
         
-        InternalParseSource(buffer,size,struct_array,&struct_count);
+        InternalParseSource(buffer,size,struct_array,&struct_count,enum_array,&enum_count);
         
         FCloseFile(file);
         unalloc(buffer);
@@ -712,11 +785,14 @@ s32 main(s32 argc,s8** argv){
         }
     }
     
-    WriteMetaFile(metafile,struct_array,struct_count);
+    WriteMetaFile(metafile,struct_array,struct_count,enum_array,enum_count);
     
-    WriteComponentMetaData(componentfile,&struct_array[k],count,metafile);
+    if(componentfile){
+        WriteComponentMetaData(componentfile,&struct_array[k],count,metafile);
+    }
     
     unalloc(struct_array);
+    unalloc(enum_array);
     
     
     

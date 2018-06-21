@@ -231,8 +231,6 @@ struct GenericTypeDef : GenericTypeDec{
 struct GenericEnumEntry{
     u64 name_hash;
     s8 name_string[128];
-    
-    u64 value;
 };
 
 struct GenericEnum{
@@ -458,6 +456,16 @@ void InternalBufferGetString(s8* default_string,EvalChar* membereval_array,u32 m
     *j = i;
 }
 
+void DebugPrintGenericEnum(GenericEnum* e){
+    
+    printf("Parsed enum %s that has %d members\n",e->name_string,e->members_count);
+    
+    for(u32 i = 0; i < e->members_count;i++){
+        
+        printf("%s\n",e->members_array[i].name_string);
+    }
+}
+
 void DebugPrintGenericStruct(GenericStruct* s){
     
     printf("Parsed struct %s that has %d members\n",s->name_string,s->members_count);
@@ -580,7 +588,7 @@ const s8* InternalGetMainFile(const s8* string){
     return 0;
 }
 
-void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_count){
+void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_count,GenericEnum* enum_array,u32 enum_count){
     
 #if !(_testing)
     
@@ -619,6 +627,24 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
                 u32 metadata_count;
                 };
                 
+                struct MetaEnumEntry{
+                
+                u64 name_hash;
+    s8 name_string[128];
+    u64 value;
+    
+};
+
+struct MetaEnumData{
+
+u64 name_hash;
+s8 name_string[128];
+
+u32 size;
+u32 entry_count;
+MetaEnumEntry* entry_array;
+};
+
                 enum CType{
                 CType_U8 = PHashString("u8"),
                 CType_U16 = PHashString("u16"),
@@ -641,6 +667,8 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
         FWrite(file,(void*)buffer,strlen(buffer));
         
     }
+    
+    //structs
     
     for(u32 i = 0; i < struct_count; i++){
         
@@ -714,8 +742,133 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
     }
     
     
+    //enums
+    
+    {
+        
+        for(u32 i = 0; i < enum_count;i++){
+            
+            auto e = &enum_array[i];
+            
+            {
+                s8 buffer[256] = {};
+                
+                sprintf(buffer,"\n\n_persist MetaEnumEntry %s_META_ENUM[] = {\n",e->name_string);
+                
+                FWrite(file,(void*)buffer,strlen(buffer));
+            }
+            
+            for(u32 j = 0; j < e->members_count;j++){
+                
+                auto m = &e->members_array[j];
+                
+                {
+                    s8 buffer[256] = {};
+                    
+                    sprintf(buffer,"{%d,\"%s\",(u64)%s},\n",
+                            (u32)m->name_hash,m->name_string,m->name_string);
+                    
+                    FWrite(file,(void*)buffer,strlen(buffer));
+                }
+            }
+            
+            auto end_struct = "};";
+            FWrite(file,(void*)end_struct,strlen(end_struct));
+        }
+        
+        {
+            
+            auto metacomp_string = "\n\n\nMetaEnumData META_ENUM_ARRAY[] = {\n";
+            
+            FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+            
+            for(u32 i = 0; i < enum_count;i++){
+                
+                auto e = &enum_array[i];
+                
+                {
+                    s8 buffer[256] = {};
+                    
+                    sprintf(buffer,"{%d,\"%s\",sizeof(%s),_arraycount(%s_META_ENUM),&%s_META_ENUM[0]},\n",
+                            (u32)e->name_hash,e->name_string,e->members_array[0].name_string,e->name_string,e->name_string);
+                    
+                    FWrite(file,(void*)buffer,strlen(buffer));
+                }
+                
+            }
+            
+            auto end_struct = "};";
+            FWrite(file,(void*)end_struct,strlen(end_struct));
+            
+        }
+    }
+    
+    
     auto function_string = R"FOO(
     
+    MetaEnumData* MetaGetEnumByNameHash(u32 hash){
+    
+    for(u32 i = 0; i < _arraycount(META_ENUM_ARRAY);i++){
+    
+    auto entry = &META_ENUM_ARRAY[i];
+    
+    if(hash == entry->name_hash){
+    return entry;
+}
+
+}
+
+    return 0;
+}
+
+    MetaEnumData* MetaGetEnumByName(const s8* name){
+    
+    return MetaGetEnumByNameHash(PHashString(name));
+}
+
+ u64 MetaGetEnumValueByNameHash(MetaEnumEntry* array,u32 count,u32 hash){
+ 
+for(u32 i = 0; i < count; i++){
+
+auto k = &array[i];
+
+if(k->name_hash == hash){
+
+return k->value;
+}
+
+}
+
+return (u32)-1;
+}
+
+u64 MetaGetEnumValueByName(MetaEnumEntry* array,u32 count,const s8* name){
+return MetaGetEnumValueByNameHash(array,count,PHashString(name));
+}
+
+void MetaGetEnumNamesByValue(u32 value,MetaEnumEntry* array,u32 count,const s8** names_array,u32* names_count){
+
+u32 c = 0;
+
+for(u32 i = 0; i < count; i++){
+
+auto k = &array[i];
+
+if(k->value == value){
+
+if(names_array){
+names_array[c] = k->name_string;
+}
+
+c++;
+}
+
+}
+
+*names_count = c;
+
+}
+
   MetaDataStructEntry* MetaGetStructByNameHash(u32 hash){
   
   for(u32 i = 0; i < _arraycount(META_STRUCT_ARRAY); i++){
@@ -858,8 +1011,8 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
                           F_FLAG_TRUNCATE | F_FLAG_CREATE);
     
 #endif
-
-	_kill("meta file not found\n",!metafile);
+    
+    _kill("meta file not found\n",!metafile);
     
     {
         
