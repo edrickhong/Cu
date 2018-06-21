@@ -572,7 +572,7 @@ const s8* InternalGetMainFile(const s8* string){
     
     for(u32 i = len - 1; i != (u32)-1; i--){
         
-        if(string[i] == _FileSlash){
+        if(string[i] == '/'){
             return &string[i + 1];
         }
     }
@@ -858,6 +858,8 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
                           F_FLAG_TRUNCATE | F_FLAG_CREATE);
     
 #endif
+
+	_kill("meta file not found\n",!metafile);
     
     {
         

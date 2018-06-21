@@ -13,27 +13,6 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 cd /d %mypath:~0,-1%
 
 
-cd src\shaders\
-
-
-echo "BUILDING SHADERS"
-
-for %%f in (*) do glslc -I ..\shadercommon -std=450 --target-env=vulkan %%f -o ..\..\rsrc\shaders\%%f.spv
-for %%f in (*) do .\..\..\bin\Debug\glslparser %%f ..\..\rsrc\shaders\%%f.spv
-
-glslc -I ..\shadercommon -std=450 --target-env=vulkan -DUSE_SKEL model.vert -o ..\..\rsrc\shaders\model_skel.vert.spv
-.\..\..\bin\Debug\glslparser -DUSE_SKEL model.vert ..\..\rsrc\shaders\model_skel.vert.spv
-
-glslc -I ..\shadercommon -std=450 --target-env=vulkan -DUSE_SKEL tfetch_region.vert -o ..\..\rsrc\shaders\tfetch_region_skel.vert.spv
-.\..\..\bin\Debug\glslparser -DUSE_SKEL tfetch_region.vert ..\..\rsrc\shaders\tfetch_region_skel.vert.spv
-
-glslc -I ..\shadercommon -std=450 --target-env=vulkan -DUSE_TEXTURE m_gui.frag -o ..\..\rsrc\shaders\m_gui_tex.frag.spv
-.\..\..\bin\Debug\glslparser -DUSE_TEXTURE m_gui.frag ..\..\rsrc\shaders\m_gui_tex.frag.spv
-
-
-cd ..\..\
-
-
 echo "COMPILING..."
 
 cd Make
