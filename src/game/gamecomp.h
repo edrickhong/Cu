@@ -62,3 +62,9 @@ struct REFLCOMPONENT SpotLight{
     
     f32 intensity;
 };
+
+enum REFL fancyenum200{
+    fancyenum200_FIRST,
+    fancyenum200_SECOND,
+    fancyenum200_THIRD,
+};
