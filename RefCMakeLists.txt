@@ -108,41 +108,26 @@ endforeach()
 
 if(UNIX)
 
-add_custom_command(
-OUTPUT engine.i
-COMMAND ${CMAKE_CXX_COMPILER} -DCPP_PASS -E ${ENGINE} ${C_INCLUDES} -o engine.i
-COMMENT "META ENGINE"
-VERBATIM
-)
-
-add_custom_command(
-OUTPUT game.i
-COMMAND ${CMAKE_CXX_COMPILER} -DCPP_PASS -E ${GAME} ${C_INCLUDES} -o game.i
-COMMENT "META GAME"
-VERBATIM
-)
+set(META_CMD -DCPP_PASS -E)
+set(META_OUT "-o ")
 
 else(UNIX)
 
-add_custom_command(
-OUTPUT engine.i
-COMMAND ${CMAKE_CXX_COMPILER} /DCPP_PASS /P ${ENGINE} ${C_INCLUDES} /Fiengine.i
-COMMENT "META ENGINE"
-VERBATIM
-)
-
-add_custom_command(
-OUTPUT game.i
-COMMAND ${CMAKE_CXX_COMPILER} /DCPP_PASS /P ${GAME} ${C_INCLUDES} /Figame.i
-COMMENT "META GAME"
-VERBATIM
-)
+set(META_CMD /DCPP_PASS /P)
+set(META_OUT /Fi)
 
 endif(UNIX)
 
-add_custom_target(CJOBS ALL cparser engine.i game.i -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
-COMMAND echo EXECUTING BUILD STEP
-DEPENDS game.i engine.i
+add_custom_target(CJOBS ALL  echo EXECUTING BUILD STEP
+
+COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${ENGINE} ${C_INCLUDES} ${META_OUT}engine.i
+
+COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.i
+
+COMMAND cparser engine.i game.i -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
+
+
+
 )
 
 #SHADER COMPILING
@@ -203,6 +188,9 @@ PDB_NAME "game_${VERSION}"
 )
   
 endif(UNIX)
+
+add_dependencies(cu_engine CJOBS)
+add_dependencies(game CJOBS)
 
 #files that include things that require dependencies
 
