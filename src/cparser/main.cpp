@@ -643,6 +643,8 @@ s32 main(s32 argc,s8** argv){
     
     auto struct_array = (GenericStruct*)alloc(sizeof(GenericStruct) * 1024);
     u32 struct_count = 0;
+
+    memset(struct_array,0,sizeof(GenericStruct) * 1024);
     
     for(u32 i = 0; i < source_count;i++){
         
