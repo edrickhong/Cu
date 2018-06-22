@@ -510,7 +510,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
     //DebugPrintGenericEnum(e);
 }
 
-void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,const s8* parent_name = 0){
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
     
     
     //Struct info
@@ -582,7 +582,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                 
                 
                 //Handle internal structs
-                if(membereval_array[0].tag == TAG_STRUCT){
+                if(membereval_array[0].tag == TAG_STRUCT || membereval_array[0].tag == TAG_ENUM){
                     
                     logic named_struct = false;
                     
@@ -598,7 +598,16 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
                     
                     if(named_struct){
                         
-                        GenerateGenericStruct(&membereval_array[0],membereval_count,scope_buffer,&i,struct_array,struct_count,&t->name_string[0]);
+                        if(membereval_array[0].tag == TAG_STRUCT){
+                            
+                            GenerateGenericStruct(&membereval_array[0],membereval_count,scope_buffer,&i,struct_array,struct_count,enum_array,enum_count,&t->name_string[0]);
+                            
+                        }
+                        
+                        if(membereval_array[0].tag == TAG_ENUM){
+                            
+                            GenerateGenericEnum(&membereval_array[0],membereval_count,scope_buffer,&i,enum_array,enum_count,&t->name_string[0]);
+                        }
                     }
                 }
                 
@@ -644,7 +653,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
                 
                 
                 
-                GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],struct_count);
+                GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],struct_count,enum_array,enum_count);
                 
             }
             

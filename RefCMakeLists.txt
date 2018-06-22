@@ -109,7 +109,7 @@ endforeach()
 if(UNIX)
 
 set(META_CMD -DCPP_PASS -E)
-set(META_OUT "-o ")
+set(META_OUT -o )
 
 else(UNIX)
 

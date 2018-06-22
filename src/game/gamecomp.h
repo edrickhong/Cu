@@ -33,6 +33,15 @@ struct REFLCOMPONENT EntityAudioData{
 };
 
 struct REFLCOMPONENT PointLight{
+    
+    enum TESTING{
+        
+        TESTING_1,
+        TESTING_2,
+        TESTING_3,
+        
+    };
+    
     ObjectID id;
     f32 R;
     f32 G;
@@ -63,8 +72,3 @@ struct REFLCOMPONENT SpotLight{
     f32 intensity;
 };
 
-enum REFL fancyenum200{
-    fancyenum200_FIRST,
-    fancyenum200_SECOND,
-    fancyenum200_THIRD,
-};

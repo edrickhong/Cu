@@ -588,6 +588,199 @@ const s8* InternalGetMainFile(const s8* string){
     return 0;
 }
 
+void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct_count){
+    
+    //structs
+    
+    for(u32 i = 0; i < struct_count; i++){
+        
+        auto s = &struct_array[i];
+        
+        {
+            
+            s8 buffer[256] = {};
+            
+            sprintf(buffer,"\n\n_persist MetaStructEntry %s_META_STRUCT[] = {\n",s->name_string);
+            
+            FWrite(file,(void*)buffer,strlen(buffer));
+            
+        }
+        
+        {
+            
+            for(u32 j = 0; j < s->members_count;j++){
+                
+                auto m = &s->members_array[j];
+                
+                s8 buffer[256] = {};
+                
+                //TODO: support more than 1d arrays
+                //Remove ref_metadatacomp_index
+                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)offsetof(%s,%s),%d,(u32)-1},\n"
+                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,m->dim_array[0]);
+                
+                FWrite(file,(void*)buffer,strlen(buffer));
+            }
+            
+            
+            auto end_struct = "};";
+            FWrite(file,(void*)end_struct,strlen(end_struct));
+            
+        }
+    }
+    
+    
+    {
+        auto metacomp_string = "\n\n\nMetaDataStructEntry META_STRUCT_ARRAY[] = {\n";
+        
+        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+        
+        if(struct_count){
+            
+            for(u32 i = 0; i < struct_count; i++){
+                
+                auto s = &struct_array[i];
+                
+                u32 len = strlen(s->name_string);
+                
+                s8 outbuffer[2048] = {};
+                s8 lowercasebuffer[256] = {};
+                
+                for(u32 j = 0; j < len; j++){
+                    lowercasebuffer[j] = tolower(s->name_string[j]);
+                }
+                
+                sprintf(outbuffer,
+                        "{sizeof(%s),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
+                        s->name_string,s->name_string,
+                        (u32)s->name_hash,s->name_string,
+                        s->name_string);
+                
+                FWrite(file,(void*)outbuffer,strlen(outbuffer));
+            }
+            
+        }
+        
+        else{
+            
+            auto buffer = "{},\n";
+            FWrite(file,(void*)buffer,strlen(buffer));
+        }
+        
+        metacomp_string = "\n};\n";
+        
+        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+    }
+    
+}
+
+void InternalMakeParentString(s8* dst_name,const s8* src_name){
+    
+    u32 len = strlen(src_name);
+    
+    memcpy(dst_name,src_name,len);
+    
+    for(u32 i = 0; i < len; i++){
+        
+        if(dst_name[i] == '_' && dst_name[i + 1] == '_'){
+            
+            dst_name[i] = ':';
+            dst_name[i + 1] = ':';
+        }
+    }
+    
+}
+
+
+void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
+    
+    //enums
+    
+    {
+        
+        
+        for(u32 i = 0; i < enum_count;i++){
+            
+            auto e = &enum_array[i];
+            
+            s8 converted_buffer[256] = {};
+            
+            InternalMakeParentString(converted_buffer,e->name_string);
+            
+            {
+                s8 buffer[256] = {};
+                
+                sprintf(buffer,"\n\n_persist MetaEnumEntry %s_META_ENUM[] = {\n",e->name_string);
+                
+                FWrite(file,(void*)buffer,strlen(buffer));
+            }
+            
+            for(u32 j = 0; j < e->members_count;j++){
+                
+                auto m = &e->members_array[j];
+                
+                {
+                    s8 buffer[256] = {};
+                    
+                    
+                    
+                    sprintf(buffer,"{%d,\"%s\",(u64)%s::%s},\n",
+                            (u32)m->name_hash,m->name_string,converted_buffer,m->name_string);
+                    
+                    FWrite(file,(void*)buffer,strlen(buffer));
+                }
+            }
+            
+            auto end_struct = "};";
+            FWrite(file,(void*)end_struct,strlen(end_struct));
+        }
+        
+        {
+            
+            auto metacomp_string = "\n\n\nMetaEnumData META_ENUM_ARRAY[] = {\n";
+            
+            FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+            
+            if(enum_count){
+                
+                for(u32 i = 0; i < enum_count;i++){
+                    
+                    auto e = &enum_array[i];
+                    
+                    s8 converted_buffer[256] = {};
+                    
+                    InternalMakeParentString(converted_buffer,e->name_string);
+                    
+                    {
+                        s8 buffer[256] = {};
+                        
+                        sprintf(buffer,"{%d,\"%s\",sizeof(%s::%s),_arraycount(%s_META_ENUM),&%s_META_ENUM[0]},\n",
+                                (u32)e->name_hash,e->name_string,converted_buffer,e->members_array[0].name_string,e->name_string,e->name_string);
+                        
+                        FWrite(file,(void*)buffer,strlen(buffer));
+                    }
+                    
+                }
+                
+            }
+            
+            else{
+                
+                auto buffer = "{},\n";
+                FWrite(file,(void*)buffer,strlen(buffer));
+                
+            }
+            
+            
+            
+            auto end_struct = "};";
+            FWrite(file,(void*)end_struct,strlen(end_struct));
+            
+        }
+    }
+    
+}
+
 void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_count,GenericEnum* enum_array,u32 enum_count){
     
 #if !(_testing)
@@ -607,7 +800,7 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
                 #include"pparse.h"
                 #include "aassetmanager.h"
                 
-                struct MetaDataEntry{
+                struct MetaStructEntry{
                 u32 type_hash;
                 u32 name_hash;
                 s8 type_string[128];
@@ -623,7 +816,7 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
                 u32 element_size;
                 s8 comp_name_string[128];
                 u32 comp_name_hash;
-                MetaDataEntry* metadata_table;
+                MetaStructEntry* metadata_table;
                 u32 metadata_count;
                 };
                 
@@ -668,140 +861,10 @@ MetaEnumEntry* entry_array;
         
     }
     
-    //structs
+    InternalWriteStructs(file,struct_array,struct_count);
     
-    for(u32 i = 0; i < struct_count; i++){
-        
-        auto s = &struct_array[i];
-        
-        {
-            
-            s8 buffer[256] = {};
-            
-            sprintf(buffer,"\n\n_persist MetaDataEntry %s_META_STRUCT[] = {\n",s->name_string);
-            
-            FWrite(file,(void*)buffer,strlen(buffer));
-            
-        }
-        
-        {
-            
-            
-            for(u32 j = 0; j < s->members_count;j++){
-                
-                auto m = &s->members_array[j];
-                
-                s8 buffer[256] = {};
-                
-                //TODO: support more than 1d arrays
-                //Remove ref_metadatacomp_index
-                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)offsetof(%s,%s),%d,(u32)-1},\n"
-                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,m->dim_array[0]);
-                
-                FWrite(file,(void*)buffer,strlen(buffer));
-            }
-            
-            
-            auto end_struct = "};";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
-            
-        }
-    }
+    InternalWriteEnums(file,enum_array,enum_count);
     
-    
-    {
-        auto metacomp_string = "\n\n\nMetaDataStructEntry META_STRUCT_ARRAY[] = {\n";
-        
-        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
-        
-        for(u32 i = 0; i < struct_count; i++){
-            
-            auto s = &struct_array[i];
-            
-            u32 len = strlen(s->name_string);
-            
-            s8 outbuffer[2048] = {};
-            s8 lowercasebuffer[256] = {};
-            
-            for(u32 j = 0; j < len; j++){
-                lowercasebuffer[j] = tolower(s->name_string[j]);
-            }
-            
-            sprintf(outbuffer,
-                    "{sizeof(%s),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
-                    s->name_string,s->name_string,
-                    (u32)s->name_hash,s->name_string,
-                    s->name_string);
-            
-            FWrite(file,(void*)outbuffer,strlen(outbuffer));
-        }
-        
-        metacomp_string = "\n};\n";
-        
-        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
-    }
-    
-    
-    //enums
-    
-    {
-        
-        for(u32 i = 0; i < enum_count;i++){
-            
-            auto e = &enum_array[i];
-            
-            {
-                s8 buffer[256] = {};
-                
-                sprintf(buffer,"\n\n_persist MetaEnumEntry %s_META_ENUM[] = {\n",e->name_string);
-                
-                FWrite(file,(void*)buffer,strlen(buffer));
-            }
-            
-            for(u32 j = 0; j < e->members_count;j++){
-                
-                auto m = &e->members_array[j];
-                
-                {
-                    s8 buffer[256] = {};
-                    
-                    sprintf(buffer,"{%d,\"%s\",(u64)%s},\n",
-                            (u32)m->name_hash,m->name_string,m->name_string);
-                    
-                    FWrite(file,(void*)buffer,strlen(buffer));
-                }
-            }
-            
-            auto end_struct = "};";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
-        }
-        
-        {
-            
-            auto metacomp_string = "\n\n\nMetaEnumData META_ENUM_ARRAY[] = {\n";
-            
-            FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
-            
-            for(u32 i = 0; i < enum_count;i++){
-                
-                auto e = &enum_array[i];
-                
-                {
-                    s8 buffer[256] = {};
-                    
-                    sprintf(buffer,"{%d,\"%s\",sizeof(%s),_arraycount(%s_META_ENUM),&%s_META_ENUM[0]},\n",
-                            (u32)e->name_hash,e->name_string,e->members_array[0].name_string,e->name_string,e->name_string);
-                    
-                    FWrite(file,(void*)buffer,strlen(buffer));
-                }
-                
-            }
-            
-            auto end_struct = "};";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
-            
-        }
-    }
     
     
     auto function_string = R"FOO(
@@ -887,11 +950,11 @@ c++;
   return MetaGetStructByNameHash(PHashString(name));
   }
   
-  u32 MetaGetTypeByNameHash(u32 hash,MetaDataEntry* array,
+  u32 MetaGetTypeByNameHash(u32 hash,MetaStructEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
-  MetaDataEntry* entry = &array[i];
+  MetaStructEntry* entry = &array[i];
   if(entry->name_hash == hash){
   return entry->type_hash;
   }
@@ -900,18 +963,18 @@ c++;
   }
   
   
-  u32 MetaGetTypeByName(const s8* name,MetaDataEntry* array,
+  u32 MetaGetTypeByName(const s8* name,MetaStructEntry* array,
   u32 array_count){
   
   return MetaGetTypeByNameHash(PHashString(name),array,array_count);
   }
   
   
-  logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaDataEntry* array,
+  logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaStructEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
-  MetaDataEntry* entry = &array[i];
+  MetaStructEntry* entry = &array[i];
   if(entry->name_hash == hash){
   
   _kill("index exceeds arraycount\n",index >= entry->arraycount);
@@ -925,18 +988,18 @@ c++;
   return false;
   }
   
-  logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaDataEntry* array,
+  logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaStructEntry* array,
   u32 array_count){
   
   return MetaGetValueByNameHash(obj,index,outdata,PHashString(name),array,array_count);
   }
   
-  logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaDataEntry* array,
+  logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaStructEntry* array,
   u32 array_count){
   
   for(u32 i = 0; i < array_count; i++){
   
-  MetaDataEntry* entry = &array[i];
+  MetaStructEntry* entry = &array[i];
   
   if(entry->name_hash == hash){
   
@@ -952,7 +1015,7 @@ c++;
   return false;
   }
   
-  logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaDataEntry* array,
+  logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaStructEntry* array,
   u32 array_count){
   
   return MetaSetValueByNameHash(obj,index,value,PHashString(name),array,array_count);
@@ -1034,7 +1097,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
                 u32 element_size;
                 s8 comp_name_string[128];
                 u32 comp_name_hash;
-                MetaDataEntry* metadata_table;
+                MetaStructEntry* metadata_table;
                 u32 metadata_count;
                 };
                 
@@ -1120,7 +1183,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
   u32 element_size;
   const s8* comp_name_string;
   u32 comp_name_hash;
-  MetaDataEntry* metadata_table;
+  MetaStructEntry* metadata_table;
   u32 metadata_count;
   };
   
