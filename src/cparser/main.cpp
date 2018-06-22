@@ -478,7 +478,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
     
-    for(u32 i;;i++){
+    for(u32 i = 0;;i++){
         
         SanitizeString(&scope_buffer[0],&i);
         
