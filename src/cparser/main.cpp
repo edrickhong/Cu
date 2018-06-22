@@ -438,26 +438,137 @@ logic IsDuplicateEnum(GenericEnum* enum_array,u32 enum_count,const s8* name){
     return false;
 }
 
-void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
+logic IsDuplicateFunction(GenericFunction* function_array,u32 function_count,const s8* name){
     
-    s8 name_buffer[256] = {};
+    auto name_hash = PHashString(name);
+    
+    for(u32 i = 0; i < function_count; i++){
+        
+        if(name_hash == function_array[i].name_hash){
+            return true;
+        }
+        
+    }
+    
+    
+    return false;
+}
+
+void DebugPrintGenericFunction(GenericFunction* f){
+    
+    printf("function %s %s\n",f->ret.type_string,f->ret.name_string);
+    
+    for(u32 i = 0; i < f->args_count; i++){
+        
+        printf("args:%s %s\n",f->args_array[i].type_string,f->args_array[i].name_string);
+    }
+}
+
+void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericFunction* function_array,u32* function_count){
     
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
         
+        if(c->tag == TAG_INDIR || c->tag == TAG_START_SQUARE || c->tag == TAG_END_SQUARE){
+            
+            printf("Error: skipped function. Functions cannot have pointers or arrays\n");
+            
+            return;
+        }
+    }
+    
+    
+    auto f = &function_array[(*function_count)];
+    (*function_count)++;
+    
+    for(u32 i = 0; i < count; i++){
+        
+        auto c = &eval_buffer[i];
+        
+        //TODO: allow pouinter types
+        if(i == 0){
+            
+            memcpy(f->ret.type_string,c->string,strlen(c->string));
+            f->ret.type = (CType)c->hash;
+            
+        }
+        
         if(c->tag == TAG_SYMBOL){
             
-            if(parent_name){
-                sprintf(&name_buffer[0],"%s__%s",parent_name,&c->string[0]);
+            if(IsDuplicateFunction(function_array,*function_count,c->string)){
+                
+                memset(f,0,sizeof(GenericFunction));
+                (*function_count)--;
+                return;
             }
             
-            else{
-                memcpy(&name_buffer[0],&c->string[0],strlen(&c->string[0]));
-            }
-            
-            break;
+            memcpy(f->name_string,c->string,strlen(c->string));
+            f->name_hash = c->hash;
         }
+        
+        //TODO: allow pouinter types
+        if(c->tag == TAG_START_ARG){
+            
+            u32 cur = i + 1;
+            u32 dst = 0;
+            
+            for(u32 j = i;;j++){
+                
+                auto c = &eval_buffer[j];
+                
+                if(c->tag == TAG_END_ARG){
+                    dst = j - 1;
+                    break;
+                }
+                
+            }
+            
+            if(!((dst - cur) % 2)){
+                
+                printf("Error type name format is wrong. We do not allow pointer types\n");
+                
+            }
+            
+            //TODO: need to limit the number of args
+            
+            for(cur;cur < dst;cur += 2){
+                
+                auto type = &eval_buffer[cur];
+                auto name = &eval_buffer[cur + 1];
+                
+                if((CType)(type->hash) == CType_STRUCT){
+                    
+                    printf("Error: We do not allow struct types\n");
+                    exit(0);
+                }
+                
+                auto arg = &f->args_array[f->args_count];
+                f->args_count++;
+                
+                memcpy(arg->type_string,type->string,strlen(type->string));
+                arg->type = (CType)(type->hash);
+                
+                memcpy(arg->name_string,name->string,strlen(name->string));
+                arg->name_hash = PHashString(name->string);
+            }
+            
+            //DebugPrintGenericFunction(f);
+            
+            return;
+        }
+        
+        
+    }
+}
+
+void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
+    
+    s8 name_buffer[256] = {};
+    
+    if(ValidateAndFillNameBufferStruct(eval_buffer,count,parent_name,name_buffer)){
+        printf("WARNING: Skipped %s. \"__\" is not allowed\n",name_buffer);
+        return;
     }
     
     if(IsDuplicateEnum(enum_array,*enum_count,name_buffer)){
@@ -484,7 +595,9 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
         
         auto c = scope_buffer[i];
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,',')){
+        s8 terminator_array[] = {',','}'};
+        
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,terminator_array,_arraycount(terminator_array))){
             
             if(membereval_count){
                 
@@ -518,32 +631,9 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     ParserKeyWord pkey = PARSERKEYWORD_REFL;
     s8 name_buffer[256] = {};
     
-    {
-        
-        
-        for(u32 i = 0; i < count; i++){
-            
-            auto c = &eval_buffer[i];
-            
-            if(c->tag == TAG_SYMBOL){
-                
-                if(parent_name){
-                    sprintf(&name_buffer[0],"%s__%s",parent_name,&c->string[0]);
-                }
-                
-                else{
-                    memcpy(&name_buffer[0],&c->string[0],strlen(&c->string[0]));
-                }
-                
-                
-            }
-            
-            if(c->tag == TAG_KEY){
-                pkey = (ParserKeyWord)c->hash;
-            }
-            
-        }
-        
+    if(ValidateAndFillNameBufferStruct(eval_buffer,count,parent_name,name_buffer,&pkey)){
+        printf("WARNING: Skipped %s. \"__\" is not allowed\n",name_buffer);
+        return;
     }
     
     if(IsDuplicateStruct(struct_array,*struct_count,name_buffer)){
@@ -632,7 +722,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
 }
 
 
-void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count){
+void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,GenericFunction* function_array,u32* function_count){
     
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
@@ -666,15 +756,22 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
             }
             
             if(IsReflFunc(&evaluation_buffer[0],evaluation_count)){
+                
                 //parse the function
                 
-                //                printf("found function:");
-                //                
-                //                for(u32 i = 0; i < evaluation_count; i++){
-                //                    printf("%s ",evaluation_buffer[i].string);
-                //                }
-                //                
-                //                printf("\n");
+#if 0
+                
+                printf("found function:");
+                
+                for(u32 i = 0; i < evaluation_count; i++){
+                    printf("%s ",evaluation_buffer[i].string);
+                }
+                
+                printf("\n");
+                
+#endif
+                
+                GenerateGenericFunction(&evaluation_buffer[0],evaluation_count,buffer,&cur,function_array,function_count);
             }
             
             SkipBracketBlock(buffer,&cur);
@@ -753,8 +850,13 @@ s32 main(s32 argc,s8** argv){
     auto enum_array = (GenericEnum*)alloc(sizeof(GenericEnum) * 1024);
     u32 enum_count = 0;
     
+    
+    auto function_array = (GenericFunction*)alloc(sizeof(GenericFunction) * 1024);
+    u32 function_count = 0;
+    
     memset(struct_array,0,sizeof(GenericStruct) * 1024);
     memset(enum_array,0,sizeof(GenericEnum) * 1024);
+    memset(function_array,0,sizeof(GenericFunction) * 1024);
     
     for(u32 i = 0; i < source_count;i++){
         
@@ -763,7 +865,7 @@ s32 main(s32 argc,s8** argv){
         ptrsize size;
         auto buffer = FReadFileToBuffer(file,&size);
         
-        InternalParseSource(buffer,size,struct_array,&struct_count,enum_array,&enum_count);
+        InternalParseSource(buffer,size,struct_array,&struct_count,enum_array,&enum_count,function_array,&function_count);
         
         FCloseFile(file);
         unalloc(buffer);
@@ -794,7 +896,7 @@ s32 main(s32 argc,s8** argv){
         }
     }
     
-    WriteMetaFile(metafile,struct_array,struct_count,enum_array,enum_count);
+    WriteMetaFile(metafile,struct_array,struct_count,enum_array,enum_count,function_array,function_count);
     
     if(componentfile){
         WriteComponentMetaData(componentfile,&struct_array[k],count,metafile);
@@ -802,7 +904,7 @@ s32 main(s32 argc,s8** argv){
     
     unalloc(struct_array);
     unalloc(enum_array);
-    
+    unalloc(function_array);
     
     
     return 0;
