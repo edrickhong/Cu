@@ -71,4 +71,3 @@ struct REFLCOMPONENT SpotLight{
     
     f32 intensity;
 };
-

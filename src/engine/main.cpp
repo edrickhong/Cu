@@ -58,7 +58,38 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
     
 }
 
+//MARK: it should fail with pointer or array types
+#include "function_refl.h"
+#include "meta.h"
+
 s32 main(s32 argc,s8** argv){
+    
+#ifndef _WIN32
+    
+    {
+        u64 values[] = {5,2};
+        
+        printf("%d\n",(u32)MetaCallFunction("TestFunction",values));
+    }
+    
+    {
+        
+        u64 values[4] = {};
+        f32 a = 4.0f;
+        
+        values[0] = 2;
+        values[2] = 8;
+        
+        memcpy(&values[1],&a,sizeof(a));
+        memcpy(&values[3],&a,sizeof(a));
+        
+        MetaCallFunction("FOO",values);
+        
+    }
+    
+    return 0;
+    
+#endif
     
 #if  0
     

@@ -28,6 +28,8 @@
 
 #include "pparse.h"
 
+#include "function_refl.h"
+
 #include "gamecomp_meta.h"
 
 #include "editor_ui.h"
