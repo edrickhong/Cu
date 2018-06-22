@@ -472,7 +472,7 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
         
         if(c->tag == TAG_INDIR || c->tag == TAG_START_SQUARE || c->tag == TAG_END_SQUARE){
             
-            printf("Error: skipped function. Functions cannot have pointers or arrays\n");
+            printf("Error Functions cannot have pointers or arrays\n");
             
             return;
         }
@@ -528,19 +528,57 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
                 
                 printf("Error type name format is wrong. We do not allow pointer types\n");
                 
+                memset(f,0,sizeof(GenericFunction));
+                (*function_count)--;
+                return;
+                
             }
             
             //TODO: need to limit the number of args
+            
+            u32 int_count = 0;
+            u32 float_count = 0;
             
             for(cur;cur < dst;cur += 2){
                 
                 auto type = &eval_buffer[cur];
                 auto name = &eval_buffer[cur + 1];
                 
-                if((CType)(type->hash) == CType_STRUCT){
+                auto ctype = (CType)(type->hash);
+                
+                if(ctype == CType_STRUCT){
                     
                     printf("Error: We do not allow struct types\n");
-                    exit(0);
+                    
+                    memset(f,0,sizeof(GenericFunction));
+                    (*function_count)--;
+                    return;
+                }
+                
+                if(IsIntType(ctype)){
+                    int_count++;
+                    
+                    if(int_count > 6){
+                        
+                        printf("Error: Int arguments exceed the limit of 6\n");
+                        
+                        memset(f,0,sizeof(GenericFunction));
+                        (*function_count)--;
+                        return;
+                    }
+                }
+                
+                if(IsFloatType(ctype)){
+                    float_count++;
+                    
+                    if(float_count > 8){
+                        
+                        printf("Error: Float arguments exceed the limit of 8\n");
+                        
+                        memset(f,0,sizeof(GenericFunction));
+                        (*function_count)--;
+                        return;
+                    }
                 }
                 
                 auto arg = &f->args_array[f->args_count];
