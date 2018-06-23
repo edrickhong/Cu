@@ -1188,31 +1188,8 @@ return 0;
     return MetaGetFunctionByNameHash(PHashString(name));
 }
 
-#ifdef _WIN32
 
-//TODO: implement the function in Windows
-
-#else
-
-u64 MetaCallFunction(MetaFunctionData* function,u64* value_array){
-
-
-    /*
-Linux ABI
-
-The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9 
-
-XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7 are used for certain floating point arguments
-
-Integral return values up to 64 bits in size are stored in RAX while values up to 128 bit are stored in RAX and RDX. Floating-point return values are similarly stored in XMM0 and XMM1
-
-__asm__ volatile (
-"statement 1\n"
-"statement 2\n": output operands: input operands
-)
-*/
-
-    struct Registers{
+struct Registers{
     
         u32 int_reg_count;
         u32 float_reg_count;
@@ -1252,8 +1229,48 @@ __asm__ volatile (
         
         
     };
+
+#ifdef _WIN32
+
+/*
+TODO:Windows has way less registers to play with. Need to limit our args to that
+
+RCX, RDX, R8, R9 for the first four integer or pointer arguments
+
+XMM0, XMM1, XMM2, XMM3
+
+Integer return values (similar to x86) are returned in RAX if 64 bits or less
+
+Floating point return values are returned in XMM0
+
+*/
+
+extern "C" u64 InternalFillArgsAndCall(Registers* registers,void* function_call);
+
+#endif
+
+u64 MetaCallFunction(MetaFunctionData* function,u64* value_array){
+
+
+    /*
+Linux ABI
+
+The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9 
+
+XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7 are used for certain floating point arguments
+
+Integral return values up to 64 bits in size are stored in RAX while values up to 128 bit are stored in RAX and RDX. Floating-point return values are similarly stored in XMM0 and XMM1
+
+__asm__ volatile (
+"statement 1\n"
+"statement 2\n": output operands: input operands
+)
+
+TODO: collect the floating point return as well
+
+*/
     
-    Registers registers;
+    Registers registers = {};
     
     for(u32 i = 0; i < function->args_count;i++){
     
@@ -1273,7 +1290,9 @@ __asm__ volatile (
     
     u64 ret_value = 0;
     
-    
+#ifdef _WIN32
+
+#else   
     __asm__ volatile (
         "mov %[a1],%%rdi\n"
         "mov %[a2],%%rsi\n"
@@ -1294,6 +1313,8 @@ __asm__ volatile (
         "callq *%[c]\n"
         "mov %%rax,%[r]\n":[r] "=g"(ret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI), [a3] "g" (registers.RDX), [a4] "g" (registers.RCX), [a5] "g" (registers.R8), [a6] "g" (registers.R9), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [a11] "g" (registers.XMM4), [a12] "g" (registers.XMM5), [a13] "g" (registers.XMM6), [a14] "g" (registers.XMM7), [c] "g" (function->function_call)
         );
+
+#endif
         
     return ret_value;
     
@@ -1306,8 +1327,6 @@ return MetaCallFunction(MetaGetFunctionByNameHash(hash),value_array);
 u64 MetaCallFunction(const s8* name,u64* value_array){
 return MetaCallFunction(PHashString(name),value_array);
 }
-
-#endif
 
 
     )FOO";

@@ -45,6 +45,14 @@ set(STRICT_FLAGS "/W3 /WX")
 set(OPT_FLAGS "/Od /EHsc")
 
     set(FLAGS "/Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
+
+#enable masm
+
+enable_language(ASM_MASM)
+
+if (NOT CMAKE_CL_64)
+            message(FATAL_ERROR "Error: Masm64 not found")
+        endif()
   
 endif(UNIX)
   
