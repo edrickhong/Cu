@@ -343,8 +343,6 @@ void GUIGenFontFile(const s8* filepath,const s8* writepath,f32 fontsize){
     
     auto fontimage_data = (s8*)alloc(sizeof(u32) * width * height);
     
-    memset(fontimage_data,0,sizeof(u32) * width * height);
-    
     u32* celldata = (u32*)fontimage_data;
     
 #if 1
@@ -1165,8 +1163,6 @@ void GUIInit(VDeviceContext* vdevice,VSwapchainContext* swap,
     _kill("GUI already init\n",gui);
     
     gui = (GUIContext*)alloc(sizeof(GUIContext));
-    
-    memset(gui,0,sizeof(GUIContext));
     
     gui->back_color = DarkSlateGray;
     gui->front_color = Red;

@@ -24,3 +24,50 @@ typedef unsigned long long ptrsize;
 typedef unsigned int ptrsize;
 
 #endif
+
+
+union m32{
+    u32 i;
+    f32 f;
+    
+    operator u32(){
+        
+        return i;
+    }
+    
+    operator f32(){
+        
+        return f;
+    }
+    
+    void operator=(u32 o){
+        i = o;
+    }
+    
+    void operator=(f32 o){
+        f= o;
+    }
+};
+
+union m64{
+    u64 i;
+    f64 f;
+    
+    operator u64(){
+        
+        return i;
+    }
+    
+    operator f64(){
+        
+        return f;
+    }
+    
+    void operator=(u64 o){
+        i = o;
+    }
+    
+    void operator=(f64 o){
+        f= o;
+    }
+};

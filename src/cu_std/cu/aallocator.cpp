@@ -244,8 +244,11 @@ void SetAAllocatorContext(AAllocatorContext* this_context){
 }
 
 void* DebugMalloc(size_t size,const s8* file,const s8* function,u32 line){
+    
     auto ptr = malloc(size);
     DebugSubmitMalloc(ptr,size,file,function,line);
+    
+    memset(ptr,0,size);
     return ptr;
 }
 void DebugFree(void* ptr){

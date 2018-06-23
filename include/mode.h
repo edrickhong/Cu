@@ -269,9 +269,7 @@ relevant function. Getting better cache performance when using lambdas cos of th
 
 #define _uninitptr 0xCF
 
-#define _alloc(type,size) ((type*)malloc(sizeof(type) * size))
 
-#define _free(type,ptr) free(ptr); ptr = (type*)0xFEFEFEFEFEFEFEFE
 
 #define _destroy(ptr) ptr->Destroy();free(ptr);ptr = (void*)0xFEFEFEFEFEFEFEFE;
 
