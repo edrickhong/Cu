@@ -1280,11 +1280,6 @@ Vector3 Vec3::ProjectVectorOntoPlane(Vector3 vec,Plane plane){
 }
 
 
-union FLOATINT{
-    f32 f;
-    u32 i;
-};
-
 #define _f32_error_offset  0.0001f
 
 logic Vec3::Intersect(Line3 a,Line3 b){
@@ -1336,7 +1331,7 @@ logic Vec3::Intersect(Line3 a,Line3 b,Point3* out_point){
     
     for(u32 i = 0; i < 3; i++){
         
-        FLOATINT fi1;
+        m32 fi1;
         
         fi1.f = cross_ab.floats[i];
         
@@ -1400,7 +1395,7 @@ logic Intersect(Line2 a_2,Line2 b_2,Point2* out_point){
     
     for(u32 i = 0; i < 3; i++){
         
-        FLOATINT fi1;
+        m32 fi1;
         
         fi1.f = cross_ab.floats[i];
         
@@ -1436,7 +1431,7 @@ logic TypedIntersect(Line2 a_2,Line2 b_2){
 
 logic Vec3::Intersect(Line3 a,Plane b){
     
-    FLOATINT fi1;
+    m32 fi1;
     
     //if they are perpendicular, f is 0 and they do not intersect
     fi1.f = Vec3::Dot(Vec3::Normalize(a.dir),Vec3::Normalize(b.norm));
@@ -1453,7 +1448,7 @@ logic Vec3::TypedIntersect(Line3 a,Plane b){
     
     auto is_intersect = Vec3::Intersect(a,b);
     
-    FLOATINT fi;
+    m32 fi;
     
     auto dir = Vec3::Normalize(b.pos - a.pos);
     
