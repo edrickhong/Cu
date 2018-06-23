@@ -840,8 +840,6 @@ void SetupData(void** platform,void** game){
     
     s8* data = (s8*)alloc(sizeof(PlatformData) + sizeof(GameData));
     
-    memset(data,0,sizeof(PlatformData) + sizeof(GameData));
-    
     *platform = (void*)data;
     
     *game = (void*)(data + sizeof(PlatformData));

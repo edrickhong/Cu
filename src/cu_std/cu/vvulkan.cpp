@@ -1346,7 +1346,7 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
     
     //alloced here
     swapchain.presentresource_array =
-        _alloc(VSwapchainContext::PresentImageResource,image_count);
+        (VSwapchainContext::PresentImageResource*)alloc(sizeof(VSwapchainContext::PresentImageResource) * image_count);
     
     swapchain.width = extent.width;
     swapchain.height = extent.height;

@@ -892,10 +892,6 @@ s32 main(s32 argc,s8** argv){
     auto function_array = (GenericFunction*)alloc(sizeof(GenericFunction) * 1024);
     u32 function_count = 0;
     
-    memset(struct_array,0,sizeof(GenericStruct) * 1024);
-    memset(enum_array,0,sizeof(GenericEnum) * 1024);
-    memset(function_array,0,sizeof(GenericFunction) * 1024);
-    
     for(u32 i = 0; i < source_count;i++){
         
         auto file = FOpenFile(source_array[i],F_FLAG_READONLY);

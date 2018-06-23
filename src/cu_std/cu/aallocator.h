@@ -19,7 +19,6 @@ void ResetTAlloc();
 #define DEBUGPTR(type) DebugAllocedPtr<type>
 
 #define alloc(size) DebugMalloc(size,__FILE__,__FUNCTION__,__LINE__)
-#define unalloc DebugFree
 
 void* DebugMalloc(size_t size,const s8* file,const s8* function,u32 line);
 void DebugFree(void* ptr);
@@ -172,6 +171,15 @@ void memset(DebugAllocedPtr<T> dst,int c,u32 size){
 
 #else
 
+void* _ainline alloc(ptrsize size){
+    
+    auto ptr = malloc(size);
+    
+    memset(ptr,0,size);
+    
+    return ptr;
+}
+
 #define TAlloc(type,count) (type*)DebugTAlloc(sizeof(type) * (count),__FILE__,__FUNCTION__,__LINE__)
 
 #endif
@@ -179,8 +187,6 @@ void memset(DebugAllocedPtr<T> dst,int c,u32 size){
 #else
 
 #define TAlloc(type,count) (type*)TAlloc(sizeof(type) * (count))
-#define alloc malloc
-#define unalloc free
 
 
 #define DEBUGPTR(type) type*
@@ -192,3 +198,16 @@ struct AAllocatorContext;
 
 AAllocatorContext* GetAAllocatorContext();
 void SetAAllocatorContext(AAllocatorContext* context);
+
+void _ainline unalloc(void* ptr){
+    
+#if _debug
+    
+    DebugFree(ptr);
+    
+#else
+    
+    free(ptr);
+    
+#endif
+}
