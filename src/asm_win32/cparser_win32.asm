@@ -25,36 +25,27 @@ _DATA ENDS
 
 	;; load values
 	mov rax,rdx
-
-	mov qword ptr rcx,[rax]
-	mov qword ptr r8,[rax + 10h]
-
-	mov qword ptr r10,[rax + 8h]
-	mov qword ptr r11,[rax + 18h]
-
-	movq xmm1,r10
-	movq xmm3,r11
 	
-	;; mov qword ptr rcx,[rax]
-	;; mov qword ptr rdx,[rax + 8h]
-	;; mov qword ptr r8,[rax + 10h]
-	;; mov qword ptr r9,[rax + 18h]
+	 mov qword ptr rcx,[rax]
+	 mov qword ptr rdx,[rax + 8h]
+	 mov qword ptr r8,[rax + 10h]
+	 mov qword ptr r9,[rax + 18h]
 
-	;; mov qword ptr r10,[rax + 20h]
-	;; mov qword ptr r11,[rax + 28h]
+	 mov qword ptr r10,[rax + 20h]
+	 mov qword ptr r11,[rax + 28h]
 
 	;; TODO:this can't work. when faced with mixed args msvc does
 	;; rcx xmm1 r8 xmm3
 
 	
-	;; movq xmm0,r10
-	;; movq xmm1,r11
+	movq xmm0,r10
+	movq xmm1,r11
 
-	;; mov qword ptr r10,[rax + 30h]
-	;; mov qword ptr r11,[rax + 38h]
+	mov qword ptr r10,[rax + 30h]
+	mov qword ptr r11,[rax + 38h]
 
-	;; movq xmm2,r10
-	;; movq xmm3,r11
+	movq xmm2,r10
+	movq xmm3,r11
 
 	mov qword ptr r10,[rsp + 28h]
 	call r10

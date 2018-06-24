@@ -5,8 +5,10 @@
 
 /*
   TODO: 
-  handle inheritance and enums.
+  handle inheritance
   ptr inspection can be implemented in assembly
+
+  FIXME:Windows cannot have functions that have printf's for now. Causes a segfault. Will investigate. Migth mean more bugs in implementation 
 */
 
 //TODO: struct union and enum have the same parse structure (should we condense here?)
@@ -580,6 +582,14 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
                         return;
                     }
                 }
+
+				if (float_count + int_count > 4) {
+					printf("Error: Total arguments exceed the limit of 4\n");
+
+					memset(f, 0, sizeof(GenericFunction));
+					(*function_count)--;
+					return;
+				}
                 
                 auto arg = &f->args_array[f->args_count];
                 f->args_count++;
