@@ -1245,7 +1245,7 @@ Floating point return values are returned in XMM0
 
 */
 
-extern "C" u64 InternalFillArgsAndCall(Registers* registers,void* function_call);
+extern "C" void InternalFillArgsAndCall(void* call,u64* values,u64* iret,f64* fret);
 
 #endif
 
