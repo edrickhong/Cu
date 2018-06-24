@@ -116,7 +116,15 @@ FileHandle DebugFOpenFile(const s8* filepath,u32 flags,s8* file,s8* function,u32
     
     auto filehandle = FOpenFile(filepath,flags);
     
+#if _debug
+    
+    if(filehandle == F_FILE_INVALID){
+        printf("FAILED FILE:%s\n",filepath);
+    }
+    
     _kill("Invalid file\n", filehandle == F_FILE_INVALID);
+    
+#endif
     
     DebugFileEntry* entry = 0;
     
