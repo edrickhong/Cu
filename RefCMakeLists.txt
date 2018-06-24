@@ -71,6 +71,7 @@ include_directories(
   "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
   "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
   "${CMAKE_BINARY_DIR}/../include"
+  "${CMAKE_BINARY_DIR}/../include/meta"
   "${CMAKE_BINARY_DIR}/../src/engine"
   ${PLATFORM_INCLUDES}
   "${CMAKE_BINARY_DIR}/../src/game"
@@ -100,8 +101,6 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 
 #BUILD STEP
-
-if(BUILD_STEP)
 
 get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 
@@ -137,6 +136,8 @@ COMMAND cparser engine.i game.i -component ../src/game/gamecomp_meta.h -meta ../
 
 
 )
+
+if(BUILD_STEP)
 
 #SHADER COMPILING
 file(GLOB SHADERS src/shaders/*)
