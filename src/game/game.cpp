@@ -32,7 +32,7 @@
 
 #ifndef CPP_PASS
 
-#include "gamecomp_meta.h"
+#include "meta/gamecomp_meta.h"
 
 #endif
 

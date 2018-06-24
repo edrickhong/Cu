@@ -63,7 +63,7 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 
 #ifndef CPP_PASS
 
-#include "meta.h"
+#include "meta/meta.h"
 
 #endif
 
