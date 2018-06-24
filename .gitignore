@@ -10,4 +10,5 @@ TODO.txt
 *.zip
 extlib/
 include/meta/*
+!include/meta/.gitkeep
 
