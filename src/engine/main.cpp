@@ -90,9 +90,17 @@ s32 main(s32 argc,s8** argv){
         
         values[0] = 2;
         values[2] = 8;
-        
-        memcpy(&values[1],&a,sizeof(a));
-        memcpy(&values[3],&a,sizeof(a));
+
+		{
+			//FIXME: for some reason ,we crash when we only write the bottom 32 bits
+			auto a = (f32*)&values[1];
+			auto b = (f32*)&values[3];
+
+			*a = 1.0f;
+			*b = 4.0f;
+
+
+		}
         
         MetaCallFunction("FOO",values);
         

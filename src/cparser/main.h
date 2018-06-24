@@ -1207,7 +1207,7 @@ extern "C" void InternalFillArgsAndCall(void* call,u64* values,u64* iret,f64* fr
 
 #endif
 
-u64 MetaCallFunction(MetaFunctionData* function,u64* value_array){
+m64 MetaCallFunction(MetaFunctionData* function,u64* value_array){
 
 
     /*
@@ -1264,8 +1264,26 @@ struct Registers{
     };
     
     Registers registers = {};
+
+#ifdef _WIN32
+
+for(u32 i = 0; i < function->args_count;i++){
     
-    for(u32 i = 0; i < function->args_count;i++){
+        auto a = &function->args_array[i];
+        auto v = value_array[i];
+        
+        if(a->is_int){
+            registers.int_reg_array[i] = v;
+        }
+        
+        else{
+            registers.float_reg_array[i] = v;
+        }
+    }
+
+#else
+
+for(u32 i = 0; i < function->args_count;i++){
     
         auto a = &function->args_array[i];
         auto v = value_array[i];
@@ -1280,14 +1298,15 @@ struct Registers{
             registers.float_reg_count++;
         }
     }
+
+#endif
     
     u64 ret_value = 0;
+    f64 fret_value = 0;
     
 #ifdef _WIN32
 
-f64 fret_value = 0;
-
-InternalFillArgsAndCall(function->function_call,value_array,&ret_value,&fret_value);
+InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_value,&fret_value);
 
 #else   
     __asm__ volatile (
@@ -1301,12 +1320,24 @@ InternalFillArgsAndCall(function->function_call,value_array,&ret_value,&fret_val
         "mov %[a10],%%xmm3\n"
         
         "callq *%[c]\n"
-        "mov %%rax,%[r]\n":[r] "=g"(ret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
+        "mov %%rax,%[r1]\n"
+        "mov %%xmm0,%%rax\n"
+        "mov %%rax,%[r2]\n":[r1] "=g"(ret_value),[r2] "=g"(fret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
         );
         
 #endif
 
-    return ret_value;
+m64 return_m = {};
+
+if(function->ret.is_int){
+return_m.i = ret_value;
+}
+
+else{
+return_m.f = fret_value;
+}
+
+    return return_m;
     
 }
 
