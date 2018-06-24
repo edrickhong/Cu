@@ -30,7 +30,11 @@
 
 #include "function_refl.h"
 
+#ifndef CPP_PASS
+
 #include "gamecomp_meta.h"
+
+#endif
 
 #include "editor_ui.h"
 

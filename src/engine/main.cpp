@@ -60,7 +60,12 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 
 //MARK: it should fail with pointer or array types
 #include "function_refl.h"
+
+#ifndef CPP_PASS
+
 #include "meta.h"
+
+#endif
 
 void K(u32 h, f32 g) {
     
@@ -90,17 +95,17 @@ s32 main(s32 argc,s8** argv){
         
         values[0] = 2;
         values[2] = 8;
-
-		{
-			//FIXME: for some reason ,we crash when we only write the bottom 32 bits
-			auto a = (f32*)&values[1];
-			auto b = (f32*)&values[3];
-
-			*a = 1.0f;
-			*b = 4.0f;
-
-
-		}
+        
+        {
+            //FIXME: for some reason ,we crash when we only write the bottom 32 bits
+            auto a = (f32*)&values[1];
+            auto b = (f32*)&values[3];
+            
+            *a = 1.0f;
+            *b = 4.0f;
+            
+            
+        }
         
         MetaCallFunction("FOO",values);
         
