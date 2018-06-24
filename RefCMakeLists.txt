@@ -71,7 +71,7 @@ include_directories(
   "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
   "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
   "${CMAKE_BINARY_DIR}/../include"
-  "${CMAKE_BINARY_DIR}/../include/meta"
+"${CMAKE_BINARY_DIR}/../include/meta"
   "${CMAKE_BINARY_DIR}/../src/engine"
   ${PLATFORM_INCLUDES}
   "${CMAKE_BINARY_DIR}/../src/game"
@@ -102,6 +102,8 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 #BUILD STEP
 
+if(BUILD_STEP)
+
 get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 
 
@@ -131,13 +133,9 @@ COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${ENGINE} ${C_INCLUDES} ${META_OUT}eng
 
 COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.i
 
-COMMAND cparser engine.i game.i -component ../src/game/gamecomp_meta.h -meta ../include/meta.h
-
-
+COMMAND cparser engine.i game.i -component ../include/meta/gamecomp_meta.h -meta ../include/meta/meta.h
 
 )
-
-if(BUILD_STEP)
 
 #SHADER COMPILING
 file(GLOB SHADERS src/shaders/*)
@@ -190,7 +188,7 @@ add_executable(cu_engine ${ENGINE} src/asm_win32/cparser_win32.asm)
 target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
 set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
 
-add_library(game MODULE ${GAME} src/asm_win32/cparser_win32.asm)
+add_library(game MODULE ${GAME})
 target_link_libraries(game cu_std ${PLATFORM_LIBS})
 
 string(TIMESTAMP VERSION "%Y_%m_%d_%H_%M_%S")
