@@ -32,3 +32,4 @@ script:
   - cd Make
   - cmake -DBUILD_STEP=OFF ..
   - make
+  - ls ../include/meta
