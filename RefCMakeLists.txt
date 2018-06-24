@@ -102,8 +102,6 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 #BUILD STEP
 
-if(BUILD_STEP)
-
 get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 
 
@@ -136,6 +134,8 @@ COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.
 COMMAND cparser engine.i game.i -component ../include/meta/gamecomp_meta.h -meta ../include/meta/meta.h
 
 )
+
+if(BUILD_STEP)
 
 #SHADER COMPILING
 file(GLOB SHADERS src/shaders/*)
