@@ -62,7 +62,12 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 #include "function_refl.h"
 #include "meta.h"
 
+void T(u32 a,u32 b) {
+	
+}
+
 s32 main(s32 argc,s8** argv){
+
     
 #ifndef _WIN32
     
@@ -88,6 +93,17 @@ s32 main(s32 argc,s8** argv){
     }
     
     return 0;
+
+#else
+
+	u64 arr[] = { 1,2,3,4 };
+
+	u64 a = 0;
+	f64 b = 0;
+
+	void* c = TestFunction;
+
+	InternalFillArgsAndCall(c, arr, &a, &b);
     
 #endif
     

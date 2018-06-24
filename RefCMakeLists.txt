@@ -171,9 +171,10 @@ endif()
 
 
 #for these we do not want to have stdc++
-add_executable(cu_engine ${ENGINE})
 
 if(UNIX)
+
+  add_executable(cu_engine ${ENGINE})
   
   add_library(game SHARED ${GAME})
   set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
@@ -182,6 +183,8 @@ if(UNIX)
   set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
   
 else(UNIX)
+
+add_executable(cu_engine ${ENGINE} src/asm_win32/cparser_win32.asm)
 
 target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
 set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
