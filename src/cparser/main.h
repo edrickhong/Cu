@@ -1188,48 +1188,6 @@ return 0;
     return MetaGetFunctionByNameHash(PHashString(name));
 }
 
-
-struct Registers{
-    
-        u32 int_reg_count;
-        u32 float_reg_count;
-        
-        union{
-        
-            struct{
-            
-                u64 RDI;
-                u64 RSI;
-                u64 RDX;
-                u64 RCX;
-                u64 R8;
-                u64 R9;
-                
-            };
-            
-            u64 int_reg_array[6];
-            
-        };
-        
-        union{
-        
-            struct{
-                double XMM0;
-                double XMM1;
-                double XMM2;
-                double XMM3;
-                double XMM4;
-                double XMM5;
-                double XMM6;
-                double XMM7;
-            };
-            
-            u64 float_reg_array[8];
-        };
-        
-        
-    };
-
 #ifdef _WIN32
 
 /*
@@ -1269,6 +1227,41 @@ __asm__ volatile (
 TODO: collect the floating point return as well
 
 */
+
+struct Registers{
+    
+        u32 int_reg_count;
+        u32 float_reg_count;
+        
+        union{
+        
+            struct{
+            
+                u64 RDI;
+                u64 RSI;
+                u64 RDX;
+                u64 RCX;
+                
+            };
+            
+            u64 int_reg_array[4];
+            
+        };
+        
+        union{
+        
+            struct{
+                double XMM0;
+                double XMM1;
+                double XMM2;
+                double XMM3;
+            };
+            
+            u64 float_reg_array[4];
+        };
+        
+        
+    };
     
     Registers registers = {};
     
@@ -1292,26 +1285,24 @@ TODO: collect the floating point return as well
     
 #ifdef _WIN32
 
+f64 fret_value = 0;
+
+InternalFillArgsAndCall(function->function_call,value_array,&ret_value,&fret_value);
+
 #else   
     __asm__ volatile (
         "mov %[a1],%%rdi\n"
         "mov %[a2],%%rsi\n"
         "mov %[a3],%%rdx\n"
         "mov %[a4],%%rcx\n"
-        "mov %[a5],%%r8\n"
-        "mov %[a6],%%r9\n"
         
         "mov %[a7],%%xmm0\n"
         "mov %[a8],%%xmm1\n"
         "mov %[a9],%%xmm2\n"
         "mov %[a10],%%xmm3\n"
-        "mov %[a11],%%xmm4\n"
-        "mov %[a12],%%xmm5\n"
-        "mov %[a13],%%xmm6\n"
-        "mov %[a14],%%xmm7\n"
         
         "callq *%[c]\n"
-        "mov %%rax,%[r]\n":[r] "=g"(ret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI), [a3] "g" (registers.RDX), [a4] "g" (registers.RCX), [a5] "g" (registers.R8), [a6] "g" (registers.R9), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [a11] "g" (registers.XMM4), [a12] "g" (registers.XMM5), [a13] "g" (registers.XMM6), [a14] "g" (registers.XMM7), [c] "g" (function->function_call)
+        "mov %%rax,%[r]\n":[r] "=g"(ret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI), [a3] "g" (registers.RDX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
         );
 
 #endif

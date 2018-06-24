@@ -62,25 +62,31 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 #include "function_refl.h"
 #include "meta.h"
 
-void T(u32 a,u32 b) {
-	
+void K(u32 h, f32 g) {
+
+	printf("%d %f\n", h, g);
+}
+
+void T(void* call,u64* v,u64* i,f64* k) {
+
+	((void(*)(u32, u32))call)(v[0],v[1]);
 }
 
 s32 main(s32 argc,s8** argv){
 
-    
-#ifndef _WIN32
-    
-    {
-        u64 values[] = {5,2};
-        
-        printf("%d\n",(u32)MetaCallFunction("TestFunction",values));
-    }
+
+	//FOO(1,2.1,4,3.2);
+ //   
+ //   {
+ //       u64 values[] = {5,2};
+ //       
+ //       printf("%d\n",(u32)MetaCallFunction("TestFunction",values));
+ //   }
     
     {
         
         u64 values[4] = {};
-        f32 a = 4.0f;
+        f64 a = 4.0f;
         
         values[0] = 2;
         values[2] = 8;
@@ -91,21 +97,7 @@ s32 main(s32 argc,s8** argv){
         MetaCallFunction("FOO",values);
         
     }
-    
-    return 0;
 
-#else
-
-	u64 arr[] = { 1,2,3,4 };
-
-	u64 a = 0;
-	f64 b = 0;
-
-	void* c = TestFunction;
-
-	InternalFillArgsAndCall(c, arr, &a, &b);
-    
-#endif
     
 #if  0
     
