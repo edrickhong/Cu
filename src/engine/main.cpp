@@ -63,30 +63,30 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 #include "meta.h"
 
 void K(u32 h, f32 g) {
-
-	printf("%d %f\n", h, g);
+    
+    printf("%d %f\n", h, g);
 }
 
 void T(void* call,u64* v,u64* i,f64* k) {
-
-	((void(*)(u32, u32))call)(v[0],v[1]);
+    
+    ((void(*)(u32, u32))call)(v[0],v[1]);
 }
 
 s32 main(s32 argc,s8** argv){
-
-
-	//FOO(1,2.1,4,3.2);
- //   
- //   {
- //       u64 values[] = {5,2};
- //       
- //       printf("%d\n",(u32)MetaCallFunction("TestFunction",values));
- //   }
+    
+    
+    //FOO(1,2.1,4,3.2);
+    //   
+    //   {
+    //       u64 values[] = {5,2};
+    //       
+    //       printf("%d\n",(u32)MetaCallFunction("TestFunction",values));
+    //   }
     
     {
         
         u64 values[4] = {};
-        f64 a = 4.0f;
+        f32 a = 4.0f;
         
         values[0] = 2;
         values[2] = 8;
@@ -97,7 +97,7 @@ s32 main(s32 argc,s8** argv){
         MetaCallFunction("FOO",values);
         
     }
-
+    
     
 #if  0
     

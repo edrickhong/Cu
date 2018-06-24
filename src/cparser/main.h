@@ -1229,7 +1229,7 @@ TODO: collect the floating point return as well
 */
 
 struct Registers{
-    
+
         u32 int_reg_count;
         u32 float_reg_count;
         
@@ -1295,18 +1295,17 @@ InternalFillArgsAndCall(function->function_call,value_array,&ret_value,&fret_val
         "mov %[a2],%%rsi\n"
         "mov %[a3],%%rdx\n"
         "mov %[a4],%%rcx\n"
-        
         "mov %[a7],%%xmm0\n"
         "mov %[a8],%%xmm1\n"
         "mov %[a9],%%xmm2\n"
         "mov %[a10],%%xmm3\n"
         
         "callq *%[c]\n"
-        "mov %%rax,%[r]\n":[r] "=g"(ret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI), [a3] "g" (registers.RDX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
+        "mov %%rax,%[r]\n":[r] "=g"(ret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
         );
-
-#endif
         
+#endif
+
     return ret_value;
     
 }
