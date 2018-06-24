@@ -558,9 +558,9 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
                 if(IsIntType(ctype)){
                     int_count++;
                     
-                    if(int_count > 6){
+                    if(int_count > 4){
                         
-                        printf("Error: Int arguments exceed the limit of 6\n");
+                        printf("Error: Int arguments exceed the limit of 4\n");
                         
                         memset(f,0,sizeof(GenericFunction));
                         (*function_count)--;
@@ -571,9 +571,9 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
                 if(IsFloatType(ctype)){
                     float_count++;
                     
-                    if(float_count > 8){
+                    if(float_count > 4){
                         
-                        printf("Error: Float arguments exceed the limit of 8\n");
+                        printf("Error: Float arguments exceed the limit of 4\n");
                         
                         memset(f,0,sizeof(GenericFunction));
                         (*function_count)--;

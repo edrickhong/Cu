@@ -11,62 +11,64 @@ _DATA ENDS
 	;; void* call,u64* values,u64* iret,f64* fret
 	;; RCX, RDX, R8, R9
 	;; XMM0, XMM1, XMM2, XMM3
-	;; rax rsi rdi r10 r11 r12 r13 r14 r15
-
-	;; rbx rdi rdsi :: r12 r13 r14
+	
+	;; RAX, |RCX, RDX, R8, R9|, R10, R11 are considered volatile
 	
 	InternalFillArgsAndCall PROC
 
-	push rbx
-	push rdi
-	push rsi
-	push r12
-
-	push r13
-	push r14
-	push rax
-	push rcx
+	mov qword ptr [rsp + 20h] , r9	;fret
+	mov qword ptr [rsp + 18h] , r8	;iret
+	mov qword ptr [rsp + 10h] , rdx ;values
+	mov qword ptr [rsp + 8h] , rcx ;call
 	
-	mov rax,rcx 		;call
-	mov rsi,rdx		;values
-	mov rdi,r8		;iret
-	mov rbx,r9		;fret
+	sub rsp,20h
 
-	;; fill registers
+	;; load values
+	mov rax,rdx
 
-	mov rcx,[rsi]
-	mov rdx,[rsi + 8]
-	mov r8,[rsi + 16]
-	mov r9,[rsi + 24]
+	mov qword ptr rcx,[rax]
+	mov qword ptr r8,[rax + 10h]
 
-	mov r11,[rsi + 8]
-	mov r12,[rsi + 8]
-	mov r13,[rsi + 16]
-	mov r14,[rsi + 24]
+	mov qword ptr r10,[rax + 8h]
+	mov qword ptr r11,[rax + 18h]
 
-	movd xmm0,r11
-	movd xmm1,r12
-	movd xmm2,r13
-	movd xmm3,r14
+	movq xmm1,r10
+	movq xmm3,r11
 	
-	call rax
+	;; mov qword ptr rcx,[rax]
+	;; mov qword ptr rdx,[rax + 8h]
+	;; mov qword ptr r8,[rax + 10h]
+	;; mov qword ptr r9,[rax + 18h]
+
+	;; mov qword ptr r10,[rax + 20h]
+	;; mov qword ptr r11,[rax + 28h]
+
+	;; TODO:this can't work. when faced with mixed args msvc does
+	;; rcx xmm1 r8 xmm3
+
 	
+	;; movq xmm0,r10
+	;; movq xmm1,r11
 
-	mov [rdi],rax
+	;; mov qword ptr r10,[rax + 30h]
+	;; mov qword ptr r11,[rax + 38h]
 
-	movd r11,xmm0
-	mov [rbx],r11
+	;; movq xmm2,r10
+	;; movq xmm3,r11
 
-	pop rcx
-	pop rax
-	pop r14
-	pop r13
+	mov qword ptr r10,[rsp + 28h]
+	call r10
 
+	
+	add rsp,20h
 
-	pop r12
-	pop rsi
-	pop rdi
-	pop rbx
+	;; write the return values
+	mov qword ptr r8,[rsp + 18h]
+	mov qword ptr r9,[rsp + 20h]
+
+	mov qword ptr [r8],rax
+	movq r8,xmm0
+	mov qword ptr [r9],r8
 	
 	ret
 
