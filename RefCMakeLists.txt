@@ -133,6 +133,8 @@ COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.
 
 COMMAND cparser engine.i game.i -component ../include/meta/gamecomp_meta.h -meta ../include/meta/meta.h
 
+COMMAND ls ../include/meta/ -a
+
 )
 
 if(BUILD_STEP)
