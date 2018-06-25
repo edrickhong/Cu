@@ -71,7 +71,7 @@ include_directories(
   "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
   "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
   "${CMAKE_BINARY_DIR}/../include"
-"${CMAKE_BINARY_DIR}/../include/meta"
+  "${CMAKE_BINARY_DIR}/../include/meta"
   "${CMAKE_BINARY_DIR}/../src/engine"
   ${PLATFORM_INCLUDES}
   "${CMAKE_BINARY_DIR}/../src/game"
@@ -133,8 +133,6 @@ COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.
 
 COMMAND cparser engine.i game.i -component ../include/meta/gamecomp_meta.h -meta ../include/meta/meta.h
 
-COMMAND ls ../include/meta/ -a
-
 )
 
 if(BUILD_STEP)
@@ -165,6 +163,14 @@ COMMAND glslparser -DUSE_SKEL ../src/shaders/model.vert ../rsrc/shaders/model_sk
 COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.spv
 COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui_tex.frag.spv
 
+)
+
+else()
+
+add_custom_command(TARGET CJOBS POST_BUILD
+COMMAND echo Setting permissions
+COMMAND chmod u+wrx ../include/meta/gamecomp_meta.h
+COMMAND chmod u+wrx ../include/meta/meta.h
 )
 
 
