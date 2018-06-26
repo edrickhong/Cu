@@ -254,3 +254,29 @@ void DebugFree(void* ptr){
     DebugRemoveMalloc(ptr);
     free(ptr);
 }
+
+
+void* DebugRealloc(void* old_ptr,size_t size,const s8* file,const s8* function,u32 line){
+    
+    for(u32 i = 0; i < alloc_context->malloc_count; i++){
+        
+        auto entry = &alloc_context->malloc_array[i];
+        
+        if(entry->ptr == old_ptr){
+            
+            auto ptr = realloc(old_ptr,size);
+            
+            entry->ptr = ptr;
+            entry->tid = TGetThisThreadID();
+            entry->size = size;
+            entry->file = file;
+            entry->function = function;
+            entry->line = line;
+            
+            return ptr;
+        }
+        
+    }
+    
+    return 0;
+}

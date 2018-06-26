@@ -20,7 +20,14 @@ void ResetTAlloc();
 
 #define alloc(size) DebugMalloc(size,__FILE__,__FUNCTION__,__LINE__)
 
+#define ralloc(ptr,size) DebugRealloc(ptr,size,__FILE__,__FUNCTION__,__LINE__)
+
+#define unalloc(ptr) DebugFree(ptr)
+
 void* DebugMalloc(size_t size,const s8* file,const s8* function,u32 line);
+
+void* DebugRealloc(void* old_ptr,size_t size,const s8* file,const s8* function,u32 line);
+
 void DebugFree(void* ptr);
 
 u32 DebugDumpTotalMallocSize();
@@ -165,11 +172,22 @@ void memset(DebugAllocedPtr<T> dst,int c,u32 size){
     memset(dst.ptr,c,size);
 }
 
-
+//this region debug: bounds checking
 #define TAlloc(type,count) MakeDebugPtr<type>(sizeof(type) * (count),(s8*)__FILE__,(s8*)__FUNCTION__,__LINE__)
 
 
-#else
+#else  //here debug:no bounds checking 
+
+#define TAlloc(type,count) (type*)DebugTAlloc(sizeof(type) * (count),__FILE__,__FUNCTION__,__LINE__)
+
+#endif
+
+#else // here not debug
+
+#define TAlloc(type,count) (type*)TAlloc(sizeof(type) * (count))
+
+
+#define DEBUGPTR(type) type*
 
 void* _ainline alloc(ptrsize size){
     
@@ -180,16 +198,9 @@ void* _ainline alloc(ptrsize size){
     return ptr;
 }
 
-#define TAlloc(type,count) (type*)DebugTAlloc(sizeof(type) * (count),__FILE__,__FUNCTION__,__LINE__)
+#define ralloc(ptr,size) realloc(ptr,size)
 
-#endif
-
-#else
-
-#define TAlloc(type,count) (type*)TAlloc(sizeof(type) * (count))
-
-
-#define DEBUGPTR(type) type*
+#define unalloc(ptr) free(ptr)
 
 #endif
 
@@ -198,16 +209,3 @@ struct AAllocatorContext;
 
 AAllocatorContext* GetAAllocatorContext();
 void SetAAllocatorContext(AAllocatorContext* context);
-
-void _ainline unalloc(void* ptr){
-    
-#if _debug
-    
-    DebugFree(ptr);
-    
-#else
-    
-    free(ptr);
-    
-#endif
-}
