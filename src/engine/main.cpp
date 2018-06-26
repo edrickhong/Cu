@@ -67,49 +67,8 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 
 #endif
 
-void K(u32 h, f32 g) {
-    
-    printf("%d %f\n", h, g);
-}
-
-void T(void* call,u64* v,u64* i,f64* k) {
-    
-    ((void(*)(u32, u32))call)(v[0],v[1]);
-}
-
 s32 main(s32 argc,s8** argv){
     
-    
-    //FOO(1,2.1,4,3.2);
-    //   
-    //   {
-    //       u64 values[] = {5,2};
-    //       
-    //       printf("%d\n",(u32)MetaCallFunction("TestFunction",values));
-    //   }
-    
-    {
-        
-        u64 values[4] = {};
-        f32 a = 4.0f;
-        
-        values[0] = 2;
-        values[2] = 8;
-        
-        {
-            //FIXME: for some reason ,we crash when we only write the bottom 32 bits
-            auto a = (f32*)&values[1];
-            auto b = (f32*)&values[3];
-            
-            *a = 1.0f;
-            *b = 4.0f;
-            
-            
-        }
-        
-        MetaCallFunction("FOO",values);
-        
-    }
     
     
 #if  0

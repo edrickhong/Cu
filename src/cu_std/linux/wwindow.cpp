@@ -153,18 +153,31 @@ _persist u32 (*impl_wwaitforevent)(WWindowContext*,WWindowEvent*) = 0;
 _persist void (*impl_wsettitle)(WWindowContext*,const s8*) = 0;
 
 
+const struct wl_interface wl_registry_interface = {};
+_persist wl_compositor* compositor = 0;
+
 void global_registry_handler(void *data, struct wl_registry *registry, uint32_t id,
                              const char *interface, uint32_t version){
     
     
-    //    printf("Got a registry event for %s id %d\n", interface, id);
-    //    
-    //    
-    //    if (strcmp(interface, "wl_compositor") == 0)
-    //        auto compositor = wl_registry_bind(registry, 
-    //                                           id, 
-    //                                           LGetLibFunction(wwindowlib_handle,"wl_compositor_interface"), 
-    //                                           1);
+    printf("Got a registry event for %s id %d\n", interface, id);
+    
+    if (strcmp(interface, "wl_compositor") == 0){
+        
+        {
+            
+            auto wl_proxy_marshal_constructor_versioned_ptr =
+                (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor_versioned");
+            
+            wl_proxy* k;
+            
+            k= wl_proxy_marshal_constructor_versioned_ptr((wl_proxy*)registry,
+                                                          WL_REGISTRY_BIND,&wl_registry_interface,1,id,wl_registry_interface.name,version,0);
+            
+            compositor = (wl_compositor*)k;
+        }
+    }
+    
 }
 
 void global_registry_remover(void *data, struct wl_registry *registry, uint32_t id){
@@ -184,6 +197,9 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     auto wl_display_connect_fptr =
         (wl_display* (*)(const s8*))LGetLibFunction(wwindowlib_handle,"wl_display_connect");
     
+    auto wl_display_dispatch_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_dispatch");
+    auto wl_display_roundtrip_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_roundtrip");
+    
     
     context->type = _WAYLAND_WINDOW;
     context->width = width;
@@ -202,27 +218,35 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     
     //TODO: do whatever that needs to be done to open a wayland window
     
-# if 0
-    
-    auto registry = wl_display_get_registry(context->wayland_handle);
+    wl_proxy* registry;
+    {
+        
+        auto wl_proxy_marshal_constructor_ptr =
+            (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
+        
+        registry = wl_proxy_marshal_constructor_ptr((struct wl_proxy *) context->wayland_handle,
+                                                    WL_DISPLAY_GET_REGISTRY,&wl_registry_interface,0);
+        
+        _kill("Failed to get a wayland registry\n",!registry);
+    }
     
     wl_registry_listener registry_listener = {
         global_registry_handler,
         global_registry_remover
     };
     
-    internal_wl_registry_add_listener(registry,&registry_listener,0);
+    //add listener
+    {
+        auto wl_proxy_add_listener_fptr = 
+            (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
+        
+        wl_proxy_add_listener_fptr((wl_proxy*)registry,(void (**)(void))&registry_listener,0);
+    }
     
-    _kill("Failed to get a wayland registry\n",!registry);
+    wl_display_dispatch_fptr(context->wayland_handle);
+    wl_display_roundtrip_fptr(context->wayland_handle);
     
-    wl_registry_add_listener_ftpr(registry,&registry_listener,0);
-    
-    wl_display_dispatch(context->wayland_handle);
-    wl_display_roundtrip(context->wayland_handle);
-    
-    _kill("Failed to bind wayland protocols\n",!compositor || !shell || !seat);
-    
-#endif
+    exit(0);
     
     return true;
 }
