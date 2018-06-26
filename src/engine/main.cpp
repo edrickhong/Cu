@@ -258,7 +258,6 @@ s32 main(s32 argc,s8** argv){
         pdata->main_sem = TCreateSemaphore();
         
         auto info = TAlloc(Threadinfo,1);
-        memset(info,sizeof(Threadinfo),0);
         
         info->this_sem = pdata->worker_sem;
         info->main_sem = pdata->main_sem;

@@ -57,8 +57,7 @@ TThreadContext  TCreateThread(s64(*call_fptr)(void*),u32 stack_size,void* args){
     
     _kill("failed to set stack size\n",err != 0);
     
-    err = pthread_create(&context.handle,&attr,(void *(*)(void *))
-                         call_fptr,args);
+    err = pthread_create(&context.handle,&attr,(void*(*)(void*))call_fptr,args);
     
     pthread_attr_destroy(&attr);
     
