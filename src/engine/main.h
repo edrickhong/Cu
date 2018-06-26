@@ -876,7 +876,7 @@ u32 _ainline GenRenderKey(u64 val1){
     return (u32)t;
 }
 
-s32 ThreadProc(void* args){
+s64 ThreadProc(void* args){
     
     RECORDTHREAD();
     
