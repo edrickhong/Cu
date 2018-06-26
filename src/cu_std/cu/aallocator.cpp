@@ -184,6 +184,8 @@ void* TAlloc(u32 size){
     
     _kill("no more frame stack space\n",((s8*)ptr - alloc_context->frame_ptr) > alloc_context->maxframe_count);
     
+    memset(ptr,0,aligned_size);
+    
     return ptr;
 }
 
@@ -192,8 +194,6 @@ void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line){
     auto ptr = TAlloc(size);
     
     auto aligned_size = _align16(size);
-    
-    memset(ptr,(s8)-1,aligned_size);
     
     DebugSubmitTAlloc(ptr,aligned_size,file,function,line);
     
@@ -211,7 +211,6 @@ void InitInternalAllocator(){
     _kill("already allocated\n",alloc_context);
     
     alloc_context = (AAllocatorContext*)alloc(sizeof(AAllocatorContext));
-    memset(alloc_context,0,sizeof(AAllocatorContext));
 }
 
 void ResetTAlloc(){
