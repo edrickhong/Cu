@@ -3,7 +3,7 @@
 #include "aallocator.h"
 
 struct InternalArgs{
-    s32 (*threadproc)(void*);
+    s64 (*threadproc)(void*);
     void* args;
 };
 
