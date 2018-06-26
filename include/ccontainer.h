@@ -30,7 +30,7 @@
         count ++;								\
         if(count > reserve_count){					\
             reserve_count += _growcount;					\
-            container = (type*)ralloc(container,reserve_count * sizeof(type)); \
+            container = (type*)realloc(container,reserve_count * sizeof(type)); \
         }									\
         container[count -1] = element;					\
     }									\
@@ -82,7 +82,7 @@
         count++;								\
         if(count > reserve_count){					\
             reserve_count += _growcount;					\
-            container = (type*)ralloc(container,reserve_count * sizeof(type)); \
+            container = (type*)realloc(container,reserve_count * sizeof(type)); \
         }									\
         for(ptrsize i = count; i != 0; i--){				\
             container[i] = container[i -1];					\
@@ -94,7 +94,7 @@
     }									\
     void Fit(){						\
         reserve_count = ((count/10) * 10) + _growcount;			\
-        container = (type*)ralloc(container,reserve_count * sizeof(type)); \
+        container = (type*)realloc(container,reserve_count * sizeof(type)); \
     }									\
 }									\
 
@@ -136,7 +136,7 @@ struct BufferRegion{
         
         if(count > reserve_count){
             reserve_count += (count - reserve_count) + _growcount;
-            container = (s8*)ralloc(container,reserve_count);
+            container = (s8*)realloc(container,reserve_count);
         }
         
         memcpy(container + offset,data,size);
@@ -151,7 +151,7 @@ struct BufferRegion{
     
     void Fit(){
         reserve_count = ((count/10) * 10) + _growcount;
-        container = (s8*)ralloc(container,reserve_count); 
+        container = (s8*)realloc(container,reserve_count); 
     }
     
     void Destroy(){
