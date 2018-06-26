@@ -8,6 +8,7 @@
 
 #include "wayland-client.h"
 
+
 #define _X11_WINDOW 1
 #define _WAYLAND_WINDOW 2
 

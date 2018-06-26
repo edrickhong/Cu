@@ -153,6 +153,26 @@ _persist u32 (*impl_wwaitforevent)(WWindowContext*,WWindowEvent*) = 0;
 _persist void (*impl_wsettitle)(WWindowContext*,const s8*) = 0;
 
 
+void global_registry_handler(void *data, struct wl_registry *registry, uint32_t id,
+                             const char *interface, uint32_t version){
+    
+    
+    //    printf("Got a registry event for %s id %d\n", interface, id);
+    //    
+    //    
+    //    if (strcmp(interface, "wl_compositor") == 0)
+    //        auto compositor = wl_registry_bind(registry, 
+    //                                           id, 
+    //                                           LGetLibFunction(wwindowlib_handle,"wl_compositor_interface"), 
+    //                                           1);
+}
+
+void global_registry_remover(void *data, struct wl_registry *registry, uint32_t id){
+    
+    //    printf("Got a registry losing event for %d\n", id);
+}
+
+
 logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
                                   WCreateFlags flags,u32 x,u32 y,u32 width,u32 height){
     
@@ -163,6 +183,7 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     //get all the functions needed for init
     auto wl_display_connect_fptr =
         (wl_display* (*)(const s8*))LGetLibFunction(wwindowlib_handle,"wl_display_connect");
+    
     
     context->type = _WAYLAND_WINDOW;
     context->width = width;
@@ -177,7 +198,31 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
         return false;
     }
     
+    
+    
     //TODO: do whatever that needs to be done to open a wayland window
+    
+# if 0
+    
+    auto registry = wl_display_get_registry(context->wayland_handle);
+    
+    wl_registry_listener registry_listener = {
+        global_registry_handler,
+        global_registry_remover
+    };
+    
+    internal_wl_registry_add_listener(registry,&registry_listener,0);
+    
+    _kill("Failed to get a wayland registry\n",!registry);
+    
+    wl_registry_add_listener_ftpr(registry,&registry_listener,0);
+    
+    wl_display_dispatch(context->wayland_handle);
+    wl_display_roundtrip(context->wayland_handle);
+    
+    _kill("Failed to bind wayland protocols\n",!compositor || !shell || !seat);
+    
+#endif
     
     return true;
 }
@@ -525,11 +570,11 @@ WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 
         }
     }
     
-#if (_disable_wayland_path)
+    //#if (_disable_wayland_path)
     
-    wayland_enabled = false;
+    //wayland_enabled = false;
     
-#endif
+    //#endif
     
     logic res = false;
     
