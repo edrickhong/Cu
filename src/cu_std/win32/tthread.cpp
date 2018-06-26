@@ -18,7 +18,7 @@ DWORD WINAPI InternalThreadProc(void* args){
     return 0;
 }
 
-TThreadContext TCreateThread(s32 (*call_fptr)(void*),u32 stack_size,void* args){
+TThreadContext TCreateThread(s64 (*call_fptr)(void*),u32 stack_size,void* args){
     
     auto intargs = (InternalArgs*)alloc(sizeof(InternalArgs));
     *intargs = {call_fptr,args};

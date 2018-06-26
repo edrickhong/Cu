@@ -10,7 +10,7 @@ struct TThreadContext{
 
 typedef sem_t* TSemaphore;
 
-TThreadContext TCreateThread(s32(*call_fptr)(void*),u32 stack_size,void* args);
+TThreadContext TCreateThread(s64(*call_fptr)(void*),u32 stack_size,void* args);
 
 TSemaphore TCreateSemaphore(u32 value = 0);
 
