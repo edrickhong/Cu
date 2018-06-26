@@ -46,6 +46,8 @@ TODO:
 light
 add a color picker
 separate sampler and texture
+
+FIXME: models is black when just added it. we do not set the material add at time
 */
 
 
@@ -280,6 +282,7 @@ void KeyboardInput(SceneContext* context){
 
 #define _enable_read_log 0
 
+
 void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     if(!FIsFileExists(_COMPFILE)){
@@ -304,7 +307,16 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         u32 comp_count;
         u32 field_count;
         
-        FRead(file,&comp_hash,sizeof(comp_hash));
+        {
+            s8 buffer[128] = {};
+            
+            FRead(file,(void*)&buffer[0],sizeof(buffer));
+            
+            comp_hash = PHashString(buffer);
+        }
+        
+        
+        
         FRead(file,&comp_count,sizeof(comp_count));
         FRead(file,&field_count,sizeof(field_count));
         
@@ -344,15 +356,34 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
             for(u32 k = 0; k < field_count; k++){
                 
                 u32 type_hash;
+                
+                {
+                    s8 buffer[128] = {};
+                    
+                    FRead(file,(void*)&buffer[0],sizeof(buffer));
+                    
+                    type_hash = PHashString(buffer);
+                }
+                
+                
                 u32 type_size;
-                u32 name_hash;
-                u32 arraycount;
-                
-                
-                FRead(file,&type_hash,sizeof(type_hash));
                 FRead(file,&type_size,sizeof(type_size));
-                FRead(file,&name_hash,sizeof(name_hash));
+                
+                u32 name_hash;
+                
+                {
+                    s8 buffer[128] = {};
+                    
+                    FRead(file,(void*)&buffer[0],sizeof(buffer));
+                    
+                    name_hash = PHashString(buffer);
+                }
+                
+                
+                u32 arraycount;
                 FRead(file,&arraycount,sizeof(arraycount));
+                
+                
                 
 #if _enable_read_log
                 
@@ -473,7 +504,6 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
     
     FCloseFile(file);
 }
-
 
 typedef u64 AudioToken;
 
@@ -655,7 +685,6 @@ u32 GetNumberOfUsedComponents(){
 extern "C" {
     
     
-    //FIXME: for some reason we are writing the spotlight when there aren't any
     _dllexport void GameComponentWrite(void* context){
         
         
@@ -698,8 +727,9 @@ extern "C" {
                 continue;
             }
             
-            //comp name hash
-            FWrite(outfile,&out_comp.comp_name_hash,sizeof(out_comp.comp_name_hash));
+            //comp name string
+            
+            FWrite(outfile,(void*)&out_comp.comp_name_string[0],sizeof(MetaDataStructEntry::comp_name_string));
             
             //comp count
             FWrite(outfile,out_comp.count,sizeof(u32));
@@ -718,13 +748,14 @@ extern "C" {
                     
                     auto entry = &out_comp.metadata_table[k];
                     
-                    //type hash
-                    FWrite(outfile,&entry->type_hash,sizeof(entry->type_hash));
+                    //type string
+                    FWrite(outfile,(void*)&entry->type_string[0],sizeof(entry->type_string));
+                    
                     //size
                     FWrite(outfile,&entry->size,sizeof(entry->size));
                     
-                    //name hash
-                    FWrite(outfile,&entry->name_hash,sizeof(entry->name_hash));	
+                    //name string
+                    FWrite(outfile,(void*)&entry->name_string[0],sizeof(entry->name_string));
                     
                     //array count
                     FWrite(outfile,&entry->arraycount,sizeof(entry->arraycount));
@@ -808,9 +839,9 @@ extern "C" {
             
         }
         
-        
         FCloseFile(outfile);
     }
+    
     
     _dllexport void GameInit(GameInitData* initdata){
         
@@ -847,6 +878,8 @@ extern "C" {
         
         data->ambient_color = White;
         data->ambient_intensity = 0.4f;
+        
+        initdata->context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
         
         memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
         
@@ -892,6 +925,7 @@ extern "C" {
         
         data->components = alloc(sizeof(ComponentStruct));
         
+        //MARK: why is this here?
         data->roty = 0.0f;
         
         ComponentRead((ComponentStruct*)data->components,reloaddata->context);

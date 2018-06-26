@@ -1264,11 +1264,11 @@ struct Registers{
     };
     
     Registers registers = {};
-
+    
 #ifdef _WIN32
 
 for(u32 i = 0; i < function->args_count;i++){
-    
+
         auto a = &function->args_array[i];
         auto v = value_array[i];
         
@@ -1280,11 +1280,11 @@ for(u32 i = 0; i < function->args_count;i++){
             registers.float_reg_array[i] = v;
         }
     }
-
+    
 #else
 
 for(u32 i = 0; i < function->args_count;i++){
-    
+
         auto a = &function->args_array[i];
         auto v = value_array[i];
         
@@ -1298,9 +1298,9 @@ for(u32 i = 0; i < function->args_count;i++){
             registers.float_reg_count++;
         }
     }
-
-#endif
     
+#endif
+
     u64 ret_value = 0;
     f64 fret_value = 0;
     

@@ -168,7 +168,7 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     pdata->window = WCreateVulkanWindow("Cu",W_CREATE_NORESIZE,100,100,1280,720);
     
