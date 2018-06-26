@@ -165,14 +165,6 @@ COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui
 
 )
 
-else()
-
-add_custom_command(TARGET CJOBS POST_BUILD
-COMMAND echo Setting permissions
-COMMAND chmod u+wrx ../include/meta/gamecomp_meta.h
-COMMAND chmod u+wrx ../include/meta/meta.h
-)
-
 
 endif()
 

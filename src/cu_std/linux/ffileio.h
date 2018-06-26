@@ -38,7 +38,13 @@ struct FileInfo{
 
 FileHandle _ainline FOpenFile(const s8* filepath,u32 flags){
     
-    FileHandle filehandle = open(filepath,flags);
+    /*
+    http://man7.org/linux/man-pages/man2/open.2.html
+    
+    The last arg gives the owner read write and execute permissions
+*/
+    
+    FileHandle filehandle = open(filepath,flags,S_IRWXU);
     
     return filehandle;
 }
