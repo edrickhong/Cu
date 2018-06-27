@@ -34,6 +34,8 @@ long _ainline LockedSub(u32* value1,u32 value2){
 
 #define LockedCmpXchg(ptr,oldval,newval) InterlockedCompareExchange(ptr,newval,oldval)
 
+#define LockedCmpXchg64(ptr,oldval,newval) InterlockedCompareExchange64 (ptr,newval,oldval)
+
 u32 _ainline BSF(u32 r){
     u32 res;
     _BitScanForward((DWORD*)&res,r);
@@ -57,6 +59,8 @@ u32 _ainline BSR(u32 r){
 
 
 #define LockedCmpXchg(ptr,oldval,newval) __sync_val_compare_and_swap (ptr,oldval,newval)
+
+#define LockedCmpXchg64(ptr,oldval,newval) __sync_val_compare_and_swap (ptr,oldval,newval)
 
 #define BSR(r)  __builtin_clz (r)
 

@@ -54,12 +54,6 @@ FileHandle _ainline FOpenFile(const s8* filepath,u32 flags){
     return filehandle;
 }
 
-FileHandle _ainline FOpenFileDebug(const s8* filepath,u32 flags){
-    auto filehandle = FOpenFile(filepath,flags);
-    _kill("Invalid file\n", filehandle == F_FILE_INVALID);
-    return filehandle;
-}
-
 void _ainline FCloseFile(FileHandle filehandle){
     CloseHandle(filehandle);
 }
@@ -110,7 +104,7 @@ u32 FFindNextFile(DirectoryHandle* dirhandle,FileInfo* info);
 
 logic FFileChanged(const s8* file,FileNode* node);
 
-#if _debug && 0
+#if _debug
 
 FileHandle DebugFOpenFile(const s8* filepath,u32 flags,s8* file,s8* function,u32 line);
 
@@ -124,4 +118,3 @@ void DebugDumpOpenFiles();
 
 #endif
 
-#define FOpenFile FOpenFileDebug
