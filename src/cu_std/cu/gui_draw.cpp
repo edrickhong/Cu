@@ -587,7 +587,7 @@ logic GUIMouseClickL(){
 }
 
 logic GUIMouseUnclickL(){
-    return !gui->internal_mouse_curleft & gui->internal_mouse_prevleft;
+    return !(gui->internal_mouse_curleft & gui->internal_mouse_prevleft);
 }
 
 logic GUIMouseDownL(){
@@ -2310,7 +2310,7 @@ logic GUIIsAnyElementActive(){
 
 
 void InternalGUIDrawLine(GUIVec2 a,GUIVec2 b,Color color = White){
-    InternalGUIDrawLine({a.x,a.y,0},{b.x,b.y,0},color);
+    InternalGUIDrawLine(GUIVec3{a.x,a.y,0},GUIVec3{b.x,b.y,0},color);
 }
 
 logic GUITranslateGizmo(GUIVec3* world_pos){
@@ -2508,7 +2508,7 @@ void GUIDrawAxisSphere(Vector3 obj_w,f32 radius,Color c_x,Color c_y,Color c_z){
             
             auto p = Vec3::Normalize(RotateVector(dir,rot_axis));
             
-            points[i][j] = WorldSpaceToClipSpace(p + obj_w,viewproj);
+            points[i][j] = WorldSpaceToClipSpace((p * radius) + obj_w,viewproj);
         }
         
     }

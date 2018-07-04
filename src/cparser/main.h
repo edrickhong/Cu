@@ -1310,19 +1310,19 @@ InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_val
 
 #else   
     __asm__ volatile (
-        "mov %[a1],%%rdi\n"
-        "mov %[a2],%%rsi\n"
-        "mov %[a3],%%rdx\n"
-        "mov %[a4],%%rcx\n"
-        "mov %[a7],%%xmm0\n"
-        "mov %[a8],%%xmm1\n"
-        "mov %[a9],%%xmm2\n"
-        "mov %[a10],%%xmm3\n"
+        "movq %[a1],%%rdi\n"
+        "movq %[a2],%%rsi\n"
+        "movq %[a3],%%rdx\n"
+        "movq %[a4],%%rcx\n"
+        "movq %[a7],%%xmm0\n"
+        "movq %[a8],%%xmm1\n"
+        "movq %[a9],%%xmm2\n"
+        "movq %[a10],%%xmm3\n"
         
         "callq *%[c]\n"
-        "mov %%rax,%[r1]\n"
-        "mov %%xmm0,%%rax\n"
-        "mov %%rax,%[r2]\n":[r1] "=g"(ret_value),[r2] "=g"(fret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
+        "movq %%rax,%[r1]\n"
+        "movq %%xmm0,%%rax\n"
+        "movq %%rax,%[r2]\n":[r1] "=g"(ret_value),[r2] "=g"(fret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
         );
         
 #endif

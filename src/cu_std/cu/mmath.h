@@ -394,11 +394,11 @@ Quaternion MatrixToQuaternion(Matrix4b4 matrix);
 Matrix4b4 WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale);
 
 Quaternion _ainline MQuaternionIdentity(){
-    return {1.0f,0.0f,0.0f,0.0f};
+    return Quaternion{1.0f,0.0f,0.0f,0.0f};
 }
 
 Quaternion _ainline AQuaternionIdentity(){
-    return {0.0f,0.0f,0.0f,0.0f};
+    return Quaternion{0.0f,0.0f,0.0f,0.0f};
 }
 
 void PrintQuaternion(Quaternion quat);
@@ -431,7 +431,7 @@ Vector4 _ainline CastQuaternionToVector(Quaternion quaternion){
 
 Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
     
-    return {matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2),1.0f};
+    return Vector3{matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2),1.0f};
 }
 
 Vector4 _ainline InterpolateVector(Vector4 a,Vector4 b,f32 step){

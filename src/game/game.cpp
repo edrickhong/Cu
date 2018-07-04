@@ -221,7 +221,7 @@ u32 AddObject(SceneContext* context){
     data->orientation.pos_y[id] = pos.y;
     data->orientation.pos_z[id] = pos.z;
     
-    data->orientation.rot[id] = ConstructQuaternion({1,0,0,0},_radians(0));
+    data->orientation.rot[id] = ConstructQuaternion(Vector4{1,0,0,0},_radians(0));
     
     data->orientation.scale[id] = 1.0f;
     
@@ -258,7 +258,7 @@ void KeyboardInput(SceneContext* context){
         
         data->roty += 0.0001f * 100;
         
-        Quaternion rot = ConstructQuaternion({0,1,0,0},data->roty);
+        Quaternion rot = ConstructQuaternion(Vector4{0,1,0,0},data->roty);
         
         Vector4 pos1 = {data->orientation.pos_x[0],data->orientation.pos_y[0],
             data->orientation.pos_z[0],1.0f};
@@ -666,8 +666,6 @@ u32 GetNumberOfUsedComponents(){
     
     u32 count = 0;
     
-    u32 metacount = _arraycount(METACOMP_ARRAY);
-    
     for(u32 i = 0; i < _arraycount(METACOMP_ARRAY); i++){
         
         auto component = &METACOMP_ARRAY[i];
@@ -696,8 +694,6 @@ extern "C" {
         
         auto outfile = FOpenFile(_COMPFILE,F_FLAG_READWRITE |
                                  F_FLAG_TRUNCATE | F_FLAG_CREATE);
-        
-        u32 metacount = _arraycount(METACOMP_ARRAY);
         
         {
             auto count = GetNumberOfUsedComponents();
@@ -1173,13 +1169,13 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         if(fabsf(x_angle) > fabsf(y_angle)){
             
             lookdir = RotateVector(lookdir,
-                                   {0,x_angle});  
+                                   Vector4{0,x_angle});  
         }
         
         else{
             
             auto k = RotateVector(lookdir,
-                                  {y_angle});  
+                                  Vector4{y_angle});  
             
             if((1.0f - Vec3::Dot(k,Vector3{0.0f,-1.0f,0.0f,0.0f})) > 0.01f){
                 lookdir = k;
@@ -1368,7 +1364,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
 
 void EditorGUI(SceneContext* context){
     
-    auto to_update_view = EditorWidget(context,data->obj_id,data->widget_type);
+    EditorWidget(context,data->obj_id,data->widget_type);
     
     //control panel
     
@@ -1464,8 +1460,6 @@ void EditorGUI(SceneContext* context){
         GUIBeginWindow(&title_buffer[0],&data->pos_dirlight,&data->dim_obj_list);
         
         //MARK: if you think about it, directional lights are constant. maybe we should just have a dir light register instead of using AddDirLight that clears every frame
-        
-        auto comp = (ComponentStruct*)data->components;
         
         u32* dir_count = 0;
         DirLight* dir_array = 0;

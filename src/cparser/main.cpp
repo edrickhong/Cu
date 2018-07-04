@@ -7,7 +7,7 @@
   TODO: 
   handle inheritance
   ptr inspection can be implemented in assembly
-
+  
   FIXME:Windows cannot have functions that have printf's for now. Causes a segfault. Will investigate. Migth mean more bugs in implementation 
 */
 
@@ -110,7 +110,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
     if(buffer[cur] == '('){
         
         evaluation_buffer[evaluation_count] =
-        {PHashString("("),"("};
+            EvalChar{PHashString("("),"("};
         
         evaluation_count++;
     }
@@ -118,7 +118,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
     if(buffer[cur] == ')'){
         
         evaluation_buffer[evaluation_count] =
-        {PHashString(")"),")"};
+            EvalChar{PHashString(")"),")"};
         
         evaluation_count++;
         
@@ -127,7 +127,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
     if(buffer[cur] == '*'){
         
         evaluation_buffer[evaluation_count] =
-        {PHashString("*"),"*"};
+            EvalChar{PHashString("*"),"*"};
         
         evaluation_count++;
         
@@ -136,7 +136,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
     if(buffer[cur] == '='){
         
         evaluation_buffer[evaluation_count] =
-        {PHashString("="),"="};
+            EvalChar{PHashString("="),"="};
         
         evaluation_count++;
     }
@@ -148,7 +148,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
             s8 t[2] = {buffer[cur],0};
             
             evaluation_buffer[evaluation_count] =
-            {PHashString(&t[0]),buffer[cur]};
+                EvalChar{PHashString(&t[0]),buffer[cur]};
             evaluation_count++;
             
             //printf("%c",buffer[cur]);
@@ -160,7 +160,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
                 s8 t[2] = {buffer[cur],0};
                 
                 evaluation_buffer[evaluation_count] =
-                {PHashString(&t[0]),buffer[cur]};
+                    EvalChar{PHashString(&t[0]),buffer[cur]};
                 evaluation_count++;
                 
                 //printf("%c",buffer[cur]);
@@ -303,8 +303,6 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
             auto hash = PHashString(member->type_string);
             
             if(x->tag == TAG_DOUBLE_QUOTE){
-                
-                s8 abc[256] = {};
                 
                 InternalBufferGetString(&member->default_string[0],&membereval_array[0],membereval_count,&j);
                 
@@ -541,7 +539,7 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
             u32 int_count = 0;
             u32 float_count = 0;
             
-            for(cur;cur < dst;cur += 2){
+            for(;cur < dst;cur += 2){
                 
                 auto type = &eval_buffer[cur];
                 auto name = &eval_buffer[cur + 1];
@@ -582,14 +580,14 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
                         return;
                     }
                 }
-
-				if (float_count + int_count > 4) {
-					printf("Error: Total arguments exceed the limit of 4\n");
-
-					memset(f, 0, sizeof(GenericFunction));
-					(*function_count)--;
-					return;
-				}
+                
+                if (float_count + int_count > 4) {
+                    printf("Error: Total arguments exceed the limit of 4\n");
+                    
+                    memset(f, 0, sizeof(GenericFunction));
+                    (*function_count)--;
+                    return;
+                }
                 
                 auto arg = &f->args_array[f->args_count];
                 f->args_count++;

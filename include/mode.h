@@ -81,7 +81,6 @@
 #define FONT_PATH(name) "/usr/share/fonts/truetype/"#name
 
 #define _restrict __restrict__
-#define _optnone __attribute__ ((optnone))
 #define _ainline inline __attribute__((always_inline))
 #define _align(alignment) __attribute__ ((aligned (alignment)))
 #define _membarrier() asm volatile ("" : : : "memory")
@@ -189,13 +188,15 @@ relevant function. Getting better cache performance when using lambdas cos of th
 
 #ifdef __clang__
 
-#pragma GCC diagnostic warning "-Wc99-extensions"
-#pragma GCC diagnostic error "-Wc99-extensions"
-#pragma GCC diagnostic ignored "-Wc99-extensions"
+#define _optnone __attribute__ ((optnone))
 
 #pragma GCC diagnostic warning "-Wnull-dereference"
 #pragma GCC diagnostic error "-Wnull-dereference"
 #pragma GCC diagnostic ignored "-Wnull-dereference"
+
+#pragma GCC diagnostic warning "-Wc99-extensions"
+#pragma GCC diagnostic error "-Wc99-extensions"
+#pragma GCC diagnostic ignored "-Wc99-extensions"
 
 #pragma GCC diagnostic warning "-Wunused-variable"
 #pragma GCC diagnostic error "-Wunused-variable"
@@ -253,6 +254,10 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #pragma GCC diagnostic warning "-Wconstant-logical-operand"
 #pragma GCC diagnostic error "-Wconstant-logical-operand"
 #pragma GCC diagnostic ignored "-Wconstant-logical-operand"
+
+#else
+
+#define _optnone
 
 #endif
 

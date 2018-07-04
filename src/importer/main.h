@@ -242,8 +242,6 @@ void CompressBlockBC1(void* indata,void* outdata,u32 w,u32 h){
 void* ArrangeImageToTiles(void* data,u32 w,u32 h,TexFormat format,
                           u32* size){
     
-    auto src = (u32*)data;
-    
     auto bpp = GetBPP(format);
     
     u32 tile_size = (u32)(128 * 128 * bpp);
@@ -1023,9 +1021,9 @@ AssimpData AssimpLoad(const s8* filepath){
             texcoord = mesh->mTextureCoords[0][i];
         }
         
-        pos_list.PushBack({pos.x,pos.y,pos.z,1.0f});
-        normal_list.PushBack({normal.x,normal.y,normal.z,1.0f});
-        texcoord_list.PushBack({texcoord.x,texcoord.y});
+        pos_list.PushBack(Vector4{pos.x,pos.y,pos.z,1.0f});
+        normal_list.PushBack(Vector4{normal.x,normal.y,normal.z,1.0f});
+        texcoord_list.PushBack(Vector2{texcoord.x,texcoord.y});
         // printf("%f %f\n",texcoord.x,texcoord.y);
     }
     

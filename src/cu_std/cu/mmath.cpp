@@ -529,7 +529,7 @@ Vector3 Vec3::GetVectorRotation(Vector3 lookat){
     
     z = AngleQuadrant(lookat.x,lookat.y);
     
-    return {x,y,z,0};  
+    return Vector3{x,y,z,0};  
 }
 
 Vector3 Vec3::Vec3(f32 x,f32 y,f32 z){
@@ -699,7 +699,7 @@ void _ainline GetMinorMatrix(f32* in_matrix,u32 n,u32 k_x,u32 k_y,f32* out_matri
 }
 
 
-f32 _ainline GenericGetDeterminant(f32* in_matrix,u32 n){
+f32 inline GenericGetDeterminant(f32* in_matrix,u32 n){
     
     _kill("we do not support this case\n",n > 4);
     
@@ -890,7 +890,7 @@ void DeconstructQuaternion(Quaternion quaternion,Vector3* vector,f32* angle){
     
     //we should handle the case scale == 0
     if(scale == 0){
-        *vector = {1,0,0,0};
+        *vector = Vector3{1,0,0,0};
         *angle = 0;
         return;
     }

@@ -167,6 +167,7 @@ _persist wl_interface* wl_compositor_interface_ptr = 0;
 
 void display_handle_global(void* data, struct wl_registry* registry, u32 id,const s8* interface, u32 version){
     
+    
     auto wl_proxy_marshal_constructor_versioned_fptr =
         (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor_versioned");
     

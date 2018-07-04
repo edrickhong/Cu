@@ -334,8 +334,6 @@ s32 main(s32 argc,s8** argv){
                     CompileAllPipelines(pdata);
                 }
                 
-                ThreadLinearBlendRes blendres_array[24] = {};
-                u32 linearblend_count = 0;
                 u32 audio_count = 0;
                 EntityAudioData* audio_data;
                 

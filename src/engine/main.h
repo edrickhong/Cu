@@ -678,8 +678,6 @@ void _ainline PushUpdateEntry(u32 id,u32 offset,u32 data_size,void* data){
     };
     
     pdata->objupdate_count++;
-    
-    data;
 }
 
 _persist u32 gui_draw_is_locked = 0;
@@ -1173,8 +1171,8 @@ void PresentBuffer(PlatformData* pdata){
         
         {
             TIMEBLOCKTAGGED("Wait for fence",Pink);
-            vkWaitForFences(pdata->vdevice.device,1,&fence,VK_TRUE,0xFFFFFFFFFFFFFFFF);
-            vkResetFences(pdata->vdevice.device,1,&fence);  
+            vkWaitForFences(device,1,&fence,VK_TRUE,0xFFFFFFFFFFFFFFFF);
+            vkResetFences(device,1,&fence);  
         }
         
         auto fetch_cmdbuffer =
@@ -1403,7 +1401,7 @@ Vector4 TranslateClipSpaceToWorldSpace(Vector4 pos){
 
 
 void SetActiveCameraOrientation(Vector4 pos,Vector4 lookdir){  
-    pdata->view = ViewMatrix(pos,pos + lookdir,{0.0f,-1.0f,0.0f,0.0f});
+    pdata->view = ViewMatrix(pos,pos + lookdir,Vector4{0.0f,-1.0f,0.0f,0.0f});
 }
 
 void SetObjectOrientation(u32 obj_id,Vector4 pos,Quaternion rot,f32 scale){
@@ -1412,7 +1410,7 @@ void SetObjectOrientation(u32 obj_id,Vector4 pos,Quaternion rot,f32 scale){
           pdata->objupdate_count >= _arraycount(PlatformData::objupdate_array));
     
     auto orientation = TAlloc(Matrix4b4,1);
-    *orientation = Transpose(WorldMatrix(pos,rot,{scale,scale,scale,1.0f}));
+    *orientation = Transpose(WorldMatrix(pos,rot,Vector4{scale,scale,scale,1.0f}));
     
     PushUpdateEntry(obj_id,offsetof(SkelUBO,world),sizeof(SkelUBO::world),orientation);
 }
