@@ -50,5 +50,5 @@ fi
 
 cd ../Make
 
-make -j12
+make -B -j12
 

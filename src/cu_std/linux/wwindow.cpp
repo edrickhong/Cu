@@ -153,19 +153,58 @@ _persist s8 (*impl_wkeycodetoascii)(u32) = 0;
 _persist u32 (*impl_wwaitforevent)(WWindowContext*,WWindowEvent*) = 0;
 _persist void (*impl_wsettitle)(WWindowContext*,const s8*) = 0;
 
+struct WaylandData{
+    
+    wl_compositor* compositor;
+    wl_shell* shell;
+    wl_seat* seat;
+    wl_pointer* pointer;
+    wl_keyboard* keyboard;
+    wl_surface* surface;
+    wl_shell_surface *shell_surface;
+    
+    wl_interface* wl_display_interface_ptr;
+    wl_interface* wl_registry_interface_ptr;
+    wl_interface* wl_compositor_interface_ptr;
+    wl_interface* wl_seat_interface_ptr;
+    wl_interface* wl_shell_interface_ptr;
+    wl_interface* wl_pointer_interface_ptr;
+    wl_interface* wl_keyboard_interface_ptr;
+    wl_interface* wl_surface_interface_ptr;
+    wl_interface* wl_shell_surface_interface_ptr;
+    
+};
 
-_persist wl_compositor* compositor = 0;
-_persist wl_shell* shell = 0;
-_persist wl_seat* seat = 0;
-_persist wl_pointer* pointer = 0;
-_persist wl_keyboard* keyboard = 0;
-_persist wl_surface* surface = 0;
 
-_persist wl_interface* wl_display_interface_ptr = 0;
-_persist wl_interface* wl_registry_interface_ptr = 0;
-_persist wl_interface* wl_compositor_interface_ptr = 0;
+void SeatCapabilities(void* data,wl_seat* seat,u32 caps){
+    
+    auto w = (WaylandData*)data;
+    
+    auto wl_proxy_marshal_constructor_fptr =
+        (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
+    
+    if(caps & WL_SEAT_CAPABILITY_POINTER){
+        
+        w->pointer = (wl_pointer*)wl_proxy_marshal_constructor_fptr(
+            (wl_proxy*)seat,WL_SEAT_GET_POINTER,w->wl_pointer_interface_ptr,0);
+        
+    }
+    
+    if(caps & WL_SEAT_CAPABILITY_KEYBOARD){
+        
+        w->keyboard = (wl_keyboard*)
+            wl_proxy_marshal_constructor_fptr(
+            (wl_proxy*)seat,WL_SEAT_GET_KEYBOARD,w->wl_keyboard_interface_ptr,0);
+    }
+}
 
-void display_handle_global(void* data, struct wl_registry* registry, u32 id,const s8* interface, u32 version){
+_persist const wl_seat_listener seat_listener = {
+    SeatCapabilities
+};
+
+void Wayland_Display_Handle_Global(void* data, struct wl_registry* registry, u32 id,const s8* interface, u32 version){
+    
+    auto w = (WaylandData*)data;
     
     
     auto wl_proxy_marshal_constructor_versioned_fptr =
@@ -179,22 +218,48 @@ void display_handle_global(void* data, struct wl_registry* registry, u32 id,cons
     
     if(PHashString(interface) == PHashString("wl_compositor")){
         
-        compositor = (wl_compositor*)registry_bind(registry,id,wl_compositor_interface_ptr,1);
-        
-        printf("got compositor\n");
+        w->compositor = (wl_compositor*)registry_bind(registry,id,w->wl_compositor_interface_ptr,1);
     }
     
     if(PHashString(interface) == PHashString("wl_shell")){
-        printf("got shell\n");
+        
+        w->shell = (wl_shell*)registry_bind(registry,id,w->wl_shell_interface_ptr,1);
     }
     
     if(PHashString(interface) == PHashString("wl_seat")){
-        printf("got seat\n");
+        
+        w->seat = (wl_seat*)registry_bind(registry,id,w->wl_seat_interface_ptr,1);
+        
+        auto wl_proxy_add_listener_fptr = 
+            (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
+        
+        wl_proxy_add_listener_fptr((wl_proxy*)w->seat,(void (**)(void))&seat_listener,data);
+        
     }
     
 }
 
-_persist const struct wl_registry_listener registry_listener = {display_handle_global,0};
+_persist const wl_registry_listener registry_listener = {Wayland_Display_Handle_Global,0};
+
+void Wayland_Ping(void* data,wl_shell_surface* shell_surface,u32 serial){
+    
+    auto wl_proxy_marshal_fptr =
+        (void (*)(wl_proxy*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal");
+    
+    wl_proxy_marshal_fptr((wl_proxy*)shell_surface,WL_SHELL_SURFACE_PONG,serial);
+    
+    wl_proxy_marshal_fptr((wl_proxy*)shell_surface,WL_SHELL_SURFACE_PONG,serial);
+}
+
+void Wayland_Configure(void* data,wl_shell_surface* shell_surface,u32 edges,s32 width,s32  height){
+    
+}
+
+void Wayland_Popupdone(void* data,wl_shell_surface* shell_surface){}
+
+
+_persist const wl_shell_surface_listener shell_surface_listener =
+{ Wayland_Ping, Wayland_Configure, Wayland_Popupdone };
 
 
 logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
@@ -204,6 +269,8 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
         return false;    
     }
     
+    WaylandData wdata = {};
+    
     //get all the functions needed for init
     auto wl_display_connect_fptr =
         (wl_display* (*)(const s8*))LGetLibFunction(wwindowlib_handle,"wl_display_connect");
@@ -211,11 +278,31 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     auto wl_display_dispatch_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_dispatch");
     auto wl_display_roundtrip_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_roundtrip");
     
-    wl_display_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_display_interface");
+    auto wl_proxy_marshal_constructor_fptr =
+        (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
     
-    wl_registry_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_registry_interface");
+    auto wl_proxy_add_listener_fptr = 
+        (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
     
-    wl_compositor_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_compositor_interface");
+    auto wl_proxy_marshal_fptr =
+        (void (*)(wl_proxy*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal");
+    
+    wdata.wl_display_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_display_interface");
+    
+    wdata.wl_registry_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_registry_interface");
+    
+    wdata.wl_compositor_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_compositor_interface");
+    
+    wdata.wl_seat_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_seat_interface");
+    wdata.wl_shell_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shell_interface");
+    
+    wdata.wl_pointer_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_pointer_interface");
+    
+    wdata.wl_keyboard_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_keyboard_interface");
+    
+    wdata.wl_surface_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_surface_interface");
+    
+    wdata.wl_shell_surface_interface_ptr= (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shell_surface_interface");
     
     
     context->type = _WAYLAND_WINDOW;
@@ -238,27 +325,46 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     wl_registry* registry;
     {
         
-        auto wl_proxy_marshal_constructor_ptr =
-            (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
-        
-        registry = (wl_registry*)wl_proxy_marshal_constructor_ptr((struct wl_proxy *) context->wayland_handle,
-                                                                  WL_DISPLAY_GET_REGISTRY,wl_registry_interface_ptr,0);
+        registry = (wl_registry*)wl_proxy_marshal_constructor_fptr((struct wl_proxy *) context->wayland_handle,
+                                                                   WL_DISPLAY_GET_REGISTRY,wdata.wl_registry_interface_ptr,0);
         
         _kill("Failed to get a wayland registry\n",!registry);
     }
     
     //add listener
     {
-        auto wl_proxy_add_listener_fptr = 
-            (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
         
-        wl_proxy_add_listener_fptr((wl_proxy*)registry,(void (**)(void))&registry_listener,0);
+        wl_proxy_add_listener_fptr((wl_proxy*)registry,(void (**)(void))&registry_listener,(void*)&wdata);
     }
     
     wl_display_dispatch_fptr(context->wayland_handle);
     wl_display_roundtrip_fptr(context->wayland_handle);
     
-    printf("success!\n");
+    
+    //create surfaces
+    
+    wdata.surface = (wl_surface*)
+        wl_proxy_marshal_constructor_fptr((wl_proxy*)wdata.compositor,
+                                          WL_COMPOSITOR_CREATE_SURFACE, wdata.wl_surface_interface_ptr,0);
+    
+    wdata.shell_surface = 
+        (wl_shell_surface*)
+        wl_proxy_marshal_constructor_fptr((wl_proxy*)wdata.shell,
+                                          WL_SHELL_GET_SHELL_SURFACE, wdata.wl_shell_surface_interface_ptr,0,wdata.surface);
+    
+    wl_proxy_add_listener_fptr((wl_proxy*)wdata.shell_surface,(void (**)(void))&shell_surface_listener,0);
+    
+    //TODO: factorize this stuff out
+    
+    //set window top level
+    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_TOPLEVEL);
+    
+    //set surface title
+    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_TITLE,title);
+    
+    //set window class
+    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_CLASS,title);
+    
     exit(0);
     
     return true;
