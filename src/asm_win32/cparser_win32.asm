@@ -16,10 +16,13 @@ _DATA ENDS
 	
 	InternalFillArgsAndCall PROC
 
-	mov qword ptr [rsp + 20h] , r9	;fret
-	mov qword ptr [rsp + 18h] , r8	;iret
-	mov qword ptr [rsp + 10h] , rdx ;values
-	mov qword ptr [rsp + 8h] , rcx ;call
+	push rbp
+	mov rbp,rsp
+
+	mov qword ptr [rsp + 28h] , r9	;fret
+	mov qword ptr [rsp + 20h] , r8	;iret
+	mov qword ptr [rsp + 18h] , rdx ;values
+	mov qword ptr [rsp + 10h] , rcx ;call
 	
 	sub rsp,20h
 
@@ -34,9 +37,6 @@ _DATA ENDS
 	 mov qword ptr r10,[rax + 20h]
 	 mov qword ptr r11,[rax + 28h]
 
-	;; TODO:this can't work. when faced with mixed args msvc does
-	;; rcx xmm1 r8 xmm3
-
 	
 	movq xmm0,r10
 	movq xmm1,r11
@@ -47,19 +47,21 @@ _DATA ENDS
 	movq xmm2,r10
 	movq xmm3,r11
 
-	mov qword ptr r10,[rsp + 28h]
+	mov qword ptr r10,[rsp + 30h]
 	call r10
 
 	
 	add rsp,20h
 
 	;; write the return values
-	mov qword ptr r8,[rsp + 18h]
-	mov qword ptr r9,[rsp + 20h]
+	mov qword ptr r8,[rsp + 20h]
+	mov qword ptr r9,[rsp + 28h]
 
 	mov qword ptr [r8],rax
 	movq r8,xmm0
 	mov qword ptr [r9],r8
+
+	pop rbp
 	
 	ret
 
