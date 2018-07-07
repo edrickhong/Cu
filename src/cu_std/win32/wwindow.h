@@ -43,6 +43,9 @@ u32 _ainline  IsKeyUp(KeyboardState* state,u32 keysym){
 enum WCreateFlags{
     W_CREATE_NONE = 0,
     W_CREATE_NORESIZE =  1,
+    
+    W_CREATE_FORCE_WAYLAND = W_CREATE_NONE,
+    W_CREATE_FORCE_XLIB = W_CREATE_NONE,
 };
 
 enum MouseButton{

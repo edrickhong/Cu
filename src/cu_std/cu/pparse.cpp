@@ -255,3 +255,89 @@ logic PSkipWhiteSpace(s8* src_string,u32* pos){
     
     return cur - start;
 }
+
+
+void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size){
+    
+    if(dst_size){
+        (*dst_size) = 0;
+    }
+    
+    
+    {
+        s8 buffer[256] = {};
+        
+        sprintf(buffer,"const s8* %s[] = {\n",array_name);
+        
+        u32 len = strlen(buffer);
+        
+        if(dst_size){
+            (*dst_size) += len;
+        }
+        
+        if(dst_buffer){
+            memcpy(dst_buffer,buffer,len);
+            dst_buffer += len;
+        }
+        
+        
+    }
+    
+    for(u32 i = 0;;){
+        
+        if(i >= src_size){
+            break;
+        }
+        
+        s8 t_buffer[512] ={};
+        u32 len = 0;
+        
+        PGetLine(&t_buffer[0],&src_buffer[0],&i,&len);
+        
+        if(len){
+            
+            s8 out_string[512] = {};
+            out_string[0] = '"';
+            
+            for(u32 j = 0; j < len;j++){
+                
+                if(t_buffer[j] == '\r'){
+                    continue;
+                }
+                
+                out_string[j + 1] = t_buffer[j];
+            }
+            
+            out_string[len + 1] = '"';
+            out_string[len + 2] = ',';
+            out_string[len + 3] = '\n';
+            
+            len += 4;
+            
+            if(dst_size){
+                (*dst_size) += len;
+            }
+            
+            if(dst_buffer){
+                memcpy(dst_buffer,out_string,len);
+                dst_buffer += len;
+            }
+        }
+    }
+    
+    {
+        auto end_string = "};\n";
+        
+        u32 len = strlen(end_string);
+        
+        if(dst_size){
+            (*dst_size) += len + 1;
+        }
+        
+        if(dst_buffer){
+            memcpy(dst_buffer,end_string,len);
+            dst_buffer += len;
+        }
+    }
+    
+}

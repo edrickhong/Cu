@@ -3,23 +3,63 @@
 
 #include "pparse.h"
 
-
-_persist s8 wtext_buffer[256] ={};
-
 _persist LibHandle wwindowlib_handle = 0;
 _persist u32 loaded_lib_type = 0;
+_persist s8 wtext_buffer[256] ={};
 
-//these fptrs will be shared w wayland as well
-_persist void* wfptr_x11_xstorename = 0;
-_persist void* wfptr_x11_xflush = 0;
-_persist void* wfptr_x11_xpending = 0;
-_persist void* wfptr_x11_xnextevent = 0;
-_persist void* wfptr_x11_xsetwmnormalhints = 0;
-_persist void* wfptr_x11_xrefreshkeyboardmapping = 0;
-_persist void* wfptr_x11_xsync = 0;
-_persist void* wfptr_x11_xsetwmprotocols = 0;
-_persist void* wfptr_x11_xlookupstring = 0;
-_persist void* wfptr_x11_xconfigurewindow = 0;
+//function implementations
+_persist s8 (*impl_wkeycodetoascii)(u32) = 0;
+_persist u32 (*impl_wwaitforevent)(WWindowContext*,WWindowEvent*) = 0;
+_persist void (*impl_wsettitle)(WWindowContext*,const s8*) = 0;
+
+#include "x11_wwindow.cpp"
+
+_persist WWindowEvent wayland_event_array[32];
+_persist u32 wayland_event_count = 0;
+
+//TODO: We can probably get rid of some of the branching
+
+//FIXME: for some reason swapchain creation is failing cos we don't link to wayland-client (SDL manages this so we will play around w this)
+
+wl_proxy* (*wl_proxy_marshal_constructor_fptr)(wl_proxy*,u32,const wl_interface*,...) = 0;
+
+s32 (*wl_proxy_add_listener_fptr)(wl_proxy*,void (**)(void), void*) = 0;
+
+void (*wl_proxy_marshal_fptr)(wl_proxy*,u32,...) = 0;
+
+void
+(*wl_proxy_set_user_data_fptr)(wl_proxy*,void*) = 0; 
+
+void* (*wl_proxy_get_user_data_fptr)(wl_proxy*) = 0;
+
+u32 (*wl_proxy_get_version_fptr)(wl_proxy*) = 0;
+
+void (*wl_proxy_destroy_fptr)(wl_proxy*) = 0;
+
+wl_proxy* (*wl_proxy_marshal_constructor_versioned_fptr)(wl_proxy*,
+                                                         u32,
+                                                         const wl_interface*,u32,...) = 0;
+
+const wl_interface* wl_display_interface_ptr = 0;
+const wl_interface* wl_registry_interface_ptr = 0;
+const wl_interface* wl_compositor_interface_ptr = 0;
+const wl_interface* wl_seat_interface_ptr = 0;
+const wl_interface* wl_shell_interface_ptr = 0;
+const wl_interface* wl_pointer_interface_ptr = 0;
+const wl_interface* wl_keyboard_interface_ptr = 0;
+const wl_interface* wl_surface_interface_ptr = 0;
+const wl_interface* wl_shell_surface_interface_ptr = 0;
+const wl_interface* wl_callback_interface_ptr = 0;
+const wl_interface* wl_region_interface_ptr = 0;
+
+const wl_interface* wl_buffer_interface_ptr = 0;
+const wl_interface* wl_shm_pool_interface_ptr = 0;
+const wl_interface* wl_data_source_interface_ptr = 0;
+const wl_interface* wl_data_device_interface_ptr = 0;
+const wl_interface* wl_touch_interface_ptr = 0;
+const wl_interface* wl_subsurface_interface_ptr = 0;
+
+
 
 
 logic InternalLoadLibraryWayland(){
@@ -61,118 +101,121 @@ logic InternalLoadLibraryWayland(){
     return true;
 }
 
-logic InternalLoadLibraryX11(){
-    
-    
-    if(wwindowlib_handle){
-        
-        if(loaded_lib_type != _X11_WINDOW){
-            return false;
-        }
-        
-        return true;
-    }
-    
-    const s8* x11_paths[] = 
-    {
-        "libX11.so.6.3.0",
-        "libX11.so.6",
-        "libX11.so",
-    };
-    
-    for(u32 i = 0; i < _arraycount(x11_paths); i++){
-        wwindowlib_handle = LLoadLibrary(x11_paths[i]);
-        
-        if(wwindowlib_handle){
-            break;  
-        }
-        
-    }
-    
-    if(!wwindowlib_handle){
-        return false;
-    }
-    
-    loaded_lib_type = _X11_WINDOW;
-    
-    wfptr_x11_xflush = LGetLibFunction(wwindowlib_handle,"XFlush");
-    
-    wfptr_x11_xpending = LGetLibFunction(wwindowlib_handle,"XPending");
-    
-    wfptr_x11_xnextevent = LGetLibFunction(wwindowlib_handle,"XNextEvent");
-    
-    wfptr_x11_xsetwmnormalhints = LGetLibFunction(wwindowlib_handle,"XSetWMNormalHints");
-    
-    wfptr_x11_xrefreshkeyboardmapping = LGetLibFunction(wwindowlib_handle,"XRefreshKeyboardMapping");
-    
-    wfptr_x11_xsync = LGetLibFunction(wwindowlib_handle,"XSync");
-    
-    wfptr_x11_xstorename = LGetLibFunction(wwindowlib_handle,"XStoreName");
-    
-    
-    wfptr_x11_xsetwmprotocols = LGetLibFunction(wwindowlib_handle,"XSetWMProtocols");
-    
-    //TODO: we should be using the utf8 version: Xutf8LookupString XCreateIC
-    wfptr_x11_xlookupstring = LGetLibFunction(wwindowlib_handle,"XLookupString");
-    
-    wfptr_x11_xconfigurewindow = LGetLibFunction(wwindowlib_handle,"XConfigureWindow");
-    
-    return true;
-}
-
-#define XStoreName ((s32 (*)(Display*,Window,s8*))wfptr_x11_xstorename)
-
-
-#define XFlush ((s32 (*)(Display*))wfptr_x11_xflush)
-
-#define XPending ((s32 (*)(Display*))wfptr_x11_xpending)
-
-#define XNextEvent ((s32 (*)(Display*,XEvent*))wfptr_x11_xnextevent)
-
-#define XSetWMNormalHints ((void (*)(Display*,Window,XSizeHints*))wfptr_x11_xsetwmnormalhints)
-
-#define XRefreshKeyboardMapping ((s32 (*)(XMappingEvent*))wfptr_x11_xrefreshkeyboardmapping)
-
-#define XSync ((s32 (*)(Display*,Bool))wfptr_x11_xsync)
-
-
-
-#define XSetWMProtocols ((Status (*)(Display*,Window,Atom*,s32))wfptr_x11_xsetwmprotocols)
-
-
-#define XLookupString ((s32 (*)(XKeyEvent*,s8*,s32,KeySym*,XComposeStatus*))wfptr_x11_xlookupstring)
-
-
-#define XConfigureWindow ((s32 (*)(Display*,Window,u32,XWindowChanges*))wfptr_x11_xconfigurewindow)
 
 
 //wayland stuff
 
-//function implementations
-_persist s8 (*impl_wkeycodetoascii)(u32) = 0;
-_persist u32 (*impl_wwaitforevent)(WWindowContext*,WWindowEvent*) = 0;
-_persist void (*impl_wsettitle)(WWindowContext*,const s8*) = 0;
+s8 WKeyCodeToASCIIWayland(u32 keycode){
+    _kill("",1);
+    return 0;
+}
 
-struct WaylandData{
+u32 WWaitForWindowEventWayland(WWindowContext* windowcontext,
+                               WWindowEvent* event){
+    _kill("",1);
+    return 0;
+}
+
+void WSetTitleWayland(WWindowContext* context,const s8* title){
     
-    wl_compositor* compositor;
-    wl_shell* shell;
-    wl_seat* seat;
-    wl_pointer* pointer;
-    wl_keyboard* keyboard;
-    wl_surface* surface;
-    wl_shell_surface *shell_surface;
+    _kill("",1);
     
-    wl_interface* wl_display_interface_ptr;
-    wl_interface* wl_registry_interface_ptr;
-    wl_interface* wl_compositor_interface_ptr;
-    wl_interface* wl_seat_interface_ptr;
-    wl_interface* wl_shell_interface_ptr;
-    wl_interface* wl_pointer_interface_ptr;
-    wl_interface* wl_keyboard_interface_ptr;
-    wl_interface* wl_surface_interface_ptr;
-    wl_interface* wl_shell_surface_interface_ptr;
+    //    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_TITLE,title);
     
+}
+
+
+void WaylandKeyboardMap(void* data,wl_keyboard* keyboard,u32 format,s32 fd,u32 size){
+    
+}
+
+void WaylandKeyboardEnter(void* data,wl_keyboard* keyboard,u32 serial,
+                          wl_surface* surface,wl_array* keys){
+    
+}
+
+void WaylandKeyboardLeave(void* data,wl_keyboard* keyboard,u32 serial,wl_surface* surface){}
+
+void WaylandKeyboardKey(void* data,wl_keyboard* keyboard,u32 serial,u32 time,u32 key,u32 state){
+    
+    /*TODO: fill these w key press events*/
+    
+    auto event = &wayland_event_array[wayland_event_count];
+    wayland_event_count++;
+    
+    
+    
+    if(state){
+        event->type = W_EVENT_KBEVENT_KEYDOWN;
+    }
+    
+    else{
+        event->type = W_EVENT_KBEVENT_KEYUP;
+    }
+    
+    event->keyboard_event.keycode = key;
+}
+
+void WaylandKeyboardModifiers(void* data,wl_keyboard* keyboard,u32 serial,u32 mods_depressed,u32 mods_latched,u32 mods_locked,u32 group){
+    
+}
+
+void WaylandPointerEnter(void* data,wl_pointer* pointer,u32 serial, wl_surface* surface,
+                         wl_fixed_t sx, wl_fixed_t sy){
+    
+}
+
+void WaylandPointerLeave(void* data,wl_pointer* pointer,u32 serial,wl_surface* surface){}
+
+void WaylandPointerMotion(void* data,wl_pointer* pointer,u32 time, wl_fixed_t sx, wl_fixed_t sy){
+    
+    /*TODO: fill w motion events*/
+    
+    auto event = &wayland_event_array[wayland_event_count];
+    wayland_event_count++;
+    
+    event->type = W_EVENT_MSEVENT_MOVE;
+    event->mouse_event.x = sx;
+    event->mouse_event.y = sy;
+}
+
+void WaylandPointerButton(void* data,wl_pointer* pointer,u32 serial,u32 time,u32 button,u32 state){
+    
+    /*TODO: fill w button events*/
+    
+    auto event = &wayland_event_array[wayland_event_count];
+    wayland_event_count++;
+    
+    if(state){
+        event->type = W_EVENT_MSEVENT_DOWN;
+    }
+    
+    else{
+        event->type = W_EVENT_MSEVENT_UP;
+    }
+    
+    event->mouse_event.keycode = button;
+}
+
+void WaylandPointerAxis(void* data,wl_pointer* pointer,u32 time,u32 axis,wl_fixed_t value){
+    
+    /*TODO: fill w mouse scroll events*/
+}
+
+_persist wl_pointer_listener pointer_listener = {
+    WaylandPointerEnter,
+    WaylandPointerLeave,
+    WaylandPointerMotion,
+    WaylandPointerButton,
+    WaylandPointerAxis
+};
+
+_persist wl_keyboard_listener keyboard_listener = {
+    WaylandKeyboardMap,
+    WaylandKeyboardEnter,
+    WaylandKeyboardLeave,
+    WaylandKeyboardKey,
+    WaylandKeyboardModifiers
 };
 
 
@@ -180,21 +223,20 @@ void SeatCapabilities(void* data,wl_seat* seat,u32 caps){
     
     auto w = (WaylandData*)data;
     
-    auto wl_proxy_marshal_constructor_fptr =
-        (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
-    
     if(caps & WL_SEAT_CAPABILITY_POINTER){
         
-        w->pointer = (wl_pointer*)wl_proxy_marshal_constructor_fptr(
-            (wl_proxy*)seat,WL_SEAT_GET_POINTER,w->wl_pointer_interface_ptr,0);
+        w->pointer = wl_seat_get_pointer(seat);
+        
+        wl_pointer_add_listener(w->pointer,&pointer_listener,data);
         
     }
     
     if(caps & WL_SEAT_CAPABILITY_KEYBOARD){
         
-        w->keyboard = (wl_keyboard*)
-            wl_proxy_marshal_constructor_fptr(
-            (wl_proxy*)seat,WL_SEAT_GET_KEYBOARD,w->wl_keyboard_interface_ptr,0);
+        w->keyboard = wl_seat_get_keyboard(seat);
+        
+        wl_keyboard_add_listener(w->keyboard,&keyboard_listener,data);
+        
     }
 }
 
@@ -207,33 +249,21 @@ void Wayland_Display_Handle_Global(void* data, struct wl_registry* registry, u32
     auto w = (WaylandData*)data;
     
     
-    auto wl_proxy_marshal_constructor_versioned_fptr =
-        (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor_versioned");
-    
-    
-    auto registry_bind = [wl_proxy_marshal_constructor_versioned_fptr](wl_registry* wl_registry,u32 name,const wl_interface* interface, u32 version)->void* {
-        
-        return wl_proxy_marshal_constructor_versioned_fptr((wl_proxy*)wl_registry,WL_REGISTRY_BIND,interface,version,name,interface->name,version,0);
-    };
-    
     if(PHashString(interface) == PHashString("wl_compositor")){
         
-        w->compositor = (wl_compositor*)registry_bind(registry,id,w->wl_compositor_interface_ptr,1);
+        w->compositor = (wl_compositor*)wl_registry_bind(registry,id,&wl_compositor_interface,3);
     }
     
     if(PHashString(interface) == PHashString("wl_shell")){
         
-        w->shell = (wl_shell*)registry_bind(registry,id,w->wl_shell_interface_ptr,1);
+        w->shell = (wl_shell*)wl_registry_bind(registry,id,&wl_shell_interface,1);
     }
     
     if(PHashString(interface) == PHashString("wl_seat")){
         
-        w->seat = (wl_seat*)registry_bind(registry,id,w->wl_seat_interface_ptr,1);
+        w->seat = (wl_seat*)wl_registry_bind(registry,id,&wl_seat_interface,1);
         
-        auto wl_proxy_add_listener_fptr = 
-            (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
-        
-        wl_proxy_add_listener_fptr((wl_proxy*)w->seat,(void (**)(void))&seat_listener,data);
+        wl_seat_add_listener(w->seat,&seat_listener,data);
         
     }
     
@@ -243,12 +273,7 @@ _persist const wl_registry_listener registry_listener = {Wayland_Display_Handle_
 
 void Wayland_Ping(void* data,wl_shell_surface* shell_surface,u32 serial){
     
-    auto wl_proxy_marshal_fptr =
-        (void (*)(wl_proxy*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal");
-    
-    wl_proxy_marshal_fptr((wl_proxy*)shell_surface,WL_SHELL_SURFACE_PONG,serial);
-    
-    wl_proxy_marshal_fptr((wl_proxy*)shell_surface,WL_SHELL_SURFACE_PONG,serial);
+    wl_shell_surface_pong(shell_surface,serial);
 }
 
 void Wayland_Configure(void* data,wl_shell_surface* shell_surface,u32 edges,s32 width,s32  height){
@@ -262,12 +287,76 @@ _persist const wl_shell_surface_listener shell_surface_listener =
 { Wayland_Ping, Wayland_Configure, Wayland_Popupdone };
 
 
+void InternalLoadWaylandSymbols(){
+    
+    wl_proxy_marshal_constructor_fptr= (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
+    
+    wl_proxy_add_listener_fptr = (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
+    
+    wl_proxy_marshal_fptr = (void (*)(wl_proxy*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal");
+    
+    wl_proxy_set_user_data_fptr = 
+        (void (*)(wl_proxy*,void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_set_user_data"); 
+    
+    wl_proxy_get_user_data_fptr = (void* (*)(wl_proxy*))LGetLibFunction(wwindowlib_handle,"wl_proxy_get_user_data");
+    
+    wl_proxy_get_version_fptr = (u32 (*)(wl_proxy*))LGetLibFunction(wwindowlib_handle,"wl_proxy_get_version");
+    
+    wl_proxy_destroy_fptr = (void (*)(wl_proxy*))LGetLibFunction(wwindowlib_handle,"wl_proxy_destroy");
+    
+    wl_proxy_marshal_constructor_versioned_fptr = 
+    
+        (wl_proxy* (*)(wl_proxy*,
+                       u32,
+                       const wl_interface*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor_versioned");
+    
+    //wl_interface* 
+    wl_display_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_display_interface");
+    
+    wl_registry_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_registry_interface");
+    
+    wl_compositor_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_compositor_interface");
+    
+    wl_seat_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_seat_interface");
+    
+    wl_shell_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shell_interface");
+    
+    wl_pointer_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_pointer_interface");
+    
+    wl_keyboard_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_keyboard_interface");
+    
+    wl_surface_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_surface_interface");
+    
+    wl_shell_surface_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shell_surface_interface");
+    
+    wl_callback_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_callback_interface");
+    
+    wl_region_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_region_interface");
+    
+    wl_buffer_interface_ptr =
+        (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_buffer_interface");
+    
+    wl_shm_pool_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shm_pool_interface");
+    
+    wl_data_source_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_data_source_interface");
+    
+    wl_data_device_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_data_device_interface");
+    
+    wl_touch_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_touch_interface");
+    
+    wl_subsurface_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_subsurface_interface");
+    
+}
+
+
 logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
                                   WCreateFlags flags,u32 x,u32 y,u32 width,u32 height){
     
     if(!InternalLoadLibraryWayland()){
         return false;    
     }
+    
+    *context = {};
     
     WaylandData wdata = {};
     
@@ -278,394 +367,59 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     auto wl_display_dispatch_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_dispatch");
     auto wl_display_roundtrip_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_roundtrip");
     
-    auto wl_proxy_marshal_constructor_fptr =
-        (wl_proxy* (*)(wl_proxy*,u32,const wl_interface*,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor");
     
-    auto wl_proxy_add_listener_fptr = 
-        (s32 (*)(wl_proxy*,void (**)(void), void*))LGetLibFunction(wwindowlib_handle,"wl_proxy_add_listener");
+    auto display = wl_display_connect_fptr(0);
     
-    auto wl_proxy_marshal_fptr =
-        (void (*)(wl_proxy*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal");
+    if(!display){
+        LUnloadLibrary(wwindowlib_handle);
+        wwindowlib_handle = 0;
+        loaded_lib_type = 0;
+        return false;
+    }
     
-    wdata.wl_display_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_display_interface");
     
-    wdata.wl_registry_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_registry_interface");
+    InternalLoadWaylandSymbols();
     
-    wdata.wl_compositor_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_compositor_interface");
     
-    wdata.wl_seat_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_seat_interface");
-    wdata.wl_shell_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shell_interface");
+    //TODO: do whatever that needs to be done to open a wayland window
     
-    wdata.wl_pointer_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_pointer_interface");
+    wl_registry* registry = wl_display_get_registry(display);
     
-    wdata.wl_keyboard_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_keyboard_interface");
+    wl_registry_add_listener(registry,&registry_listener,(void*)&wdata);
     
-    wdata.wl_surface_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_surface_interface");
+    wl_display_dispatch_fptr(display);
+    wl_display_roundtrip_fptr(display);
     
-    wdata.wl_shell_surface_interface_ptr= (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_shell_surface_interface");
+    
+    //create surfaces
+    
+    wdata.surface = wl_compositor_create_surface(wdata.compositor);
+    
+    wdata.shell_surface = 
+        wl_shell_get_shell_surface(wdata.shell,wdata.surface);
+    
+    wl_shell_surface_add_listener(wdata.shell_surface, &shell_surface_listener,(void*)&wdata);
+    
+    wl_shell_surface_set_toplevel(wdata.shell_surface);
+    wl_shell_surface_set_title(wdata.shell_surface,title);
+    
+    
+    impl_wkeycodetoascii = WKeyCodeToASCIIWayland;
+    impl_wwaitforevent = WWaitForWindowEventWayland;
+    impl_wsettitle = WSetTitleWayland;
     
     
     context->type = _WAYLAND_WINDOW;
     context->width = width;
     context->height = height;
     
-    context->wayland_handle = wl_display_connect_fptr(0);
-    
-    if(!context->wayland_handle){
-        LUnloadLibrary(wwindowlib_handle);
-        wwindowlib_handle = 0;
-        loaded_lib_type = 0;
-        return false;
-    }
-    
-    
-    
-    //TODO: do whatever that needs to be done to open a wayland window
-    
-    wl_registry* registry;
-    {
-        
-        registry = (wl_registry*)wl_proxy_marshal_constructor_fptr((struct wl_proxy *) context->wayland_handle,
-                                                                   WL_DISPLAY_GET_REGISTRY,wdata.wl_registry_interface_ptr,0);
-        
-        _kill("Failed to get a wayland registry\n",!registry);
-    }
-    
-    //add listener
-    {
-        
-        wl_proxy_add_listener_fptr((wl_proxy*)registry,(void (**)(void))&registry_listener,(void*)&wdata);
-    }
-    
-    wl_display_dispatch_fptr(context->wayland_handle);
-    wl_display_roundtrip_fptr(context->wayland_handle);
-    
-    
-    //create surfaces
-    
-    wdata.surface = (wl_surface*)
-        wl_proxy_marshal_constructor_fptr((wl_proxy*)wdata.compositor,
-                                          WL_COMPOSITOR_CREATE_SURFACE, wdata.wl_surface_interface_ptr,0);
-    
-    wdata.shell_surface = 
-        (wl_shell_surface*)
-        wl_proxy_marshal_constructor_fptr((wl_proxy*)wdata.shell,
-                                          WL_SHELL_GET_SHELL_SURFACE, wdata.wl_shell_surface_interface_ptr,0,wdata.surface);
-    
-    wl_proxy_add_listener_fptr((wl_proxy*)wdata.shell_surface,(void (**)(void))&shell_surface_listener,0);
-    
-    //TODO: factorize this stuff out
-    
-    //set window top level
-    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_TOPLEVEL);
-    
-    //set surface title
-    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_TITLE,title);
-    
-    //set window class
-    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_CLASS,title);
-    
-    exit(0);
+    context->window = wdata.surface;
+    context->handle = display;
     
     return true;
 }
 
 
-s8 WKeyCodeToASCIIX11(u32 keycode){
-    return wtext_buffer[keycode];
-}
-
-u32 WWaitForWindowEventX11(WWindowContext* windowcontext,
-                           WWindowEvent* event){
-    
-    //NOTE: we might need to create the exit atom. I have an example in the handmade dir
-    
-    auto queue_count = XPending(windowcontext->x11_handle);
-    
-    
-    if(queue_count){
-        
-        XEvent xevent = {};
-        XNextEvent(windowcontext->x11_handle,&xevent);
-        
-        switch(xevent.type){
-            
-            case Expose:{
-                event->type = W_EVENT_EXPOSE;
-            }break;
-            
-            case ClientMessage:{
-                event->type = W_EVENT_CLOSE;
-            }break;
-            
-            case ConfigureNotify:{
-                event->type = W_EVENT_RESIZE;
-            }break;
-            
-            case KeymapNotify:{
-                XRefreshKeyboardMapping(&xevent.xmapping);
-            }break;
-            
-            case KeyPress:{
-                
-                event->type = W_EVENT_KBEVENT_KEYDOWN;
-                event->keyboard_event.keycode = xevent.xkey.keycode;
-                
-                XLookupString(&xevent.xkey,&wtext_buffer[xevent.xkey.keycode],1,0,0);
-                
-            }break;
-            
-            case KeyRelease:{
-                event->type = W_EVENT_KBEVENT_KEYUP;
-                event->keyboard_event.keycode = xevent.xkey.keycode;
-            }break;
-            
-            case MotionNotify:{
-                event->type = W_EVENT_MSEVENT_MOVE;
-                event->mouse_event.x = xevent.xmotion.x;
-                event->mouse_event.y = xevent.xmotion.y;
-            }break;
-            
-            case ButtonPress:{
-                
-                event->type = W_EVENT_MSEVENT_DOWN;
-                
-                switch(xevent.xbutton.button){
-                    
-                    case 1:{
-                        event->mouse_event.keycode =MOUSEBUTTON_LEFT;
-                    }break;//left
-                    
-                    case 2:{
-                        event->mouse_event.keycode =MOUSEBUTTON_MIDDLE;
-                    }break;//middle
-                    
-                    case 3:{
-                        event->mouse_event.keycode =MOUSEBUTTON_RIGHT;
-                    }break;//right
-                    
-                    case 4:{
-                        event->mouse_event.keycode =MOUSEBUTTON_SCROLLUP;
-                    }break;//up
-                    
-                    case 5:{
-                        event->mouse_event.keycode =MOUSEBUTTON_SCROLLDOWN;
-                    }break;//down
-                    
-                    case 8:{
-                        event->mouse_event.keycode =MOUSEBUTTON_BUTTON1;
-                    }break;//button1
-                    
-                    case 9:{
-                        event->mouse_event.keycode =MOUSEBUTTON_BUTTON2;
-                    }break;//button2
-                    
-                }
-                
-            }break;
-            
-            case ButtonRelease:{
-                
-                event->type = W_EVENT_MSEVENT_UP;
-                
-                switch(xevent.xbutton.button){
-                    
-                    case 1:{
-                        event->mouse_event.keycode =MOUSEBUTTON_LEFT;
-                    }break;//left
-                    
-                    case 2:{
-                        event->mouse_event.keycode =MOUSEBUTTON_MIDDLE;
-                    }break;//middle
-                    
-                    case 3:{
-                        event->mouse_event.keycode =MOUSEBUTTON_RIGHT;
-                    }break;//right
-                    
-                    case 4:{
-                        event->mouse_event.keycode =MOUSEBUTTON_SCROLLUP;
-                    }break;//up
-                    
-                    case 5:{
-                        event->mouse_event.keycode =MOUSEBUTTON_SCROLLDOWN;
-                    }break;//down
-                    
-                    case 8:{
-                        event->mouse_event.keycode =MOUSEBUTTON_BUTTON1;
-                    }break;//button1
-                    
-                    case 9:{
-                        event->mouse_event.keycode =MOUSEBUTTON_BUTTON2;
-                    }break;//button2
-                    
-                }
-                
-            }break;
-            
-            default:{
-            }break;
-            
-        }
-        
-    }
-    
-    return queue_count;  
-}
-
-void WSetTitleX11(WWindowContext* context,const s8* title){
-    XStoreName(context->x11_handle,context->x11_rootwindow,(s8*)title);
-}
-
-
-
-logic InternalCreateX11Window(WWindowContext* context,const s8* title,WCreateFlags flags,
-                              u32 x,u32 y,u32 width,u32 height){
-    
-    if(!InternalLoadLibraryX11()){
-        return false;
-    }
-    
-    impl_wkeycodetoascii = WKeyCodeToASCIIX11;
-    impl_wwaitforevent = WWaitForWindowEventX11;
-    impl_wsettitle = WSetTitleX11;
-    
-    //get all the functions needed for init
-    
-    auto XOpenDisplay_fptr =
-        (Display* (*)(s8*))LGetLibFunction(wwindowlib_handle,"XOpenDisplay");
-    
-    auto XCreateWindow_fptr =
-        (Window (*)(Display*,Window,s32,s32,u32,u32,u32,s32, u32, Visual*,unsigned long,
-                    XSetWindowAttributes*))LGetLibFunction(wwindowlib_handle,"XCreateWindow");
-    
-    auto XWhitePixel_fptr =
-        (unsigned long (*)(Display*,s32))LGetLibFunction(wwindowlib_handle,"XWhitePixel");
-    
-    auto XRootWindow_fptr =
-        (Window (*)(Display*,s32))LGetLibFunction(wwindowlib_handle,"XRootWindow");
-    
-    auto XSelectInput_fptr =
-        (s32 (*)(Display*,Window,long))LGetLibFunction(wwindowlib_handle,"XSelectInput");
-    
-    auto XMapWindow_fptr =
-        (s32 (*)(Display*,Window))LGetLibFunction(wwindowlib_handle,"XMapWindow");
-    
-    auto XInternAtom_fptr =
-        (Atom (*)(Display*,_Xconst char*,Bool))LGetLibFunction(wwindowlib_handle,"XInternAtom");
-    
-    auto XVisualIDFromVisual_fptr =
-        (VisualID (*)(Visual*))LGetLibFunction(wwindowlib_handle,"XVisualIDFromVisual");
-    
-    context->type = _X11_WINDOW;
-    context->width = width;
-    context->height = height;
-    
-    context->x11_handle = XOpenDisplay_fptr(0);
-    
-    if(!context->x11_handle){
-        LUnloadLibrary(wwindowlib_handle);
-        wwindowlib_handle = 0;
-        loaded_lib_type = 0;
-        return false;
-    }
-    
-    _kill("failed to open display\n",!context->x11_handle);
-    
-    auto visual_ptr = DefaultVisual(context->x11_handle,0);
-    auto depth = DefaultDepth(context->x11_handle,0);
-    
-    context->x11_visualid = XVisualIDFromVisual_fptr(visual_ptr);
-    
-    XSetWindowAttributes frame_attrib = {};
-    frame_attrib.background_pixel = XWhitePixel_fptr(context->x11_handle,0);
-    
-#define borderwidth 1
-    
-    context->x11_rootwindow = XCreateWindow_fptr(context->x11_handle,
-                                                 XRootWindow_fptr(context->x11_handle,0),
-                                                 x,y,width,height,borderwidth,depth,InputOutput,
-                                                 visual_ptr,CWBackPixel,&frame_attrib);
-    
-    WSetTitle(context,title);
-    
-    XSelectInput_fptr(context->x11_handle,context->x11_rootwindow,
-                      ExposureMask|ButtonPressMask|
-                      ButtonReleaseMask|KeyReleaseMask|KeyPressMask|
-                      StructureNotifyMask | PointerMotionMask);
-    
-    XSizeHints hints = {};
-    
-    hints.flags = PPosition | PSize;
-    hints.x = (s32)x;
-    hints.y = (s32)y;
-    hints.width = width;
-    hints.height = height;
-    
-    if(flags & W_CREATE_NORESIZE){
-        
-        hints.flags |= PMinSize | PMaxSize;
-        hints.min_width = width;
-        hints.min_height = height;
-        hints.max_width = width;
-        hints.max_height = height;
-        
-    }
-    
-    XSetWMNormalHints(context->x11_handle,context->x11_rootwindow,&hints);
-    
-    //create exit atom - MARK:Idk if this handles the case where the atom already exists
-    auto atom_exit = XInternAtom_fptr(context->x11_handle,"WM_DELETE_WINDOW",false);
-    
-    if(atom_exit){
-        XSetWMProtocols(context->x11_handle,context->x11_rootwindow,&atom_exit,1);  
-    }
-    
-    //Set window class
-    
-    auto XSetClassHint_fptr = (void (*)(Display*,Window,XClassHint*))LGetLibFunction(wwindowlib_handle,"XSetClassHint");
-    
-    
-    XClassHint hint = {(s8*)title,(s8*)title};
-    
-    XSetClassHint_fptr(context->x11_handle,context->x11_rootwindow,&hint);
-    
-    
-    XFlush(context->x11_handle);
-    
-    XMapWindow_fptr(context->x11_handle,context->x11_rootwindow);
-    
-    //MARK: we can set multiple with XSetWMProperties
-    
-    
-    return true;
-}
-
-WWindowContext WCreateWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,
-                             u32 width,u32 height){
-    
-    WWindowContext context = {};
-    
-    logic res;
-    
-#if !(_disable_wayland_path)
-    
-    res = InternalCreateWaylandWindow(&context,title,flags,x,y,width,height);
-    
-    if(!res){
-        res = InternalCreateX11Window(&context,title,flags,x,y,width,height);  
-    }
-    
-#else
-    
-    res = InternalCreateX11Window(&context,title,flags,x,y,width,height);  
-    
-#endif
-    
-    
-    _kill("Create window failed: either failed to load window lib,failed to connect to window manager or failed to get a hw enabled window\n",!res);
-    
-    return context;
-}
 
 
 
@@ -683,6 +437,29 @@ void WSetTitle(WWindowContext* context,const s8* title){
     impl_wsettitle(context,title);
 }
 
+#define W_CREATE_NO_CHECK (1 << 3)
+
+WWindowContext WCreateWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,
+                             u32 width,u32 height){
+    
+    WWindowContext context = {};
+    
+    logic res = 0;
+    
+    if(!(flags & W_CREATE_FORCE_XLIB)){
+        res = InternalCreateWaylandWindow(&context,title,flags,x,y,width,height);
+    }
+    
+    if(!res && !(flags & W_CREATE_FORCE_WAYLAND)){
+        res = InternalCreateX11Window(&context,title,flags,x,y,width,height);  
+    }
+    
+    
+    _kill("Create window failed: either failed to load window lib,failed to connect to window manager or failed to get a hw enabled window\n",!res && !(W_CREATE_NO_CHECK & flags));
+    
+    return context;
+}
+
 #include "vvulkan.h"
 #include "pparse.h"
 
@@ -695,7 +472,7 @@ WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 
     VkExtensionProperties extension_array[32] = {};
     u32 count = 0;
     
-    _kill("VCreateInstance must be called before calling this function\n",vkEnumerateInstanceExtensionProperties == 0);
+    _kill("VInitVulkan must be called before calling this function\n",vkEnumerateInstanceExtensionProperties == 0);
     
     vkEnumerateInstanceExtensionProperties(0,&count,0);
     
@@ -713,24 +490,13 @@ WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 
         }
     }
     
-    //#if (_disable_wayland_path)
+    context = WCreateWindow(title,(WCreateFlags)(flags | W_CREATE_FORCE_WAYLAND | W_CREATE_NO_CHECK),x,y,width,height);
     
-    //wayland_enabled = false;
-    
-    //#endif
-    
-    logic res = false;
-    
-    if(wayland_enabled){
-        
-        res = InternalCreateWaylandWindow(&context,title,flags,x,y,width,height);
+    if(!context.handle){
+        context = WCreateWindow(title,(WCreateFlags)(flags | W_CREATE_FORCE_XLIB | W_CREATE_NO_CHECK),x,y,width,height);
     }
     
-    if(!res){
-        res = InternalCreateX11Window(&context,title,flags,x,y,width,height);  
-    }
-    
-    _kill("Create window failed: either failed to load window lib,failed to connect to window manager or failed to get a hw enabled window\n",!res);
+    _kill("Create window failed: either failed to load window lib,failed to connect to window manager or failed to get a hw enabled window\n",!context.handle);
     
     return context;
 }

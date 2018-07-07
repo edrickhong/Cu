@@ -5,59 +5,6 @@
 
 _persist auto ustring = "patchthisvalueinatassetpacktime";
 
-
-//TODO: move this to pparse (rename it to BufferList to Array String)
-void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
-    
-    auto file = FOpenFile(filepath,F_FLAG_READONLY);
-    
-    ptrsize size = 0;
-    
-    auto buffer = FReadFileToBuffer(file,&size);
-    
-    FCloseFile(file);
-    
-    printf("const s8* %s[] = {\n",name);
-    
-    for(u32 i = 0;;){
-        
-        if(i >= size){
-            break;
-        }
-        
-        s8 dst_buffer[512] ={};
-        u32 len = 0;
-        
-        PGetLine(&dst_buffer[0],&buffer[0],&i,&len);
-        
-        if(len){
-            
-            s8 out_string[512] = {};
-            out_string[0] = '"';
-            
-            for(u32 j = 0; j < len;j++){
-                
-                if(dst_buffer[j] == '\r'){
-                    continue;
-                }
-                
-                out_string[j + 1] = dst_buffer[j];
-            }
-            
-            out_string[len] = '"';
-            out_string[len + 1] = ',';
-            out_string[len + 2] = '\n';
-            
-            printf(&out_string[0]);
-        }
-    }
-    
-    printf("}\n");
-    
-    unalloc(buffer);
-    
-}
-
 //MARK: it should fail with pointer or array types
 #include "function_refl.h"
 
@@ -67,9 +14,12 @@ void PrintFileListAsArray(const s8* filepath, const s8* name = "array"){
 
 #endif
 
+
+#define _VKTEST(a) {auto res = a; _kill("", res != VK_SUCCESS);}
+
+
+
 s32 main(s32 argc,s8** argv){
-    
-    
     
 #if  0
     
@@ -127,15 +77,17 @@ s32 main(s32 argc,s8** argv){
     TInitTimer();
     INIT_DEBUG_TIMER();
     
-    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    VInitVulkan();
     
-    pdata->window = WCreateVulkanWindow("Cu",W_CREATE_NORESIZE,100,100,1280,720);
+    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),100,100,1280,720);
+    
+    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
     {
         
-        VkPhysicalDevice phys_array[16];
+        VkPhysicalDevice phys_array[16] = {};
         u32 phys_count;
         
         VEnumeratePhysicalDevices(&phys_array[0],&phys_count,&pdata->window);
@@ -145,7 +97,7 @@ s32 main(s32 argc,s8** argv){
     }
     
     
-    pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,pdata->window,
+    pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,&pdata->window,
                                                VSYNC_NORMAL);
     
     InitAssetAllocator(_gigabytes(1),_megabytes(4),&pdata->vdevice,

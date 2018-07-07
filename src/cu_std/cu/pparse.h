@@ -3,6 +3,10 @@
 #include "ttype.h"
 #include "mode.h"
 
+/*
+TODO: we should make size or pos to ptrsize instead of u32
+*/
+
 enum PTokenType{
     
     PTOKEN_SYMBOL,
@@ -210,3 +214,12 @@ constexpr u32 PFindStringInBuffer(const s8* target_string,const s8* buffer,
 }
 
 #define PFindStringInString(target,ref) PFindStringInBuffer(target,ref,PStrLen(ref))
+
+
+//TODO:
+void PBufferToByteArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
+
+void PBufferToDWordArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
+
+
+void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);

@@ -6,11 +6,22 @@
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
 
-#include "wayland-client.h"
+#include "wayland_dyn.h"
 
+//TODO: we never handle mouse scroll events (x11,wayland,win32)
 
 #define _X11_WINDOW 1
 #define _WAYLAND_WINDOW 2
+
+struct WaylandData{
+    wl_compositor* compositor;
+    wl_shell* shell;
+    wl_seat* seat;
+    wl_pointer* pointer;
+    wl_keyboard* keyboard;
+    wl_surface* surface;
+    wl_shell_surface *shell_surface;
+};
 
 struct WWindowContext{
     
@@ -19,17 +30,19 @@ struct WWindowContext{
     u16 width;
     u16 height;
     
+    //TODO: we'll replace the first 2 with void pointers
+    void* handle;
+    void* window;
+    
     union{
         
         struct{
-            Display* x11_handle;
-            Window x11_rootwindow;
-            VisualID x11_visualid;
+            
+            WaylandData wdata;
         };
         
         struct{
-            wl_display* wayland_handle;
-            wl_surface* wayland_rootwindow;
+            VisualID x11_visualid;
         };
         
     };  

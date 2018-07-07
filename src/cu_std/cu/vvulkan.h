@@ -7,6 +7,7 @@
 #else
 
 #define VK_USE_PLATFORM_XLIB_KHR
+#define VK_USE_PLATFORM_WAYLAND_KHR
 
 #endif
 
@@ -516,7 +517,7 @@ enum V_VDeviceContext_Flags{
     V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW = 1,
 };
 
-u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,u32 v_inst_flags = V_INSTANCE_FLAGS_NONE);
+u32 VCreateInstance(const s8* applicationname_string,logic validation_enable,u32 api_version,WWindowContext* window = 0,u32 v_inst_flags = V_INSTANCE_FLAGS_NONE);
 
 VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array = 0,u32 physdevice_count = 1,u32 vdevice_flags = V_VDEVICECONTEXT_FLAGS_ENABLE_RENDER_TO_WINDOW,
                                     u32 createqueue_bits = VCREATEQUEUEBIT_ALL);
@@ -534,7 +535,7 @@ enum VPresentSyncType{
 
 VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _in_ vdevice,
                                           u32 swapcount,
-                                          WWindowContext windowcontext,
+                                          WWindowContext* windowcontext,
                                           VPresentSyncType sync_type = VSYNC_NONE,
                                           VSwapchainContext* oldswapchain = 0);
 
@@ -1091,3 +1092,9 @@ void _ainline VInvalidateMemoryRanges(const VDeviceContext* _in_ vdevice,VMemory
     VInvalidateMemoryRanges(vdevice->device,ranges);
     
 }
+
+void VInitVulkan();
+
+void InitInstance(VkInstance instance);
+
+void VInitDevice(VkDevice device);
