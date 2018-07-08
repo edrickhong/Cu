@@ -1,6 +1,15 @@
 #pragma once
 
+#ifdef _WAYLAND_CLIENT_H
+#error Error Client is already included
+#endif
+
+#ifdef WAYLAND_CLIENT_PROTOCOL_H
+#error Error Protocol is already included
+#endif
+
 #include "wayland-util.h"
+
 
 /*
 Handles the inline function replacement in wayland-client-protocol.h
@@ -41,6 +50,14 @@ extern wl_proxy* (*wl_proxy_marshal_constructor_versioned_fptr)(wl_proxy*,
                                                                 u32,
                                                                 const wl_interface*,u32,...);
 
+extern s32 (*wl_display_prepare_read_fptr)(wl_display*);
+
+extern s32 (*wl_display_dispatch_pending_fptr)(wl_display*);
+
+extern s32 (*wl_display_flush_fptr)(wl_display*);
+
+extern s32 (*wl_display_read_events_fptr)(wl_display*);
+
 #define wl_proxy_marshal_constructor wl_proxy_marshal_constructor_fptr
 #define wl_proxy_add_listener wl_proxy_add_listener_fptr
 #define wl_proxy_marshal wl_proxy_marshal_fptr
@@ -49,6 +66,11 @@ extern wl_proxy* (*wl_proxy_marshal_constructor_versioned_fptr)(wl_proxy*,
 #define wl_proxy_get_version wl_proxy_get_version_fptr
 #define wl_proxy_destroy wl_proxy_destroy_fptr
 #define wl_proxy_marshal_constructor_versioned wl_proxy_marshal_constructor_versioned_fptr
+
+#define wl_display_prepare_read wl_display_prepare_read_fptr
+#define wl_display_dispatch_pending wl_display_dispatch_pending_fptr
+#define wl_display_flush wl_display_flush_fptr
+#define wl_display_read_events wl_display_read_events_fptr
 
 
 
@@ -77,7 +99,7 @@ extern "C" const wl_interface* wl_subsurface_interface_ptr;
 #define wl_shell_interface *wl_shell_interface_ptr
 #define wl_pointer_interface *wl_pointer_interface_ptr
 #define wl_keyboard_interface *wl_keyboard_interface_ptr
-#define wl_surface_interface *wl_keyboard_interface_ptr
+#define wl_surface_interface *wl_surface_interface_ptr
 #define wl_shell_surface_interface *wl_shell_surface_interface_ptr
 #define wl_callback_interface *wl_callback_interface_ptr
 #define wl_region_interface *wl_region_interface_ptr

@@ -1,5 +1,7 @@
 #include "libload.h"
 
+#include "wwindow.h"
+
 /*
 #define VK_VERSION_MAJOR(version) ((uint32_t)(version) >> 22)
 #define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
@@ -1097,6 +1099,7 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
     
     void* fptr = 0;
     
+    //init function pointers
     _instproc(fptr,instance,
               vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
     
@@ -1111,6 +1114,69 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
               vkGetPhysicalDeviceSurfacePresentModesKHR);
     
     GetSurfacePresentModes = (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR)fptr;
+    //init function pointers
+    
+    
+    
+    //surface caps
+    VkSurfaceCapabilitiesKHR surfacecapabilities;
+    u32 image_count = swapcount;
+    
+    _vktest(GetSurfaceCapabilities(physicaldevice,surface,&surfacecapabilities));
+    
+    if(image_count > surfacecapabilities.maxImageCount){
+        
+        image_count = surfacecapabilities.maxImageCount;
+    }
+    
+    if(image_count < surfacecapabilities.minImageCount){
+        image_count = surfacecapabilities.minImageCount;
+    }
+    
+    VkExtent2D extent = surfacecapabilities.currentExtent;
+    
+    //we can do a simd compare here
+    if(surfacecapabilities.currentExtent.width == 0xFFFFFFFF){
+        
+        extent = {width,height};
+        
+        if(extent.width < surfacecapabilities.minImageExtent.width)
+            extent.width = surfacecapabilities.minImageExtent.width;
+        
+        if(extent.height < surfacecapabilities.minImageExtent.height)
+            extent.height = surfacecapabilities.minImageExtent.height;
+        
+        if(extent.width > surfacecapabilities.maxImageExtent.width)
+            extent.width = surfacecapabilities.maxImageExtent.width;
+        
+        if(extent.height > surfacecapabilities.maxImageExtent.height)
+            extent.height = surfacecapabilities.maxImageExtent.height;
+        
+    }
+    
+    
+    //will be used as our color attachment
+    VkImageUsageFlags usageflags =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    
+    if(surfacecapabilities.supportedUsageFlags & 
+       VK_IMAGE_USAGE_TRANSFER_DST_BIT){
+        
+        //our transfer commands are copied to it
+        usageflags = usageflags | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        
+    }
+    
+    VkSurfaceTransformFlagBitsKHR pretransform = 
+        surfacecapabilities.currentTransform;
+    
+    if(surfacecapabilities.supportedTransforms & 
+       VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR){
+        
+        pretransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+        
+    }
+    
     
     VkSurfaceFormatKHR surfaceformat_array[20] = {};
     ptrsize surfaceformat_count = 0;
@@ -1121,7 +1187,6 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
     
     _vktest(GetSurfaceFormats(physicaldevice,surface,(u32*)&surfaceformat_count,surfaceformat_array));
     
-    u32 image_count = swapcount;
     
     VkSurfaceFormatKHR surfaceformat = {};
     
@@ -1182,64 +1247,9 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
     
 #endif
     
-    VkSurfaceCapabilitiesKHR surfacecapabilities;
-    
-    _vktest(GetSurfaceCapabilities(physicaldevice,surface,&surfacecapabilities));
-    
-    if(image_count > surfacecapabilities.maxImageCount){
-        
-        image_count = surfacecapabilities.maxImageCount;
-    }
-    
-    if(image_count < surfacecapabilities.minImageCount){
-        image_count = surfacecapabilities.minImageCount;
-    }
-    
-    VkExtent2D extent = surfacecapabilities.currentExtent;
-    
-    //we can do a simd compare here
-    if(surfacecapabilities.currentExtent.width == 0xFFFFFFFF){
-        
-        extent = {width,height};
-        
-        if(extent.width < surfacecapabilities.minImageExtent.width)
-            extent.width = surfacecapabilities.minImageExtent.width;
-        
-        if(extent.height < surfacecapabilities.minImageExtent.height)
-            extent.height = surfacecapabilities.minImageExtent.height;
-        
-        if(extent.width > surfacecapabilities.maxImageExtent.width)
-            extent.width = surfacecapabilities.maxImageExtent.width;
-        
-        if(extent.height > surfacecapabilities.maxImageExtent.height)
-            extent.height = surfacecapabilities.maxImageExtent.height;
-        
-    }
     
     
-    //will be used as our color attachment
-    VkImageUsageFlags usageflags =
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    
-    if(surfacecapabilities.supportedUsageFlags & 
-       VK_IMAGE_USAGE_TRANSFER_DST_BIT){
-        
-        //our transfer commands are copied to it
-        usageflags = usageflags | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        
-    }
-    
-    VkSurfaceTransformFlagBitsKHR pretransform = 
-        surfacecapabilities.currentTransform;
-    
-    if(surfacecapabilities.supportedTransforms & 
-       VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR){
-        
-        pretransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        
-    }
-    
-    VSwapchainContext swapchain;
+    VSwapchainContext swapchain = {};
     
     if(oldswapchain){
         swapchain = *oldswapchain;

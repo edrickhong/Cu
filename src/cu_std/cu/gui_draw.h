@@ -5,6 +5,9 @@
 #include "mmath.h"
 #include "debugtimer.h"
 
+struct KeyboardState;
+struct MouseState;
+
 
 struct GUIVertex{
     f32 pos[3];

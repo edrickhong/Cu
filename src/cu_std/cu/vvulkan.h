@@ -1,5 +1,7 @@
 #pragma once
 
+//TODO: separate structs from this file
+
 #ifdef _WIN32
 
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -13,7 +15,6 @@
 
 
 #include "vulkan/vulkan.h"
-#include "wwindow.h"
 #include "aanimation.h"
 
 #include "mode.h"
@@ -21,6 +22,8 @@
 #include "ccolor.h"
 
 #include "tthreadx.h"
+
+struct WWindowContext;
 
 
 extern void* vkenumerateinstanceextensionproperties;

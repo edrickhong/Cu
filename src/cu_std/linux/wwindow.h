@@ -3,25 +3,15 @@
 #include "ttype.h"
 #include "mode.h"
 
+#include "wayland_dyn.h"
+
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
-
-#include "wayland_dyn.h"
 
 //TODO: we never handle mouse scroll events (x11,wayland,win32)
 
 #define _X11_WINDOW 1
 #define _WAYLAND_WINDOW 2
-
-struct WaylandData{
-    wl_compositor* compositor;
-    wl_shell* shell;
-    wl_seat* seat;
-    wl_pointer* pointer;
-    wl_keyboard* keyboard;
-    wl_surface* surface;
-    wl_shell_surface *shell_surface;
-};
 
 struct WWindowContext{
     
@@ -35,11 +25,6 @@ struct WWindowContext{
     void* window;
     
     union{
-        
-        struct{
-            
-            WaylandData wdata;
-        };
         
         struct{
             VisualID x11_visualid;

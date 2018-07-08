@@ -1,5 +1,7 @@
 #pragma once
 
+#include "wwindow.h"
+
 #include "aaudio.h"
 #include "game.h"
 #include "ccontainer.h"

@@ -81,7 +81,7 @@ s32 main(s32 argc,s8** argv){
     
     pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),100,100,1280,720);
     
-    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
@@ -274,7 +274,7 @@ s32 main(s32 argc,s8** argv){
                     auto context = &pdata->scenecontext;
                     
                     GameReloadData reloaddata = {
-                        gdata,pdata->vdevice,pdata->renderpass,pdata->window,context,GetGUIContext(),
+                        gdata,pdata->vdevice,pdata->renderpass,&pdata->window,context,GetGUIContext(),
                         GetAAllocatorContext()
                     };
                     

@@ -187,7 +187,7 @@ struct GameReloadData{
     void* memory;
     VDeviceContext vdevice;
     VkRenderPass renderpass;
-    WWindowContext window;
+    WWindowContext* window;
     SceneContext* context;
     GUIContext* guicontext;
     AAllocatorContext* allocatorcontext;

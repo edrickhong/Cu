@@ -19,7 +19,16 @@ _persist u32 wayland_event_count = 0;
 
 //TODO: We can probably get rid of some of the branching
 
-//FIXME: for some reason swapchain creation is failing cos we don't link to wayland-client (SDL manages this so we will play around w this)
+/*
+wl_argument_from_va_list(proxy->object.interface->methods[opcode].signature,
+ 788│                                  args, WL_CLOSURE_MAX_ARGS, ap);
+ 
+ signatue is null. I suspect we did something wrong here
+ 
+ the proxy in this case is our surface
+ 
+ for some reason in create surface, it is using the wl_keyboard_interface instead of the wl_surface_interface
+*/
 
 wl_proxy* (*wl_proxy_marshal_constructor_fptr)(wl_proxy*,u32,const wl_interface*,...) = 0;
 
@@ -40,6 +49,14 @@ wl_proxy* (*wl_proxy_marshal_constructor_versioned_fptr)(wl_proxy*,
                                                          u32,
                                                          const wl_interface*,u32,...) = 0;
 
+s32 (*wl_display_prepare_read_fptr)(wl_display*) = 0;
+
+s32 (*wl_display_dispatch_pending_fptr)(wl_display*) = 0;
+
+s32 (*wl_display_flush_fptr)(wl_display*) = 0;
+
+s32 (*wl_display_read_events_fptr)(wl_display*) = 0;
+
 const wl_interface* wl_display_interface_ptr = 0;
 const wl_interface* wl_registry_interface_ptr = 0;
 const wl_interface* wl_compositor_interface_ptr = 0;
@@ -58,6 +75,17 @@ const wl_interface* wl_data_source_interface_ptr = 0;
 const wl_interface* wl_data_device_interface_ptr = 0;
 const wl_interface* wl_touch_interface_ptr = 0;
 const wl_interface* wl_subsurface_interface_ptr = 0;
+
+
+struct WaylandData{
+    wl_compositor* compositor;
+    wl_shell* shell;
+    wl_seat* seat;
+    wl_pointer* pointer;
+    wl_keyboard* keyboard;
+    wl_surface* surface;
+    wl_shell_surface *shell_surface;
+};
 
 
 
@@ -112,15 +140,31 @@ s8 WKeyCodeToASCIIWayland(u32 keycode){
 
 u32 WWaitForWindowEventWayland(WWindowContext* windowcontext,
                                WWindowEvent* event){
-    _kill("",1);
-    return 0;
+    
+    while(wl_display_prepare_read((wl_display*)windowcontext->handle)){
+        
+        wl_display_dispatch_pending((wl_display*)windowcontext->handle);
+    }
+    
+    wl_display_flush((wl_display*)windowcontext->handle);
+    wl_display_read_events((wl_display*)windowcontext->handle);
+    wl_display_dispatch_pending((wl_display*)windowcontext->handle);
+    
+    if(wayland_event_count){
+        
+        wayland_event_count--;
+        *event = wayland_event_array[wayland_event_count];
+        
+    }
+    
+    return wayland_event_count;
 }
 
 void WSetTitleWayland(WWindowContext* context,const s8* title){
     
     _kill("",1);
     
-    //    wl_proxy_marshal_fptr((wl_proxy*)wdata.shell_surface,WL_SHELL_SURFACE_SET_TITLE,title);
+    //    wl_shell_surface_set_title(wdata.shell_surface,title);
     
 }
 
@@ -310,6 +354,18 @@ void InternalLoadWaylandSymbols(){
                        u32,
                        const wl_interface*,u32,...))LGetLibFunction(wwindowlib_handle,"wl_proxy_marshal_constructor_versioned");
     
+    
+    wl_display_prepare_read_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_prepare_read");
+    
+    wl_display_dispatch_pending_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_dispatch_pending");
+    
+    wl_display_flush_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_flush");
+    
+    wl_display_read_events_fptr = (s32 (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_read_events");
+    
+    
+    
+    
     //wl_interface* 
     wl_display_interface_ptr = (wl_interface*)LGetLibFunction(wwindowlib_handle,"wl_display_interface");
     
@@ -460,8 +516,8 @@ WWindowContext WCreateWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,
     return context;
 }
 
-#include "vvulkan.h"
 #include "pparse.h"
+#include "vvulkan.h"
 
 WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,u32 width,
                                    u32 height){

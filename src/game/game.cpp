@@ -6,6 +6,9 @@
 
 #include "stdio.h"
 #include "mode.h"
+
+#include "wwindow.h"
+
 #include "game.h"
 
 #ifdef _WIN32
