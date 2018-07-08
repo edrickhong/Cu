@@ -90,4 +90,5 @@ extern "C" const wl_interface* wl_subsurface_interface_ptr;
 
 
 #define WAYLAND_CLIENT_CORE_H
+#define WAYLAND_CLIENT_H
 #include "wayland-client-protocol.h"
