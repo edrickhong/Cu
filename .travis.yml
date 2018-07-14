@@ -14,7 +14,7 @@ before_install:
 
 
 install:
-  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev
+  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev libxkbcommon-dev
   - sudo apt-get install --allow-unauthenticated -qq clang++-4.0
   - export CXX="clang++-4.0"
 
@@ -32,4 +32,3 @@ script:
   - cd Make
   - cmake -DBUILD_STEP=OFF ..
   - make
-  - ls ../include/meta

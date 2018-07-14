@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 2.8)
 
 project(tests)
 
+option(DEBUG "" ON)
+
+if(DEBUG)
+
+add_definitions(-DDEBUG)
+
+endif()
+
 # set(CMAKE_C_COMPILER /usr/bin/clang)
 # set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 

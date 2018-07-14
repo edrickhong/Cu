@@ -151,6 +151,11 @@ COMMAND cparser engine.i -meta ../include/generated/engine_meta.h
 
 COMMAND cparser game.i -component ../include/generated/gamecomp_meta.h -meta ../include/generated/game_meta.h
 
+)
+
+if(UNIX)
+
+add_custom_command(TARGET CJOBS PRE_BUILD
 
 #generate wayland files
 COMMAND wayland-scanner -c public-code /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ../include/generated/xdg-shell.c
@@ -158,6 +163,8 @@ COMMAND wayland-scanner -c public-code /usr/share/wayland-protocols/stable/xdg-s
 COMMAND wayland-scanner -c client-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ../include/generated/xdg-shell.h
 
 )
+
+endif(UNIX)
 
 if(BUILD_STEP)
 
