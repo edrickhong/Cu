@@ -189,7 +189,10 @@ void memset(DebugAllocedPtr<T> dst,int c,u32 size){
 
 #define DEBUGPTR(type) type*
 
-void* _ainline alloc(ptrsize size){
+#include "string.h"
+#include "stdlib.h"
+
+_ainline void* alloc(ptrsize size){
     
     auto ptr = malloc(size);
     

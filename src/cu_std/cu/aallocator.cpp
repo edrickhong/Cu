@@ -156,91 +156,6 @@ void DebugPrintMallocEntry(u32 i){
            entry.line,entry.ptr,entry.size);
 }
 
-#endif
-
-
-void* TAlloc(u32 size){
-    
-    auto aligned_size = _align16(size);
-    
-    _kill("this happened for some reason\n",aligned_size < size);
-    
-    u32 expected_curframe_count;
-    u32 actual_curframe_count;
-    u32 new_curframe_count;
-    void* ptr;
-    
-    do{
-        
-        expected_curframe_count = alloc_context->curframe_count;
-        new_curframe_count = alloc_context->curframe_count + aligned_size;
-        
-        actual_curframe_count = LockedCmpXchg(&alloc_context->curframe_count,expected_curframe_count,
-                                              new_curframe_count);
-        
-        ptr = (s8*)alloc_context->frame_ptr + actual_curframe_count;
-        
-    }while(expected_curframe_count != actual_curframe_count);
-    
-    _kill("no more frame stack space\n",((s8*)ptr - alloc_context->frame_ptr) > alloc_context->maxframe_count);
-    
-    memset(ptr,0,aligned_size);
-    
-    return ptr;
-}
-
-void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line){
-    
-    auto ptr = TAlloc(size);
-    
-    auto aligned_size = _align16(size);
-    
-    DebugSubmitTAlloc(ptr,aligned_size,file,function,line);
-    
-    return ptr;
-}
-
-
-void InitTAlloc(u32 size){
-    alloc_context->frame_ptr = (s8*)alloc(size);
-    alloc_context->maxframe_count = size;
-}
-
-void InitInternalAllocator(){
-    
-    _kill("already allocated\n",alloc_context);
-    
-    alloc_context = (AAllocatorContext*)alloc(sizeof(AAllocatorContext));
-}
-
-void ResetTAlloc(){
-    
-    u32 expected_curframe_count;
-    u32 actual_curframe_count;
-    u32 new_curframe_count;
-    
-    do{
-        
-        expected_curframe_count = alloc_context->curframe_count;
-        new_curframe_count = 0;
-        
-        actual_curframe_count = LockedCmpXchg(&alloc_context->curframe_count,expected_curframe_count,
-                                              new_curframe_count);
-        
-    }while(expected_curframe_count != actual_curframe_count);
-    
-#ifdef DEBUG
-    alloc_context->alloc_count = 0;
-#endif
-}
-
-
-AAllocatorContext* GetAAllocatorContext(){
-    return alloc_context;
-}
-void SetAAllocatorContext(AAllocatorContext* this_context){
-    alloc_context = this_context;
-}
 
 void* DebugMalloc(size_t size,const s8* file,const s8* function,u32 line){
     
@@ -279,4 +194,97 @@ void* DebugRealloc(void* old_ptr,size_t size,const s8* file,const s8* function,u
     }
     
     return 0;
+}
+
+void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line){
+    
+    auto ptr = TAlloc(size);
+    
+    auto aligned_size = _align16(size);
+    
+    DebugSubmitTAlloc(ptr,aligned_size,file,function,line);
+    
+    return ptr;
+}
+
+#endif
+
+
+void* TAlloc(u32 size){
+    
+    auto aligned_size = _align16(size);
+    
+    _kill("this happened for some reason\n",aligned_size < size);
+    
+    u32 expected_curframe_count;
+    u32 actual_curframe_count;
+    u32 new_curframe_count;
+    void* ptr;
+    
+    do{
+        
+        expected_curframe_count = alloc_context->curframe_count;
+        new_curframe_count = alloc_context->curframe_count + aligned_size;
+        
+        actual_curframe_count = LockedCmpXchg(&alloc_context->curframe_count,expected_curframe_count,
+                                              new_curframe_count);
+        
+        ptr = (s8*)alloc_context->frame_ptr + actual_curframe_count;
+        
+    }while(expected_curframe_count != actual_curframe_count);
+    
+    _kill("no more frame stack space\n",((s8*)ptr - alloc_context->frame_ptr) > alloc_context->maxframe_count);
+    
+    memset(ptr,0,aligned_size);
+    
+    return ptr;
+}
+
+
+
+
+void InitTAlloc(u32 size){
+    alloc_context->frame_ptr = (s8*)alloc(size);
+    
+#ifdef DEBUG
+    
+    alloc_context->maxframe_count = size;
+    
+#endif
+}
+
+void InitInternalAllocator(){
+    
+    _kill("already allocated\n",alloc_context);
+    
+    alloc_context = (AAllocatorContext*)alloc(sizeof(AAllocatorContext));
+}
+
+void ResetTAlloc(){
+    
+    u32 expected_curframe_count;
+    u32 actual_curframe_count;
+    u32 new_curframe_count;
+    
+    do{
+        
+        expected_curframe_count = alloc_context->curframe_count;
+        new_curframe_count = 0;
+        
+        actual_curframe_count = LockedCmpXchg(&alloc_context->curframe_count,expected_curframe_count,
+                                              new_curframe_count);
+        
+    }while(expected_curframe_count != actual_curframe_count);
+    
+#ifdef DEBUG
+    alloc_context->alloc_count = 0;
+#endif
+}
+
+
+AAllocatorContext* GetAAllocatorContext(){
+    return alloc_context;
+}
+void SetAAllocatorContext(AAllocatorContext* this_context){
+    alloc_context = this_context;
 }

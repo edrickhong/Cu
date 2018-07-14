@@ -849,13 +849,16 @@ extern "C" {
         data = (GameData*)initdata->memory;
         
         data->running = true;
-        data->draw_profiler = true;
         
         data->camera_pos = Vector4{0.0f,0.0f,-4.0f,1.0f};
         data->camera_lookdir = Vector4{0.0f,0.0f,1.0f,0.0f};
         
         
+#ifdef DEBUG
         //set gui state
+        
+        data->draw_profiler = true;
+        
         data->prev_mpos = {};
         data->widget_type = 0;
         data->obj_id = 0;
@@ -877,12 +880,14 @@ extern "C" {
         data->pos_dirlight = data->pos_obj_editor;
         data->pos_ambient = data->pos_dirlight;
         
+        memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
+        
+#endif
+        
         data->ambient_color = White;
         data->ambient_intensity = 0.4f;
         
         initdata->context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
-        
-        memset(&data->o_buffer[0][0],0,sizeof(data->o_buffer));
         
         
     }

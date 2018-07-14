@@ -2731,11 +2731,6 @@ logic GUIRotationGizmo(GUIVec3 world_pos,Quaternion* rot){
     return ret;
 }
 
-
-void GUIDebugGetCurrentHolder(){
-    printf("GUI current holder %s\n",gui->internal_state_string);
-}
-
 void GUIDrawPosMarker(GUIVec3 world_pos,Color color){
     
     GUISetRenderMode(GUI_RENDER_LINE);
@@ -2756,3 +2751,11 @@ void GUIDrawPosMarker(GUIVec3 world_pos,Color color){
     InternalGUIDrawLine(obj_c,b,color);
     InternalGUIDrawLine(obj_c,c,color);
 }
+
+#ifdef DEBUG
+
+void GUIDebugGetCurrentHolder(){
+    printf("GUI current holder %s\n",gui->internal_state_string);
+}
+
+#endif

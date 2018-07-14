@@ -883,7 +883,9 @@ u32 _ainline VFormatHash(VkFormat* format_array,u32 count){
 struct VShaderObj{
     
 #ifdef DEBUG
+    
     u64 vert_hash;
+    
 #endif
     
     u8 vert_desc_count = 0;

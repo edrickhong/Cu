@@ -50,10 +50,10 @@ struct ModelAssetHandle{
     VBufferContext indexbuffer = {};
     VBufferContext instancebuffer = {};
     
-#ifdef DEBUG
+    //#ifdef DEBUG
     u32 vert_component = 0;
     u32 animation_id = (u32)-1;
-#endif
+    //#endif
 };
 
 

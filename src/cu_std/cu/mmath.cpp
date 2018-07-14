@@ -241,6 +241,8 @@ ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     };
     
     
+#ifdef DEBUG
+    
 #if _test_matrices
     
     
@@ -255,6 +257,8 @@ ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     auto f2 = (f32*)&t_mat;
     
     InternalCmpMatrix(f1,f2);
+    
+#endif
     
 #endif
     
@@ -301,6 +305,8 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
     };
     
     
+#ifdef DEBUG
+    
 #if _test_matrices
     
     auto ref_matrix = Transpose(matrix);
@@ -321,6 +327,8 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
         }
         
     }
+    
+#endif
     
 #endif
     

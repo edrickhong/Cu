@@ -66,7 +66,11 @@ void InternalHandleVertexBuilding(VShaderObj* obj,SPXData* spx,u32 vert_binding_
     
     vert_hash = VFormatHash(format_array,format_count);
     
+#ifdef DEBUG
+    
     obj->vert_hash = vert_hash;
+    
+#endif
 }
 
 void DebugCompareSet(VShaderObj::DescSetEntry* set,DescEntry* entry){

@@ -305,7 +305,11 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
                                 VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
                                 context->renderpass,context->subpass_index,context->framebuffer,VK_FALSE,0,0);
             
+#ifdef DEBUG
+            
             render->debugentry_count = 0;
+            
+#endif
         }
         
         _kill("a trivial non program will always have these\n",
@@ -1342,6 +1346,10 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
         
         switch(event.type){
             
+            
+            //MARK: shut up compiler!
+            case W_EVENT_NONE:{}break;
+            
             case W_EVENT_EXPOSE:{
                 printf("window exposed\n");
             }
@@ -1616,8 +1624,8 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
 }
 
 //MARK:
-void _optnone InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
-                               VkQueue queue){
+void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
+                      VkQueue queue){
     
     Vector4 position = Vector4{0.0f,0.0f,-4.0f,1.0f};
     

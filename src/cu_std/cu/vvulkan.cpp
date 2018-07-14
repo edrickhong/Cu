@@ -183,7 +183,7 @@ void ErrorString(VkResult errorCode){
 }
 
 
-#define _vktest(condition) {VkResult result = condition;if((result != VK_SUCCESS)) {ErrorString(condition);*(s32 *)0 = 0;}}
+#define _vktest(condition) {VkResult result = condition;if((result != VK_SUCCESS)) {ErrorString(condition);_kill("",1);}}
 
 #define _instproc(fptr,inst,entrypoint)				\
 {									\
@@ -330,7 +330,7 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     
     auto load = (void* (*)(void*,const s8*))load_fptr;
     
-#define _initfunc(func,var) var = (void*)load(k,""#func); if(!var){printf("%s %s %d :: Failed to load function %s\n",__FUNCTION__,__FILE__,__LINE__,""#func);*(int *)0 = 0;}
+#define _initfunc(func,var) var = (void*)load(k,""#func); if(!var){printf("%s %s %d :: Failed to load function %s\n",__FUNCTION__,__FILE__,__LINE__,""#func);_kill("",1);}
     
     //TODO: remove instance level functions and run them in instance creation
     

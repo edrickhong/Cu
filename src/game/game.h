@@ -75,7 +75,11 @@ struct GameData{
     SOAOrientationData orientation;
     void* components;
     
+    Color ambient_color;
+    f32 ambient_intensity;
+    
 #ifdef DEBUG
+    
     //GUI state variables
     
     
@@ -108,9 +112,6 @@ struct GameData{
     Quaternion dir_light_rot[1024];
     Color dir_light_color[1024];
     f32 dir_light_intensity[1024];
-    
-    Color ambient_color;
-    f32 ambient_intensity;
     
 #endif
     

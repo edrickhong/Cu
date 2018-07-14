@@ -3,6 +3,8 @@
 #include "ttype.h"
 #include "mode.h"
 
+#include "string.h"
+
 /*
 TODO: we should make size or pos to ptrsize instead of u32
 */

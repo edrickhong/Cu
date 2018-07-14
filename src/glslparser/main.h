@@ -1,6 +1,8 @@
 #pragma once
 #include "aallocator.h"
 
+#include "stdio.h"
+
 logic IsPreprocessor(s8 c){
     return c == '#';
 }
