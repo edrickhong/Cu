@@ -153,6 +153,9 @@ COMMAND cparser game.i -component ../include/generated/gamecomp_meta.h -meta ../
 
 )
 
+if(BUILD_STEP)
+
+#MARK: setting here for now until we work around the version issues
 if(UNIX)
 
 add_custom_command(TARGET CJOBS PRE_BUILD
@@ -166,7 +169,6 @@ COMMAND wayland-scanner -c client-header /usr/share/wayland-protocols/stable/xdg
 
 endif(UNIX)
 
-if(BUILD_STEP)
 
 #SHADER COMPILING
 file(GLOB SHADERS src/shaders/*)
