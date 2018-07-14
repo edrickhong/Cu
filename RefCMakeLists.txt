@@ -3,6 +3,13 @@ cmake_minimum_required(VERSION 2.8)
 project(copper)
 
 option(BUILD_STEP "" ON)
+option(DEBUG "" ON)
+
+if(DEBUG)
+
+add_definitions(-DDEBUG)
+
+endif()
 
 if(UNIX)
 
@@ -20,11 +27,20 @@ endif()
   #set(CLANG_DEBUG "-fsanitize=address,memory,undefined,safe-stack,thread")
   set(CLANG_DEBUG "") #break here __asan::ReportGenericError
 
-  set(OPT_FLAGS "-O0 -march=x86-64 -fno-omit-frame-pointer -fno-fast-math -fno-exceptions -fno-rtti")
+if(DEBUG)
 
-  set(STRICT_FLAGS "-Werror -Wall -Wextra -pedantic -Wcast-align  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self  -Wmissing-include-dirs   -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo  -Wstrict-overflow=5 -Wundef -Wno-unused -Wno-variadic-macros -Wno-parentheses -Wunused-function -Wunused-label -Wunused-value -Wunused-variable -fdiagnostics-show-option -Wno-missing-field-initializers -Wno-missing-braces")
+set(OPT_FLAGS "-g -O0 -fno-omit-frame-pointer")
 
-  set(FLAGS "-g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
+set(STRICT_FLAGS "-Werror -Wall -Wextra -pedantic -Wcast-align  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self  -Wmissing-include-dirs   -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo  -Wstrict-overflow=5 -Wundef -Wno-unused -Wno-variadic-macros -Wno-parentheses -Wunused-function -Wunused-label -Wunused-value -Wunused-variable -fdiagnostics-show-option -Wno-missing-field-initializers -Wno-missing-braces")
+
+else()
+
+set(OPT_FLAGS "-O3")
+set(STRICT_FLAGS)
+
+endif()
+
+  set(FLAGS "-march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
 
   set(ASSIMP_LIB "libassimp.so")
   set(DL_LIB "dl")
@@ -41,13 +57,22 @@ else(UNIX)
     set(ASSIMP_LIB "../extlib/assimp")
     set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib")
 
-set(STRICT_FLAGS "/W3 /WX")
-set(OPT_FLAGS "/Od /EHsc")
+if(DEBUG)
 
-    set(FLAGS "/Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
+set(STRICT_FLAGS "/W3 /WX")
+set(OPT_FLAGS "/Od")
+
+else()
+
+set(STRICT_FLAGS "/W3 /WX")
+set(OPT_FLAGS "/O2")
+
+endif()
+
+    #allow debug info here cos windows doesn't embed it into the dll/exe
+    set(FLAGS "/EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
 
 #enable masm
-
 enable_language(ASM_MASM)
 
 if (NOT CMAKE_CL_64)
@@ -59,19 +84,19 @@ endif(UNIX)
   set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
   set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
 
-set(CMAKE_CXX_FLAGS  ${FLAGS})
+  set(CMAKE_CXX_FLAGS  ${FLAGS})
 
 # Output Directory Variables
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
 # Include Directory 
-include_directories(
+  include_directories(
   "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
   "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
   "${CMAKE_BINARY_DIR}/../include"
-  "${CMAKE_BINARY_DIR}/../include/meta"
+  "${CMAKE_BINARY_DIR}/../include/generated"
   "${CMAKE_BINARY_DIR}/../src/engine"
   ${PLATFORM_INCLUDES}
   "${CMAKE_BINARY_DIR}/../src/game"
@@ -85,22 +110,10 @@ file(GLOB ASSETPACKER src/assetpacker/main.cpp)
 file(GLOB GAME src/game/game.cpp)
 file(GLOB CU_STD src/cu_std/cu/main.cpp)
 
-#we should separate these two
-add_library(cu_std STATIC ${CU_STD})
-
-add_executable(assetpacker ${ASSETPACKER})
-add_executable(cparser ${CPARSER})
-add_executable(importer ${IMPORTER})
-add_executable(glslparser ${GLSLPARSER})
-
-#we shouldn't have to link platform libs (the only thing we shoud have to link to is libdl)
-target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
-target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
-target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
-target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 
-#BUILD STEP
+
+#BUILD STEP - run generators and compile shaders
 
 get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 
@@ -127,11 +140,22 @@ endif(UNIX)
 
 add_custom_target(CJOBS ALL  echo EXECUTING BUILD STEP
 
+
+#output pp files
 COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${ENGINE} ${C_INCLUDES} ${META_OUT}engine.i
 
 COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.i
 
-COMMAND cparser engine.i game.i -component ../include/meta/gamecomp_meta.h -meta ../include/meta/meta.h
+#run generator on pp files
+COMMAND cparser engine.i -meta ../include/generated/engine_meta.h
+
+COMMAND cparser game.i -component ../include/generated/gamecomp_meta.h -meta ../include/generated/game_meta.h
+
+
+#generate wayland files
+COMMAND wayland-scanner -c public-code /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ../include/generated/xdg-shell.c
+
+COMMAND wayland-scanner -c client-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ../include/generated/xdg-shell.h
 
 )
 
@@ -166,7 +190,28 @@ COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui
 )
 
 
+
+
+
 endif()
+
+
+
+
+#we should separate these two
+add_library(cu_std STATIC ${CU_STD})
+
+add_executable(assetpacker ${ASSETPACKER})
+add_executable(cparser ${CPARSER})
+add_executable(importer ${IMPORTER})
+add_executable(glslparser ${GLSLPARSER})
+
+#we shouldn't have to link platform libs (the only thing we shoud have to link to is libdl)
+target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
+target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
+target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
+target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
+
 
 
 #for these we do not want to have stdc++

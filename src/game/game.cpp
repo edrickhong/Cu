@@ -31,8 +31,6 @@
 
 #include "pparse.h"
 
-#include "function_refl.h"
-
 #ifndef CPP_PASS
 
 #include "gamecomp_meta.h"
@@ -541,8 +539,12 @@ void UpdateLightList(SceneContext* context){
         
         context->AddPointLight(pos,Color{c.x,c.y,c.z,1.0f},light->radius);
         
-#if _debug && 0
+#ifdef DEBUG
+        
+#if 0
         GUIDrawAxisSphere(pos,4.0f);
+#endif
+        
 #endif
     }
     
@@ -895,8 +897,12 @@ extern "C" {
         exit(0);
 #endif
         
-#if _debug && _enable_gui
+#ifdef DEBUG 
+#if _enable_gui
+        
         EditorGUI(context);
+        
+#endif
 #endif
         
         KeyboardInput(context);
@@ -946,7 +952,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved){
 #endif
 
 
-#if _debug
+#ifdef DEBUG
 
 logic InspectorIgnoreFields(u32 hash){
     return hash == PHashString("id") || hash == (u32)PHashString("animationcomponent_id")

@@ -494,7 +494,7 @@ struct GUIContext{
     
     u64 internal_active_state;
     
-#if _debug
+#ifdef DEBUG
     
     const s8* internal_state_string;
     
@@ -719,7 +719,7 @@ void InternalSetActiveState(const s8* string){
     
     u64 token = PHashString(string);
     
-#if _debug
+#ifdef DEBUG
     
     gui->internal_state_string = string;
     
@@ -1284,10 +1284,12 @@ GUIVec2 pos = {},GUIDim2 dim = {}){
     
     
     //DEBUG:
+#if 1
     if(gui->submit_count){
         
         _kill("",(gui->vert_offset == gui->submit_array[gui->submit_count - 1].vert_offset) && gui->vert_offset != 0);
     }
+#endif
     
     gui->submit_count++;
     

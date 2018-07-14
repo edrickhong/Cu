@@ -14,7 +14,7 @@ void InitTAlloc(u32 size);
 
 void ResetTAlloc();
 
-#if _debug
+#ifdef DEBUG
 
 #define DEBUGPTR(type) DebugAllocedPtr<type>
 

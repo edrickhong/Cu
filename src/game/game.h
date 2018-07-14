@@ -75,7 +75,7 @@ struct GameData{
     SOAOrientationData orientation;
     void* components;
     
-#if _debug
+#ifdef DEBUG
     //GUI state variables
     
     
@@ -167,7 +167,7 @@ struct SceneContext{
     AnimatedAssetHandle animatedasset_array[_max_components];
     u32 animatedasset_count;
     
-#if _debug
+#ifdef DEBUG
     u32 pipelineverthash_array[32];
     u32 pipelineverthash_count;
 #endif

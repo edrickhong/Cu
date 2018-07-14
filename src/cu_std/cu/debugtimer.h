@@ -8,16 +8,21 @@
 
 #include "ccolor.h"
 
-#if _debug && _enable_gui
+#if _enable_gui
+
+#ifdef DEBUG
 
 #define _enable_debugtimer 1
+
+#endif
 
 #else
 
 #define _enable_debugtimer 0
+
 #endif
 
-#if (_debug && _enable_debugtimer)
+#if (_enable_debugtimer)
 
 #define TIMEBLOCK(COLOR) TimeBlock t_##__LINE__((const s8*)__FILE__,__LINE__,(const s8*)__FUNCTION__,COLOR)
 

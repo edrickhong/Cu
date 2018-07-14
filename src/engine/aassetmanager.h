@@ -20,7 +20,7 @@
 
 #define _debugallocator 0
 
-#if _debugallocator
+#ifdef DEBUGallocator
 
 #define _allocprint(string, ...)  _dprint(string, __VA_ARGS__)
 
@@ -50,7 +50,7 @@ struct ModelAssetHandle{
     VBufferContext indexbuffer = {};
     VBufferContext instancebuffer = {};
     
-#if _debug
+#ifdef DEBUG
     u32 vert_component = 0;
     u32 animation_id = (u32)-1;
 #endif
@@ -249,7 +249,7 @@ void FetchTextureTile(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer);
 
 void VTDrawPrepass();
 
-#if _debug
+#ifdef DEBUG
 
 //TODO: Test this
 void InternalDefrag();

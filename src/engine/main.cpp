@@ -5,17 +5,11 @@
 
 _persist auto ustring = "patchthisvalueinatassetpacktime";
 
-//MARK: it should fail with pointer or array types
-#include "function_refl.h"
-
 #ifndef CPP_PASS
 
-#include "meta.h"
+#include "engine_meta.h"
 
 #endif
-
-
-#define _VKTEST(a) {auto res = a; _kill("", res != VK_SUCCESS);}
 
 
 
@@ -34,7 +28,9 @@ s32 main(s32 argc,s8** argv){
     
 #endif
     
-#if _debug && 0
+#ifdef DEBUG
+    
+#if 0
     {
         
         if(ustring[0] != '!'){
@@ -60,6 +56,9 @@ s32 main(s32 argc,s8** argv){
         
         FCloseFile(file);
     }
+    
+#endif
+    
 #endif
     
     _kill("ubo too big",sizeof(SkelUBO) > _kilobytes(64));
@@ -246,6 +245,7 @@ s32 main(s32 argc,s8** argv){
                 
                 
                 //MARK: we should move this to buildrendercmdbuffer
+                //FIXME: turning on vsync has frame hitches
                 {
                     
                     TIMEBLOCKTAGGED("AcquireImage",Orange);

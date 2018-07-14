@@ -58,6 +58,10 @@ extern s32 (*wl_display_flush_fptr)(wl_display*);
 
 extern s32 (*wl_display_read_events_fptr)(wl_display*);
 
+extern s32 (*wl_display_get_fd_fptr)(wl_display*);
+
+extern s32 (*wl_display_dispatch_ftpr)(wl_display*);
+
 #define wl_proxy_marshal_constructor wl_proxy_marshal_constructor_fptr
 #define wl_proxy_add_listener wl_proxy_add_listener_fptr
 #define wl_proxy_marshal wl_proxy_marshal_fptr
@@ -71,6 +75,10 @@ extern s32 (*wl_display_read_events_fptr)(wl_display*);
 #define wl_display_dispatch_pending wl_display_dispatch_pending_fptr
 #define wl_display_flush wl_display_flush_fptr
 #define wl_display_read_events wl_display_read_events_fptr
+
+#define wl_display_get_fd wl_display_get_fd_fptr
+
+#define wl_display_dispatch wl_display_dispatch_ftpr
 
 
 

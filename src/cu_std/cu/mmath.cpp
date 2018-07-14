@@ -1,7 +1,9 @@
 
 #define _test_matrices 1
 
-#if (_test_matrices && _debug)
+#ifdef DEBUG
+
+#if (_test_matrices)
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
 #define GLM_FORCE_RIGHT_HANDED 1
@@ -30,6 +32,8 @@ void InternalCmpMatrix(f32* f1,f32* f2){
     }
     
 }
+
+#endif
 
 #endif
 

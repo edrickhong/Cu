@@ -11,7 +11,7 @@ struct AAllocatorContext{
     const s8* frame_ptr = 0;
     volatile u32 curframe_count = 0;
     
-#if _debug
+#ifdef DEBUG
     
     struct DebugAllocEntry{
         void* ptr;
@@ -35,7 +35,7 @@ struct AAllocatorContext{
 
 _persist AAllocatorContext* alloc_context = 0;
 
-#if _debug
+#ifdef DEBUG
 
 void DebugSubmitTAlloc(void* base_ptr,u32 size,const s8* file,const s8* function,u32 line){
     
@@ -229,7 +229,7 @@ void ResetTAlloc(){
         
     }while(expected_curframe_count != actual_curframe_count);
     
-#if _debug
+#ifdef DEBUG
     alloc_context->alloc_count = 0;
 #endif
 }

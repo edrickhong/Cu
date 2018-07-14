@@ -284,7 +284,7 @@ extern void* vkenumeratephysicaldevicegroups;
 #define vkEnumeratePhysicalDeviceGroups ((PFN_vkEnumeratePhysicalDeviceGroups)vkenumeratephysicaldevicegroups)
 
 
-#if _debug
+#ifdef DEBUG
 #define _vk_inject_cmdbuffers 1
 #else
 #define _vk_inject_cmdbuffers 0
@@ -360,9 +360,14 @@ struct VBufferContext{
     //count on index buffer
     u32 attrib;
     
-#if (_debug && 0)
+#ifdef DEBUG
+    
+#if 0
     u32 max_inst = 0; // for instance buffer checking only
 #endif
+    
+#endif
+    
 };
 
 //TODO: fold all the texture/image functions
@@ -877,7 +882,7 @@ u32 _ainline VFormatHash(VkFormat* format_array,u32 count){
 
 struct VShaderObj{
     
-#if _debug
+#ifdef DEBUG
     u64 vert_hash;
 #endif
     

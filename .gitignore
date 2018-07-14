@@ -9,6 +9,6 @@ TODO.txt
 *.comp
 *.zip
 extlib/
-include/meta/*
-!include/meta/.gitkeep
+include/generated/*
+!include/generated/.gitkeep
 

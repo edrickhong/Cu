@@ -103,7 +103,7 @@ void ConstructDescSets(VShaderObj* obj,SPXData* spx){
             SetAddElement(set,entry);
         }
         
-#if _debug
+#ifdef DEBUG
         //set has been defined. Make sure it is the same across all shaders
         else{
             DebugCompareSet(set,entry);

@@ -1127,7 +1127,7 @@ _persist VkCommandPool fetch_pool[2];
 _persist VkCommandBuffer fetch_cmdbuffer[2];
 _persist u32 fetch_count = 0;
 
-#if _debug
+#ifdef DEBUG
 
 _persist VTReadbackPixelFormat* debug_pixels = 0;
 
@@ -1242,7 +1242,9 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     }
     
     
-#if (_debug && _usergba)
+#ifdef DEBUG
+    
+#if (_usergba)
     {
         //NOTE:Clear texturecache - Linux doesn't clear gpu memory by default. this is better for
         // debugging
@@ -1305,6 +1307,8 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     }
 #endif
     
+#endif
+    
     {
         
         auto w = swapchain->width/_fetch_dim_scale_w;
@@ -1321,7 +1325,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         vt_readbackbuffer.w = w;
         vt_readbackbuffer.h = h;
         
-#if _debug
+#ifdef DEBUG
         
         debug_pixels = (VTReadbackPixelFormat*)alloc(w * h * 4);
 #endif
@@ -1732,9 +1736,13 @@ TCoord InternalToCoordAtMipLevel(TCoord src_coord,u32 dst_mip){
     c.y = src_coord.y >> (dst_mip - src_coord.mip);
     c.mip = dst_mip;
     
-#if  0 && _debug
+#ifdef DEBUG
+    
+#if  0
     
     printf("a: %d %d %d\n",c.mip,c.x,c.y);
+    
+#endif
     
 #endif
     
@@ -1748,8 +1756,12 @@ Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
         (u8)(dst_coord.y - (prevdst_coord.y << 1))
     };
     
-#if  0 && _debug
+#ifdef DEBUG
+    
+#if  0
     printf("q: %d %d\n",c.x,c.y);
+#endif
+    
 #endif
     
     return c;
@@ -1791,11 +1803,15 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,255,255);
     }
     
-#if _debug && 0
+#ifdef DEBUG
+    
+#if 0
     
     else{
         printf("rejected %d %d %d\n",dst_coord.mip,dst_coord.x,dst_coord.y);
     }
+    
+#endif
     
 #endif
     
@@ -2203,7 +2219,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
     
 #endif  
     
-#if _debug 
+#ifdef DEBUG 
     
     {
         
@@ -2258,7 +2274,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             auto tid = threadtexturefetch_array[i].texture_id;
             
-#if _debug
+#ifdef DEBUG
             
             if(tid >= _arraycount(texturehandle_array))
             {

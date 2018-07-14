@@ -134,7 +134,7 @@ AAudioContext ACreateAudioDevice(const s8* device_string,u32 frequency,u32 chann
     auto snd_pcm_hw_params_free_fptr = (void (*)(snd_pcm_hw_params_t *))
         LGetLibFunction(audiolib,"snd_pcm_hw_params_free");
     
-#if _debug
+#ifdef DEBUG
     
     auto snd_pcm_hw_params_get_buffer_size_fptr = (s32 (*)(const snd_pcm_hw_params_t*,snd_pcm_uframes_t*))LGetLibFunction(audiolib,"snd_pcm_hw_params_get_buffer_size");
     
@@ -204,7 +204,7 @@ AAudioContext ACreateAudioDevice(const s8* device_string,u32 frequency,u32 chann
         
         
         
-#if _debug
+#ifdef DEBUG
         
         snd_pcm_uframes_t bufsize;
         
@@ -263,7 +263,7 @@ void APlayAudioDevice(AAudioContext audiocontext,void* data,u32 write_frames){
         
         printf("failed consistent write\n");
         
-#if _debug
+#ifdef DEBUG
         snd_pcm_recover(audiocontext.handle,err,0);//set to 1 to not print errors
 #else
         snd_pcm_recover(audiocontext.handle,err,1);//set to 1 to not print errors
@@ -294,7 +294,7 @@ void APlayAudioDevice(AAudioContext audiocontext,void* data,u32 write_frames,
             // exit(1);
             //underrun occured
             
-#if _debug
+#ifdef DEBUG
             snd_pcm_recover(audiocontext.handle,err,0);//set to 1 to not print errors
 #else
             snd_pcm_recover(audiocontext.handle,err,1);//set to 1 to not print errors

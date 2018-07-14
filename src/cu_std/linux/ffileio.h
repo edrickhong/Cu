@@ -101,7 +101,7 @@ u32 FFindNextFile(DirectoryHandle* dirhandle,FileInfo* info);
 logic FFileChanged(const s8* file,FileNode* node);
 
 
-#if _debug
+#ifdef DEBUG
 
 FileHandle DebugFOpenFile(const s8* filepath,u32 flags,s8* file,s8* function,u32 line);
 

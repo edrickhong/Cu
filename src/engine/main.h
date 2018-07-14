@@ -34,7 +34,7 @@
 
 //TODO: Make this easier to log with
 
-#if _debug
+#ifdef DEBUG
 
 
 struct DebugRenderEntry{
@@ -206,7 +206,7 @@ void _ainline SetClearColor(RenderContext* context,Color color){
 void _ainline InternalPushRenderEntry(RenderContext* context,u32 group_index,
                                       ModelAssetHandle* handle,u32 dyn_offset,u32 instance_count = 1){
     
-#if _debug
+#ifdef DEBUG
     if(handle->instancebuffer.buffer){
         _kill("invalid instance buffer use\n",instance_count > handle->instancebuffer.attrib);  
     }
@@ -249,7 +249,7 @@ struct ThreadRenderData{
     u32 active_group;
     u8 group_submit_count[4];
     
-#if _debug
+#ifdef DEBUG
     
     DebugRenderEntry debugentry_array[32] = {};
     u32 debugentry_count = 0;
@@ -355,7 +355,7 @@ logic _ainline InternalExecuteRenderBatch(RenderContext* context,
             
             InternalDraw(cmdbuffer,vertexbuffer,indexbuffer,instancebuffer,obj.count);
             
-#if _debug
+#ifdef DEBUG
             
             render->debugentry_array[render->debugentry_count] = {
                 index,batch->group,i,obj.handle->assetfile
@@ -383,7 +383,7 @@ void ExecuteRenderBatch(RenderContext* context,
         return;
     }
     
-#if _debug
+#ifdef DEBUG
     
     DebugSubmitDebugEntryRef(TGetThisThreadID(),&render->debugentry_array[0],render->debugentry_count);
 #endif
@@ -425,7 +425,7 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
         _mm_pause();
     }
     
-#if _debug
+#ifdef DEBUG
     
     global_debugentry_count = 0;
     
@@ -907,7 +907,7 @@ u32 DeployAllThreads(Threadinfo* info){
     
     RECORDTHREAD();
     
-#if _debug
+#ifdef DEBUG
     
     u32 total_threads = 3;
     
@@ -1328,7 +1328,7 @@ void SetupFrameBuffers(VDeviceContext* _restrict  device,
 void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboardstate,
                             MouseState* mousestate,void* args){
     
-    TIMEBLOCK(White);
+    TIMEBLOCK(Green);
     
     memcpy(keyboardstate->prevkeystate,keyboardstate->curkeystate,
            sizeof(keyboardstate->prevkeystate));
@@ -1377,6 +1377,7 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
             
             case W_EVENT_MSEVENT_DOWN:{
                 mousestate->curstate[event.mouse_event.keycode] = 1;
+                
             }break;
             
             case W_EVENT_MSEVENT_UP:{

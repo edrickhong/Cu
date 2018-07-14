@@ -614,6 +614,8 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
             
         }
         
+        
+        
         {
             
             for(u32 j = 0; j < s->members_count;j++){
@@ -723,6 +725,7 @@ void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
                 FWrite(file,(void*)buffer,strlen(buffer));
             }
             
+            
             for(u32 j = 0; j < e->members_count;j++){
                 
                 auto m = &e->members_array[j];
@@ -794,6 +797,14 @@ void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 
     auto start_string = "\n\nMetaFunctionData META_FUNCTION_ARRAY[] = {\n";
     
     FWrite(file,(void*)start_string,strlen(start_string));
+    
+    if(!function_count){
+        
+        auto empty_block = "{}\n";
+        
+        FWrite(file,(void*)empty_block,strlen(empty_block));
+    }
+    
     
     {
         

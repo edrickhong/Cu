@@ -73,7 +73,7 @@ u32 TGetEntryIndex(volatile u32* cur_index);
 
 u32 TGetEntryIndex(volatile u32* cur_index,u32 max_count);
 
-#if _debug
+#ifdef DEBUG
 
 #define TGetEntryIndexD(a,b) TGetEntryIndex(a,b)
 

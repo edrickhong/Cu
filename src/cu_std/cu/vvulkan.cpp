@@ -283,7 +283,7 @@ void VInitVulkan(){
 _persist VkInstance global_instance = 0;
 _persist u32 global_version_no = 0;
 
-#if _debug 
+#ifdef DEBUG 
 _persist VkDevice global_device = 0;
 #endif
 
@@ -527,9 +527,14 @@ PFN_vkDestroyDebugReportCallbackEXT CreateVkDebug(VkInstance instance){
 VkDeviceMemory  
 VRawDeviceAlloc(VkDevice device,VkDeviceSize alloc_size,u32 memorytype_index){
     
-#if _debug && 0
+#ifdef DEBUG
+    
+#if 0
+    
     PRINTTIMEBLOCK();
     printf("DEVICEALLOCED: TYPE %d SIZE %d\n",memorytype_index,(u32)alloc_size);
+#endif
+    
 #endif
     
     VkDeviceMemory memory;
@@ -1061,7 +1066,7 @@ VkImage CreateImage(VkDevice device,VkImageCreateFlags flags,
     info.pQueueFamilyIndices = queuefamilyindex_array;
     info.initialLayout = initial_layout;
     
-#if _debug
+#ifdef DEBUG
     {
         
         VkImageFormatProperties props = {};
@@ -1219,7 +1224,7 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
     
     VkPresentModeKHR presentmode = (VkPresentModeKHR)sync_type;
     
-#if _debug
+#ifdef DEBUG
     
     VkPresentModeKHR presentmode_array[10] = {};
     u32 presentmode_count = 0;
@@ -1713,7 +1718,7 @@ VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array,u32 physd
     
     if(!vkcreategraphicspipelines){
         
-#if _debug
+#ifdef DEBUG
         
         _kill("V_L_SINGLE_VKDEVICE specified but another VkDevice was created\n",global_device);
         global_device = context.device;
@@ -1760,7 +1765,7 @@ VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _restrict vdevic
     
     VkBool32 supported;
     
-#if _debug
+#ifdef DEBUG
     
     //this is to shut the validation layer up
     

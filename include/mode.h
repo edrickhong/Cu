@@ -112,8 +112,6 @@
 
 #define _usergba 0
 
-#define _debug 1
-
 #define _either(condition,value1,value2) ((condition) ? value1: value2)
 
 //we do not need to free an object when it happens when our program closes
@@ -177,7 +175,7 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #define _dalignpow2(value,pow) ((value) & (~(pow -1)))
 #define _dmapalign(value) _dalignpow2(value,128)
 
-#if _debug
+#ifdef DEBUG
 
 #define _disable_wayland_path 1
 

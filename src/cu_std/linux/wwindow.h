@@ -3,8 +3,6 @@
 #include "ttype.h"
 #include "mode.h"
 
-#include "wayland_dyn.h"
-
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
 
@@ -25,6 +23,11 @@ struct WWindowContext{
     void* window;
     
     union{
+        
+        struct{
+            void* wayland_shell_surface;
+            void* internaldata;
+        };
         
         struct{
             VisualID x11_visualid;
