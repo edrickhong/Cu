@@ -14,7 +14,7 @@ before_install:
 
 
 install:
-  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev libxkbcommon-dev
+  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev libxkbcommon-dev p7zip-full
   - sudo apt-get install --allow-unauthenticated -qq clang++-4.0
   - export CXX="clang++-4.0"
 
@@ -22,6 +22,8 @@ install:
 script:
   - mv TEST_CMakeLists.txt CMakeLists.txt
   - cd tests
+  - curl -L https://edrickhong.github.io/Pages/testfiles.zip > testfiles.zip
+  - 7z e testfiles.zip
   - cmake ..
   - make
   - chmod +x ci_test
