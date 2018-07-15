@@ -3,7 +3,7 @@
 #include "ttype.h"
 #include "../src/importer/main.h"
 #include "mdf_models.h"
-#include "pparse.h"
+#include "pparse.h"k
 
 #include "hash_array.h"
 
@@ -71,9 +71,9 @@ logic PrintHashDiagnostics(HashEntry* table,u32 count){
     auto percent = ((f64)collide_count/(f64)(_arraycount(hash_array))) * 100.0f;
     
     
-    printf("%d collisions out of %d hashes. (%f percent collision rate)\n",collide_count,_arraycount(hash_array),percent);
+    printf("%d collisions out of %d hashes. (%f percent collision rate)\n",collide_count,(u32)_arraycount(hash_array),percent);
     
-    return percent > 0.2;
+    return percent > 20.0;
 }
 
 logic HashTest(){
