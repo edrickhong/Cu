@@ -305,6 +305,11 @@ void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
                     continue;
                 }
                 
+                if(t_buffer[j] == '\\'){
+                    
+                    //TODO: handle this
+                }
+                
                 out_string[j + 1] = t_buffer[j];
             }
             

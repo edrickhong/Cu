@@ -1893,3 +1893,22 @@ void _ainline ProcessDrawList(){
     
 }
 
+
+
+void PrintFileAsArray(const s8* filepath){
+    
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    
+    ptrsize size;
+    
+    auto src = FReadFileToBuffer(file,&size);
+    
+    auto dst = (s8*)alloc(_megabytes(22));
+    
+    PBufferListToArrayString((s8*)"hash_array",src,size,dst,0);
+    
+    printf("%s\n",dst);
+    
+    FCloseFile(file);
+    unalloc(dst);
+}
