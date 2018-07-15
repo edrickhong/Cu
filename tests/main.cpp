@@ -80,7 +80,7 @@ logic HashTest(){
     
     printf("RUNNING PHashString Collision test\n");
     
-    auto hash_table = (HashEntry*)malloc(sizeof(HashEntry) * (_arraycount(hash_array)/4));
+    auto hash_table = (HashEntry*)alloc(sizeof(HashEntry) * (_arraycount(hash_array)));
     
     u32 hash_count = 0;
     
