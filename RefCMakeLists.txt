@@ -201,6 +201,19 @@ if(BUILD_STEP)
 
 
 #SHADER COMPILING
+
+#SHADER COMPILING SPECIAL CASES
+add_custom_command(TARGET CJOBS PRE_BUILD
+
+COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_SKEL ../src/shaders/model.vert -o ../rsrc/shaders/model_skel.vert.spv
+COMMAND glslparser -DUSE_SKEL ../src/shaders/model.vert ../rsrc/shaders/model_skel.vert.spv
+
+COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.spv
+COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui_tex.frag.spv
+
+)
+
+
 file(GLOB SHADERS src/shaders/*)
 
 foreach(shader ${SHADERS})
@@ -217,19 +230,6 @@ COMMAND glslparser ../src/shaders/${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.sp
 
 endforeach()
 
-#SHADER COMPILING SPECIAL CASES
-add_custom_command(TARGET CJOBS PRE_BUILD
-
-COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_SKEL ../src/shaders/model.vert -o ../rsrc/shaders/model_skel.vert.spv
-COMMAND glslparser -DUSE_SKEL ../src/shaders/model.vert ../rsrc/shaders/model_skel.vert.spv
-
-COMMAND glslc -I ../src/shadercommon -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.spv
-COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui_tex.frag.spv
-
-)
-
-
-
 
 
 endif()
@@ -240,7 +240,10 @@ endif()
 #we should separate these two
 add_library(cu_std STATIC ${CU_STD})
 
+
+if(WAYLAND_PROTOCOLS)
 add_dependencies(cu_std WAYLAND_PROTOCOLS)
+endif()
 
 add_executable(assetpacker ${ASSETPACKER})
 add_executable(cparser ${CPARSER})

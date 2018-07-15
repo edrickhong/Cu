@@ -42,6 +42,10 @@ set(FLAGS "-g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
 #output with debug info
 set(CMAKE_CXX_FLAGS  ${FLAGS})
 
+
+#disable wayland extensions. don't need it for ci tests
+add_definitions(-DNO_WAYLAND_EXTENSIONS)
+
 file(GLOB CU_STD src/cu_std/cu/main.cpp)
 
 set(ASSIMP_LIB "libassimp.so")
