@@ -153,21 +153,51 @@ COMMAND cparser game.i -component ../include/generated/gamecomp_meta.h -meta ../
 
 )
 
-if(BUILD_STEP)
 
-#MARK: setting here for now until we work around the version issues
+#generate wayland extension files if they exist
 if(UNIX)
 
-add_custom_command(TARGET CJOBS PRE_BUILD
+find_file(FOUND_WAYLAND_EXT_XML xdg-shell.xml PATHS /usr/share/wayland-protocols/stable/xdg-shell/ NO_DEFAULT_PATH)
+
+find_program(FOUND_WAYLAND_SCANNER wayland-scanner)
+
+
+if(FOUND_WAYLAND_EXT_XML AND FOUND_WAYLAND_SCANNER)
+
+add_custom_target(WAYLAND_PROTOCOLS ALL  echo GENERATE WAYLAND PROTOCOLS
 
 #generate wayland files
-COMMAND wayland-scanner -c public-code /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ../include/generated/xdg-shell.c
+COMMAND wayland-scanner code </usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml >../include/generated/xdg-shell.c
 
-COMMAND wayland-scanner -c client-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ../include/generated/xdg-shell.h
+COMMAND wayland-scanner client-header </usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml >../include/generated/xdg-shell.h
 
 )
 
+else()
+
+if(NOT FOUND_WAYLAND_SCANNER)
+
+message(STATUS "WARNING: wayland-scanner not found!\n")
+
+endif()
+
+if(NOT FOUND_WAYLAND_EXT_XML)
+message(STATUS "WARNING: wayland extension xml not found!\n")
+endif()
+
+message(STATUS "WARNING: Building without wayland extensions\n")
+
+add_definitions(-DNO_WAYLAND_EXTENSIONS)
+
+endif()
+
 endif(UNIX)
+
+
+
+
+
+if(BUILD_STEP)
 
 
 #SHADER COMPILING
@@ -209,6 +239,8 @@ endif()
 
 #we should separate these two
 add_library(cu_std STATIC ${CU_STD})
+
+add_dependencies(cu_std WAYLAND_PROTOCOLS)
 
 add_executable(assetpacker ${ASSETPACKER})
 add_executable(cparser ${CPARSER})

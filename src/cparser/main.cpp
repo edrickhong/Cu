@@ -835,8 +835,18 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     }
 }
 
+#include "ttimer.h"
+
 //TODO: we should handle unions as well
 s32 main(s32 argc,s8** argv){
+    
+#ifdef DEBUG
+    
+    TimeSpec start;
+    
+    GetTime(&start);
+    
+#endif
     
     for(s32 i = 1; i < argc; i++){
         
@@ -948,6 +958,18 @@ s32 main(s32 argc,s8** argv){
     unalloc(enum_array);
     unalloc(function_array);
     
+#if DEBUG
+    
+    
+    TimeSpec end;
+    
+    GetTime(&end);
+    
+    auto diff = GetTimeDifferenceMS(start,end);
+    
+    printf("TARGET %s PARSE TIME: %f(s)\n",metafile,diff/1000.0f);
+    
+#endif
     
     return 0;
 }

@@ -50,5 +50,6 @@ fi
 
 cd ../Make
 
-make -B -j12
+# add -B to alway build from scratch (required for libcu_std)
+make -j12
 
