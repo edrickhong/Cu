@@ -1,5 +1,4 @@
 #include "aassettools.h"
-
 #include <assimp/Importer.hpp> 
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
@@ -70,7 +69,7 @@ void FileReadAnimBoneLinear(FileHandle file,void* data,u32* count,u32 bonecount,
     u32 childrenindex_array[300];
     u32 childrenindex_count = 0;
     
-    ALinearBone* tree[64];
+    ALinearBone* tree[_max_bones];
     u32 tree_count = 0;
     
     for(u32 i = 0; i < bonecount;i++){
@@ -211,14 +210,18 @@ MDFData LoadMDF(const s8* filepath,void* vertindex,void* animbone,u32* vertindex
         switch(chunk->tag){
             
             case TAG_VERTEX:{
+                
                 data_mdf.vertexdata_offset = FCurFilePosition(file);
                 data_mdf.vertex_size = chunk->size;
                 data_mdf.vertex_data = vertindex;
                 FRead(file,data_mdf.vertex_data,chunk->size);
+                
+                
             }
             break;
             
             case TAG_INDEX:{
+                
                 data_mdf.indexdata_offset = FCurFilePosition(file);
                 data_mdf.index_size = chunk->size;
                 data_mdf.index_data = (u32*)(((s8*)(data_mdf.vertex_data)) + data_mdf.vertex_size);
@@ -228,6 +231,7 @@ MDFData LoadMDF(const s8* filepath,void* vertindex,void* animbone,u32* vertindex
             break;
             
             case TAG_ANIM:{
+                
                 data_mdf.animdata_offset = FCurFilePosition(file);
                 data_mdf.animationset_array = (AAnimationSet*)data_ptr;
                 data_mdf.animationset_count = chunk->size/sizeof(AAnimationSet);
@@ -238,6 +242,7 @@ MDFData LoadMDF(const s8* filepath,void* vertindex,void* animbone,u32* vertindex
             break;
             
             case TAG_BLEND_LINEAR:{
+                
                 data_mdf.bonedata_offset = FCurFilePosition(file);
                 
                 FileReadAnimBoneLinear(file,data_ptr,&data_count,chunk->size,

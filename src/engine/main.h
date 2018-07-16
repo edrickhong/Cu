@@ -1625,6 +1625,34 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
     
 }
 
+
+void AddModel(const s8* filepath,VkQueue queue,VkCommandBuffer cmdbuffer){
+    
+    pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count] =
+        AllocateAssetModel(filepath,&pdata->vdevice,
+                           queue,cmdbuffer,_vertexbindingno);
+    
+    pdata->scenecontext.modelasset_count++;
+}
+
+void AddAnimatedModel(const s8* filepath,VkQueue queue,VkCommandBuffer cmdbuffer){
+    
+    AllocateAssetAnimated(filepath,
+                          &pdata->vdevice,queue,cmdbuffer,_vertexbindingno,
+                          &pdata->scenecontext.animatedasset_array[
+                          pdata->scenecontext.animatedasset_count],
+                          &pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count]);
+    
+    auto model =
+        &pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count];
+    
+    model->animation_id = pdata->scenecontext.animatedasset_count;
+    
+    pdata->scenecontext.animatedasset_count++;
+    pdata->scenecontext.modelasset_count++;
+    
+}
+
 //MARK:
 void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
                       VkQueue queue){
@@ -1670,32 +1698,17 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
             MaterialAddTexture(mat2,TextureType_Diffuse,1);
         }
         
-        //goblin.mdf
-        AllocateAssetAnimated(MODEL_PATH(goblin.mdf),
-                              &pdata->vdevice,queue,cmdbuffer,_vertexbindingno,
-                              &pdata->scenecontext.animatedasset_array[
-                              pdata->scenecontext.animatedasset_count],
-                              &pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count]);
         
-        auto model =
-            &pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count];
+        AddAnimatedModel(MODEL_PATH(goblin.mdf),queue,cmdbuffer);
+        AddAnimatedModel(MODEL_PATH(knight.mdf),queue,cmdbuffer);
         
-        model->animation_id = pdata->scenecontext.animatedasset_count;
+        //FIXME: for some reason this is generating invalid tids
+        AddAnimatedModel(MODEL_PATH(golem_clean.mdf),queue,cmdbuffer);
         
-        pdata->scenecontext.animatedasset_count++;
-        pdata->scenecontext.modelasset_count++;
         
-        pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count] =
-            AllocateAssetModel(MODEL_PATH(teapot.mdf),&pdata->vdevice,
-                               queue,cmdbuffer,_vertexbindingno);
+        AddModel(MODEL_PATH(teapot.mdf),queue,cmdbuffer);
+        AddModel(MODEL_PATH(box.mdf),queue,cmdbuffer);
         
-        pdata->scenecontext.modelasset_count++;
-        
-        pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count] =
-            AllocateAssetModel(MODEL_PATH(box.mdf),&pdata->vdevice,
-                               queue,cmdbuffer,_vertexbindingno);
-        
-        pdata->scenecontext.modelasset_count++;
         
         VEndCommandBuffer(cmdbuffer);
         

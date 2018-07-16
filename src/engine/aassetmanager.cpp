@@ -2164,6 +2164,44 @@ void UpdateTextureFetchEntries(){
 }
 
 
+void DebugRenderFeedbackBuffer(){
+    
+    u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
+    
+    for(u32 i = 0; i < total_tiles; i++)
+    {
+        
+        auto a = &vt_readbackpixels[i];
+        
+        if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
+            
+            printf("hit invalid %d\n",a->texture_id);
+            a->value = _encode_rgba(255,0,0,255);
+        }
+        
+        else if(a->texture_id)
+        {
+            a->value = (u32)-1;
+            
+        }
+        
+        else
+        {
+            a->value = 0;
+        }
+        
+    }
+    
+    printf("Error: invalid tid generated\n");
+    
+    WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
+             "test.bmp");
+    
+    _kill("",1);
+    
+}
+
+
 
 //we do not do temp page allocations anymore
 VkCommandBuffer GenerateTextureFetchRequests(
@@ -2238,6 +2276,15 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
         auto a = &vt_readbackpixels[i];
         
         if(a->texture_id){
+            
+#ifdef DEBUG
+            
+            if(a->texture_id >= _arraycount(texturehandle_array)){
+                DebugRenderFeedbackBuffer();
+            }
+            
+#endif
+            
             a->texture_id--;
             threadtexturefetch_array[count] = *a;
             count++;
@@ -2276,41 +2323,13 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
 #ifdef DEBUG
             
-            if(tid >= _arraycount(texturehandle_array))
-            {
+            if(tid >= _arraycount(texturehandle_array)){
                 
-                u32 total_tiles = vt_readbackbuffer.w * vt_readbackbuffer.h;
+                printf("got invalid tid %d\n",tid);
                 
-                for(u32 i = 0; i < total_tiles; i++)
-                {
-                    
-                    auto a = &vt_readbackpixels[i];
-                    
-                    if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
-                        
-                        a->value = _encode_rgba(255,0,0,255);
-                        printf("hit invalid %d\n",a->texture_id);
-                    }
-                    
-                    else if(a->texture_id)
-                    {
-                        a->value = (u32)-1;
-                        
-                    }
-                    
-                    else
-                    {
-                        a->value = 0;
-                    }
-                    
-                }
+                DebugRenderFeedbackBuffer();
                 
-                printf("Error: invalid tid generated\n");
                 
-                WriteBMP(vt_readbackpixels,vt_readbackbuffer.w,vt_readbackbuffer.h,
-                         "test.bmp");
-                
-                exit(0);
             }
             
             

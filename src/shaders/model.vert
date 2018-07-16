@@ -3,6 +3,8 @@
 #include "structs.glsl"
 #include "mode.glsl"
 
+#include "glsl_shared.h"
+
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inTexcoord;
@@ -32,7 +34,7 @@ struct Material{
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
     
     mat4 world;
-    mat4 bone_array[64];
+    mat4 bone_array[_max_bones];
     uint texture_id[16];
     
 }ubo;

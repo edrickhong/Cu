@@ -77,10 +77,19 @@ vec4 VT_GenerateFetchRequestData(VT_TextureLevelContext context,uint texture_id,
     
     vec2 tcoord = context.texture_local_coord * context.vt_dimpages;
     
+#if _disable_vt
+    
+    vec4 fetch_data =
+        vec4(float(0),float(mip_level),tcoord.x,tcoord.y) *
+        vec4(1.0f/255.0f,1.0f/255.0f,1.0f/255.0f,1.0f/255.0f);
+    
+#else
     
     vec4 fetch_data =
         vec4(float(texture_id + 1),float(mip_level),tcoord.x,tcoord.y) *
         vec4(1.0f/255.0f,1.0f/255.0f,1.0f/255.0f,1.0f/255.0f);
+    
+#endif
     
     return fetch_data;
 }

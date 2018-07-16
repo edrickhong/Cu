@@ -806,7 +806,7 @@ u32 InternalFindIndex(const s8* string,BonenodeList bonenodelist){
         }
     }
     
-    _kill("bone not found\n",1);
+    //_kill("bone not found\n",1);
     
     return -1;
     
@@ -844,7 +844,7 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
 
 
 
-void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist){
+void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
     
 #if 0
     
@@ -853,6 +853,19 @@ void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist){
     
     
 #else
+    
+    logic found = false;
+    
+    for(u32 i = 0; i < aibones_count; i++){
+        
+        if(PStringCmp(node->mName.data,aibones_array[i]->mName.data)){
+            
+            found = true;
+            
+            break;
+        }
+        
+    }
     
     AssimpBoneNode bonenode = {};
     
@@ -866,27 +879,31 @@ void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist){
     
     bonenodelist->PushBack(bonenode);
     
-    //printf("%s %d\n",(*bonenodelist)[bonenodelist->count - 1].name,(*bonenodelist)[bonenodelist->count - 1].children_count);
-    
 #endif
     
     
     for(u32 i = 0; i < node->mNumChildren;i++){
         
-        InternalAssimpFillBoneNodeList(node->mChildren[i],bonenodelist);
+        InternalAssimpFillBoneNodeList(node->mChildren[i],bonenodelist,aibones_array,aibones_count);
     }
     
 }
 
 void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
     
-    auto bnode = 
-        &(*bonenodelist)[InternalFindIndex(node->mName.data,(*bonenodelist))];
+    u32 index = InternalFindIndex(node->mName.data,(*bonenodelist));
     
-    
-    for(u32 i = 0; i < bnode->children_count;i++){
+    if(index != (u32)-1){
         
-        bnode->childrenindex_array[i] = InternalFindIndex(node->mChildren[i]->mName.data,*bonenodelist);
+        auto bnode = 
+            &(*bonenodelist)[index];
+        
+        
+        for(u32 i = 0; i < bnode->children_count;i++){
+            
+            bnode->childrenindex_array[i] = InternalFindIndex(node->mChildren[i]->mName.data,*bonenodelist);
+        }
+        
     }
     
     
@@ -899,9 +916,9 @@ void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
     
 }
 
-void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
+void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
     
-    InternalAssimpFillBoneNodeList(node,bonenodelist);
+    InternalAssimpFillBoneNodeList(node,bonenodelist,aibones_array,aibones_count);
     
     InternalAssimpBuildSkeleton(node,bonenodelist);
 }
@@ -970,14 +987,22 @@ AssimpData AssimpLoad(const s8* filepath){
     
     aiMesh* mesh = scene->mMeshes[0];
     
-#if 0
+    if(scene->mNumCameras || scene->mNumLights){
+        
+        printf("camera count %d light count %d\n",scene->mNumCameras,scene->mNumLights);
+        
+        _kill("Erro: No cameras or lights allowed. Only meshes\n",1);
+        
+    }
+    
+#if 1
     
     printf("num meshes %d\n",scene->mNumMeshes);
     
     printf("Total vertices %d\n",mesh->mNumVertices);
     printf("Total indices %d\n",mesh->mNumFaces * 3);
     
-    printf("Total bones %d\n",mesh->mNumBones);
+    printf("Total actual bones %d\n",mesh->mNumBones);
     printf("Total animations %d\n",scene->mNumAnimations);
     
 #endif
@@ -1024,10 +1049,14 @@ AssimpData AssimpLoad(const s8* filepath){
     
     if(mesh->mNumBones){
         
-        bonenodelist.Init(mesh->mNumBones + 64);
+        bonenodelist.Init(mesh->mNumBones + _max_bones);
         
         //build skeleton from the bones
-        AssimpBuildSkeleton(scene->mRootNode,&bonenodelist);
+        AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,mesh->mBones,mesh->mNumBones);
+        
+        //MARK: max bones check
+        //this is the effective bone count
+        _kill("Erorr: exceeds max bone limit\n",bonenodelist.count > _max_bones);
         
         AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist);
         
@@ -1125,12 +1154,14 @@ u32 AnimBoneSize(AssimpData data,AssimpBoneNode* bones){
 
 //TODO: Consider compressing the data
 
+#define _print_log 1
+
 //smaller footprint
 void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                        AnimationBlendType blendtype = BLEND_LINEAR){
     
+    
     s8* buffer = (s8*)alloc(_megabytes(30));
-    memset(buffer,0,_megabytes(30));
     
     s8* ptr = buffer;
     
@@ -1199,6 +1230,12 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
         PtrCopy(&ptr,&header,sizeof(header));
         PtrCopy(&ptr,&datasize,sizeof(u32));
         
+#if _print_log
+        
+        printf("Vertices size %d\n",datasize);
+        
+#endif
+        
         //write vertex data
         for(u32 i = 0; i < data.vertex_count;i++){
             
@@ -1228,6 +1265,13 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
         PtrCopy(&ptr,&header,sizeof(header));
         PtrCopy(&ptr,&datasize,sizeof(u32));
         PtrCopy(&ptr,data.index_array,datasize);
+        
+#if _print_log
+        
+        printf("Index size %d\n",datasize);
+        
+#endif
+        
     }
     
     //write skeleton and animation data if any
@@ -1242,6 +1286,12 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             {
                 header = TAG_ANIM;
                 datasize = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
+                
+#if _print_log
+                
+                printf("animation size %d\n",datasize);
+                
+#endif
                 
                 PtrCopy(&ptr,&header,sizeof(header));
                 PtrCopy(&ptr,&datasize,sizeof(u32));
@@ -1259,8 +1309,16 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             
             //skeleton
             if(blendtype == BLEND_LINEAR){
+                
                 header = _encode('B','L','I','N');
                 datasize = data.bone_count;
+                
+#if _print_log
+                
+                printf("bone count %d\n",datasize);
+                
+#endif
+                
                 PtrCopy(&ptr,&header,sizeof(header));
                 PtrCopy(&ptr,&datasize,sizeof(datasize));
                 

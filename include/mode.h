@@ -1,5 +1,11 @@
 #pragma  once
 
+#include "shader_include/glsl_shared.h"
+
+
+//MARK: this should be tied to shaders as well
+
+
 #define _encode_rgba(r,g,b,a) ((u8(r)) | ((u8(g)) << 8) | ((u8(b)) << 16) | ((u8(a)) << 24))
 #define _encode_bgra(b,g,r,a) ((u8(b)) | ((u8(g)) << 8) | ((u8(r)) << 16) | ((u8(a)) << 24))
 

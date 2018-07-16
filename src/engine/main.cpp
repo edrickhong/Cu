@@ -78,7 +78,7 @@ s32 main(s32 argc,s8** argv){
     
     VInitVulkan();
     
-    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),100,100,1280,720);
+    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE | W_CREATE_FORCE_XLIB),100,100,1280,720);
     
     auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
@@ -100,7 +100,7 @@ s32 main(s32 argc,s8** argv){
     pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,_swapchain_count,&pdata->window,
                                                VSYNC_NORMAL);
     
-    InitAssetAllocator(_gigabytes(1),_megabytes(4),&pdata->vdevice,
+    InitAssetAllocator(_gigabytes(1),_megabytes(22),&pdata->vdevice,
                        &pdata->swapchain);
     
     pdata->present_fence = VCreateFence(&pdata->vdevice,(VkFenceCreateFlagBits)0);
