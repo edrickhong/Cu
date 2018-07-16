@@ -225,3 +225,22 @@ void PBufferToDWordArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* ds
 
 
 void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
+
+constexpr logic PStringCmp(const s8* string1,const s8* string2){
+    
+    auto len = PStrLen(string1);
+    
+    if(len != PStrLen(string2)){
+        return false;
+    }
+    
+    for(u32 i = 0; i < len; i++){
+        
+        if(string1[i] != string2[i]){
+            return false;
+        }
+        
+    }
+    
+    return true;
+}

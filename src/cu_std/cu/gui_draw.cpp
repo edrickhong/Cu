@@ -1284,7 +1284,7 @@ GUIVec2 pos = {},GUIDim2 dim = {}){
     
     
     //DEBUG:
-#if 1
+#if 0
     if(gui->submit_count){
         
         _kill("",(gui->vert_offset == gui->submit_array[gui->submit_count - 1].vert_offset) && gui->vert_offset != 0);

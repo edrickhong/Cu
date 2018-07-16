@@ -639,6 +639,32 @@ _declare_list(VertexBoneDataList,VertexBoneData);
 _declare_list(BonenodeList,AssimpBoneNode);
 _declare_list(AssimpAnimationList,AssimpAnimation);
 
+void PrintNodeHeirarchy(aiNode* node,aiNode* root){
+    
+    printf("%s %d\n",node->mName.data,node->mNumChildren);
+    
+    for(u32 i = 0; i < node->mNumChildren;i++){
+        
+        PrintNodeHeirarchy(node->mChildren[i],root);
+    }
+    
+}
+
+void PrintNodeHeirarchy(AssimpBoneNode bonenode,BonenodeList bonenodelist){
+    
+    printf("%s %d\n",bonenode.name,bonenode.children_count);
+    
+    for(u32 i = 0; i < bonenode.children_count;i++){
+        
+        u32 index = bonenode.childrenindex_array[i];
+        
+        AssimpBoneNode next = bonenodelist[index];
+        
+        PrintNodeHeirarchy(next,bonenodelist);
+    }
+    
+}
+
 void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
     
     list->Init();
@@ -770,182 +796,117 @@ void AssimpAddBoneData(VertexBoneData* bonedata,u32 index,f32 weight){
     // _kill("Vertice is influenced by more than 4 bones\n",1);
 }
 
-#define _checkduplicate 0
+u32 InternalFindIndex(const s8* string,BonenodeList bonenodelist){
+    
+    
+    for(u32 i = 0; i < bonenodelist.count;i++){
+        
+        if(PStringCmp(bonenodelist[i].name,string)){
+            return i;
+        }
+    }
+    
+    _kill("bone not found\n",1);
+    
+    return -1;
+    
+}
 
-void AssimpLoadBones(aiMesh* mesh,VertexBoneDataList* bonedatalist,
-                     BonenodeList* bonenodelist){
-    
-#if _checkduplicate
-    
-    _declare_list(HashList,u32);
-    HashList list;
-    list.Init(100);
-#endif
-    
-    _kill("too many bones\n",mesh->mNumBones > 64);
-    
-    bonenodelist->Init(mesh->mNumBones + 64);
+void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
+                              BonenodeList* bonenodelist){
     
     bonedatalist->Init(mesh->mNumVertices);
     bonedatalist->count = mesh->mNumVertices;
+    
     memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
     
     for(u32 i = 0; i < mesh->mNumBones;i++){
         
         aiBone* bone = mesh->mBones[i];
         
-#if _checkduplicate
-        {
-            const s8* name = bone->mName.data;
-            
-            for(u32 i = 0; i < list.count;i++){
-                
-                if(PHashString(name,strlen(name)) == list[i]){
-                    _kill("There are duplicate bone nodes\n",1);
-                    break;
-                }
-            }
-            
-            list.PushBack(PHashString(name,strlen(name)));
-            
-            printf("bone name %s\n",name);
-        }
-#endif
+        auto node_index = InternalFindIndex(bone->mName.data,*bonenodelist);
+        auto bonenode = &(*bonenodelist)[node_index];
         
-        AssimpBoneNode bonenode;
+        memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Matrix4b4));
         
-        aiMatrix4x4 translationmatrix = bone->mOffsetMatrix;//Assimp combines the bone and the offset
-        memcpy(&bonenode.offset,&translationmatrix,sizeof(Matrix4b4));
-        
-#if 1
-        bonenode.name = (s8*)alloc(strlen(bone->mName.data) + 1);
-        memcpy((void*)bonenode.name,bone->mName.data,strlen(bone->mName.data));
-        bonenode.name[strlen(bone->mName.data)] = 0;
-#endif
-        
-        
-        
-        bonenode.bone_hash = PHashString(bone->mName.data);
-        
-        //matrix containing essentially the bone but we want to translate this to a quaternion & vec3
-        bonenodelist->PushBack(bonenode);
-        
-        //basically skinning (Associating the bone with a vertex)
         for(u32 j = 0; j < bone->mNumWeights;j++){
             
-            u32 vertexid = bone->mWeights[j].mVertexId;//which vertex it influences
+            //which vertex it influences
+            u32 vertexid = bone->mWeights[j].mVertexId;
             
-            AssimpAddBoneData(&((*bonedatalist)[vertexid]),i,bone->mWeights[j].mWeight);
             
-            // printf("vertexindex %d boneindex %d weight %f\n",vertexid,i,bone->mWeights[j].mWeight);
+            //MARK:
+            AssimpAddBoneData(&((*bonedatalist)[vertexid]),
+                              node_index,bone->mWeights[j].mWeight);
         }
-        
     }
 }
 
-u32 FindChildIndex(u32 hash,BonenodeList bonenodelist){
-    
-    for(u32 i = 0; i < bonenodelist.count;i++){
-        
-        if(bonenodelist[i].bone_hash == hash){
-            return i;
-        }
-    }
-    
-    return -1;
-}
 
-void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist,
-                         AssimpBoneNode* bonenode){
+
+void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist){
     
-    bonenode->children_count = 0;
-    
-    for(u32 i = 0; i < node->mNumChildren;i++){
-        
-        u32 hash = PHashString(node->mChildren[i]->mName.data);
-        
-        u32 index = FindChildIndex(hash,*bonenodelist);
-        
-        if(index != (u32)-1){
-            
-            bonenode->childrenindex_array[bonenode->children_count] = index;
-            bonenode->children_count++;
-            
-            _kill("bone has more than 10 children\n",bonenode->children_count > 10);
-            
-            AssimpBuildSkeleton(node->mChildren[i],bonenodelist,&(*bonenodelist)[index]);
-            
-        }
-        
-        else{
-            
-            if(node->mChildren[i]->mNumChildren){
-                
-                AssimpBoneNode newbone;
-                
-#if 1
-                newbone.name = (s8*)alloc(strlen(node->mChildren[i]->mName.data) + 1);
-                
-                memcpy((void*)newbone.name,node->mChildren[i]->mName.data,
-                       strlen(node->mChildren[i]->mName.data));
-                
-                newbone.name[strlen(node->mChildren[i]->mName.data)] = 0;
-#endif
-                
-                newbone.bone_hash = hash;
-                // newbone.offset = IdentityMatrix4b4();
-                
-                memcpy(&(newbone.offset),&(node->mChildren[i]->mTransformation),sizeof(Matrix4b4));
-                
-                //newbone.children_count = 0;
-                
-                bonenodelist->PushBack(newbone);
-                
-                index = bonenodelist->count -1;
-                
-                bonenode->childrenindex_array[bonenode->children_count] = index;
-                bonenode->children_count++;
-                
 #if 0
-                printf("added fake bone %s index %d\n",node->mChildren[i]->mName.data,index);
+    
+    printf("%s %d\n",node->mName.data,node->mNumChildren);
+    
+    
+    
+#else
+    
+    AssimpBoneNode bonenode = {};
+    
+    bonenode.name = node->mName.data;
+    bonenode.bone_hash = PHashString(node->mName.data);
+    bonenode.children_count = node->mNumChildren;
+    
+    
+    //default bone transform. some nodes aren't bound to vertices but are still needed for correct transform
+    memcpy(&bonenode.offset,&(node->mTransformation),sizeof(Matrix4b4));
+    
+    bonenodelist->PushBack(bonenode);
+    
+    //printf("%s %d\n",(*bonenodelist)[bonenodelist->count - 1].name,(*bonenodelist)[bonenodelist->count - 1].children_count);
+    
 #endif
-                
-                AssimpBuildSkeleton(node->mChildren[i],bonenodelist,&(*bonenodelist)[index]);
-            }
-            
-        }
-        
-    }
     
-}
-
-void PrintNodeHeirarchy(aiNode* node){
-    
-    printf("Node hash %s %d\n",node->mName.data,
-           (u32)PHashString(node->mName.data));
-    printf("Node num children %d\n",node->mNumChildren);
     
     for(u32 i = 0; i < node->mNumChildren;i++){
-        PrintNodeHeirarchy(node->mChildren[i]);
+        
+        InternalAssimpFillBoneNodeList(node->mChildren[i],bonenodelist);
     }
     
 }
 
-void PrintNodeHeirarchy(AssimpBoneNode bonenode,BonenodeList bonenodelist){
+void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
     
-    printf("Node hash %s %d\n",bonenode.name,bonenode.bone_hash);
-    printf("Node num children %d\n",bonenode.children_count);
+    auto bnode = 
+        &(*bonenodelist)[InternalFindIndex(node->mName.data,(*bonenodelist))];
     
-    for(u32 i = 0; i < bonenode.children_count;i++){
+    
+    for(u32 i = 0; i < bnode->children_count;i++){
         
-        u32 index = bonenode.childrenindex_array[i];
-        
-        AssimpBoneNode next = bonenodelist[index];
-        
-        PrintNodeHeirarchy(next,bonenodelist);
+        bnode->childrenindex_array[i] = InternalFindIndex(node->mChildren[i]->mName.data,*bonenodelist);
     }
     
+    
+    
+    for(u32 i = 0; i < node->mNumChildren;i++){
+        
+        InternalAssimpBuildSkeleton(node->mChildren[i],bonenodelist);
+    }
+    
+    
 }
+
+void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
+    
+    InternalAssimpFillBoneNodeList(node,bonenodelist);
+    
+    InternalAssimpBuildSkeleton(node,bonenodelist);
+}
+
+
 
 void AssimpRemapBones(AssimpBoneNode* dst,AssimpBoneNode* src,
                       AssimpBoneNode node,u32* skinindexmap,u32* curindex){
@@ -1063,73 +1024,17 @@ AssimpData AssimpLoad(const s8* filepath){
     
     if(mesh->mNumBones){
         
-        AssimpLoadBones(mesh,&bonedatalist,&bonenodelist);
+        bonenodelist.Init(mesh->mNumBones + 64);
+        
+        //build skeleton from the bones
+        AssimpBuildSkeleton(scene->mRootNode,&bonenodelist);
+        
+        AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist);
         
         //get animation data
         animationlist.Init(1);
         AssimpLoadAnimations(scene,&animationlist);
-        
-        //build skeleton from the bones
-        AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,&data.root_bonenode);
-        
-        data.root_bonenode.name = (s8*)"root";
-        
-        data.root_bonenode.offset = IdentityMatrix4b4();
-        
-        bonenodelist.PushBack(data.root_bonenode);
     }
-    
-    //MARK: Testing the remapping
-#if  1
-    if(mesh->mNumBones){
-        
-        AssimpBoneNode* bones =
-            (AssimpBoneNode*)alloc(sizeof(AssimpBoneNode) * bonenodelist.count * 2);
-        
-        u32* skinindexmap = (u32*)alloc(sizeof(u32) * index_list.count);
-        u32 ind = 0;
-        
-        //FIXME: when using wolf.dae, we will overflow
-        AssimpRemapBones(bones,bonenodelist.container,data.root_bonenode,skinindexmap,&ind);
-        
-        
-        
-        unalloc(bonenodelist.container);
-        bonenodelist.container = bones;
-        
-        //reskin
-        for(u32 i = 0; i < bonedatalist.count;i++){
-            
-            u32 index;
-            
-            index = bonedatalist[i].bone_index[0];
-            bonedatalist[i].bone_index[0] = skinindexmap[index];
-            
-            index = bonedatalist[i].bone_index[1];
-            bonedatalist[i].bone_index[1] = skinindexmap[index];
-            
-            index = bonedatalist[i].bone_index[2];
-            bonedatalist[i].bone_index[2] = skinindexmap[index];
-            
-            index = bonedatalist[i].bone_index[3];
-            bonedatalist[i].bone_index[3] = skinindexmap[index];
-        }
-        
-        //remap children
-        for(u32 i = 0; i < bonenodelist.count;i++){
-            AssimpBoneNode* node = bonenodelist.container + i;
-            
-            for(u32 j = 0; j < node->children_count;j++){
-                u32 index = node->childrenindex_array[j];
-                node->childrenindex_array[j] = skinindexmap[index];
-            }
-        }
-        
-        data.root_bonenode = bonenodelist[0];
-        
-        unalloc(skinindexmap);
-    }
-#endif
     
     {
         data.vertex_array = pos_list.container;
@@ -1151,6 +1056,16 @@ AssimpData AssimpLoad(const s8* filepath){
         data.animation_array = animationlist.container;
         data.animation_count = animationlist.count;
     }
+    
+#if 0
+    
+    PrintNodeHeirarchy(scene->mRootNode,scene->mRootNode);
+    
+    printf("-------------------\n");
+    
+    PrintNodeHeirarchy(data.root_bonenode,bonenodelist);
+    
+#endif
     
     return data;
 }
@@ -1250,47 +1165,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             
             if(data.vertexbonedata_count){
                 vertex_component |= VERTEX_BONEID_WEIGHT;
-                
-                //rearrange the bones and skinning data to be cpu optimal
-                bones =
-                    (AssimpBoneNode*)alloc(sizeof(AssimpBoneNode) * (data.bone_count + 120));
-                
-                {
-                    u32* skinindexmap = (u32*)alloc(sizeof(u32) * data.index_count);
-                    u32 ind = 0;
-                    
-                    AssimpRemapBones(bones,data.bone_array,data.root_bonenode,skinindexmap,&ind);
-                    
-                    //remap skin indices
-                    for(u32 i = 0; i < data.vertexbonedata_count;i++){
-                        
-                        u32 index;
-                        
-                        index = data.vertexbonedata_array[i].bone_index[0];
-                        data.vertexbonedata_array[i].bone_index[0] = skinindexmap[index];
-                        
-                        index = data.vertexbonedata_array[i].bone_index[1];
-                        data.vertexbonedata_array[i].bone_index[1] = skinindexmap[index];
-                        
-                        index = data.vertexbonedata_array[i].bone_index[2];
-                        data.vertexbonedata_array[i].bone_index[2] = skinindexmap[index];
-                        
-                        index = data.vertexbonedata_array[i].bone_index[3];
-                        data.vertexbonedata_array[i].bone_index[3] = skinindexmap[index];
-                    }
-                    
-                    //remap children
-                    for(u32 i = 0; i < data.bone_count;i++){
-                        AssimpBoneNode* node = data.bone_array + i;
-                        
-                        for(u32 j = 0; j < node->children_count;j++){
-                            u32 index = node->childrenindex_array[j];
-                            node->childrenindex_array[j] = skinindexmap[index];
-                        }
-                    }
-                    
-                    unalloc(skinindexmap);
-                }
+                bones = data.bone_array;
             }
             
             PtrCopy(&ptr,&vertex_component,sizeof(u16));
@@ -1452,7 +1327,6 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 _kill("not supported yet\n",1)
             }
             
-            unalloc(bones);
         }
     }
     
