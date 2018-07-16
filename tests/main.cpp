@@ -96,39 +96,18 @@ logic HashTest(){
 }
 
 struct MDFEntry{
-    u32 file_hash;
+    const s8* file;
     u8* data_array;
     u32 data_size;
 };
 
 _persist MDFEntry mdf_array[] = {
-    {PHashString("goblin.dae"),&goblin_mdf[0],sizeof(goblin_mdf)},
-    {PHashString("teapot.dae"),&teapot_mdf[0],sizeof(teapot_mdf)},
-    {PHashString("golem_clean.dae"),&golem_clean_mdf[0],sizeof(golem_clean_mdf)},
-    {PHashString("knight.dae"),&knight_mdf[0],sizeof(knight_mdf)},
+    {"goblin.dae",&goblin_mdf[0],sizeof(goblin_mdf)},
+    {"teapot.dae",&teapot_mdf[0],sizeof(teapot_mdf)},
+    {"golem_clean.dae",&golem_clean_mdf[0],sizeof(golem_clean_mdf)},
+    {"knight.dae",&knight_mdf[0],sizeof(knight_mdf)},
     
 };
-
-MDFEntry* GetMDFEntry(const s8* file){
-    
-    u32 hash = PHashString(file);
-    
-    for(u32 i = 0; i < _arraycount(mdf_array); i++){
-        
-        if(hash == mdf_array[i].file_hash){
-            printf("FOUND %s\n",file);    
-            return &mdf_array[i];
-        }
-        
-    }
-    
-    printf("%s not found\n",file);
-    
-    _kill("Entry not found",1);
-    
-    return 0;
-}
-
 
 u32 MDFTests(){
     
@@ -138,24 +117,19 @@ u32 MDFTests(){
     
     //NOTE: I believe the mismatch is caused by padding in the file
     
-    const s8* test_files[] = {
-        "goblin.dae",
-        "teapot.dae",
-    };
-    
-    for(u32 i = 0; i < _arraycount(test_files); i++){
+    for(u32 i = 0; i < _arraycount(mdf_array); i++){
         
-        printf("FILE %s\n",test_files[i]);
+        auto entry = &mdf_array[i];
+        
+        printf("FILE %s\n",entry->file);
         
         
-        auto assimp = AssimpLoad(test_files[i]);
+        auto assimp = AssimpLoad(entry->file);
         
         u8* buffer;
         u32 buffer_size;
         
         CreateAssimpToMDF((void**)&buffer,&buffer_size,assimp);
-        
-        auto entry = GetMDFEntry(test_files[i]);
         
         
         
@@ -180,7 +154,7 @@ u32 MDFTests(){
         
         if((u32)percent_match < 90){
             warning_count++;
-            fprintf(stderr,"WARNING: unacceptable error range match(%s)\n",test_files[i]);
+            fprintf(stderr,"WARNING: unacceptable error range match(%s)\n",entry->file);
         }
         
         unalloc(buffer); 
