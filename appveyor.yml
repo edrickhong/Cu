@@ -11,12 +11,8 @@ configuration:
 install:
 
 before_build:
-   - curl -L https://downloads.sourceforge.net/project/assimp/assimp-3.1/assimp-3.1.1-win-binaries.zip > assimp.zip
-   - 7z x assimp.zip -oassimp
-   - mkdir extlib
-   - cd assimp\assimp-3.1.1-win-binaries\lib64\
-   - move assimp.lib ..\..\..\extlib\
-   - cd ..\..\..\
+   - curl -L https://edrickhong.github.io/Pages/cu_additional.zip > cu_additional.zip
+   - 7z x cu_additional.zip
    - type RefCMakeLists.txt > CMakeLists.txt
    - mkdir Make
    - cd Make

@@ -48,7 +48,7 @@ add_definitions(-DNO_WAYLAND_EXTENSIONS)
 
 file(GLOB CU_STD src/cu_std/cu/main.cpp)
 
-set(ASSIMP_LIB "libassimp.so")
+set(ASSIMP_LIB "${CMAKE_BINARY_DIR}/../extlib/libassimp.so.4")
 
 set(DL_LIB "libdl.so")
 

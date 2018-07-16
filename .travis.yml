@@ -14,13 +14,15 @@ before_install:
 
 
 install:
-  - sudo apt-get install assimp-utils libasound2-dev libx11-dev libwayland-client0 libwayland-dev libassimp-dev libxkbcommon-dev p7zip-full
+  - sudo apt-get install libasound2-dev libx11-dev libwayland-client0 libwayland-dev libxkbcommon-dev p7zip-full
   - sudo apt-get install --allow-unauthenticated -qq clang++-4.0
   - export CXX="clang++-4.0"
 
   
 script:
   - mv TEST_CMakeLists.txt CMakeLists.txt
+  - curl -L https://edrickhong.github.io/Pages/cu_additional.zip > cu_additional.zip
+  - 7z x cu_additional.zip
   - cd tests
   - curl -L https://edrickhong.github.io/Pages/testfiles.zip > testfiles.zip
   - 7z e testfiles.zip

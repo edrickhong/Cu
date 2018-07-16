@@ -42,7 +42,7 @@ endif()
 
   set(FLAGS "-march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
 
-  set(ASSIMP_LIB "libassimp.so")
+  set(ASSIMP_LIB "${CMAKE_BINARY_DIR}/../extlib/libassimp.so.4")
   set(DL_LIB "dl")
   set(PTHREAD_LIB "pthread")
   
