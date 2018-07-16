@@ -906,7 +906,7 @@ void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist,
                 bonenode->childrenindex_array[bonenode->children_count] = index;
                 bonenode->children_count++;
                 
-#if 1
+#if 0
                 printf("added fake bone %s index %d\n",node->mChildren[i]->mName.data,index);
 #endif
                 
@@ -1001,14 +1001,32 @@ AssimpData AssimpLoad(const s8* filepath){
         (aiScene*)importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals
                                     | aiProcess_OptimizeMeshes);
     
-    printf("num meshes %d\n",scene->mNumMeshes);
+    _kill("Failed to load file\n",!scene);
+    
+    if(scene->mNumMeshes > 1){
+        printf("WARNING: Multiple meshes currently not supported\n");
+    }
     
     aiMesh* mesh = scene->mMeshes[0];
     
+#if 0
+    
+    printf("num meshes %d\n",scene->mNumMeshes);
+    
     printf("Total vertices %d\n",mesh->mNumVertices);
     printf("Total indices %d\n",mesh->mNumFaces * 3);
+    
     printf("Total bones %d\n",mesh->mNumBones);
     printf("Total animations %d\n",scene->mNumAnimations);
+    
+#endif
+    
+    
+    
+    if((mesh->mNumBones && !scene->mNumAnimations) || (!mesh->mNumBones && scene->mNumAnimations)){
+        
+        printf("WARNING: Skeleton doesn't have corresponding animation - vice versa\n");
+    }
     
     for(u32 i = 0; i < mesh->mNumVertices;i++){
         
@@ -1285,8 +1303,12 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             
             u32 animbonesize = AnimBoneSize(data,bones);
             
+#if 0
+            
             printf("animbone size %d\n",(animbonesize));//MARK:Not exact but will do
             printf("vertindex size %d\n",(indversize));//MARK:Not exact but will do
+            
+#endif
             
             PtrCopy(&ptr,&indversize,sizeof(indversize));
             PtrCopy(&ptr,&animbonesize,sizeof(animbonesize));

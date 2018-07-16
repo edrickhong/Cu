@@ -104,6 +104,9 @@ struct MDFEntry{
 _persist MDFEntry mdf_array[] = {
     {PHashString("goblin.dae"),&goblin_mdf[0],sizeof(goblin_mdf)},
     {PHashString("teapot.dae"),&teapot_mdf[0],sizeof(teapot_mdf)},
+    {PHashString("golem_clean.dae"),&golem_clean_mdf[0],sizeof(golem_clean_mdf)},
+    {PHashString("knight.dae"),&knight_mdf[0],sizeof(knight_mdf)},
+    
 };
 
 MDFEntry* GetMDFEntry(const s8* file){

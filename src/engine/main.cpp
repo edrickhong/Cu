@@ -96,7 +96,8 @@ s32 main(s32 argc,s8** argv){
     }
     
     
-    pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,2,&pdata->window,
+    //MARK: we should prefer fast if available
+    pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,_swapchain_count,&pdata->window,
                                                VSYNC_NORMAL);
     
     InitAssetAllocator(_gigabytes(1),_megabytes(4),&pdata->vdevice,
@@ -447,5 +448,6 @@ VkStructureType sType; const void* pNext;
 VkMemoryAllocateFlags flags;
 uint32_t deviceMask;
 } VkMemoryAllocateFlagsInfo;
+
 
 */

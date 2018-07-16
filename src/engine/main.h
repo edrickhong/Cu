@@ -24,6 +24,8 @@
 
 #define _mute_sound 1
 
+#define _swapchain_count 3
+
 /*
   TODO:
   Change the multithreaded renderer. it is a mess rn
@@ -245,7 +247,7 @@ void _ainline InternalDraw(VkCommandBuffer commandbuffer,
 
 struct ThreadRenderData{
     VkCommandPool pool;
-    VkCommandBuffer cmdbuffer[2 * _rendergroupcount];//MARK: swapchain 2 by rendergroup
+    VkCommandBuffer cmdbuffer[_swapchain_count * _rendergroupcount];
     u32 active_group;
     u8 group_submit_count[4];
     
