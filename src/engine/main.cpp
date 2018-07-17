@@ -11,6 +11,10 @@ _persist auto ustring = "patchthisvalueinatassetpacktime";
 
 #endif
 
+_compile_kill(sizeof(SkelUBO) > _kilobytes(64));
+_compile_kill(sizeof(PushConst) > 128);
+_compile_kill(VK_INDEX_TYPE_UINT16 != 0);
+_compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 
 s32 main(s32 argc,s8** argv){
@@ -60,9 +64,6 @@ s32 main(s32 argc,s8** argv){
 #endif
     
 #endif
-    
-    _kill("ubo too big",sizeof(SkelUBO) > _kilobytes(64));
-    _kill("ubo too big",sizeof(PushConst) > 128);
     
     void(*reload)(GameReloadData*) = 0;
     

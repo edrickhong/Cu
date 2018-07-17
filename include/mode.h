@@ -275,6 +275,13 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #define _dprint(string, ...) printf(string, __VA_ARGS__);
 
 
+#define _impl_PASTE(a,b) a##b
+#define _impl_CASSERT_LINE(predicate, line, file) \
+typedef char _impl_PASTE(assertion_failed_##file##_,line)[2*!!(predicate)-1];
+
+#define _compile_kill(condition) _impl_CASSERT_LINE(!(condition),__LINE__,__FILE__)
+
+
 
 #define _uninitptr 0xCF
 
@@ -285,6 +292,9 @@ relevant function. Getting better cache performance when using lambdas cos of th
 #else
 
 #define _kill(string,condition)
+
+#define _compile_kill(condition)
+
 #define _dprint(string, ...)
 
 #define _alloc(type,size) ((type*)malloc(sizeof(type) * size))

@@ -358,7 +358,18 @@ struct VBufferContext{
     
     //unique attrib according to buffer type. binding no on vertex buffer/instance,
     //count on index buffer
-    u32 attrib;
+    
+    union{
+        
+        struct{
+            
+            u16 bind_no;
+            u16 inst_count;
+        };
+        
+        //TODO: we will set the top most bit if 32bit, else it is 16bit
+        u32 ind_count;
+    };
     
 #ifdef DEBUG
     
@@ -646,14 +657,14 @@ void VQueuePresent(VkQueue queue,u32 image_index,VkSwapchainKHR swapchain,
 void inline VDrawIndex(VBufferContext vertex_buffer,VBufferContext index_buffer,
                        VkCommandBuffer commandbuffer,VkDeviceSize offset){
     
-    vkCmdBindVertexBuffers(commandbuffer,vertex_buffer.attrib,1,
+    vkCmdBindVertexBuffers(commandbuffer,vertex_buffer.bind_no,1,
                            &vertex_buffer.buffer,
                            &offset);
     
     vkCmdBindIndexBuffer(commandbuffer,index_buffer.buffer,
                          0,VK_INDEX_TYPE_UINT32);
     
-    vkCmdDrawIndexed(commandbuffer,index_buffer.attrib,1,0,0,0);
+    vkCmdDrawIndexed(commandbuffer,index_buffer.ind_count,1,0,0,0);
     
 }
 
@@ -661,18 +672,18 @@ void inline VDrawIndexInstanced(VBufferContext vertex_buffer,VBufferContext inde
                                 VBufferContext instance_buffer,u32 instance_count,
                                 VkCommandBuffer commandbuffer,VkDeviceSize offset){
     
-    vkCmdBindVertexBuffers(commandbuffer,vertex_buffer.attrib,1,
+    vkCmdBindVertexBuffers(commandbuffer,vertex_buffer.bind_no,1,
                            &vertex_buffer.buffer,
                            &offset);
     
-    vkCmdBindVertexBuffers(commandbuffer,instance_buffer.attrib,1,
+    vkCmdBindVertexBuffers(commandbuffer,instance_buffer.bind_no,1,
                            &instance_buffer.buffer,
                            &offset);
     
     vkCmdBindIndexBuffer(commandbuffer,index_buffer.buffer,
                          0,VK_INDEX_TYPE_UINT32);
     
-    vkCmdDrawIndexed(commandbuffer,index_buffer.attrib,instance_count,0,0,0);
+    vkCmdDrawIndexed(commandbuffer,index_buffer.ind_count,instance_count,0,0,0);
     
 }
 

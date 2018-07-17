@@ -102,7 +102,6 @@ struct AssimpData{
     //boneinfo - bone nodes rest position
     AssimpBoneNode* bone_array;
     u32 bone_count;
-    AssimpBoneNode root_bonenode;
     
     //animation data
     AssimpAnimation* animation_array;

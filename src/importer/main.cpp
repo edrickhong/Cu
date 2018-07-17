@@ -9,6 +9,8 @@ LOW_barbarian_rig_051.dae too many bones 65
 new_thin_zombie.dae file cannot load
 Spider.dae  file cannot load
 
+TODO: test PHastring on AlienRArmDigit23-node and AlienRArmDigit03-node
+
 */
 
 s32 main(s32 argc,s8** argv){

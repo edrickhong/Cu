@@ -1774,7 +1774,7 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
     
     VkDeviceSize offset = 0;
     
-    vkCmdBindVertexBuffers(cmdbuffer,gui->vert_buffer.attrib,1,&gui->vert_buffer.buffer,
+    vkCmdBindVertexBuffers(cmdbuffer,gui->vert_buffer.bind_no,1,&gui->vert_buffer.buffer,
                            &offset);
     
     VkViewport viewport = {};

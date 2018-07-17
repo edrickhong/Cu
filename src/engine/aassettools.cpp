@@ -156,6 +156,7 @@ void FileReadAnimBoneLinear(FileHandle file,void* data,u32* count,u32 bonecount,
         
     }
     
+    //NOTE: first node in the list is always the root node
     *root_linearskeleton = tree[0];
     *bone_count = bonecount;
     

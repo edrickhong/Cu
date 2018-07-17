@@ -210,7 +210,7 @@ void _ainline InternalPushRenderEntry(RenderContext* context,u32 group_index,
     
 #ifdef DEBUG
     if(handle->instancebuffer.buffer){
-        _kill("invalid instance buffer use\n",instance_count > handle->instancebuffer.attrib);  
+        _kill("invalid instance buffer use\n",instance_count > handle->instancebuffer.inst_count);  
     }
 #endif
     
@@ -230,19 +230,19 @@ void _ainline InternalDraw(VkCommandBuffer commandbuffer,
                            VkDeviceSize vb_offset = 0,VkDeviceSize ind_offset = 0,VkDeviceSize inst_offset = 0){
     
     if(instance_buffer.buffer){
-        vkCmdBindVertexBuffers(commandbuffer,instance_buffer.attrib,1,
+        vkCmdBindVertexBuffers(commandbuffer,instance_buffer.bind_no,1,
                                &instance_buffer.buffer,
                                &inst_offset);
     }
     
-    vkCmdBindVertexBuffers(commandbuffer,vertex_buffer.attrib,1,
+    vkCmdBindVertexBuffers(commandbuffer,vertex_buffer.bind_no,1,
                            &vertex_buffer.buffer,
                            &vb_offset);
     
     vkCmdBindIndexBuffer(commandbuffer,index_buffer.buffer,
                          ind_offset,VK_INDEX_TYPE_UINT32);
     
-    vkCmdDrawIndexed(commandbuffer,index_buffer.attrib,instance_count,0,0,0);  
+    vkCmdDrawIndexed(commandbuffer,index_buffer.ind_count,instance_count,0,0,0);  
 }
 
 struct ThreadRenderData{

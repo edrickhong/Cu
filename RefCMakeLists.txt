@@ -208,20 +208,16 @@ add_custom_command(TARGET CJOBS PRE_BUILD
 
 #model skel
 
-COMMAND glslc -E -I ../include/shader_include -std=450 --target-env=vulkan -DUSE_SKEL ../src/shaders/model.vert -o ../rsrc/shaders/model_skel.vert.i
-
 COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -DUSE_SKEL ../src/shaders/model.vert -o ../rsrc/shaders/model_skel.vert.spv
 
-COMMAND glslparser -DUSE_SKEL ../rsrc/shaders/model_skel.vert.i ../rsrc/shaders/model_skel.vert.spv
+COMMAND glslparser -DUSE_SKEL ../src/shaders/model.vert ../rsrc/shaders/model_skel.vert.spv
 
 
 #gui font
 
-COMMAND glslc -E -I ../include/shader_include -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.i
-
 COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.spv
 
-COMMAND glslparser -DUSE_TEXTURE ../rsrc/shaders/m_gui_tex.frag.i ../rsrc/shaders/m_gui_tex.frag.spv
+COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui_tex.frag.spv
 
 )
 

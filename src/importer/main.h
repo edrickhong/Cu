@@ -667,8 +667,6 @@ void PrintNodeHeirarchy(AssimpBoneNode bonenode,BonenodeList bonenodelist){
 
 void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
     
-    list->Init();
-    
     for(u32 i = 0; i < scene->mNumAnimations;i++){
         
         AssimpAnimation animation;
@@ -815,9 +813,6 @@ u32 InternalFindIndex(const s8* string,BonenodeList bonenodelist){
 void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
                               BonenodeList* bonenodelist){
     
-    bonedatalist->Init(mesh->mNumVertices);
-    bonedatalist->count = mesh->mNumVertices;
-    
     memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
     
     for(u32 i = 0; i < mesh->mNumBones;i++){
@@ -854,18 +849,22 @@ void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
 #else
     
-    logic found = false;
+#if 0
     
-    for(u32 i = 0; i < aibones_count; i++){
+    
+    
+    for(u32 i = 0; i < bonenodelist->count; i++){
         
-        if(PStringCmp(node->mName.data,aibones_array[i]->mName.data)){
+        if(PHashString((*bonenodelist)[i].name) == PHashString(node->mName.data)){
             
-            found = true;
+            printf("%s vs %s\n",(*bonenodelist)[i].name,node->mName.data);
             
             break;
         }
         
     }
+    
+#endif
     
     AssimpBoneNode bonenode = {};
     
@@ -1047,12 +1046,27 @@ AssimpData AssimpLoad(const s8* filepath){
     BonenodeList bonenodelist;
     AssimpAnimationList animationlist;
     
+    bonenodelist.Init(mesh->mNumBones + _max_bones);
+    bonedatalist.Init(mesh->mNumVertices);
+    bonedatalist.count = mesh->mNumVertices;
+    animationlist.Init();
+    
     if(mesh->mNumBones){
-        
-        bonenodelist.Init(mesh->mNumBones + _max_bones);
         
         //build skeleton from the bones
         AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,mesh->mBones,mesh->mNumBones);
+        
+        
+#if 0
+        
+        PrintNodeHeirarchy(scene->mRootNode,scene->mRootNode);
+        
+        printf("-------------------\n");
+        
+        PrintNodeHeirarchy(bonenodelist[0],bonenodelist);
+        
+#endif
+        
         
         //MARK: max bones check
         //this is the effective bone count
@@ -1061,7 +1075,6 @@ AssimpData AssimpLoad(const s8* filepath){
         AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist);
         
         //get animation data
-        animationlist.Init(1);
         AssimpLoadAnimations(scene,&animationlist);
     }
     
@@ -1085,16 +1098,6 @@ AssimpData AssimpLoad(const s8* filepath){
         data.animation_array = animationlist.container;
         data.animation_count = animationlist.count;
     }
-    
-#if 0
-    
-    PrintNodeHeirarchy(scene->mRootNode,scene->mRootNode);
-    
-    printf("-------------------\n");
-    
-    PrintNodeHeirarchy(data.root_bonenode,bonenodelist);
-    
-#endif
     
     return data;
 }
@@ -1323,6 +1326,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 PtrCopy(&ptr,&datasize,sizeof(datasize));
                 
                 for(u32 i = 0; i < data.bone_count;i++){
+                    
                     AssimpBoneNode bone = bones[i];
                     
                     MDFLinearBoneData lbd = {bone.bone_hash,bone.children_count,bone.offset};

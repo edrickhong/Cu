@@ -781,7 +781,7 @@ VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevic
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     
-    context.attrib = bindingno;
+    context.bind_no = bindingno;
     
     return context;
 }
@@ -803,7 +803,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                                           VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     
-    context.attrib = _countsize(data_size,u32);
+    context.ind_count = _countsize(data_size,u32);
     
     return context;
     
@@ -828,7 +828,7 @@ VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevic
                                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,memtype);
     
-    context.attrib = bindingno;
+    context.bind_no = bindingno;
     
     return context;
 }
@@ -848,7 +848,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,memtype);
     
-    context.attrib = _countsize(size,u32);
+    context.ind_count = _countsize(size,u32);
     
     return context;
     
