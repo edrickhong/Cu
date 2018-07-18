@@ -231,14 +231,11 @@ get_filename_component(SHADERNAME ${shader} NAME)
 add_custom_command(TARGET CJOBS PRE_BUILD
 
 
-#preprocessor
-COMMAND glslc -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/${SHADERNAME}.i
-
 #compile
 COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/${SHADERNAME}.spv
 
 #reflect
-COMMAND glslparser ../rsrc/shaders/${SHADERNAME}.i ../rsrc/shaders/${SHADERNAME}.spv
+COMMAND glslparser ../src/shaders/${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.spv
 
 )
 
