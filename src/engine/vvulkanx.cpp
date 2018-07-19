@@ -242,3 +242,48 @@ void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset
     spec->desc_count = descset_count * obj->descset_count;
     
 }
+
+VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
+                                         VkCommandBuffer commandbuffer,
+                                         VkDeviceMemory memory,
+                                         VkDeviceSize offset,
+                                         VBufferContext src,VkDeviceSize src_offset,void* data,
+                                         ptrsize data_size){
+    
+    auto buffer = VCreateStaticIndexBuffer(vdevice,commandbuffer,
+                                           memory,offset,src,src_offset,data,data_size);
+    
+    auto count = buffer.ind_count * sizeof(u16);
+    
+    if(count <= 65535){
+        buffer.ind_count = count;
+    }
+    
+    else{
+        buffer.ind_count = _addsignedbit(buffer.ind_count);
+    }
+    
+    
+    return buffer;
+    
+}
+
+VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
+                                         ptrsize data_size,logic isdevice_local,VMappedBufferProperties prop){
+    
+    auto buffer = 
+        VCreateStaticIndexBuffer(vdevice,data_size,isdevice_local,prop);
+    
+    auto count = buffer.ind_count * sizeof(u16);
+    
+    if(count <= 65535){
+        buffer.ind_count = count;
+    }
+    
+    else{
+        buffer.ind_count = _addsignedbit(buffer.ind_count);
+    }
+    
+    
+    return buffer;
+}

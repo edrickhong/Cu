@@ -240,9 +240,9 @@ void _ainline InternalDraw(VkCommandBuffer commandbuffer,
                            &vb_offset);
     
     vkCmdBindIndexBuffer(commandbuffer,index_buffer.buffer,
-                         ind_offset,VK_INDEX_TYPE_UINT32);
+                         ind_offset,VX_INDEXBUFFER_GETINDEXTYPE(index_buffer.ind_count));
     
-    vkCmdDrawIndexed(commandbuffer,index_buffer.ind_count,instance_count,0,0,0);  
+    vkCmdDrawIndexed(commandbuffer,VX_INDEXBUFFER_GETINDEX(index_buffer.ind_count),instance_count,0,0,0);  
 }
 
 struct ThreadRenderData{
@@ -1700,14 +1700,12 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
         
         
         AddAnimatedModel(MODEL_PATH(goblin.mdf),queue,cmdbuffer);
-        AddAnimatedModel(MODEL_PATH(knight.mdf),queue,cmdbuffer);
-        
-        //FIXME: for some reason this is generating invalid tids
-        AddAnimatedModel(MODEL_PATH(golem_clean.mdf),queue,cmdbuffer);
+        //AddAnimatedModel(MODEL_PATH(knight.mdf),queue,cmdbuffer);
+        //AddAnimatedModel(MODEL_PATH(golem_clean.mdf),queue,cmdbuffer);
         
         
-        AddModel(MODEL_PATH(teapot.mdf),queue,cmdbuffer);
-        AddModel(MODEL_PATH(box.mdf),queue,cmdbuffer);
+        //AddModel(MODEL_PATH(teapot.mdf),queue,cmdbuffer);
+        //AddModel(MODEL_PATH(box.mdf),queue,cmdbuffer);
         
         
         VEndCommandBuffer(cmdbuffer);

@@ -1042,6 +1042,8 @@ AssimpData AssimpLoad(const s8* filepath){
         
     }
     
+    _kill("top bit in index count is reserved\n",index_list.count & (1 << 31));
+    
     VertexBoneDataList bonedatalist;
     BonenodeList bonenodelist;
     AssimpAnimationList animationlist;
@@ -1264,7 +1266,42 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
     //write indices
     {
         u32 header = TAG_INDEX;
-        u32 datasize = data.index_count * sizeof(u32);
+        u32 datasize = data.index_count;
+        
+        
+        //optimization - save as u16 if allowed
+        
+        if(data.index_count <= 65535){
+            
+#if _print_log
+            
+            printf("using 16 bit indices\n");
+            
+#endif
+            
+            datasize *= sizeof(u16);
+            
+            auto u16_ptr = (u16*)data.index_array;
+            auto u32_ptr = (u32*)data.index_array;
+            
+            //collapse indices
+            for(u32 i = 0; i < data.index_count; i++){
+                
+                u16_ptr[i] = (u16)u32_ptr[i];
+            }
+        }
+        
+        else{
+            
+#if _print_log
+            
+            printf("using 32 bit indices\n");
+            
+#endif
+            
+            datasize *= sizeof(u32);
+        }
+        
         PtrCopy(&ptr,&header,sizeof(header));
         PtrCopy(&ptr,&datasize,sizeof(u32));
         PtrCopy(&ptr,data.index_array,datasize);

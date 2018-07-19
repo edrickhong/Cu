@@ -9,6 +9,10 @@
 #define _encode_rgba(r,g,b,a) ((u8(r)) | ((u8(g)) << 8) | ((u8(b)) << 16) | ((u8(a)) << 24))
 #define _encode_bgra(b,g,r,a) ((u8(b)) | ((u8(g)) << 8) | ((u8(r)) << 16) | ((u8(a)) << 24))
 
+#define _removesignedbit(value) (value & 0x7FFFFFFF)
+
+#define _addsignedbit(value) (value |  (1 << 31))
+
 #ifdef CPP_PASS
 
 #define REFL REFL

@@ -62,7 +62,6 @@ s32 main(s32 argc,s8** argv){
             string[len - 2] = 'd';
             string[len - 1] = 'f';
             
-            //TODO: we should support using 16 bit indices instead of 32 (if vert count < 64k)
             AssimpWriteMDF(assimp,string,blendtype);
             
         }

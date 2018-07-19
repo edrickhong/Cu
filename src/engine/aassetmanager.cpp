@@ -889,12 +889,12 @@ void AllocateAssetAnimated(const s8* filepath,
                                   mdf.vertex_size,vertexbinding_no);
     
     vertindex->indexbuffer =
-        VCreateStaticIndexBuffer(vdevice,
-                                 commandbuffer,
-                                 global_gpumemstate.global_ptr,
-                                 _devicealign(vertindex->gpuptr + mdf.vertex_size),
-                                 transferbuffer,transferbuffer_offset + mdf.vertex_size,
-                                 mdf.index_data,mdf.index_size);
+        VCreateStaticIndexBufferX(vdevice,
+                                  commandbuffer,
+                                  global_gpumemstate.global_ptr,
+                                  _devicealign(vertindex->gpuptr + mdf.vertex_size),
+                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
+                                  mdf.index_data,mdf.index_size);
     
     vertindex->ptr = 0;
 }
@@ -940,12 +940,12 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
                                   mdf.vertex_size,vertexbinding_no);
     
     vertindex.indexbuffer =
-        VCreateStaticIndexBuffer(vdevice,
-                                 commandbuffer,
-                                 global_gpumemstate.global_ptr,
-                                 _devicealign(vertindex.gpuptr + mdf.vertex_size),
-                                 transferbuffer,transferbuffer_offset + mdf.vertex_size,
-                                 mdf.index_data,mdf.index_size);
+        VCreateStaticIndexBufferX(vdevice,
+                                  commandbuffer,
+                                  global_gpumemstate.global_ptr,
+                                  _devicealign(vertindex.gpuptr + mdf.vertex_size),
+                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
+                                  mdf.index_data,mdf.index_size);
     
     vertindex.ptr = 0;
     

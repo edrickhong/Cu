@@ -791,7 +791,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                         VkDeviceMemory memory,
                                         VkDeviceSize offset,
                                         VBufferContext src,VkDeviceSize src_offset,void* data,
-                                        ptrsize data_size){
+                                        ptrsize data_size,u32 ind_size){
     
     auto context =
         InternalCreateStaticBufferContext(vdevice,
@@ -803,7 +803,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                                           VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     
-    context.ind_count = _countsize(data_size,u32);
+    context.ind_count = _countsize(data_size,ind_size);
     
     return context;
     
@@ -834,7 +834,7 @@ VBufferContext VCreateStaticVertexBuffer(const  VDeviceContext* _restrict vdevic
 }
 
 VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice,
-                                        ptrsize size,logic isdevice_local,VMappedBufferProperties prop){
+                                        ptrsize size,logic isdevice_local,VMappedBufferProperties prop,u32 ind_size){
     
     u32 memtype = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
@@ -848,7 +848,7 @@ VBufferContext VCreateStaticIndexBuffer(const  VDeviceContext* _restrict vdevice
                                                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,memtype);
     
-    context.ind_count = _countsize(size,u32);
+    context.ind_count = _countsize(size,ind_size);
     
     return context;
     
