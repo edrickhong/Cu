@@ -86,17 +86,43 @@ constexpr u32 PStrLen(const s8* string){
 
 constexpr u64 PHashString(const s8* string){
     
-    //TODO: implement a rolling prime_no list
-    // eg u32 prime_array[] = {2,3,5,7...}
-    // u32 salt = prime_array[hash % _arraycount(prime_array)]
+    u64 prime_array[] = {
+        13,5701,41,353,7,5023,193,11,13883,7109,8929,3,59149,21107,83,179
+    };
+    
+#define _prime_value(a) prime_array[(a) % _arraycount(prime_array)]
     
     u32 len = PStrLen(string);
     
     u64 hash = 0;
     
     for(u32 i = 0; i < len; i++){
-        hash += ((string[i] * (i + 1)) * 31) ^ (((string[i] * 13) ^ ((hash + string[i]) | 19)) | 1);
+        
+        u32 h = string[i];
+        u32 g = 0;
+        u32 k = 0;
+        
+        if(i == 0){
+            g = string[i + 1];
+            k = string[len >> 1];
+        }
+        
+        else{
+            
+            g = string[i - 1];
+            k = string[len - i];
+        }
+        
+        u32 a = (h * (i + 1)) * _prime_value(h - g);
+        u32 b = h * _prime_value(hash * a);
+        u32 c = ((hash + h) | _prime_value(k - (g * b + a))) | 1;
+        
+        hash += a ^ b ^ c;
+        
+        hash >>= (~(a - c) % 7);
     }
+    
+#undef _prime_value
     
     return hash;
 }

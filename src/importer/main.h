@@ -849,7 +849,7 @@ void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
 #else
     
-#if 0
+#if 1
     
     
     
