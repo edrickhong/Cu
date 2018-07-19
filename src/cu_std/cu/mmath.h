@@ -76,6 +76,8 @@ typedef __m64 simd2f;
 
 //MARK:Linear Algebra
 
+union Quaternion;
+
 struct Vector2{
     f32 x,y;
 };
@@ -91,6 +93,8 @@ union Vector4{
     Vector2 vec2[2];
     
     f32 floats[4];
+    
+    explicit operator Quaternion();
     
 }_align(16);
 
@@ -360,20 +364,62 @@ union Quaternion{
         f32 w,x,y,z;
     };
     
+    explicit operator Vector4();
+    
 }_align(16);
 
-namespace Quat{
-    Quaternion Normalize(Quaternion a);
-    f32 Magnitude(Quaternion a);
-    f32 Dot(Quaternion a,Quaternion b);
+
+Quaternion _ainline Normalize(Quaternion a){
+    return (Quaternion)Vec4::Normalize((Vector4)a);
+}
+
+f32 _ainline Magnitude(Quaternion a){
+    return Vec4::Magnitude((Vector4)a);
+}
+
+f32 _ainline Dot(Quaternion a,Quaternion b){
+    return Vec4::Dot((Vector4)a,(Vector4)b);
 }
 
 
-Quaternion operator+(Quaternion lhs,Quaternion rhs);
-Quaternion operator-(Quaternion lhs,Quaternion rhs);
-Quaternion operator*(f32 lhs,Quaternion rhs);
-Quaternion operator*(Quaternion lhs,f32 rhs);
-Quaternion operator/(Quaternion lhs,f32 rhs);
+Quaternion _ainline operator+(Quaternion lhs,Quaternion rhs){
+    
+    Vector4 l = (Vector4)lhs;
+    Vector4 r = (Vector4)rhs;
+    
+    return (Quaternion)(l + r);
+}
+
+Quaternion _ainline operator-(Quaternion lhs,Quaternion rhs){
+    
+    Vector4 l = (Vector4)lhs;
+    Vector4 r = (Vector4)rhs;
+    
+    return (Quaternion)(l - r);
+}
+
+Quaternion _ainline operator*(f32 lhs,Quaternion rhs){
+    
+    Vector4 r = (Vector4)rhs;
+    
+    return (Quaternion)(lhs * r);
+}
+
+Quaternion _ainline operator*(Quaternion lhs,f32 rhs){
+    
+    Vector4 l = (Vector4)lhs;
+    
+    return (Quaternion)(l * rhs);
+}
+
+Quaternion _ainline operator/(Quaternion lhs,f32 rhs){
+    
+    Vector4 l = (Vector4)lhs;
+    
+    return (Quaternion)(l / rhs);
+}
+
+
 Quaternion operator*(Quaternion lhs,Quaternion rhs);
 
 Quaternion Inverse(Quaternion q);
@@ -402,31 +448,6 @@ Quaternion _ainline AQuaternionIdentity(){
 }
 
 void PrintQuaternion(Quaternion quat);
-
-
-Quaternion _ainline CastVectorToQuaternion(Vector4 vector){
-    
-    Quaternion q;
-    
-    q.w = vector.x;
-    q.x = vector.y;
-    q.y = vector.z;
-    q.z = vector.w;
-    
-    return q;
-}
-
-Vector4 _ainline CastQuaternionToVector(Quaternion quaternion){
-    
-    Vector4 v;
-    
-    v.x = quaternion.w;
-    v.y = quaternion.x;
-    v.z = quaternion.y;
-    v.w = quaternion.z;
-    
-    return v;
-}
 
 
 Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){

@@ -472,23 +472,6 @@ f32 Vec4::Dot(Vector4 vec1,Vector4 vec2){
     return res;
 }
 
-f32 Quat::Dot(Quaternion a,Quaternion b){
-    
-    simd4f mul = _mulsimd4f(a.simd,b.simd);
-    
-#ifdef _WIN32
-    
-    f32* _restrict r = (f32*)&mul;
-    
-    f32 res = r[0] + r[1] + r[2]+ r[3];
-    
-#else
-    f32 res = mul[0] + mul[1] + mul[2] + mul[3];
-#endif
-    
-    return res;  
-}
-
 f32 Vec4::Magnitude(Vector4 vec){
     
     //m = sqrt(x^2 + y^2 + z^2)
@@ -500,22 +483,8 @@ f32 Vec4::Magnitude(Vector4 vec){
     return res;
 }
 
-f32 Quat::Magnitude(Quaternion a){
-    //m = sqrt(x^2 + y^2 + z^2)
-    
-    f32 res = Dot(a,a);
-    
-    res = sqrtf(res);
-    
-    return res;  
-}
-
 Vector4 Vec4::Normalize(Vector4 vec){
     return (vec)/(Magnitude(vec));
-}
-
-Quaternion Quat::Normalize(Quaternion a){
-    return (a)/(Magnitude(a));
 }
 
 Vector4 Vec4::VectorComponentMul(Vector4 a,Vector4 b){
@@ -881,7 +850,7 @@ Quaternion operator*(Quaternion lhs,Quaternion rhs){
    x = w1x2 + x1w2 + y1z2 - z1y2
    y = w1y2 + y1w2 + z1x2 - x1z2
    z = w1z2 + z1w2 + x1y2 - y1x2
-   w=w1w2 - x1x2 - y1y2 - z1z2
+   w=  w1w2 - x1x2 - y1y2 - z1z2
     */
     
     Quaternion quaternion;
@@ -1000,9 +969,7 @@ Quaternion MatrixToQuaternion(Matrix4b4 matrix){
         q.z = 0.25f * s;
     }
     
-    Vector4 quat = Vec4::Normalize(CastQuaternionToVector(q));
-    
-    return CastVectorToQuaternion(quat);
+    return Normalize(q);
     
 #endif
 }
@@ -1024,61 +991,9 @@ Matrix4b4 WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale){
     return matrix;
 }
 
-
-Quaternion operator+(Quaternion lhs,Quaternion rhs){
-    
-    Quaternion vec;
-    
-    simd4f res = _addsimd4f(lhs.simd,rhs.simd);
-    
-    _storeusimd4f(&vec.w,res);
-    
-    return vec;
-}
-
-Quaternion operator-(Quaternion lhs,Quaternion rhs){
-    Quaternion vec;
-    
-    simd4f res = _subsimd4f(lhs.simd,rhs.simd);
-    
-    _storeusimd4f(&vec.w,res);
-    
-    return vec;
-}
-
-Quaternion operator*(f32 lhs,Quaternion rhs){
-    Quaternion vec;
-    
-    simd4f k = _setksimd4f(lhs);
-    
-    simd4f res = _mulsimd4f(rhs.simd,k);
-    
-    _storeusimd4f(&vec.w,res);
-    
-    return vec;
-}
-
-
-Quaternion operator*(Quaternion lhs,f32 rhs){
-    return rhs * lhs;
-}
-
-
-Quaternion operator/(Quaternion lhs,f32 rhs){
-    
-    Quaternion vec;
-    simd4f k = _setksimd4f(rhs);
-    
-    simd4f res = _divsimd4f(lhs.simd,k);
-    
-    _storeusimd4f(&vec.w,res);
-    
-    return vec;
-}
-
 Quaternion _ainline Neighbourhood(Quaternion a,Quaternion b){
     
-    f32 dot = Quat::Dot(a,b);
+    f32 dot = Dot(a,b);
     
     //neighbourhood operator.
     if(dot < 0.0f){
@@ -1094,18 +1009,18 @@ Quaternion NLerp(Quaternion a,Quaternion b,f32 step){
     
     Quaternion q = InterpolateQuaternion(a,b,step);
     
-    q = Quat::Normalize(q);
+    q = Normalize(q);
     
     return q; 
 }
 
 Quaternion SLerp(Quaternion a,Quaternion b,f32 step){
     
-    f32 dot = _clamp(Quat::Dot(a,b),-1.0f, 1.0f);
+    f32 dot = _clamp(Dot(a,b),-1.0f, 1.0f);
     
     f32 angle = acos(dot) * step;
     
-    Quaternion n =  Quat::Normalize(b - (a * dot));
+    Quaternion n =  Normalize(b - (a * dot));
     
     return (n * sinf(angle)) + (a * cosf(angle));
 }
@@ -1163,7 +1078,7 @@ DualQuaternion operator*(DualQuaternion lhs,f32 rhs){
 
 DualQuaternion Normalize(DualQuaternion d){
     
-    f32 magnitude = Quat::Dot(d.q1,d.q1);
+    f32 magnitude = Dot(d.q1,d.q1);
     
     _kill("dq normalize error\n",magnitude <= 0.000001f);
     
@@ -1550,4 +1465,29 @@ Quaternion Inverse(Quaternion q){
     q.w *= -1.0f;
     
     return q * -1.0f;
+}
+
+
+Quaternion::operator Vector4(){
+    
+    Vector4 v;
+    
+    v.x = w;
+    v.y = x;
+    v.z = y;
+    v.w = z;
+    
+    return v;
+}
+
+Vector4::operator Quaternion(){
+    
+    Quaternion q;
+    
+    q.w = x;
+    q.x = y;
+    q.y = z;
+    q.z = w;
+    
+    return q;
 }
