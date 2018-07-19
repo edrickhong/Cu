@@ -94,8 +94,6 @@ union Vector4{
     
     f32 floats[4];
     
-    explicit operator Quaternion();
-    
 }_align(16);
 
 struct Vector4SOA{
@@ -364,59 +362,83 @@ union Quaternion{
         f32 w,x,y,z;
     };
     
-    explicit operator Vector4();
-    
 }_align(16);
 
 
+Vector4 _ainline Quat2Vec(Quaternion q){
+    
+    Vector4 v;
+    
+    v.x = q.w;
+    v.y = q.x;
+    v.z = q.y;
+    v.w = q.z;
+    
+    return v;
+}
+
+Quaternion _ainline Vec2Quat(Vector4 v){
+    
+    Quaternion q;
+    
+    q.w = v.x;
+    q.x = v.y;
+    q.y = v.z;
+    q.z = v.w;
+    
+    return q;
+    
+}
+
+
 Quaternion _ainline Normalize(Quaternion a){
-    return (Quaternion)Vec4::Normalize((Vector4)a);
+    return Vec2Quat(Vec4::Normalize(Quat2Vec(a)));
 }
 
 f32 _ainline Magnitude(Quaternion a){
-    return Vec4::Magnitude((Vector4)a);
+    return Vec4::Magnitude(Quat2Vec(a));
 }
 
 f32 _ainline Dot(Quaternion a,Quaternion b){
-    return Vec4::Dot((Vector4)a,(Vector4)b);
+    return Vec4::Dot(Quat2Vec(a),Quat2Vec(b));
 }
 
 
 Quaternion _ainline operator+(Quaternion lhs,Quaternion rhs){
     
-    Vector4 l = (Vector4)lhs;
-    Vector4 r = (Vector4)rhs;
+    Vector4 l = Quat2Vec(lhs);
+    Vector4 r = Quat2Vec(rhs);
     
-    return (Quaternion)(l + r);
+    return Vec2Quat(l + r);
 }
 
 Quaternion _ainline operator-(Quaternion lhs,Quaternion rhs){
     
-    Vector4 l = (Vector4)lhs;
-    Vector4 r = (Vector4)rhs;
+    Vector4 l = Quat2Vec(lhs);
+    Vector4 r = Quat2Vec(rhs);
     
-    return (Quaternion)(l - r);
+    return Vec2Quat(l - r);
 }
 
 Quaternion _ainline operator*(f32 lhs,Quaternion rhs){
     
-    Vector4 r = (Vector4)rhs;
+    Vector4 r = Quat2Vec(rhs);
     
-    return (Quaternion)(lhs * r);
+    return Vec2Quat(lhs * r);
 }
 
 Quaternion _ainline operator*(Quaternion lhs,f32 rhs){
     
-    Vector4 l = (Vector4)lhs;
+    Vector4 l = Quat2Vec(lhs);
     
-    return (Quaternion)(l * rhs);
+    return Vec2Quat(l * rhs);
 }
 
 Quaternion _ainline operator/(Quaternion lhs,f32 rhs){
     
-    Vector4 l = (Vector4)lhs;
+    Vector4 l = Quat2Vec(lhs);
     
-    return (Quaternion)(l / rhs);
+    return Vec2Quat(l / rhs);
 }
 
 

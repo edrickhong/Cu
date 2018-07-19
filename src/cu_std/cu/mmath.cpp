@@ -1466,28 +1466,3 @@ Quaternion Inverse(Quaternion q){
     
     return q * -1.0f;
 }
-
-
-Quaternion::operator Vector4(){
-    
-    Vector4 v;
-    
-    v.x = w;
-    v.y = x;
-    v.z = y;
-    v.w = z;
-    
-    return v;
-}
-
-Vector4::operator Quaternion(){
-    
-    Quaternion q;
-    
-    q.w = x;
-    q.x = y;
-    q.y = z;
-    q.z = w;
-    
-    return q;
-}
