@@ -414,6 +414,15 @@ struct InternalGUISubmission{
     GUICameraMode cameramode = GUI_CAMERA_PERSPECTIVE;
     VkViewport viewport;
     VkRect2D scissor;
+    
+#ifdef DEBUG
+    
+    s8* file;
+    u32 line;
+    s8* function;
+    
+#endif
+    
 };
 
 enum GUIType{
@@ -1244,9 +1253,7 @@ void _ainline GUIInternalSubWindow(GUIVec2* pos,GUIDim2* dim){
                                     width * h_c_width,height * h_c_height,&dim->w,&dim->h);
 }
 
-void  GUIInternalMakeSubmission(
-WindowClipState to_make_window = WINDOWSTATE_NONE,
-GUIVec2 pos = {},GUIDim2 dim = {}){
+void  GUIInternalMakeSubmission(WindowClipState to_make_window,GUIVec2 pos,GUIDim2 dim){
     
     
     f32 x,y,width,height;
@@ -1302,6 +1309,22 @@ GUIVec2 pos = {},GUIDim2 dim = {}){
     
 }
 
+void DebugGUIInternalMakeSubmission(WindowClipState to_make_window,GUIVec2 pos,GUIDim2 dim,s8* file,u32 line,s8* function){
+    
+    GUIInternalMakeSubmission(to_make_window,pos,dim);
+    
+    auto sub = InternalGetLastSubmission();
+    
+    sub->file = (s8*)file;
+    sub->line = line;
+    sub->function = function;
+}
+
+#ifdef DEBUG
+
+#define GUIInternalMakeSubmission(a,b,c) DebugGUIInternalMakeSubmission(a,b,c,(s8*)__FILE__,(u32)__LINE__,(s8*)__FUNCTION__)
+
+#endif
 
 
 void _ainline InternalGetWindowTextDim(GUIFont* font,f32* w,f32* h,f32 scale,
@@ -1359,7 +1382,7 @@ logic GUIButton(const s8* string){
     GUISetRenderMode(GUI_RENDER_SOLID);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     f32 string_width;
     f32 string_height;
@@ -1379,7 +1402,7 @@ logic GUIButton(const s8* string){
     
     GUISetRenderMode(GUI_RENDER_TEXT);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     InternalDrawString(string,pos.x + text_padding,pos.y,gui->default_font_size,
                        gui->default_font,gui->text_color);
@@ -1393,7 +1416,7 @@ void GUIString(const s8* string,u32 behavior){
     GUISetRenderMode(GUI_RENDER_TEXT);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     f32 string_width;
     f32 string_height;
@@ -1552,7 +1575,7 @@ void GUIInternalBeginWindow(const s8* title,GUIVec2* pos,GUIDim2* dim){
     
     GUISetRenderMode(GUI_RENDER_TEXT);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     titlebar_width = -1.0f + ((2.0f - titlebar_width)/2.0f);
     
@@ -1590,7 +1613,7 @@ void InternalGUIActiveComboBox(){
         GUISetRenderMode(GUI_RENDER_SOLID);
         GUISetCameraMode(GUI_CAMERA_NONE);
         
-        GUIInternalMakeSubmission();
+        GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
         
         auto pos = gui->combobox_pos;
         auto dim = gui->combobox_dim;
@@ -1669,7 +1692,7 @@ void InternalGUIActiveHistogram(){
         InternalGUIDrawRect(-1.0f,1.0f,2.0f,2.0f,gui->back_color);
         
         GUISetRenderMode(GUI_RENDER_TEXT);
-        GUIInternalMakeSubmission();
+        GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
         
         InternalDrawString(&string1[0],-1.0f,1.0f,gui->default_font_size,gui->default_font,
                            gui->text_color);
@@ -1724,7 +1747,7 @@ void InternalGUIActiveProfiler(){
         InternalGUIDrawRect(-1.0f,1.0f,2.0f,2.0f,gui->back_color);
         
         GUISetRenderMode(GUI_RENDER_TEXT);
-        GUIInternalMakeSubmission();
+        GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
         
         InternalGetTextDim(gui->default_font,&dim.w,&dim.h,gui->default_font_size);
         
@@ -1854,7 +1877,7 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
     GUISetRenderMode(GUI_RENDER_SOLID);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     if((s32)dim.h == -1){
         InternalGetTextDim(gui->default_font,0,&dim.h,gui->default_font_size);
@@ -1940,7 +1963,11 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
     
     GUISetRenderMode(GUI_RENDER_TEXT);
     
-    GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,{w,h});
+    {
+        GUIDim2 d = {w,h};
+        
+        GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,d);
+    }
     
     InternalDrawString(in_buffer,-1.0f,1.0f,gui->default_font_size,gui->default_font,gui->text_color);
     return false;
@@ -1967,7 +1994,7 @@ logic GUIComboBox(const s8* label,const s8** options_array,u32 options_count,u32
     GUISetRenderMode(GUI_RENDER_SOLID);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();  
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});  
     
     auto token = PHashString(label);
     
@@ -2052,7 +2079,11 @@ logic GUIComboBox(const s8* label,const s8** options_array,u32 options_count,u32
     
     GUISetRenderMode(GUI_RENDER_TEXT);
     
-    GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,{w,h});
+    {
+        GUIDim2 d = {w,h};
+        
+        GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,d);
+    }
     
     InternalDrawString(options_array[*index],-1.0f,1.0f,gui->default_font_size,gui->default_font,
                        gui->text_color);
@@ -2069,7 +2100,7 @@ logic GUIHistogram(const s8* label_x,const s8* label_y,GUIVec2* data_array,u32 d
     GUISetRenderMode(GUI_RENDER_SOLID);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     //auto token = PHashString(label_x) ^ PHashString(label_y);
     auto token = PHashString("GUIHistogram");
@@ -2081,7 +2112,12 @@ logic GUIHistogram(const s8* label_x,const s8* label_y,GUIVec2* data_array,u32 d
     
     InternalGUIDrawRect(pos.x,pos.y,w,h,gui->graph_back_color);
     
-    GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,{w,h});
+    
+    {
+        GUIDim2 d = {w,h};
+        
+        GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,d);
+    }
     
     f32 highest_value = 0.0f;
     
@@ -2217,7 +2253,7 @@ logic GUIProfileView(const s8* profilename,const DebugTable* table,GUIDim2 dim){
     GUISetRenderMode(GUI_RENDER_SOLID);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     auto token = PHashString(profilename);
     
@@ -2228,7 +2264,11 @@ logic GUIProfileView(const s8* profilename,const DebugTable* table,GUIDim2 dim){
     
     InternalGUIDrawRect(pos.x,pos.y,w,h,gui->graph_back_color);
     
-    GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,{w,h});
+    {
+        GUIDim2 d = {w,h};
+        
+        GUIInternalMakeSubmission(WINDOWSTATE_SUBWINDOW,pos,d);
+    }
     
     u32 all_count = table->thread_count * 6;
     
@@ -2322,7 +2362,7 @@ logic GUITranslateGizmo(GUIVec3* world_pos){
     GUISetRenderMode(GUI_RENDER_LINE);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     auto viewproj = gui->proj_matrix * gui->view_matrix;
     
@@ -2420,11 +2460,6 @@ logic GUIScaleGizmo(GUIVec3 world_pos,f32* scale){
     
     auto token = PHashString("GUI3DScale");
     
-    GUISetRenderMode(GUI_RENDER_LINE);
-    GUISetCameraMode(GUI_CAMERA_NONE);
-    
-    GUIInternalMakeSubmission();
-    
     auto viewproj = gui->proj_matrix * gui->view_matrix;
     
     auto obj_c = WorldSpaceToClipSpace(world_pos,viewproj).vec2[0];
@@ -2444,6 +2479,11 @@ logic GUIScaleGizmo(GUIVec3 world_pos,f32* scale){
     }
     
     if(gui->internal_active_state == token){
+        
+        GUISetRenderMode(GUI_RENDER_LINE);
+        GUISetCameraMode(GUI_CAMERA_NONE);
+        
+        GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
         
         InternalGUIDrawLine(obj_c,mouse_c,gui->axis_x_color);
         
@@ -2476,7 +2516,7 @@ void GUIDrawAxisSphere(Vector3 obj_w,f32 radius,Color c_x,Color c_y,Color c_z){
     GUISetRenderMode(GUI_RENDER_LINE);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     auto viewproj = gui->proj_matrix * gui->view_matrix;
     
@@ -2618,7 +2658,7 @@ logic GUIRotationGizmo(GUIVec3 world_pos,Quaternion* rot){
     GUISetRenderMode(GUI_RENDER_LINE);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     auto viewproj = gui->proj_matrix * gui->view_matrix;
     
@@ -2736,7 +2776,7 @@ void GUIDrawPosMarker(GUIVec3 world_pos,Color color){
     GUISetRenderMode(GUI_RENDER_LINE);
     GUISetCameraMode(GUI_CAMERA_NONE);
     
-    GUIInternalMakeSubmission();
+    GUIInternalMakeSubmission(WINDOWSTATE_NONE,{},{});
     
     auto viewproj = gui->proj_matrix * gui->view_matrix;
     
