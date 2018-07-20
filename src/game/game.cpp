@@ -123,7 +123,7 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->B = 1.0f;
                 
                 
-                Vector3 dir = {0.0f,0.0f,1.0f,0.0f};
+                Vector3 dir = {0.0f,0.0f,1.0f};
                 
                 dir = RotateVector3(dir,data->orientation.rot[obj_id]);
                 
@@ -222,7 +222,7 @@ u32 AddObject(SceneContext* context){
     data->orientation.pos_y[id] = pos.y;
     data->orientation.pos_z[id] = pos.z;
     
-    data->orientation.rot[id] = ConstructQuaternion(Vector4{1,0,0,0},_radians(0));
+    data->orientation.rot[id] = ConstructQuaternion(Vector3{1,0,0},_radians(0));
     
     data->orientation.scale[id] = 1.0f;
     
@@ -259,16 +259,16 @@ void KeyboardInput(SceneContext* context){
         
         data->roty += 0.0001f * 100;
         
-        Quaternion rot = ConstructQuaternion(Vector4{0,1,0,0},data->roty);
+        Quaternion rot = ConstructQuaternion(Vector3{0,1,0},data->roty);
         
-        Vector4 pos1 = {data->orientation.pos_x[0],data->orientation.pos_y[0],
-            data->orientation.pos_z[0],1.0f};
+        Vector3 pos1 = {data->orientation.pos_x[0],data->orientation.pos_y[0],
+            data->orientation.pos_z[0]};
         
-        Vector4 pos2 = {data->orientation.pos_x[1],data->orientation.pos_y[1],
-            data->orientation.pos_z[1],1.0f};
+        Vector3 pos2 = {data->orientation.pos_x[1],data->orientation.pos_y[1],
+            data->orientation.pos_z[1]};
         
-        Vector4 pos3 = {data->orientation.pos_x[2],data->orientation.pos_y[2],
-            data->orientation.pos_z[2],1.0f};
+        Vector3 pos3 = {data->orientation.pos_x[2],data->orientation.pos_y[2],
+            data->orientation.pos_z[2]};
         
         auto q1 = rot * data->orientation.rot[0];
         auto q2 = rot * data->orientation.rot[1];
@@ -469,8 +469,8 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         
         for(u32 i = 0; i < count; i++){
             
-            Vector4 pos = {data->orientation.pos_x[i],data->orientation.pos_y[i],
-                data->orientation.pos_z[i],1.0f};
+            Vector3 pos = {data->orientation.pos_x[i],data->orientation.pos_y[i],
+                data->orientation.pos_z[i]};
             
             auto scale = data->orientation.scale[i];
             
@@ -532,7 +532,7 @@ void UpdateLightList(SceneContext* context){
         
         auto light = &comp->pointlight_array[i];
         
-        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
+        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id]};
         
         Vector4 c = {light->R,light->G,light->B,1.0f};
         c =  c * light->intensity;
@@ -552,9 +552,9 @@ void UpdateLightList(SceneContext* context){
         
         auto light = &comp->spotlight_array[i];
         
-        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id],1.0f};
+        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id]};
         
-        auto dir = Vector3{light->dir_x,light->dir_y,light->dir_z,1.0f};
+        auto dir = Vector3{light->dir_x,light->dir_y,light->dir_z};
         
         Vector4 c = {light->R,light->G,light->B,1.0f};
         c =  c * light->intensity;
@@ -850,8 +850,8 @@ extern "C" {
         
         data->running = true;
         
-        data->camera_pos = Vector4{0.0f,0.0f,-4.0f,1.0f};
-        data->camera_lookdir = Vector4{0.0f,0.0f,1.0f,0.0f};
+        data->camera_pos = Vector3{0.0f,0.0f,-4.0f};
+        data->camera_lookdir = Vector3{0.0f,0.0f,1.0f};
         
         
 #ifdef DEBUG
@@ -1183,20 +1183,20 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         if(fabsf(x_angle) > fabsf(y_angle)){
             
             lookdir = RotateVector(lookdir,
-                                   Vector4{0,x_angle});  
+                                   Vector3{0,x_angle});  
         }
         
         else{
             
             auto k = RotateVector(lookdir,
-                                  Vector4{y_angle});  
+                                  Vector3{y_angle});  
             
-            if((1.0f - Vec3::Dot(k,Vector3{0.0f,-1.0f,0.0f,0.0f})) > 0.01f){
+            if((1.0f - Dot(k,Vector3{0.0f,-1.0f,0.0f})) > 0.01f){
                 lookdir = k;
             }
         }
         
-        lookdir = Vec3::Normalize(lookdir);
+        lookdir = Normalize(lookdir);
         
         data->camera_lookdir = lookdir;
     }
@@ -1244,9 +1244,9 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
 #define _speed 0.004f
     
     auto f = data->camera_lookdir;
-    auto s = Vec3::Cross(data->camera_lookdir,Vector3{0,-1});
+    auto s = Cross(data->camera_lookdir,Vector3{0,-1});
     
-    Vector4 dir = {};
+    Vector3 dir = {};
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_W)){
         dir = dir + (f * _speed * delta_time);
@@ -1265,8 +1265,8 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     }
     
     
-    if(Vec3::Magnitude(dir)){
-        dir = Vec3::Normalize(dir);  
+    if(Magnitude(dir)){
+        dir = Normalize(dir);  
     }
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_ESC)){
@@ -1274,6 +1274,8 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     }
     
     data->camera_pos = data->camera_pos + dir;
+    
+    PrintVector3(data->camera_pos);
     
 }
 
@@ -1349,7 +1351,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                     
                     if(obj_id == light->id){
                         
-                        Vector3 dir = {0.0f,0.0f,1.0f,1.0f};
+                        Vector3 dir = {0.0f,0.0f,1.0f};
                         
                         dir = RotateVector3(dir,data->orientation.rot[obj_id]);
                         
@@ -1493,8 +1495,8 @@ void EditorGUI(SceneContext* context){
         }
         
         if(GUIButton("Add Light")){
-            dir_array[*dir_count] = {Vector3{0.0f,0.0f,1.0f,1.0f},White};
-            data->dir_light_rot[*dir_count] = ConstructQuaternion(Vector3{0.0f,1.0f,0.0f,1.0f},0.0f);
+            dir_array[*dir_count] = {Vector4{0.0f,0.0f,1.0f,1.0f},White};
+            data->dir_light_rot[*dir_count] = ConstructQuaternion(Vector3{0.0f,1.0f,0.0f},0.0f);
             
             data->dir_light_color[*dir_count] = White;
             data->dir_light_intensity[*dir_count] = 1.0f;
@@ -1516,7 +1518,7 @@ void EditorGUI(SceneContext* context){
             
             auto light = &dir_array[data->dirlight_id];
             auto rot = &data->dir_light_rot[data->dirlight_id];
-            Vector4 dir = Vector3{0.0f,0.0f,1.0f,0.0f};
+            Vector3 dir = Vector3{0.0f,0.0f,1.0f};
             
             auto color = &data->dir_light_color[data->dirlight_id];
             auto intensity = &data->dir_light_intensity[data->dirlight_id];
@@ -1571,11 +1573,11 @@ void EditorGUI(SceneContext* context){
             
             //rotation widget and maybe scale to control intensity
             
-            auto pos = data->camera_pos + (Vec3::Normalize(data->camera_lookdir) * 2.0f);
+            auto pos = data->camera_pos + (Normalize(data->camera_lookdir) * 2.0f);
             
             if(GUIRotationGizmo(pos,rot)){
                 
-                light->dir = RotateVector3(dir,*rot);
+                light->dir = ToVec4(RotateVector3(dir,*rot));
             }
         }
         
@@ -1726,8 +1728,8 @@ void EditorGUI(SceneContext* context){
                 
                 data->write_orientation = false;
                 
-                Vector4 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
-                    data->orientation.pos_z[data->obj_id],1.0f};
+                Vector3 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
+                    data->orientation.pos_z[data->obj_id]};
                 
                 auto scale = data->orientation.scale[data->obj_id];
                 

@@ -116,7 +116,32 @@ struct Vector4SOA{
     
 };
 
-typedef Vector4 Vector3;
+union Vector3{
+    
+    struct{
+        f32 x,y,z;
+    };
+    
+    f32 floats[3];
+    Vector2 vec2;
+};
+
+Vector4 _ainline ToVec4(Vector3 vec){
+    
+    return {vec.x,vec.y,vec.z,1.0f};
+}
+
+Vector3 _ainline ToVec3(Vector4 vec){
+    return {vec.x,vec.y,vec.z};
+}
+
+Vector2 _ainline ToVec2(Vector4 vec){
+    return {vec.x,vec.y};
+}
+
+Vector2 _ainline ToVec2(Vector3 vec){
+    return {vec.x,vec.y};
+}
 
 typedef Vector3 EuelerAngle;
 
@@ -168,40 +193,37 @@ logic Intersect(Line2 a,Line2 b,Point2* out_point);
 
 logic TypedIntersect(Line2 a,Line2 b);
 
-namespace Vec3{
-    
-    f32 Magnitude(Vector3 vec);
-    Vector3 Cross(Vector3 vec1,Vector3 vec2);
-    f32 Dot(Vector3 vec1,Vector3 vec2);
-    f32 cosf(Vector3 vec1,Vector3 vec2);
-    Vector3 Normalize(Vector3 vec);
-    Vector3 GetVectorRotation(Vector3 lookat);
-    
-    Vector3 Vec3(f32 x,f32 y,f32 z);
-    
-    f32 Component(Vector3 a,Vector3 b);
-    
-    Vector3 ProjectOnto(Vector3 a,Vector3 b);
-    
-    Vector3 ProjectVectorOntoPlane(Vector3 vec,Plane plane);
-    
-    //line intersections
-    
-    logic Intersect(Line3 a,Line3 b);
-    
-    logic Intersect(Line3 a,Line3 b,Point3* out_point);
-    
-    logic TypedIntersect(Line3 a,Line3 b);
-    
-    
-    //plane intersections
-    
-    logic Intersect(Line3 a,Plane b);
-    
-    logic TypedIntersect(Line3 a,Plane b);
-    
-    logic Intersect(Line3 a,Plane b,Point3* out_point);
-}
+f32 Magnitude(Vector3 vec);
+Vector3 Cross(Vector3 vec1,Vector3 vec2);
+f32 Dot(Vector3 vec1,Vector3 vec2);
+f32 cosf(Vector3 vec1,Vector3 vec2);
+Vector3 Normalize(Vector3 vec);
+Vector3 GetVectorRotation(Vector3 lookat);
+
+Vector3 Vec3(f32 x,f32 y,f32 z);
+
+f32 Component(Vector3 a,Vector3 b);
+
+Vector3 ProjectOnto(Vector3 a,Vector3 b);
+
+Vector3 ProjectVectorOntoPlane(Vector3 vec,Plane plane);
+
+//line intersections
+
+logic Intersect(Line3 a,Line3 b);
+
+logic Intersect(Line3 a,Line3 b,Point3* out_point);
+
+logic TypedIntersect(Line3 a,Line3 b);
+
+
+//plane intersections
+
+logic Intersect(Line3 a,Plane b);
+
+logic TypedIntersect(Line3 a,Plane b);
+
+logic Intersect(Line3 a,Plane b,Point3* out_point);
 
 namespace Vec4{
     Vector4 Normalize(Vector4 vec);
@@ -222,6 +244,12 @@ Vector4 operator-(Vector4 lhs,Vector4 rhs);
 Vector4 operator*(f32 lhs,Vector4 rhs);
 Vector4 operator*(Vector4 lhs,f32 rhs);
 Vector4 operator/(Vector4 lhs,f32 rhs);
+
+Vector3 operator+(Vector3 lhs,Vector3 rhs);
+Vector3 operator-(Vector3 lhs,Vector3 rhs);
+Vector3 operator*(f32 lhs,Vector3 rhs);
+Vector3 operator*(Vector3 lhs,f32 rhs);
+Vector3 operator/(Vector3 lhs,f32 rhs);
 
 Vector2 operator+(Vector2 lhs,Vector2 rhs);
 Vector2 operator-(Vector2 lhs,Vector2 rhs);
@@ -244,15 +272,23 @@ f32 Magnitude(Vector2 vec);
 //FIXME:this one has issues
 Vector2 RotateVector(Vector2 vec,f32 rotation);
 
-Vector4 RotateVector(Vector4 vec,Vector4 rotation);
+Vector4 RotateVector(Vector4 vec,Vector3 rotation);
+
+Vector3 _ainline RotateVector(Vector3 vec,Vector3 rotation){
+    return ToVec3(RotateVector(ToVec4(vec),rotation));
+}
 
 Matrix4b4 Transpose(Matrix4b4 matrix);
 
-Matrix4b4 ViewMatrix(Vector4 position,Vector4 lookpoint,Vector4 updir);
+Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);;
+
+Matrix4b4 _ainline ViewMatrix(Vector4 position,Vector4 lookpoint,Vector4 updir){
+    return ViewMatrix(ToVec3(position),ToVec3(lookpoint),ToVec3(updir));
+}
+
 Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectration,f32 nearz,f32 farz);
 
-
-Matrix4b4 _ainline PositionMatrix(Vector4 position){
+Matrix4b4 _ainline PositionMatrix(Vector3 position){
     
     Matrix4b4 matrix = {
         {1,0,0,position.x,
@@ -262,9 +298,17 @@ Matrix4b4 _ainline PositionMatrix(Vector4 position){
     };
     
     return matrix;
+    
+    
 }
 
-Matrix4b4 _ainline RotationMatrix(EuelerAngle rotation){
+
+Matrix4b4 _ainline PositionMatrix(Vector4 position){
+    
+    return PositionMatrix(ToVec3(position));
+}
+
+Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
     
     f32 cosv = cosf(rotation.x);
     f32 sinv = sinf(rotation.x);
@@ -299,9 +343,13 @@ Matrix4b4 _ainline RotationMatrix(EuelerAngle rotation){
     return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
 }
 
+Matrix4b4 _ainline RotationMatrix(Vector4 rotation){
+    return RotationMatrix(ToVec3(rotation));
+}
 
 
-Matrix4b4 _ainline ScaleMatrix(Vector4 scale){
+
+Matrix4b4 _ainline ScaleMatrix(Vector3 scale){
     
     Matrix4b4 matrix = {
         {scale.x,0,0,0,
@@ -313,6 +361,10 @@ Matrix4b4 _ainline ScaleMatrix(Vector4 scale){
     return matrix;
 }
 
+Matrix4b4 _ainline ScaleMatrix(Vector4 scale){
+    return ScaleMatrix(ToVec3(scale));
+}
+
 
 Matrix4b4 IdentityMatrix4b4();
 
@@ -322,7 +374,12 @@ void PrintVector3(Vector3 vec);
 void PrintVector2(Vector2 vec);
 
 Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale);
-Matrix4b4 WorldMatrix(Vector4 position,EuelerAngle rotation,Vector4 scale);
+
+Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale);
+
+Matrix4b4 _ainline WorldMatrix(Vector4 position,Vector4 rotation,Vector4 scale){
+    return WorldMatrix(ToVec3(position),ToVec3(rotation),ToVec3(scale));
+}
 
 //NOTE: Do not use these for now
 Matrix4b4 Inverse(Matrix4b4 matrix);
@@ -459,7 +516,11 @@ Matrix4b4 QuaternionToMatrix(Quaternion quaternion);
 
 Quaternion MatrixToQuaternion(Matrix4b4 matrix);
 
-Matrix4b4 WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale);
+Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale);
+
+Matrix4b4 _ainline WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale){
+    return WorldMatrix(ToVec3(position),rotation,ToVec3(scale));
+}
 
 Quaternion _ainline MQuaternionIdentity(){
     return Quaternion{1.0f,0.0f,0.0f,0.0f};
@@ -474,7 +535,7 @@ void PrintQuaternion(Quaternion quat);
 
 Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
     
-    return Vector3{matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2),1.0f};
+    return Vector3{matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2)};
 }
 
 Vector4 _ainline InterpolateVector(Vector4 a,Vector4 b,f32 step){
@@ -525,3 +586,13 @@ Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj);
 Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj);
+
+Vector3 _ainline WorldSpaceToClipSpace(Vector3 pos,Matrix4b4 viewproj){
+    
+    return ToVec3(WorldSpaceToClipSpace(ToVec4(pos),viewproj));
+}
+
+Vector3 _ainline ClipSpaceToWorldSpace(Vector3 pos,Matrix4b4 viewproj){
+    
+    return ToVec3(ClipSpaceToWorldSpace(ToVec4(pos),viewproj));
+}

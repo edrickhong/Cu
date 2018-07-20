@@ -637,6 +637,7 @@ struct PlatformData{
     
     Matrix4b4 view;
     Matrix4b4 proj;
+    
     Vector4 camerapos;
     
     AAudioBuffer submit_audiobuffer;
@@ -1400,30 +1401,33 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
     
 }
 
-Vector4 TranslateWorldSpaceToClipSpace(Vector4 pos){
+Vector3 TranslateWorldSpaceToClipSpace(Vector3 pos){
     
     return WorldSpaceToClipSpace(pos,pdata->proj * pdata->view);
 }
 
 
 
-Vector4 TranslateClipSpaceToWorldSpace(Vector4 pos){
+Vector3 TranslateClipSpaceToWorldSpace(Vector3 pos){
     
     return ClipSpaceToWorldSpace(pos,pdata->proj * pdata->view);
 }
 
 
-void SetActiveCameraOrientation(Vector4 pos,Vector4 lookdir){  
-    pdata->view = ViewMatrix(pos,pos + lookdir,Vector4{0.0f,-1.0f,0.0f,0.0f});
+void SetActiveCameraOrientation(Vector3 pos,Vector3 lookdir){  
+    
+    pdata->camerapos = ToVec4(pos);
+    
+    pdata->view = ViewMatrix(pos,pos + lookdir,Vector3{0.0f,-1.0f,0.0f});
 }
 
-void SetObjectOrientation(u32 obj_id,Vector4 pos,Quaternion rot,f32 scale){
+void SetObjectOrientation(u32 obj_id,Vector3 pos,Quaternion rot,f32 scale){
     
     _kill("too many entries\n",
           pdata->objupdate_count >= _arraycount(PlatformData::objupdate_array));
     
     auto orientation = TAlloc(Matrix4b4,1);
-    *orientation = Transpose(WorldMatrix(pos,rot,Vector4{scale,scale,scale,1.0f}));
+    *orientation = Transpose(WorldMatrix(pos,rot,Vector3{scale,scale,scale}));
     
     PushUpdateEntry(obj_id,offsetof(SkelUBO,world),sizeof(SkelUBO::world),orientation);
 }
@@ -1607,7 +1611,7 @@ void AddPointLight(Vector3 pos,Color color,f32 radius){
     //TODO: make radius into a proper distance cut off
     
     light_ubo->point_array[pdata->point_count] = {
-        pos,color,radius
+        ToVec4(pos),color,radius
     };
     
     pdata->point_count++;
@@ -1619,7 +1623,7 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
     
     auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
     
-    light_ubo->spot_array[pdata->spot_count] = {pos,dir,color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
+    light_ubo->spot_array[pdata->spot_count] = {ToVec4(pos),ToVec4(dir),color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
     
     pdata->spot_count ++;
     

@@ -200,7 +200,7 @@ Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale){
     return position * rotation * scale;
 }
 
-Matrix4b4 WorldMatrix(Vector3 position,EuelerAngle rotation,Vector3 scale){
+Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale){
     
     Matrix4b4 matrix;
     
@@ -221,15 +221,15 @@ Matrix4b4 WorldMatrix(Vector3 position,EuelerAngle rotation,Vector3 scale){
 Matrix4b4 _ainline
 ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     
-    Vector3 forward = Vec3::Normalize(lookpoint - position);
+    Vector3 forward = Normalize(lookpoint - position);
     
-    Vector3 side = Vec3::Normalize(Vec3::Cross(forward,updir));
+    Vector3 side = Normalize(Cross(forward,updir));
     
-    Vector3 up = Vec3::Cross(side,forward);
+    Vector3 up = Cross(side,forward);
     
-    f32 a = -1.0f * Vec3::Dot(side,position),
-    b = -1.0f * Vec3::Dot(up,position),
-    c = Vec3::Dot(forward,position);
+    f32 a = -1.0f * Dot(side,position),
+    b = -1.0f * Dot(up,position),
+    c = Dot(forward,position);
     
     //up z is wrong
     //forward y is wrong
@@ -335,9 +335,9 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
     return matrix;
 }
 
-Vector3 operator+(Vector3 lhs,Vector3 rhs){
+Vector4 operator+(Vector4 lhs,Vector4 rhs){
     
-    Vector3 vec;
+    Vector4 vec;
     
     simd4f res = _addsimd4f(lhs.simd,rhs.simd);
     
@@ -346,8 +346,8 @@ Vector3 operator+(Vector3 lhs,Vector3 rhs){
     return vec;
 }
 
-Vector3 operator-(Vector3 lhs,Vector3 rhs){
-    Vector3 vec;
+Vector4 operator-(Vector4 lhs,Vector4 rhs){
+    Vector4 vec;
     
     simd4f res = _subsimd4f(lhs.simd,rhs.simd);
     
@@ -356,8 +356,8 @@ Vector3 operator-(Vector3 lhs,Vector3 rhs){
     return vec;
 }
 
-Vector3 operator*(f32 lhs,Vector3 rhs){
-    Vector3 vec;
+Vector4 operator*(f32 lhs,Vector4 rhs){
+    Vector4 vec;
     
     simd4f k = _setksimd4f(lhs);
     
@@ -368,14 +368,14 @@ Vector3 operator*(f32 lhs,Vector3 rhs){
     return vec;
 }
 
-Vector3 operator*(Vector3 lhs,f32 rhs){
+Vector4 operator*(Vector4 lhs,f32 rhs){
     return rhs * lhs;
 }
 
 
-Vector3 operator/(Vector3 lhs,f32 rhs){
+Vector4 operator/(Vector4 lhs,f32 rhs){
     
-    Vector3 vec;
+    Vector4 vec;
     simd4f k = _setksimd4f(rhs);
     
     simd4f res = _divsimd4f(lhs.simd,k);
@@ -386,7 +386,51 @@ Vector3 operator/(Vector3 lhs,f32 rhs){
 }
 
 
-f32 Vec3::Magnitude(Vector3 vec){
+
+
+Vector3 operator+(Vector3 lhs,Vector3 rhs){
+    
+    lhs.x += rhs.x;
+    lhs.y += rhs.y;
+    lhs.z += rhs.z;
+    
+    return lhs;
+}
+
+Vector3 operator-(Vector3 lhs,Vector3 rhs){
+    
+    lhs.x -= rhs.x;
+    lhs.y -= rhs.y;
+    lhs.z -= rhs.z;
+    
+    return lhs;
+}
+
+Vector3 operator*(f32 lhs,Vector3 rhs){
+    
+    rhs.x *= lhs;
+    rhs.y *= lhs;
+    rhs.z *= lhs;
+    
+    return rhs;
+}
+
+Vector3 operator*(Vector3 lhs,f32 rhs){
+    return rhs * lhs;
+}
+
+
+Vector3 operator/(Vector3 lhs,f32 rhs){
+    
+    lhs.x *= rhs;
+    lhs.y *= rhs;
+    lhs.z *= rhs;
+    
+    return lhs;
+}
+
+
+f32 Magnitude(Vector3 vec){
     
     //m = sqrt(x^2 * y^2 * z^2)
     
@@ -399,7 +443,7 @@ f32 Vec3::Magnitude(Vector3 vec){
 
 
 //TODO: Could be better (Use shuffle)
-Vector3 Vec3::Cross(Vector3 vec1,Vector3 vec2){
+Vector3 Cross(Vector3 vec1,Vector3 vec2){
     /* a(x,y,z) b(x,y,z)
        cx = aybz - azby
        cy = azbx - axbz
@@ -417,37 +461,33 @@ Vector3 Vec3::Cross(Vector3 vec1,Vector3 vec2){
     
     simd4f res = _subsimd4f(_mulsimd4f(a1,b1),_mulsimd4f(a2,b2));
     
-    _storeusimd4f(&vec.x,res);
+    
+    //FIMXE: pretty sure this is wrong
+    //_storeusimd4f(&vec.x,res);
+    
+    vec.x = res[0];
+    vec.y = res[1];
+    vec.z = res[2];
     
     return vec;
 }
 
-f32 Vec3::Dot(Vector3 vec1,Vector3 vec2){
+f32 Dot(Vector3 vec1,Vector3 vec2){
     //|a| * |b| * cos(angle between a and b)
     //or for a(1,2,3....n) and b(1,2,3....n). a.b = a1b1 + a2b2+ ...anbn
     
-    simd4f mul = _mulsimd4f(vec1.simd,vec2.simd);
+    vec1.x *= vec2.x;
+    vec1.y *= vec2.y;
+    vec1.z *= vec2.z;
     
-#ifdef _WIN32
-    
-    f32* _restrict r = (f32*)&mul;
-    
-    f32 res = r[0] + r[1] + r[2];
-    
-#else
-    f32 res = mul[0] + mul[1] + mul[2];
-#endif
-    
-    // _kill("invalid\n",res != res);
-    
-    return res;
+    return vec1.x + vec1.y + vec1.z;
 }
 
-f32 Vec3::cosf(Vector3 vec1,Vector3 vec2){
+f32 cosf(Vector3 vec1,Vector3 vec2){
     return Dot(vec1,vec2)/(Magnitude(vec1) * Magnitude(vec2));
 }
 
-Vector3 Vec3::Normalize(Vector3 vec){
+Vector3 Normalize(Vector3 vec){
     return (vec)/(Magnitude(vec));
 }
 
@@ -499,7 +539,7 @@ Vector4 InternalComponentDiv(Vector4 a,Vector4 b){
     return a;
 }
 
-Vector3 Vec3::GetVectorRotation(Vector3 lookat){
+Vector3 GetVectorRotation(Vector3 lookat){
     
     //updown,leftright,roll left roll right
     f32 x,y,z;
@@ -510,20 +550,20 @@ Vector3 Vec3::GetVectorRotation(Vector3 lookat){
     
     z = AngleQuadrant(lookat.x,lookat.y);
     
-    return Vector3{x,y,z,0};  
+    return Vector3{x,y,z};  
 }
 
-Vector3 Vec3::Vec3(f32 x,f32 y,f32 z){
+Vector3 Vec3(f32 x,f32 y,f32 z){
     
-    return Vector3{x,y,z,0};
+    return Vector3{x,y,z};
 }
 
-f32 Vec3::Component(Vector3 a,Vector3 b){
-    return Vec3::Dot(a,Vec3::Normalize(b));
+f32 Component(Vector3 a,Vector3 b){
+    return Dot(a,Normalize(b));
 }
 
-Vector3 Vec3::ProjectOnto(Vector3 a,Vector3 b){
-    return Vec3::Component(a,b) * Vec3::Normalize(b);
+Vector3 ProjectOnto(Vector3 a,Vector3 b){
+    return Component(a,b) * Normalize(b);
 }
 
 f32 AngleQuadrant(f32 x,f32 y){
@@ -554,7 +594,7 @@ Vector2 RotateVector(Vector2 vec,f32 rotation){
     return vec;
 }
 
-Vector3 RotateVector(Vector4 vec,EuelerAngle rotation){
+Vector4 RotateVector(Vector4 vec,Vector3 rotation){
     
     /*
     
@@ -815,13 +855,15 @@ void MinkowskiDifference(Point3* a,ptrsize a_count,Point3* b,ptrsize b_count,Poi
 
 Quaternion ConstructQuaternion(Vector3 vector,f32 angle){
     
-    vector = Vec3::Normalize(vector);
+    vector = Normalize(vector);
     
     Quaternion quaternion;
     
-    simd4f k = _setksimd4f(sinf(angle/2.0f));
+    f32 k = sinf(angle/2.0f);
     
-    vector.simd = _mulsimd4f(vector.simd,k);
+    vector.x *= k;
+    vector.y *= k;
+    vector.z *= k;
     
     quaternion.w = cosf(angle/2.0f);
     quaternion.x = vector.x;
@@ -871,12 +913,14 @@ void DeconstructQuaternion(Quaternion quaternion,Vector3* vector,f32* angle){
     
     //we should handle the case scale == 0
     if(scale == 0){
-        *vector = Vector3{1,0,0,0};
+        *vector = Vector3{1,0,0};
         *angle = 0;
         return;
     }
+    vector->x = quaternion.w / scale;
+    vector->y = quaternion.x / scale;
+    vector->z = quaternion.y / scale;
     
-    vector->simd = _divsimd4f(quaternion.simd,_setksimd4f(scale));
     *angle = anglew;
 }
 
@@ -975,7 +1019,7 @@ Quaternion MatrixToQuaternion(Matrix4b4 matrix){
 }
 
 
-Matrix4b4 WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale){
+Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale){
     
     Matrix4b4 matrix;
     
@@ -1201,15 +1245,15 @@ Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj){
 }
 
 
-Vector3 Vec3::ProjectVectorOntoPlane(Vector3 vec,Plane plane){
-    auto w = Vec3::ProjectOnto(vec,plane.norm);
+Vector3 ProjectVectorOntoPlane(Vector3 vec,Plane plane){
+    auto w = ProjectOnto(vec,plane.norm);
     return vec - w;
 }
 
 
 #define _f32_error_offset  0.0001f
 
-logic Vec3::Intersect(Line3 a,Line3 b){
+logic Intersect(Line3 a,Line3 b){
     
     /*
       the form of a vector as a line is as follows:
@@ -1235,20 +1279,20 @@ logic Vec3::Intersect(Line3 a,Line3 b){
       
     */
     
-    auto cross_ab = Vec3::Cross(a.dir,b.dir);
-    auto cross_diff = Vec3::Cross(b.pos - a.pos,b.dir);
+    auto cross_ab = Cross(a.dir,b.dir);
+    auto cross_diff = Cross(b.pos - a.pos,b.dir);
     
-    auto dot = Vec3::Dot(Vec3::Normalize(cross_ab),Vec3::Normalize(cross_diff));
+    auto dot = Dot(Normalize(cross_ab),Normalize(cross_diff));
     
     return (u32)(fabsf(dot) + _f32_error_offset);
 }
 
-logic Vec3::Intersect(Line3 a,Line3 b,Point3* out_point){
+logic Intersect(Line3 a,Line3 b,Point3* out_point){
     
-    auto cross_ab = Vec3::Cross(a.dir,b.dir);
-    auto cross_diff = Vec3::Cross(b.pos - a.pos,b.dir);
+    auto cross_ab = Cross(a.dir,b.dir);
+    auto cross_diff = Cross(b.pos - a.pos,b.dir);
     
-    auto dot = Vec3::Dot(Vec3::Normalize(cross_ab),Vec3::Normalize(cross_diff));
+    auto dot = Dot(Normalize(cross_ab),Normalize(cross_diff));
     
     if(!(u32)(fabsf(dot) + _f32_error_offset)){
         return false;
@@ -1274,13 +1318,13 @@ logic Vec3::Intersect(Line3 a,Line3 b,Point3* out_point){
     return true;
 }
 
-logic Vec3::TypedIntersect(Line3 a,Line3 b){
+logic TypedIntersect(Line3 a,Line3 b){
     
-    auto dir = Vec3::Normalize(b.pos - a.pos);//checks if the lines are the same
+    auto dir = Normalize(b.pos - a.pos);//checks if the lines are the same
     
     logic res =
-        (u32)(fabsf(Vec3::Dot(Vec3::Normalize(a.dir),dir)) + _f32_error_offset) +
-        Vec3::Intersect(a,b);
+        (u32)(fabsf(Dot(Normalize(a.dir),dir)) + _f32_error_offset) +
+        Intersect(a,b);
     
     if(res){
         return res;
@@ -1295,10 +1339,10 @@ logic Intersect(Line2 a_2,Line2 b_2){
     Line3 a = {Vector3{a_2.pos.x,a_2.pos.y,1.0f},Vector3{a_2.dir.x,a_2.dir.y,1.0f}};
     Line3 b = {Vector3{b_2.pos.x,b_2.pos.y,1.0f},Vector3{b_2.dir.x,b_2.dir.y,1.0f}};
     
-    auto cross_ab = Vec3::Cross(a.dir,b.dir);
-    auto cross_diff = Vec3::Cross(b.pos - a.pos,b.dir);
+    auto cross_ab = Cross(a.dir,b.dir);
+    auto cross_diff = Cross(b.pos - a.pos,b.dir);
     
-    auto dot = Vec3::Dot(Vec3::Normalize(cross_ab),Vec3::Normalize(cross_diff));
+    auto dot = Dot(Normalize(cross_ab),Normalize(cross_diff));
     
     return (u32)(fabsf(dot) + _f32_error_offset);
 }
@@ -1309,10 +1353,10 @@ logic Intersect(Line2 a_2,Line2 b_2,Point2* out_point){
     Line3 a = {Vector3{a_2.pos.x,a_2.pos.y,1.0f},Vector3{a_2.dir.x,a_2.dir.y,1.0f}};
     Line3 b = {Vector3{b_2.pos.x,b_2.pos.y,1.0f},Vector3{b_2.dir.x,b_2.dir.y,1.0f}};
     
-    auto cross_ab = Vec3::Cross(a.dir,b.dir);
-    auto cross_diff = Vec3::Cross(b.pos - a.pos,b.dir);
+    auto cross_ab = Cross(a.dir,b.dir);
+    auto cross_diff = Cross(b.pos - a.pos,b.dir);
     
-    auto dot = Vec3::Dot(Vec3::Normalize(cross_ab),Vec3::Normalize(cross_diff));
+    auto dot = Dot(Normalize(cross_ab),Normalize(cross_diff));
     
     if(!(u32)(fabsf(dot) + _f32_error_offset)){
         return false;
@@ -1343,11 +1387,11 @@ logic TypedIntersect(Line2 a_2,Line2 b_2){
     Line3 a = {Vector3{a_2.pos.x,a_2.pos.y,1.0f},Vector3{a_2.dir.x,a_2.dir.y,1.0f}};
     Line3 b = {Vector3{b_2.pos.x,b_2.pos.y,1.0f},Vector3{b_2.dir.x,b_2.dir.y,1.0f}};
     
-    auto dir = Vec3::Normalize(b.pos - a.pos);//checks if the lines are the same
+    auto dir = Normalize(b.pos - a.pos);//checks if the lines are the same
     
     logic res =
-        (u32)(fabsf(Vec3::Dot(Vec3::Normalize(a.dir),dir)) + _f32_error_offset) +
-        Vec3::Intersect(a,b);
+        (u32)(fabsf(Dot(Normalize(a.dir),dir)) + _f32_error_offset) +
+        Intersect(a,b);
     
     if(res){
         return res;
@@ -1356,30 +1400,30 @@ logic TypedIntersect(Line2 a_2,Line2 b_2){
     return false;
 }
 
-logic Vec3::Intersect(Line3 a,Plane b){
+logic Intersect(Line3 a,Plane b){
     
     m32 fi1;
     
     //if they are perpendicular, f is 0 and they do not intersect
-    fi1.f = Vec3::Dot(Vec3::Normalize(a.dir),Vec3::Normalize(b.norm));
+    fi1.f = Dot(Normalize(a.dir),Normalize(b.norm));
     
     return fi1.i != 0;
 }
 
-logic Vec3::TypedIntersect(Line3 a,Plane b){
+logic TypedIntersect(Line3 a,Plane b){
     
     /*
       if the dir of a line is perpendicular to a plane normal, it will never intersect unless the line is on the
       plane
     */
     
-    auto is_intersect = Vec3::Intersect(a,b);
+    auto is_intersect = Intersect(a,b);
     
     m32 fi;
     
-    auto dir = Vec3::Normalize(b.pos - a.pos);
+    auto dir = Normalize(b.pos - a.pos);
     
-    fi.f = Vec3::Dot(dir,Vec3::Normalize(b.norm));//check if on the plane
+    fi.f = Dot(dir,Normalize(b.norm));//check if on the plane
     
     auto is_perpendicular = !fi.i;
     
@@ -1394,7 +1438,7 @@ logic Vec3::TypedIntersect(Line3 a,Plane b){
     return INTERSECT_FINITE;
 }
 
-logic Vec3::Intersect(Line3 a,Plane b,Point3* out_point){
+logic Intersect(Line3 a,Plane b,Point3* out_point){
     
     /*
       we first imagine a line (A) from our plane normal position (B) to any position on our line (L).
@@ -1414,14 +1458,14 @@ logic Vec3::Intersect(Line3 a,Plane b,Point3* out_point){
     */
     
     
-    if(!Vec3::Intersect(a,b)){
+    if(!Intersect(a,b)){
         return false;
     }
     
-    auto n = Vec3::Normalize(b.norm);
-    auto dir = Vec3::Normalize(a.dir);
+    auto n = Normalize(b.norm);
+    auto dir = Normalize(a.dir);
     
-    auto t = (Vec3::Dot((b.pos - a.pos),n))/(Vec3::Dot(dir,n));
+    auto t = (Dot((b.pos - a.pos),n))/(Dot(dir,n));
     
     *out_point = a.pos + (t * dir);
     
@@ -1439,10 +1483,10 @@ Vector3 RotateVector3(Vector3 v,Quaternion q){
 #if 1
     
     //better version? we need to condense the math
-    Vector3 q_v = {q.x,q.y,q.z,1.0f};
+    Vector3 q_v = {q.x,q.y,q.z};
     f32 q_w =q.w;
     
-    auto r = (2.0f * Vec3::Dot(q_v,v) * q_v) + (((q_w * q_w) - Vec3::Dot(q_v,q_v)) * v) + (2.0f * q_w * Vec3::Cross(q_v,v));
+    auto r = (2.0f * Dot(q_v,v) * q_v) + (((q_w * q_w) - Dot(q_v,q_v)) * v) + (2.0f * q_w * Cross(q_v,v));
     
     return r;
     

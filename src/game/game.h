@@ -66,8 +66,8 @@ struct SOAOrientationData{
 struct GameData{
     
     //these are the things that is the game state
-    Vector4 camera_pos;
-    Vector4 camera_lookdir;
+    Vector3 camera_pos;
+    Vector3 camera_lookdir;
     f32 roty;
     logic running = true;
     
@@ -135,11 +135,11 @@ struct SceneContext{
     u32 animationdata_count;
     
     //state management
-    Vector4 (*TranslateWorldSpaceToClipSpace)(Vector4);
-    Vector4 (*TranslateClipSpaceToWorldSpace)(Vector4);
+    Vector3 (*TranslateWorldSpaceToClipSpace)(Vector3);
+    Vector3 (*TranslateClipSpaceToWorldSpace)(Vector3);
     void (*SetObjectMaterial)(u32,u32);
-    void (*SetActiveCameraOrientation)(Vector4,Vector4);
-    void (*SetObjectOrientation)(u32,Vector4,Quaternion,f32);
+    void (*SetActiveCameraOrientation)(Vector3,Vector3);
+    void (*SetObjectOrientation)(u32,Vector3,Quaternion,f32);
     void (*AddPointLight)(Vector3,Color,f32);
     void (*AddSpotLight)(Vector3,Vector3,Color,f32,f32,f32);
     
