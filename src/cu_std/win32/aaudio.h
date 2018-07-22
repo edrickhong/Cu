@@ -3,39 +3,18 @@
 #include "mode.h"
 #include "ttype.h"
 
-#define _use_xaudio 0
-
-#if _use_xaudio
-
-#include "xaudio2.h"
-#include "mmreg.h"
-
-struct AAudioContext{
-  IXAudio2MasteringVoice* handle;//we do not really need to keep this
-  IXAudio2SourceVoice* source_voice;//this is more like the handle
-  u32 channels;
-
-  u32 buffer_size;
-  u32* buffer_offset;
-  s8* buffer;
-};
-
-#else
-
 #define COBJMACROS
 #include "mmdeviceapi.h"
 #include "audioclient.h"
 
 
 struct AAudioContext{
-  IMMDevice* device;
-  IAudioClient* audioclient;
-  IAudioRenderClient* renderclient;
-  u32 channels;
-  u32 (*conversion_function)(void*, void*, u32);
+    IMMDevice* device;
+    IAudioClient* audioclient;
+    IAudioRenderClient* renderclient;
+    u32 channels;
+    u32 (*conversion_function)(void*, void*, u32);
 };
-
-#endif
 
 /*
   NOTE: We will only support signed 16 for now
@@ -52,17 +31,17 @@ struct AAudioContext{
 #define A_DEVICE_DEFAULT 0
 
 struct AAudioBuffer{
-  void* data;
-  u32 size_frames;
-  u32 size;
-  u32 cur_pos;
-  u32 curpos_frames;
+    void* data;
+    u32 size_frames;
+    u32 size;
+    u32 cur_pos;
+    u32 curpos_frames;
 };
 
 typedef void (AudioOperation(void* args));
-	
+
 AAudioContext ACreateAudioDevice(const s8* device_name,u32 frequency,u32 channels,
-				 u32 format);
+                                 u32 format);
 
 void ADestroyAudioDevice(AAudioContext audio_context);
 

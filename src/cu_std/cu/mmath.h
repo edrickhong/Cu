@@ -634,7 +634,6 @@ f32 AngleQuadrant(f32 x,f32 y);
 f32 Magnitude(Vector2 vec);
 
 
-//FIXME:this one has issues
 Vector2 RotateVector(Vector2 vec,f32 rotation);
 
 Vector3 RotateVector(Vector3 vec,Vector3 rotation);

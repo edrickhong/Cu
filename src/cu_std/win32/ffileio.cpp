@@ -139,7 +139,6 @@ FileHandle DebugFOpenFile(const s8* filepath,u32 flags,s8* file,s8* function,u32
             
             auto expected_handle = cur_entry->filehandle;
             
-            //FIXME: this cannot work on Windows.
             auto actual_handle = (FileHandle)LockedCmpXchg64((LONG64*)&cur_entry->filehandle,(LONG64)expected_handle,
                                                              (LONG64)filehandle);
             

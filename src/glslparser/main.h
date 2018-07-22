@@ -876,7 +876,6 @@ void GenerateShaderTable(s8* infile_string,s8* outfile_string){
           auto a_layout = (GenericLayout*)a;
           auto b_layout = (GenericLayout*)b;
           
-          //FIXME: uninitialized read here
           return a_layout->loc_array[0] - b_layout->loc_array[0];
           });
     

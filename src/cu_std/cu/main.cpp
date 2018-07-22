@@ -1,3 +1,7 @@
+
+
+#include "audio_util.cpp"
+
 #ifdef _WIN32
 #include "../win32/main.cpp"
 #else

@@ -5,10 +5,8 @@
 
 /*
   TODO: 
-  handle inheritance
+  handle inheritance?
   ptr inspection can be implemented in assembly
-  
-  FIXME:Windows cannot have functions that have printf's for now. Causes a segfault. Will investigate. Migth mean more bugs in implementation 
 */
 
 //TODO: struct union and enum have the same parse structure (should we condense here?)

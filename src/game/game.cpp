@@ -47,8 +47,6 @@ TODO:
 light
 add a color picker
 separate sampler and texture
-
-FIXME: models is black when just added it. we do not set the material add at time
 */
 
 

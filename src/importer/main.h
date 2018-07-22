@@ -635,7 +635,6 @@ void WavWriteADF(const s8* filepath,const s8* writefilepath){
 
 _declare_list(VertexBoneDataList,VertexBoneData);
 
-//FIXME:  realloc should never be called for this. replace w regular array?
 _declare_list(BonenodeList,AssimpBoneNode);
 _declare_list(AssimpAnimationList,AssimpAnimation);
 

@@ -757,7 +757,6 @@ void _ainline VPushThreadCommandbufferList(VThreadCommandbufferList* list,
     
     u32 index = TGetEntryIndex(&list->count);
     
-    //FIXME: we sometimes get null cmdbuffers
     _kill("submitted null cmdbuffer\n",!cmdbuffer);
     
     list->container[index].cmdbuffer = cmdbuffer;
