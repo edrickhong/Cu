@@ -125,7 +125,7 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 
                 Vector3 dir = {0.0f,0.0f,1.0f};
                 
-                dir = RotateVector3(dir,data->orientation.rot[obj_id]);
+                dir = RotateVector(dir,data->orientation.rot[obj_id]);
                 
                 light->dir_x = dir.x;
                 light->dir_y = dir.y;
@@ -1351,7 +1351,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                         
                         Vector3 dir = {0.0f,0.0f,1.0f};
                         
-                        dir = RotateVector3(dir,data->orientation.rot[obj_id]);
+                        dir = RotateVector(dir,data->orientation.rot[obj_id]);
                         
                         light->dir_x = dir.x;
                         light->dir_y = dir.y;
@@ -1575,7 +1575,7 @@ void EditorGUI(SceneContext* context){
             
             if(GUIRotationGizmo(pos,rot)){
                 
-                light->dir = ToVec4(RotateVector3(dir,*rot));
+                light->dir = ToVec4(RotateVector(dir,*rot));
             }
         }
         

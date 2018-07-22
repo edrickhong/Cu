@@ -225,12 +225,10 @@ logic TypedIntersect(Line3 a,Plane b);
 
 logic Intersect(Line3 a,Plane b,Point3* out_point);
 
-namespace Vec4{
-    Vector4 Normalize(Vector4 vec);
-    f32 Magnitude(Vector4 vec);
-    f32 Dot(Vector4 vec1,Vector4 vec2);
-    Vector4 VectorComponentMul(Vector4 a,Vector4 b);
-}
+Vector4 Normalize(Vector4 vec);
+f32 Magnitude(Vector4 vec);
+f32 Dot(Vector4 vec1,Vector4 vec2);
+Vector4 VectorComponentMul(Vector4 a,Vector4 b);
 
 Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs);
 Matrix4b4 operator-(Matrix4b4 lhs,Matrix4b4 rhs);
@@ -272,6 +270,8 @@ f32 Magnitude(Vector2 vec);
 //FIXME:this one has issues
 Vector2 RotateVector(Vector2 vec,f32 rotation);
 
+//TODO: only use vec3
+
 Vector4 RotateVector(Vector4 vec,Vector3 rotation);
 
 Vector3 _ainline RotateVector(Vector3 vec,Vector3 rotation){
@@ -282,6 +282,7 @@ Matrix4b4 Transpose(Matrix4b4 matrix);
 
 Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);;
 
+//TODO: only use vec3
 Matrix4b4 _ainline ViewMatrix(Vector4 position,Vector4 lookpoint,Vector4 updir){
     return ViewMatrix(ToVec3(position),ToVec3(lookpoint),ToVec3(updir));
 }
@@ -302,7 +303,7 @@ Matrix4b4 _ainline PositionMatrix(Vector3 position){
     
 }
 
-
+//TODO: only use vec3
 Matrix4b4 _ainline PositionMatrix(Vector4 position){
     
     return PositionMatrix(ToVec3(position));
@@ -343,6 +344,7 @@ Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
     return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
 }
 
+//TODO: only use vec3
 Matrix4b4 _ainline RotationMatrix(Vector4 rotation){
     return RotationMatrix(ToVec3(rotation));
 }
@@ -361,6 +363,7 @@ Matrix4b4 _ainline ScaleMatrix(Vector3 scale){
     return matrix;
 }
 
+//TODO: only use vec3
 Matrix4b4 _ainline ScaleMatrix(Vector4 scale){
     return ScaleMatrix(ToVec3(scale));
 }
@@ -377,6 +380,7 @@ Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale);
 
 Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale);
 
+//TODO: only use vec3
 Matrix4b4 _ainline WorldMatrix(Vector4 position,Vector4 rotation,Vector4 scale){
     return WorldMatrix(ToVec3(position),ToVec3(rotation),ToVec3(scale));
 }
@@ -422,7 +426,7 @@ union Quaternion{
 }_align(16);
 
 
-Vector4 _ainline Quat2Vec(Quaternion q){
+Vector4 _ainline ToVec4(Quaternion q){
     
     Vector4 v;
     
@@ -434,7 +438,7 @@ Vector4 _ainline Quat2Vec(Quaternion q){
     return v;
 }
 
-Quaternion _ainline Vec2Quat(Vector4 v){
+Quaternion _ainline ToQuat(Vector4 v){
     
     Quaternion q;
     
@@ -449,53 +453,53 @@ Quaternion _ainline Vec2Quat(Vector4 v){
 
 
 Quaternion _ainline Normalize(Quaternion a){
-    return Vec2Quat(Vec4::Normalize(Quat2Vec(a)));
+    return ToQuat(Normalize(ToVec4(a)));
 }
 
 f32 _ainline Magnitude(Quaternion a){
-    return Vec4::Magnitude(Quat2Vec(a));
+    return Magnitude(ToVec4(a));
 }
 
 f32 _ainline Dot(Quaternion a,Quaternion b){
-    return Vec4::Dot(Quat2Vec(a),Quat2Vec(b));
+    return Dot(ToVec4(a),ToVec4(b));
 }
 
 
 Quaternion _ainline operator+(Quaternion lhs,Quaternion rhs){
     
-    Vector4 l = Quat2Vec(lhs);
-    Vector4 r = Quat2Vec(rhs);
+    Vector4 l = ToVec4(lhs);
+    Vector4 r = ToVec4(rhs);
     
-    return Vec2Quat(l + r);
+    return ToQuat(l + r);
 }
 
 Quaternion _ainline operator-(Quaternion lhs,Quaternion rhs){
     
-    Vector4 l = Quat2Vec(lhs);
-    Vector4 r = Quat2Vec(rhs);
+    Vector4 l = ToVec4(lhs);
+    Vector4 r = ToVec4(rhs);
     
-    return Vec2Quat(l - r);
+    return ToQuat(l - r);
 }
 
 Quaternion _ainline operator*(f32 lhs,Quaternion rhs){
     
-    Vector4 r = Quat2Vec(rhs);
+    Vector4 r = ToVec4(rhs);
     
-    return Vec2Quat(lhs * r);
+    return ToQuat(lhs * r);
 }
 
 Quaternion _ainline operator*(Quaternion lhs,f32 rhs){
     
-    Vector4 l = Quat2Vec(lhs);
+    Vector4 l = ToVec4(lhs);
     
-    return Vec2Quat(l * rhs);
+    return ToQuat(l * rhs);
 }
 
 Quaternion _ainline operator/(Quaternion lhs,f32 rhs){
     
-    Vector4 l = Quat2Vec(lhs);
+    Vector4 l = ToVec4(lhs);
     
-    return Vec2Quat(l / rhs);
+    return ToQuat(l / rhs);
 }
 
 
@@ -503,7 +507,7 @@ Quaternion operator*(Quaternion lhs,Quaternion rhs);
 
 Quaternion Inverse(Quaternion q);
 
-Vector3 RotateVector3(Vector3 v,Quaternion q);
+Vector3 RotateVector(Vector3 v,Quaternion q);
 
 Quaternion ConstructQuaternion(Vector3 vector,f32 angle);
 
@@ -518,6 +522,7 @@ Quaternion MatrixToQuaternion(Matrix4b4 matrix);
 
 Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale);
 
+//TODO: only use vec3
 Matrix4b4 _ainline WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale){
     return WorldMatrix(ToVec3(position),rotation,ToVec3(scale));
 }
@@ -583,6 +588,8 @@ DualQuaternion operator*(DualQuaternion lhs,f32 rhs);
 DualQuaternion Normalize(DualQuaternion d);
 Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
 
+
+//TODO: only use vec3
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj);
 Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj);

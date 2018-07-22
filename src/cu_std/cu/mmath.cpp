@@ -491,7 +491,7 @@ Vector3 Normalize(Vector3 vec){
     return (vec)/(Magnitude(vec));
 }
 
-f32 Vec4::Dot(Vector4 vec1,Vector4 vec2){
+f32 Dot(Vector4 vec1,Vector4 vec2){
     //|a| * |b| * cos(angle between a and b)
     //or for a(1,2,3....n) and b(1,2,3....n). a.b = a1b1 + a2b2+ ...anbn
     
@@ -512,7 +512,7 @@ f32 Vec4::Dot(Vector4 vec1,Vector4 vec2){
     return res;
 }
 
-f32 Vec4::Magnitude(Vector4 vec){
+f32 Magnitude(Vector4 vec){
     
     //m = sqrt(x^2 + y^2 + z^2)
     
@@ -523,11 +523,11 @@ f32 Vec4::Magnitude(Vector4 vec){
     return res;
 }
 
-Vector4 Vec4::Normalize(Vector4 vec){
+Vector4 Normalize(Vector4 vec){
     return (vec)/(Magnitude(vec));
 }
 
-Vector4 Vec4::VectorComponentMul(Vector4 a,Vector4 b){
+Vector4 VectorComponentMul(Vector4 a,Vector4 b){
     
     a.simd = _mulsimd4f(a.simd,b.simd);
     
@@ -1472,7 +1472,7 @@ logic Intersect(Line3 a,Plane b,Point3* out_point){
     return true;
 }
 
-Vector3 RotateVector3(Vector3 v,Quaternion q){
+Vector3 RotateVector(Vector3 v,Quaternion q){
     
     /*
       the rotated vector v' is given by
