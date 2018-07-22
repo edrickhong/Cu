@@ -184,7 +184,18 @@ void ALinearTransformLinearSkeleton(u32 animation_index,f32 animationtime,
     
     matrix = parent_matrix * matrix;
     
-    result[*result_count] = Transpose(matrix * node->offset);
+    result[*result_count] = 
+#if _row_major
+    
+        Transpose(matrix * node->offset);
+    
+#else
+    
+    matrix * node->offset;
+    
+#endif
+    
+    
     (*result_count)++;
     
     for(u32 i = 0; i < node->children_count;i++){

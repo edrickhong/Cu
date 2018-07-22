@@ -3363,8 +3363,8 @@ void VEnumeratePhysicalDevices(VkPhysicalDevice* array,u32* count,WWindowContext
                     present_support = vkGetPhysicalDeviceXlibPresentationSupportKHR(d,famindex,(Display*)window->handle,window->x11_visualid);
                 }
 #endif
-                
-                if(present_support){
+                //FIMXE: work around driver bug
+                if(present_support || _ignore_driver){
                     
                     if(array){
                         array[c] = d;

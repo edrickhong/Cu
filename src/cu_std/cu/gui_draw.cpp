@@ -1822,7 +1822,16 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
         else{
             
             camera =
+            
+#if _row_major
+            
                 Transpose(gui->proj_matrix * gui->view_matrix);
+            
+#else
+            
+            gui->proj_matrix * gui->view_matrix;
+            
+#endif
         }
         
         if(sub->rendermode == GUI_RENDER_LINE ||

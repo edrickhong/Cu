@@ -749,7 +749,16 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     auto pushconst = TAlloc(PushConst,1);
     
     *pushconst = {
+        
+#if _row_major
+        
         Transpose(pdata->proj * pdata->view),
+        
+#else
+        
+        pdata->proj * pdata->view,
+        
+#endif
         pdata->camerapos
     };
     
@@ -1427,7 +1436,18 @@ void SetObjectOrientation(u32 obj_id,Vector3 pos,Quaternion rot,f32 scale){
           pdata->objupdate_count >= _arraycount(PlatformData::objupdate_array));
     
     auto orientation = TAlloc(Matrix4b4,1);
-    *orientation = Transpose(WorldMatrix(pos,rot,Vector3{scale,scale,scale}));
+    
+    *orientation =
+    
+#if _row_major
+    
+        Transpose(WorldMatrix(pos,rot,Vector3{scale,scale,scale}));
+    
+#else
+    
+    WorldMatrix(pos,rot,Vector3{scale,scale,scale});
+    
+#endif
     
     PushUpdateEntry(obj_id,offsetof(SkelUBO,world),sizeof(SkelUBO::world),orientation);
 }
@@ -1661,14 +1681,10 @@ void AddAnimatedModel(const s8* filepath,VkQueue queue,VkCommandBuffer cmdbuffer
 void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
                       VkQueue queue){
     
-    Vector4 position = Vector4{0.0f,0.0f,-4.0f,1.0f};
-    
     
     f32 aspectratio = ((f32)pdata->window.width)/((f32)pdata->window.height);
     
     pdata->proj = ProjectionMatrix(_radians(90.0f),aspectratio,0.1f,256.0f);
-    
-    pdata->camerapos = position;
     
     {
         

@@ -20,13 +20,27 @@
 #define _fourpi (3.1415926535897f * 4.0f)
 #define _halfpi (3.1415926535897f * 0.5f)
 
+#ifdef _row_major
+
+#define MATRIX_COLUMN_MAJOR _row_major
+
+#else
+
+#define MATRIX_COLUMN_MAJOR 1
+
+#endif
+
 #define DEPTH_ZERO_TO_ONE 1
 #define Z_RHS 1
 
 #define _radians(degrees) (degrees * (_pi/180.0f))
 #define _degrees(radians) (radians * (180.0f/_pi))
 
-#define _ac(x,y) [x + (y * 4)]
+#define _ac4(x,y) [x + (y * 4)]
+
+#define _ac3(x,y) [x + (y * 3)]
+
+#define _ac2(x,y) [x + (y * 2)]
 
 #if 1
 
@@ -76,7 +90,18 @@ typedef __m64 simd2f;
 
 //MARK:Linear Algebra
 
-union Quaternion;
+union Quaternion{
+    simd4f simd;
+    
+    struct{
+        f32 w,x,y,z;
+    };
+    
+}_align(16);
+
+struct DualQuaternion{
+    Quaternion q1,q2;
+};
 
 struct Vector2{
     f32 x,y;
@@ -167,21 +192,346 @@ union Matrix3b3{
     }
 }_align(16);
 
+union Matrix2b2{
+    
+    f32 container[4];
+    
+    struct {
+        simd4f simd;
+    };
+    
+    
+    f32& operator[](u32 index){
+        return container[index];
+    }
+}_align(16);
 
 
-//TODO: 
+Matrix4b4 _ainline IdentityMatrix4b4(){
+    
+    Matrix4b4 matrix = {
+        
+        {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1
+        }
+    };
+    
+    
+    return matrix;
+}
+
+
+Matrix3b3 _ainline IdentityMatrix3b3(){
+    
+    Matrix3b3 matrix = {
+        {
+            1,0,0,
+            0,1,0,
+            0,0,1,
+        }
+    };
+    
+    
+    return matrix;
+}
+
+Matrix2b2 _ainline IdentityMatrix2b2(){
+    
+    Matrix2b2 matrix = {
+        {
+            1,0,
+            0,1,
+        }
+    };
+    
+    
+    return matrix;
+}
+
+Matrix2b2 _ainline ToMatrix2b2(Matrix3b3 mat){
+    
+    Matrix2b2 m;
+    
+    m[0] = mat _ac3(0,0);
+    m[1] = mat _ac3(1,0);
+    
+    m[2] = mat _ac3(0,1);
+    m[3] = mat _ac3(1,1);
+    
+    return m;
+}
+
+Matrix2b2 _ainline ToMatrix2b2(Matrix4b4 mat){
+    
+    Matrix2b2 m;
+    
+    m[0] = mat _ac4(0,0);
+    m[1] = mat _ac4(1,0);
+    
+    m[2] = mat _ac4(0,1);
+    m[3] = mat _ac4(1,1);
+    
+    return m;
+}
+
+Matrix3b3 _ainline ToMatrix3b3(Matrix2b2 mat){
+    
+    Matrix3b3 m = IdentityMatrix3b3();
+    
+    m _ac3(0,0) = mat[0];
+    m _ac3(1,0) = mat[1];
+    
+    m _ac3(0,1) = mat[2];
+    m _ac3(1,1) = mat[3];
+    
+    
+    return m;
+}
+
+
+
 Matrix3b3 _ainline ToMatrix3b3(Matrix4b4 mat){
     
-    _kill("",1);
+    Matrix3b3 m;
     
-    return {};
+    m[0] = mat _ac4(0,0);
+    m[1] = mat _ac4(1,0);
+    m[2] = mat _ac4(2,0);
+    
+    m[3] = mat _ac4(0,1);
+    m[4] = mat _ac4(1,1);
+    m[5] = mat _ac4(2,1);
+    
+    m[6] = mat _ac4(0,2);
+    m[7] = mat _ac4(1,2);
+    m[8] = mat _ac4(2,2);
+    
+    
+    return m;
+}
+
+Matrix4b4 _ainline ToMatrix4b4(Matrix2b2 mat){
+    
+    Matrix4b4 m = IdentityMatrix4b4();
+    
+    m _ac4(0,0) = mat[0];
+    m _ac4(1,0) = mat[1];
+    
+    m _ac4(0,1) = mat[2];
+    m _ac4(1,1) = mat[3];
+    
+    return m;
 }
 
 Matrix4b4 _ainline ToMatrix4b4(Matrix3b3 mat){
     
-    _kill("",1);
+    Matrix4b4 m = IdentityMatrix4b4();
     
-    return {};
+    m _ac4(0,0) = mat[0];
+    m _ac4(1,0) = mat[1];
+    m _ac4(2,0) = mat[2];
+    
+    m _ac4(0,1) = mat[3];
+    m _ac4(1,1) = mat[4];
+    m _ac4(2,1) = mat[5];
+    
+    m _ac4(0,2)= mat[6];
+    m _ac4(1,2) = mat[7];
+    m _ac4(2,2) = mat[8];
+    
+    return m;
+}
+
+
+//Math operations
+Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs);
+Matrix4b4 operator-(Matrix4b4 lhs,Matrix4b4 rhs);
+Matrix4b4 operator*(Matrix4b4 lhs,Matrix4b4 rhs);
+Matrix4b4 operator*(f32 lhs,Matrix4b4 rhs);
+Matrix4b4 operator*(Matrix4b4 lhs,f32 rhs);
+Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs);
+Matrix4b4 Transpose(Matrix4b4 matrix);
+Matrix4b4 Inverse(Matrix4b4 matrix);
+
+
+//conversions
+Matrix4b4 QuaternionToMatrix(Quaternion quaternion);
+Quaternion MatrixToQuaternion(Matrix4b4 matrix);
+DualQuaternion ConstructDualQuaternion(Matrix4b4 transform);
+Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
+
+Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    return Vector3{matrix _ac4(3,0),matrix _ac4(3,1),matrix _ac4(3,2)};
+    
+#else
+    
+    return Vector3{matrix _ac4(0,3),matrix _ac4(1,3),matrix _ac4(2,3)};
+    
+#endif
+}
+
+//print
+void PrintMatrix(Matrix4b4 matrix);
+
+
+Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);
+Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectration,f32 nearz,f32 farz);
+
+Matrix4b4 _ainline PositionMatrix(Vector3 position){
+    
+    Matrix4b4 matrix = 
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        {
+            1,0,0,position.x,
+            0,1,0,position.y,
+            0,0,1,position.z,
+            0,0,0,1
+        }
+    };
+    
+#else
+    
+    {
+        {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            position.x,position.y,position.z,1
+        }
+    };
+    
+#endif
+    
+    return matrix;
+    
+    
+}
+
+Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    f32 cosv = cosf(rotation.x);
+    f32 sinv = sinf(rotation.x);
+    
+    Matrix4b4 rotationx_matrix4b4 = {
+        {
+            1,0,0,0,
+            0,cosv,-sinv,0,
+            0,sinv,cosv,0,
+            0,0,0,1
+        }
+    };
+    
+    cosv = cosf(rotation.y);
+    sinv = sinf(rotation.y);
+    
+    Matrix4b4 rotationy_matrix4b4 = {
+        {
+            cosv,0,sinv,0,
+            0,1,0,0,
+            -sinv,0,cosv,0,
+            0,0,0,1
+        }
+    };
+    
+    cosv = cosf(rotation.z);
+    sinv = sinf(rotation.z);
+    
+    Matrix4b4 rotationz_matrix4b4 = {
+        {
+            cosv,-sinv,0,0,
+            sinv,cosv,0,0,
+            0,0,1,0,
+            0,0,0,1
+        }
+    };
+    
+#else
+    
+    f32 cosv = cosf(rotation.x);
+    f32 sinv = sinf(rotation.x);
+    
+    Matrix4b4 rotationx_matrix4b4 = {
+        {
+            1,0,0,0,
+            0,cosv,sinv,0,
+            0,-sinv,cosv,0,
+            0,0,0,1
+        }
+    };
+    
+    cosv = cosf(rotation.y);
+    sinv = sinf(rotation.y);
+    
+    Matrix4b4 rotationy_matrix4b4 = {
+        {
+            cosv,0,-sinv,0,
+            0,1,0,0,
+            sinv,0,cosv,0,
+            0,0,0,1
+        }
+    };
+    
+    cosv = cosf(rotation.z);
+    sinv = sinf(rotation.z);
+    
+    Matrix4b4 rotationz_matrix4b4 = {
+        {
+            cosv,sinv,0,0,
+            -sinv,cosv,0,0,
+            0,0,1,0,
+            0,0,0,1
+        }
+    };
+    
+#endif
+    
+    return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
+}
+
+
+
+Matrix4b4 _ainline ScaleMatrix(Vector3 scale){
+    
+    Matrix4b4 matrix = {
+        {
+            scale.x,0,0,0,
+            0,scale.y,0,0,
+            0,0,scale.z,0,
+            0,0,0,1
+        }
+    };
+    
+    return matrix;
+}
+
+Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale);
+
+Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale);
+
+Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale);
+
+Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj);
+Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj);
+
+Vector3 _ainline WorldSpaceToClipSpace(Vector3 pos,Matrix4b4 viewproj){
+    
+    return ToVec3(WorldSpaceToClipSpace(ToVec4(pos),viewproj));
+}
+
+Vector3 _ainline ClipSpaceToWorldSpace(Vector3 pos,Matrix4b4 viewproj){
+    
+    return ToVec3(ClipSpaceToWorldSpace(ToVec4(pos),viewproj));
 }
 
 
@@ -253,12 +603,6 @@ f32 Magnitude(Vector4 vec);
 f32 Dot(Vector4 vec1,Vector4 vec2);
 Vector4 VectorComponentMul(Vector4 a,Vector4 b);
 
-Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs);
-Matrix4b4 operator-(Matrix4b4 lhs,Matrix4b4 rhs);
-Matrix4b4 operator*(Matrix4b4 lhs,Matrix4b4 rhs);
-Matrix4b4 operator*(f32 lhs,Matrix4b4 rhs);
-Matrix4b4 operator*(Matrix4b4 lhs,f32 rhs);
-
 
 Vector4 operator+(Vector4 lhs,Vector4 rhs);
 Vector4 operator-(Vector4 lhs,Vector4 rhs);
@@ -295,91 +639,17 @@ Vector2 RotateVector(Vector2 vec,f32 rotation);
 
 Vector3 RotateVector(Vector3 vec,Vector3 rotation);
 
-Matrix4b4 Transpose(Matrix4b4 matrix);
-
-Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);
-
-Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectration,f32 nearz,f32 farz);
-
-Matrix4b4 _ainline PositionMatrix(Vector3 position){
-    
-    Matrix4b4 matrix = {
-        {1,0,0,position.x,
-            0,1,0,position.y,
-            0,0,1,position.z,
-            0,0,0,1}
-    };
-    
-    return matrix;
-    
-    
-}
-
-Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
-    
-    f32 cosv = cosf(rotation.x);
-    f32 sinv = sinf(rotation.x);
-    
-    Matrix4b4 rotationx_matrix4b4 = {
-        {1,0,0,0,
-            0,cosv,-sinv,0,
-            0,sinv,cosv,0,
-            0,0,0,1}
-    };
-    
-    cosv = cosf(rotation.y);
-    sinv = sinf(rotation.y);
-    
-    Matrix4b4 rotationy_matrix4b4 = {
-        {cosv,0,sinv,0,
-            0,1,0,0,
-            -sinv,0,cosv,0,
-            0,0,0,1}
-    };
-    
-    cosv = cosf(rotation.z);
-    sinv = sinf(rotation.z);
-    
-    Matrix4b4 rotationz_matrix4b4 = {
-        {cosv,-sinv,0,0,
-            sinv,cosv,0,0,
-            0,0,1,0,
-            0,0,0,1}
-    };
-    
-    return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
-}
 
 
 
-Matrix4b4 _ainline ScaleMatrix(Vector3 scale){
-    
-    Matrix4b4 matrix = {
-        {scale.x,0,0,0,
-            0,scale.y,0,0,
-            0,0,scale.z,0,
-            0,0,0,1}
-    };
-    
-    return matrix;
-}
 
 
-Matrix4b4 IdentityMatrix4b4();
 
-void PrintMatrix(Matrix4b4 matrix);
 void PrintVector4(Vector4 vec);
 void PrintVector3(Vector3 vec);
 void PrintVector2(Vector2 vec);
 
-Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale);
 
-Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale);
-
-
-
-Matrix4b4 Inverse(Matrix4b4 matrix);
-Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs);
 
 struct Triangle{
     Point3 a;
@@ -407,15 +677,6 @@ void MinkowskiDifference(Point3* a,ptrsize a_count,Point3* b,ptrsize b_count,Poi
 
 
 typedef Vector4SOA PolygonSOA;
-
-union Quaternion{
-    simd4f simd;
-    
-    struct{
-        f32 w,x,y,z;
-    };
-    
-}_align(16);
 
 
 Vector4 _ainline ToVec4(Quaternion q){
@@ -507,13 +768,6 @@ Quaternion ConjugateQuaternion(Quaternion quaternion);
 
 void DeconstructQuaternion(Quaternion quaternion,Vector3* vector,f32* angle);
 
-
-Matrix4b4 QuaternionToMatrix(Quaternion quaternion);
-
-Quaternion MatrixToQuaternion(Matrix4b4 matrix);
-
-Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale);
-
 Quaternion _ainline MQuaternionIdentity(){
     return Quaternion{1.0f,0.0f,0.0f,0.0f};
 }
@@ -523,12 +777,6 @@ Quaternion _ainline AQuaternionIdentity(){
 }
 
 void PrintQuaternion(Quaternion quat);
-
-
-Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
-    
-    return Vector3{matrix _ac(3,0),matrix _ac(3,1),matrix _ac(3,2)};
-}
 
 Vector4 _ainline InterpolateVector(Vector4 a,Vector4 b,f32 step){
     
@@ -558,13 +806,9 @@ Quaternion NLerp(Quaternion a,Quaternion b,f32 step);
 
 Quaternion SLerp(Quaternion a,Quaternion b,f32 step);
 
-struct DualQuaternion{
-    Quaternion q1,q2;
-};
-
 DualQuaternion ConstructDualQuaternion(Quaternion rotation,Vector3 translation);
 
-DualQuaternion ConstructDualQuaternion(Matrix4b4 transform);
+
 
 DualQuaternion operator+(DualQuaternion lhs,DualQuaternion rhs);
 DualQuaternion operator-(DualQuaternion lhs,DualQuaternion rhs);
@@ -573,18 +817,3 @@ DualQuaternion operator*(f32 lhs,DualQuaternion rhs);
 DualQuaternion operator*(DualQuaternion lhs,f32 rhs);
 
 DualQuaternion Normalize(DualQuaternion d);
-Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
-
-
-Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj);
-Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj);
-
-Vector3 _ainline WorldSpaceToClipSpace(Vector3 pos,Matrix4b4 viewproj){
-    
-    return ToVec3(WorldSpaceToClipSpace(ToVec4(pos),viewproj));
-}
-
-Vector3 _ainline ClipSpaceToWorldSpace(Vector3 pos,Matrix4b4 viewproj){
-    
-    return ToVec3(ClipSpaceToWorldSpace(ToVec4(pos),viewproj));
-}

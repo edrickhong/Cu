@@ -12,6 +12,14 @@
 
 void InternalCmpMatrix(f32* f1,f32* f2){
     
+#if MATRIX_COLUMN_MAJOR
+    
+    auto k = (Matrix4b4*)f1;
+    
+    *k = Transpose(*k);
+    
+#endif
+    
     for(u32 i = 0; i < 16; i++){
         
         auto a = f1[i];
@@ -24,8 +32,19 @@ void InternalCmpMatrix(f32* f1,f32* f2){
         
         if(f1[i] - f2[i] > 0.1f){
             printf("--------------\n");
+            
+#if MATRIX_COLUMN_MAJOR
+            
             PrintMatrix(Transpose(*((Matrix4b4*)f1)));
             PrintMatrix(Transpose(*((Matrix4b4*)f2)));
+            
+#else
+            
+            PrintMatrix(*((Matrix4b4*)f1));
+            PrintMatrix(*((Matrix4b4*)f2));
+            
+#endif
+            
             _kill("",1);
         }
         
@@ -41,13 +60,13 @@ Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs){
     
     Matrix4b4 matrix;
     
-    _storesimd4f(&matrix _ac(0,0),_addsimd4f(lhs.simd[0],rhs.simd[0]));
+    _storesimd4f(&matrix _ac4(0,0),_addsimd4f(lhs.simd[0],rhs.simd[0]));
     
-    _storesimd4f(&matrix _ac(0,1),_addsimd4f(lhs.simd[1],rhs.simd[1]));
+    _storesimd4f(&matrix _ac4(0,1),_addsimd4f(lhs.simd[1],rhs.simd[1]));
     
-    _storesimd4f(&matrix _ac(0,2),_addsimd4f(lhs.simd[2],rhs.simd[2]));
+    _storesimd4f(&matrix _ac4(0,2),_addsimd4f(lhs.simd[2],rhs.simd[2]));
     
-    _storesimd4f(&matrix _ac(0,3),_addsimd4f(lhs.simd[3],rhs.simd[3]));
+    _storesimd4f(&matrix _ac4(0,3),_addsimd4f(lhs.simd[3],rhs.simd[3]));
     
     
     return matrix;
@@ -59,26 +78,32 @@ Matrix4b4 operator-(Matrix4b4 lhs,Matrix4b4 rhs){
     
     Matrix4b4 matrix;
     
-    _storesimd4f(&matrix _ac(0,0),_subsimd4f(lhs.simd[0],rhs.simd[0]));
+    _storesimd4f(&matrix _ac4(0,0),_subsimd4f(lhs.simd[0],rhs.simd[0]));
     
-    _storesimd4f(&matrix _ac(0,1),_subsimd4f(lhs.simd[1],rhs.simd[1]));
+    _storesimd4f(&matrix _ac4(0,1),_subsimd4f(lhs.simd[1],rhs.simd[1]));
     
-    _storesimd4f(&matrix _ac(0,2),_subsimd4f(lhs.simd[2],rhs.simd[2]));
+    _storesimd4f(&matrix _ac4(0,2),_subsimd4f(lhs.simd[2],rhs.simd[2]));
     
-    _storesimd4f(&matrix _ac(0,3),_subsimd4f(lhs.simd[3],rhs.simd[3]));
+    _storesimd4f(&matrix _ac4(0,3),_subsimd4f(lhs.simd[3],rhs.simd[3]));
     
     
     return matrix;
 }
 
-//NOTE:Worth unrolling? Transposing followed by a straight multiply is more cache coherrent.
-//Might be faster?
+//FIXME: this is wrong for the row major case
 Matrix4b4 operator*(Matrix4b4 lhs,Matrix4b4 rhs){
     
-    //This managed to shave a few ms. ALinearBlend is doesn't hit 2ms
     Matrix4b4 matrix;
     
+#if MATRIX_COLUMN_MAJOR
+    
     rhs = Transpose(rhs);
+    
+#else
+    
+    lhs = Transpose(lhs);
+    
+#endif
     
     for(u32 y = 0; y < 4;y++){
         
@@ -87,34 +112,43 @@ Matrix4b4 operator*(Matrix4b4 lhs,Matrix4b4 rhs){
         simd4f res3 = _mulsimd4f(lhs.simd[y],rhs.simd[2]);
         simd4f res4 = _mulsimd4f(lhs.simd[y],rhs.simd[3]);
         
-#ifdef _WIN32
-        
         f32* _restrict r1 = (f32*)&res1;
         f32* _restrict r2 = (f32*)&res2;
         f32* _restrict r3 = (f32*)&res3;
         f32* _restrict r4 = (f32*)&res4;
         
-        matrix _ac(0,y) = r1[0] + r1[1] + r1[2] + r1[3];
-        matrix _ac(1,y) = r2[0] + r2[1] + r2[2] + r2[3];
-        matrix _ac(2,y) = r3[0] + r3[1] + r3[2] + r3[3];
-        matrix _ac(3,y) = r4[0] + r4[1] + r4[2] + r4[3];
-        
-#else
-        
-        matrix _ac(0,y) = res1[0] + res1[1] + res1[2] + res1[3];
-        matrix _ac(1,y) = res2[0] + res2[1] + res2[2] + res2[3];
-        matrix _ac(2,y) = res3[0] + res3[1] + res3[2] + res3[3];
-        matrix _ac(3,y) = res4[0] + res4[1] + res4[2] + res4[3];
-        
-#endif
+        matrix _ac4(0,y) = r1[0] + r1[1] + r1[2] + r1[3];
+        matrix _ac4(1,y) = r2[0] + r2[1] + r2[2] + r2[3];
+        matrix _ac4(2,y) = r3[0] + r3[1] + r3[2] + r3[3];
+        matrix _ac4(3,y) = r4[0] + r4[1] + r4[2] + r4[3];
         
         
     }
     
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        
+        glm::mat4 l;
+        glm::mat4 r;
+        
+        memcpy(&l,&lhs,sizeof(lhs));
+        memcpy(&r,&rhs,sizeof(rhs));
+        
+        auto res = l * r;
+        
+        auto ref_matrix = matrix;
+        
+        InternalCmpMatrix((f32*)&ref_matrix,(f32*)&res);
+    }
+    
+#endif
+    
+    
+    
     return matrix;
 }
 
-//MARK: Complete Inverse()
 Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs){
     
     return lhs * Inverse(rhs);
@@ -128,19 +162,19 @@ Matrix4b4 operator*(f32 lhs,Matrix4b4 rhs){
     
     simd4f res = _mulsimd4f(rhs.simd[0],k);
     
-    _storesimd4f(&matrix _ac(0,0),res);
+    _storesimd4f(&matrix _ac4(0,0),res);
     
     res = _mulsimd4f(rhs.simd[1],k);
     
-    _storesimd4f(&matrix _ac(0,1),res);
+    _storesimd4f(&matrix _ac4(0,1),res);
     
     res = _mulsimd4f(rhs.simd[2],k);
     
-    _storesimd4f(&matrix _ac(0,2),res);
+    _storesimd4f(&matrix _ac4(0,2),res);
     
     res = _mulsimd4f(rhs.simd[3],k);
     
-    _storesimd4f(&matrix _ac(0,3),res);
+    _storesimd4f(&matrix _ac4(0,3),res);
     
     return matrix;
 }
@@ -178,20 +212,20 @@ Matrix4b4 Transpose(Matrix4b4 matrix){
     row2 = _shufflesimd4f(tmp1, row3, 0x88);
     row3 = _shufflesimd4f(row3, tmp1, 0xDD);
     
-    _storeusimd4f(&store_matrix _ac(0,0),row0);
+    _storeusimd4f(&store_matrix _ac4(0,0),row0);
     
     
     
     //this is swapped
     row1 = _shufflesimd4f(row1,row1,_MM_SHUFFLE(1,0,3,2));
-    _storeusimd4f(&store_matrix _ac(0,1),row1);
+    _storeusimd4f(&store_matrix _ac4(0,1),row1);
     
-    _storeusimd4f(&store_matrix _ac(0,2),row2);
+    _storeusimd4f(&store_matrix _ac4(0,2),row2);
     
     //this is swapped
     
     row3 = _shufflesimd4f(row3,row3,_MM_SHUFFLE(1,0,3,2));
-    _storeusimd4f(&store_matrix _ac(0,3),row3);
+    _storeusimd4f(&store_matrix _ac4(0,3),row3);
     
     return store_matrix;
 }
@@ -216,8 +250,23 @@ Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale){
     return matrix;
 }
 
+Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale){
+    
+    Matrix4b4 matrix;
+    
+    Matrix4b4 position_matrix4b4 = PositionMatrix(position);
+    
+    Matrix4b4 scale_matrix4b4 = ScaleMatrix(scale);
+    
+    Matrix4b4 rotation_matrix4b4 = QuaternionToMatrix(rotation);
+    
+    
+    matrix = WorldMatrix(position_matrix4b4,rotation_matrix4b4,scale_matrix4b4);
+    
+    return matrix;
+}
 
-//FIXME:this is broken
+
 Matrix4b4 _ainline
 ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     
@@ -231,27 +280,43 @@ ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     b = -1.0f * Dot(up,position),
     c = Dot(forward,position);
     
-    //up z is wrong
-    //forward y is wrong
-    Matrix4b4 matrix = {
-        {side.x,side.y,side.z,a,
+    Matrix4b4 matrix = 
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        {
+            side.x,side.y,side.z,a,
             up.x,up.y,up.z,b,
             -forward.x,-forward.y,-forward.z,c,
-            0,0,0,1,}
+            0,0,0,1,
+        }
     };
+    
+#else
+    
+    {
+        {
+            side.x,up.x,-forward.x,0,
+            side.y,up.y,-forward.y,0,
+            side.z,up.z,-forward.z,0,
+            a,b,c,1,
+        }
+    };
+    
+#endif
     
     
 #ifdef DEBUG
     
 #if _test_matrices
     
-    
-    auto ref_matrix = Transpose(matrix);
-    
     auto t_mat =
         glm::lookAt(glm::vec3(position.x,position.y,position.z),
                     glm::vec3(lookpoint.x,lookpoint.y,lookpoint.z),
                     glm::vec3(updir.x,updir.y,updir.z));
+    
+    auto ref_matrix = matrix;
     
     auto f1 = (f32*)&ref_matrix;
     auto f2 = (f32*)&t_mat;
@@ -297,19 +362,38 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
     
 #endif
     
-    Matrix4b4 matrix = {
-        {a,0,0,0,
+    Matrix4b4 matrix = 
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        {
+            a,0,0,0,
             0,b,0,0,
             0,0,c,d,
-            0,0,-1.0f,0}
+            0,0,-1.0f,0
+        }
     };
+    
+#else
+    
+    {
+        {
+            a,0,0,0,
+            0,b,0,0,
+            0,0,c,-1.0f,
+            0,0,d,0
+        }
+    };
+    
+#endif
     
     
 #ifdef DEBUG
     
 #if _test_matrices
     
-    auto ref_matrix = Transpose(matrix);
+    auto ref_matrix = matrix;
     
     auto t_mat =
         glm::perspective(fov,aspectratio,nearz,farz);
@@ -317,16 +401,7 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
     auto f1 = (f32*)&ref_matrix;
     auto f2 = (f32*)&t_mat;
     
-    for(u32 i = 0; i < 16; i++){
-        
-        if(f1[i] != f2[i]){
-            PrintMatrix(*((Matrix4b4*)f1));
-            PrintMatrix(*((Matrix4b4*)f2));
-            _kill("do not match\n",1);
-            
-        }
-        
-    }
+    InternalCmpMatrix(f1,f2);
     
 #endif
     
@@ -442,7 +517,6 @@ f32 Magnitude(Vector3 vec){
 }
 
 
-//TODO: Could be better (Use shuffle)
 Vector3 Cross(Vector3 a,Vector3 b){
     /* a(x,y,z) b(x,y,z)
        cx = aybz - azby
@@ -485,15 +559,9 @@ f32 Dot(Vector4 vec1,Vector4 vec2){
     
     simd4f mul = _mulsimd4f(vec1.simd,vec2.simd);
     
-#ifdef _WIN32
-    
     f32* _restrict r = (f32*)&mul;
     
     f32 res = r[0] + r[1] + r[2]+ r[3];
-    
-#else
-    f32 res = mul[0] + mul[1] + mul[2] + mul[3];
-#endif
     
     
     
@@ -597,35 +665,43 @@ Vector3 RotateVector(Vector3 vec,Vector3 rotation){
     
     Matrix4b4 rot_matrix = RotationMatrix(rotation);
     
-    Matrix4b4 vec_matrix = {
-        {vec.x,0,0,0,
+    Matrix4b4 vec_matrix = 
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        {
+            vec.x,0,0,0,
             vec.y,0,0,0,
             vec.z,0,0,0,
-            1,0,0,0}
+            1,0,0,0
+        }
     };
+    
+#else
+    
+    {
+        {
+            vec.x,vec.y,vec.z,1,
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0
+        }
+    };
+    
+#endif
     
     Matrix4b4 ret_matrix = rot_matrix * vec_matrix;
     
-    vec.x = ret_matrix _ac(0,0);
-    vec.y = ret_matrix _ac(0,1);
-    vec.z = ret_matrix _ac(0,2);
+    vec.x = ret_matrix _ac4(0,0);
+    vec.y = ret_matrix _ac4(0,1);
+    vec.z = ret_matrix _ac4(0,2);
     
-    return vec/ret_matrix _ac(0,3);
+    return vec/ret_matrix _ac4(0,3);
 }
 
 
-Matrix4b4 IdentityMatrix4b4(){
-    
-    Matrix4b4 matrix = {
-        {1,0,0,0,
-            0,1,0,0,
-            0,0,1,0,
-            0,0,0,1}
-    };
-    
-    
-    return matrix;
-}
+
 
 void PrintMatrix(Matrix4b4 matrix){
     
@@ -760,7 +836,7 @@ Matrix4b4 Inverse(Matrix4b4 matrix){
     
     
     //we'll use these to get the det. Calling generic det will compute the first row minor matrix det twice
-    f32 first_row[] = {matrix _ac(0,0),matrix _ac(1,0),matrix _ac(2,0),matrix _ac(3,0)};
+    f32 first_row[] = {matrix _ac4(0,0),matrix _ac4(1,0),matrix _ac4(2,0),matrix _ac4(3,0)};
     
     //get the adjoint matrix, create matrices of cofactors
     
@@ -774,7 +850,7 @@ Matrix4b4 Inverse(Matrix4b4 matrix){
             
             GetMinorMatrix((f32*)&matrix[0],4,x,y,(f32*)&minormatrix);
             
-            adj_matrix _ac(x,y) = GenericGetDeterminant((f32*)&minormatrix,3);
+            adj_matrix _ac4(x,y) = GenericGetDeterminant((f32*)&minormatrix,3);
         }
         
     }
@@ -791,7 +867,7 @@ Matrix4b4 Inverse(Matrix4b4 matrix){
     f32 det = 0;
     
     for(u32 i = 0; i < 4; i++){
-        det += first_row[i] * adj_matrix _ac(i,0);
+        det += first_row[i] * adj_matrix _ac4(i,0);
     }
     
     adj_matrix = (1.0f/det) * Transpose(adj_matrix);
@@ -934,6 +1010,10 @@ Matrix4b4 QuaternionToMatrix(Quaternion quaternion){
     f32 i = 1 - (2 * (squared.x + squared.y));
     
     Matrix4b4 matrix =
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    
     {
         a,b,c,0,
         d,e,f,0,
@@ -941,85 +1021,69 @@ Matrix4b4 QuaternionToMatrix(Quaternion quaternion){
         0,0,0,1,
     };
     
+#else
+    
+    {
+        a,d,g,0,
+        b,e,h,0,
+        c,f,i,0,
+        0,0,0,1,
+    };
+    
+#endif
+    
     return matrix;
 }
 
 Quaternion MatrixToQuaternion(Matrix4b4 matrix){
     
-#if 0
-    
-    Quaternion quaternion;
-    
-    f64 w = sqrt(1.0f + matrix _ac(0,0) + matrix _ac(1,1) + matrix _ac(2,2))/2.0f;
-    
-    quaternion.w = (f32)w;
-    
-    w *= 4.0;
-    
-    quaternion.x = (matrix _ac(1,2) - matrix _ac(2,1))/w;
-    quaternion.y = (matrix _ac(2,0) - matrix _ac(0,2))/w;
-    quaternion.z = (matrix _ac(0,1) - matrix _ac(1,0))/w;
-    
-    return quaternion;
-    
-#else
+#if MATRIX_COLUMN_MAJOR
     
     Quaternion q;
     
-    f32 trs = matrix _ac(0,0) + matrix _ac(1,1) + matrix _ac(2,2);
+    f32 trs = matrix _ac4(0,0) + matrix _ac4(1,1) + matrix _ac4(2,2);
     
     if(trs > 0.0f){
         f32 s = sqrt(trs + 1.0f) * 2.0f;
         q.w = 0.25f * s;
-        q.x = (matrix _ac(1,2) - matrix _ac(2,1))/s;
-        q.y = (matrix _ac(2,0) - matrix _ac(0,2))/s;
-        q.z = (matrix _ac(0,1) - matrix _ac(1,0))/s;    
+        q.x = (matrix _ac4(1,2) - matrix _ac4(2,1))/s;
+        q.y = (matrix _ac4(2,0) - matrix _ac4(0,2))/s;
+        q.z = (matrix _ac4(0,1) - matrix _ac4(1,0))/s;    
     }
     
-    else if((matrix _ac(0,0) > matrix _ac(1,1)) && (matrix _ac(0,0) > matrix _ac(2,2))){
-        f32 s = sqrt(1.0f + matrix _ac(0,0) - matrix _ac(1,1) - matrix _ac(2,2)) * 2.0f;
-        q.w = (matrix _ac(1,2) -  matrix _ac(2,1)) /s;
+    else if((matrix _ac4(0,0) > matrix _ac4(1,1)) && (matrix _ac4(0,0) > matrix _ac4(2,2))){
+        f32 s = sqrt(1.0f + matrix _ac4(0,0) - matrix _ac4(1,1) - matrix _ac4(2,2)) * 2.0f;
+        q.w = (matrix _ac4(1,2) -  matrix _ac4(2,1)) /s;
         q.x = 0.25f * s;
-        q.y = (matrix _ac(1,0) + matrix _ac(1,0))/s;
-        q.z = (matrix _ac(2,0) + matrix _ac(0,2))/s;        
+        q.y = (matrix _ac4(1,0) + matrix _ac4(1,0))/s;
+        q.z = (matrix _ac4(2,0) + matrix _ac4(0,2))/s;        
     }
     
-    else if(matrix _ac(1,1) > matrix _ac(2,2)){
-        f32 s = sqrt(1.0f + matrix _ac(1,1) - matrix _ac(0,0) - matrix _ac(2,2)) * 2.0f;
-        q.w = (matrix _ac(2,0) -  matrix _ac(0,2)) /s;
-        q.x = (matrix _ac(1,0) + matrix _ac(1,0))/s;
+    else if(matrix _ac4(1,1) > matrix _ac4(2,2)){
+        f32 s = sqrt(1.0f + matrix _ac4(1,1) - matrix _ac4(0,0) - matrix _ac4(2,2)) * 2.0f;
+        q.w = (matrix _ac4(2,0) -  matrix _ac4(0,2)) /s;
+        q.x = (matrix _ac4(1,0) + matrix _ac4(1,0))/s;
         q.y = 0.25f * s;
-        q.z = (matrix _ac(2,1) + matrix _ac(1,2))/s;            
+        q.z = (matrix _ac4(2,1) + matrix _ac4(1,2))/s;            
     }
     
     else{
-        f32 s = sqrt(1.0f + matrix _ac(2,2) - matrix _ac(0,0) - matrix _ac(1,1)) * 2.0f;
-        q.w = (matrix _ac(0,1) -  matrix _ac(1,0)) /s;
-        q.x = (matrix _ac(2,0) + matrix _ac(0,2))/s;
-        q.y = (matrix _ac(2,1) + matrix _ac(1,2))/s;
+        f32 s = sqrt(1.0f + matrix _ac4(2,2) - matrix _ac4(0,0) - matrix _ac4(1,1)) * 2.0f;
+        q.w = (matrix _ac4(0,1) -  matrix _ac4(1,0)) /s;
+        q.x = (matrix _ac4(2,0) + matrix _ac4(0,2))/s;
+        q.y = (matrix _ac4(2,1) + matrix _ac4(1,2))/s;
         q.z = 0.25f * s;
     }
     
     return Normalize(q);
     
+#else
+    
+    _kill("TODO\n",1);
+    
+    return {};
+    
 #endif
-}
-
-
-Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale){
-    
-    Matrix4b4 matrix;
-    
-    Matrix4b4 position_matrix4b4 = PositionMatrix(position);
-    
-    Matrix4b4 scale_matrix4b4 = ScaleMatrix(scale);
-    
-    Matrix4b4 rotation_matrix4b4 = QuaternionToMatrix(rotation);
-    
-    
-    matrix = WorldMatrix(position_matrix4b4,rotation_matrix4b4,scale_matrix4b4);
-    
-    return matrix;
 }
 
 Quaternion _ainline Neighbourhood(Quaternion a,Quaternion b){
@@ -1070,10 +1134,23 @@ DualQuaternion ConstructDualQuaternion(Quaternion rotation,Vector3 translation){
 }
 
 DualQuaternion ConstructDualQuaternion(Matrix4b4 transform){
+    
     DualQuaternion d;
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    
     d.q1 = MatrixToQuaternion(transform);
     Vector3 translation = MatrixToTranslationVector(transform);
+    
     d.q2 = Quaternion{0,translation.x,translation.y,translation.z} * d.q1 * 0.5f;
+    
+#else
+    
+    _kill("TODO\n",1);
+    
+#endif
+    
     return d;
 }
 
@@ -1121,18 +1198,30 @@ DualQuaternion Normalize(DualQuaternion d){
 
 Matrix4b4 DualQuaternionToMatrix(DualQuaternion d){
     
+#if MATRIX_COLUMN_MAJOR
+    
     d = Normalize(d);
     
     Matrix4b4 matrix = QuaternionToMatrix(d.q1);
     Quaternion t = d.q2 * 2.0f;
     t = t * ConjugateQuaternion(d.q1);
     
-    matrix _ac(3,0) = t.x;
-    matrix _ac(3,1) = t.y;
-    matrix _ac(3,2) = t.z;
-    matrix _ac(3,3) = 1.0f;
+    matrix _ac4(3,0) = t.x;
+    matrix _ac4(3,1) = t.y;
+    matrix _ac4(3,2) = t.z;
+    matrix _ac4(3,3) = 1.0f;
     
     return matrix;
+    
+#else
+    
+    _kill("TODO",1);
+    
+    return {};
+    
+#endif
+    
+    
 }
 
 Vector2 operator+(Vector2 lhs,Vector2 rhs){
@@ -1191,42 +1280,77 @@ Vector2 Normalize(Vector2 a){
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj){
     
-    Matrix4b4 vertmat = {
-        {pos.x,0,0,0,
+    Matrix4b4 vertmat = 
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        {
+            pos.x,0,0,0,
             pos.y,0,0,0,
             pos.z,0,0,0,
-            1,0,0,0}
+            1,0,0,0
+        }
     };
+    
+#else
+    
+    {
+        {
+            pos.x,pos.y,pos.z,1,
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0
+        }
+    };
+    
+#endif
     
     auto mat = viewproj * vertmat;
     
-    pos.x = mat _ac(0,0);
-    pos.y = mat _ac(0,1);
-    pos.z = mat _ac(0,2);
-    pos.w = mat _ac(0,3);
+    pos.x = mat _ac4(0,0);
+    pos.y = mat _ac4(0,1);
+    pos.z = mat _ac4(0,2);
     
-    pos = pos/pos.w;
-    
-    return pos;
+    return pos/mat _ac4(0,3);
 }
 
 Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj){
     
     auto inv_viewproj = Inverse(viewproj);
     
-    Matrix4b4 vertmat = {
-        {pos.x,0,0,0,
+    Matrix4b4 vertmat = 
+    
+#if MATRIX_COLUMN_MAJOR
+    
+    {
+        {
+            pos.x,0,0,0,
             pos.y,0,0,0,
             pos.z,0,0,0,
-            pos.w,0,0,0}
+            pos.w,0,0,0
+        }
     };
+    
+#else
+    
+    {
+        {
+            pos.x,pos.y,pos.z,pos.w,
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0
+        }
+    };
+    
+#endif
     
     auto mat = inv_viewproj * vertmat;
     
-    pos.x = mat _ac(0,0);
-    pos.y = mat _ac(0,1);
-    pos.z = mat _ac(0,2);
-    pos.w = mat _ac(0,3);
+    pos.x = mat _ac4(0,0);
+    pos.y = mat _ac4(0,1);
+    pos.z = mat _ac4(0,2);
+    pos.w = mat _ac4(0,3);
     
     return pos/pos.w;
 }
