@@ -178,9 +178,9 @@ void ALinearTransformLinearSkeleton(u32 animation_index,f32 animationtime,
     }
     
     matrix =
-        WorldMatrix(transform.translation,
+        WorldMatrix(ToVec3(transform.translation),
                     transform.rotation,
-                    transform.scale);
+                    ToVec3(transform.scale));
     
     matrix = parent_matrix * matrix;
     

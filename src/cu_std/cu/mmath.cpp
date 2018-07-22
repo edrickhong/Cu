@@ -582,7 +582,7 @@ Vector2 RotateVector(Vector2 vec,f32 rotation){
     return vec;
 }
 
-Vector4 RotateVector(Vector4 vec,Vector3 rotation){
+Vector3 RotateVector(Vector3 vec,Vector3 rotation){
     
     /*
     
@@ -609,9 +609,8 @@ Vector4 RotateVector(Vector4 vec,Vector3 rotation){
     vec.x = ret_matrix _ac(0,0);
     vec.y = ret_matrix _ac(0,1);
     vec.z = ret_matrix _ac(0,2);
-    vec.w = ret_matrix _ac(0,3);
     
-    return vec/vec.w;
+    return vec/ret_matrix _ac(0,3);
 }
 
 

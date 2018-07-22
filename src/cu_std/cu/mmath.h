@@ -143,8 +143,6 @@ Vector2 _ainline ToVec2(Vector3 vec){
     return {vec.x,vec.y};
 }
 
-typedef Vector3 EuelerAngle;
-
 union Matrix4b4{
     f32 container[16];
     simd4f simd[4];
@@ -154,13 +152,38 @@ union Matrix4b4{
     }
 }_align(16);
 
-struct Matrix3b3{
+
+union Matrix3b3{
     f32 container[9];
+    
+    struct {
+        simd4f simd[2];
+        f32 k;
+    };
+    
     
     f32& operator[](u32 index){
         return container[index];
     }
-};
+}_align(16);
+
+
+
+//TODO: 
+Matrix3b3 _ainline ToMatrix3b3(Matrix4b4 mat){
+    
+    _kill("",1);
+    
+    return {};
+}
+
+Matrix4b4 _ainline ToMatrix4b4(Matrix3b3 mat){
+    
+    _kill("",1);
+    
+    return {};
+}
+
 
 typedef Vector4 Point4;
 typedef Vector3 Point3;
@@ -270,22 +293,11 @@ f32 Magnitude(Vector2 vec);
 //FIXME:this one has issues
 Vector2 RotateVector(Vector2 vec,f32 rotation);
 
-//TODO: only use vec3
-
-Vector4 RotateVector(Vector4 vec,Vector3 rotation);
-
-Vector3 _ainline RotateVector(Vector3 vec,Vector3 rotation){
-    return ToVec3(RotateVector(ToVec4(vec),rotation));
-}
+Vector3 RotateVector(Vector3 vec,Vector3 rotation);
 
 Matrix4b4 Transpose(Matrix4b4 matrix);
 
-Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);;
-
-//TODO: only use vec3
-Matrix4b4 _ainline ViewMatrix(Vector4 position,Vector4 lookpoint,Vector4 updir){
-    return ViewMatrix(ToVec3(position),ToVec3(lookpoint),ToVec3(updir));
-}
+Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);
 
 Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectration,f32 nearz,f32 farz);
 
@@ -301,12 +313,6 @@ Matrix4b4 _ainline PositionMatrix(Vector3 position){
     return matrix;
     
     
-}
-
-//TODO: only use vec3
-Matrix4b4 _ainline PositionMatrix(Vector4 position){
-    
-    return PositionMatrix(ToVec3(position));
 }
 
 Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
@@ -344,11 +350,6 @@ Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
     return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
 }
 
-//TODO: only use vec3
-Matrix4b4 _ainline RotationMatrix(Vector4 rotation){
-    return RotationMatrix(ToVec3(rotation));
-}
-
 
 
 Matrix4b4 _ainline ScaleMatrix(Vector3 scale){
@@ -363,11 +364,6 @@ Matrix4b4 _ainline ScaleMatrix(Vector3 scale){
     return matrix;
 }
 
-//TODO: only use vec3
-Matrix4b4 _ainline ScaleMatrix(Vector4 scale){
-    return ScaleMatrix(ToVec3(scale));
-}
-
 
 Matrix4b4 IdentityMatrix4b4();
 
@@ -380,12 +376,8 @@ Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale);
 
 Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale);
 
-//TODO: only use vec3
-Matrix4b4 _ainline WorldMatrix(Vector4 position,Vector4 rotation,Vector4 scale){
-    return WorldMatrix(ToVec3(position),ToVec3(rotation),ToVec3(scale));
-}
 
-//NOTE: Do not use these for now
+
 Matrix4b4 Inverse(Matrix4b4 matrix);
 Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs);
 
@@ -522,11 +514,6 @@ Quaternion MatrixToQuaternion(Matrix4b4 matrix);
 
 Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale);
 
-//TODO: only use vec3
-Matrix4b4 _ainline WorldMatrix(Vector4 position,Quaternion rotation,Vector4 scale){
-    return WorldMatrix(ToVec3(position),rotation,ToVec3(scale));
-}
-
 Quaternion _ainline MQuaternionIdentity(){
     return Quaternion{1.0f,0.0f,0.0f,0.0f};
 }
@@ -588,8 +575,6 @@ DualQuaternion operator*(DualQuaternion lhs,f32 rhs);
 DualQuaternion Normalize(DualQuaternion d);
 Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
 
-
-//TODO: only use vec3
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj);
 Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj);
