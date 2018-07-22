@@ -443,7 +443,7 @@ f32 Magnitude(Vector3 vec){
 
 
 //TODO: Could be better (Use shuffle)
-Vector3 Cross(Vector3 vec1,Vector3 vec2){
+Vector3 Cross(Vector3 a,Vector3 b){
     /* a(x,y,z) b(x,y,z)
        cx = aybz - azby
        cy = azbx - axbz
@@ -453,21 +453,9 @@ Vector3 Cross(Vector3 vec1,Vector3 vec2){
     
     Vector3 vec;
     
-    simd4f a1 = _setsimd4f(vec1.y,vec1.z,vec1.x,0.0f)
-        ,a2 = _setsimd4f(vec1.z,vec1.x,vec1.y,0.0f);
-    
-    simd4f b1 = _setsimd4f(vec2.z,vec2.x,vec2.y,0.0f)
-        ,b2 = _setsimd4f(vec2.y,vec2.z,vec2.x,0.0f);
-    
-    simd4f res = _subsimd4f(_mulsimd4f(a1,b1),_mulsimd4f(a2,b2));
-    
-    
-    //FIMXE: pretty sure this is wrong
-    //_storeusimd4f(&vec.x,res);
-    
-    vec.x = res[0];
-    vec.y = res[1];
-    vec.z = res[2];
+    vec.x = (a.y * b.z) - (a.z * b.y);
+    vec.y = (a.z * b.x) - (a.x * b.z);
+    vec.z = (a.x * b.y) - (a.y * b.x);
     
     return vec;
 }
