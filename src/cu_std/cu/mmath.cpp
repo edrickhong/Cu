@@ -1135,7 +1135,7 @@ DualQuaternion ConstructDualQuaternion(Quaternion rotation,Vector3 translation){
 
 DualQuaternion ConstructDualQuaternion(Matrix4b4 transform){
     
-    DualQuaternion d;
+    DualQuaternion d = {};
     
 #if MATRIX_COLUMN_MAJOR
     
