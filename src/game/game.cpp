@@ -1275,8 +1275,6 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     
     data->camera_pos = data->camera_pos + dir;
     
-    PrintVector3(data->camera_pos);
-    
 }
 
 logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){

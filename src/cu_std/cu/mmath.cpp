@@ -422,9 +422,9 @@ Vector3 operator*(Vector3 lhs,f32 rhs){
 
 Vector3 operator/(Vector3 lhs,f32 rhs){
     
-    lhs.x *= rhs;
-    lhs.y *= rhs;
-    lhs.z *= rhs;
+    lhs.x /= rhs;
+    lhs.y /= rhs;
+    lhs.z /= rhs;
     
     return lhs;
 }
