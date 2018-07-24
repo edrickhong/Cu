@@ -20,19 +20,16 @@ install:
 
   
 script:
-  - mv TEST_CMakeLists.txt CMakeLists.txt
-  - curl -L https://edrickhong.github.io/Pages/cu_additional.zip > cu_additional.zip
-  - 7z x cu_additional.zip
-  - cd tests
-  - curl -L https://edrickhong.github.io/Pages/testfiles.zip > testfiles.zip
-  - 7z e testfiles.zip
-  - cmake ..
-  - make
-  - chmod +x ci_test
-  - ./ci_test
-  - cd ../
   - cat RefCMakeLists.txt > CMakeLists.txt
   - mkdir Make
   - cd Make
   - cmake -DBUILD_STEP=OFF ..
   - make
+  - cd ../
+  - cat TEST_CMakeLists.txt > CMakeLists.txt
+  - cd tests
+  - cmake ..
+  - make
+  - chmod +x ci_test
+  - ./ci_test
+  - cd ../

@@ -11,8 +11,6 @@ configuration:
 install:
 
 before_build:
-   - curl -L https://edrickhong.github.io/Pages/cu_additional.zip > cu_additional.zip
-   - 7z x cu_additional.zip
    - type RefCMakeLists.txt > CMakeLists.txt
    - mkdir Make
    - cd Make

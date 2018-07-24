@@ -1,97 +1,35 @@
 cmake_minimum_required(VERSION 2.8)
-
 project(copper)
 
 option(BUILD_STEP "" ON)
 option(DEBUG "" ON)
 
-if(DEBUG)
+#sets internal libs paths and flags
+include(${CMAKE_BINARY_DIR}/../cmake/cu.cmake)
 
-add_definitions(-DDEBUG)
 
-endif()
 
+#kept because we change these often (Linux compiler flags)
 if(UNIX)
 
-if(BUILD_STEP)
-
-   set(CMAKE_C_COMPILER /usr/bin/clang)
-   set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-
-endif()
-
-  set(PLATFORM_INCLUDES
-    "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
-    )
-
-  #set(CLANG_DEBUG "-fsanitize=address,memory,undefined,safe-stack,thread")
-  set(CLANG_DEBUG "") #break here __asan::ReportGenericError
-
 if(DEBUG)
 
-set(OPT_FLAGS "-g -O0 -fno-omit-frame-pointer")
-
-set(STRICT_FLAGS "-Werror -Wall -Wextra -pedantic -Wcast-align  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self  -Wmissing-include-dirs   -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo  -Wstrict-overflow=5 -Wundef -Wno-unused -Wno-variadic-macros -Wno-parentheses -Wunused-function -Wunused-label -Wunused-value -Wunused-variable -fdiagnostics-show-option -Wno-missing-field-initializers -Wno-missing-braces")
-
-else()
-
-set(OPT_FLAGS "-O3")
-set(STRICT_FLAGS)
+  set(OPT_FLAGS "-g -O0 -fno-omit-frame-pointer")
 
 endif()
 
   set(FLAGS "-march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
-
-  set(ASSIMP_LIB "${CMAKE_BINARY_DIR}/../extlib/libassimp.so.4")
-  set(DL_LIB "dl")
-  set(PTHREAD_LIB "pthread")
-  
-  set(PLATFORM_LIBS ${DL_LIB} ${PTHREAD_LIB})
-  
-else(UNIX)
-
-  set(PLATFORM_INCLUDES
-    "${CMAKE_BINARY_DIR}/../src/cu_std/win32"
-    )
-
-    set(ASSIMP_LIB "../extlib/assimp")
-    set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib")
-
-if(DEBUG)
-
-set(STRICT_FLAGS "/W3 /WX")
-set(OPT_FLAGS "/Od")
-
-else()
-
-set(STRICT_FLAGS "/W3 /WX")
-set(OPT_FLAGS "/O2")
-
-endif()
-
-    #allow debug info here cos windows doesn't embed it into the dll/exe
-    set(FLAGS "/EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
-
-#enable masm
-enable_language(ASM_MASM)
-
-if (NOT CMAKE_CL_64)
-            message(FATAL_ERROR "Error: Masm64 not found")
-        endif()
   
 endif(UNIX)
-  
-  set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
-  set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
 
-  set(CMAKE_CXX_FLAGS  ${FLAGS})
+  set(CMAKE_CXX_FLAGS ${FLAGS})
 
-# Output Directory Variables
+ #Output Directory Variables
    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
-# Include Directory 
+ #Include Directories
   include_directories(
   "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
   "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
@@ -102,6 +40,7 @@ endif(UNIX)
   "${CMAKE_BINARY_DIR}/../src/game"
   )
 
+#source files. all unity builds
 file(GLOB IMPORTER src/importer/main.cpp)
 file(GLOB GLSLPARSER src/glslparser/main.cpp)
 file(GLOB CPARSER src/cparser/main.cpp)
@@ -110,151 +49,26 @@ file(GLOB ASSETPACKER src/assetpacker/main.cpp)
 file(GLOB GAME src/game/game.cpp)
 file(GLOB CU_STD src/cu_std/cu/main.cpp)
 
-
-
-
-#BUILD STEP - run generators and compile shaders
-
-get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-
-
-set(C_INCLUDES "")
-
-foreach(inc ${RAW_C_INCLUDES})
-
-list(APPEND C_INCLUDES "-I${inc}")
-
-endforeach()
-
-if(UNIX)
-
-set(META_CMD -DCPP_PASS -E)
-set(META_OUT -o )
-
-else(UNIX)
-
-set(META_CMD /DCPP_PASS /P)
-set(META_OUT /Fi)
-
-endif(UNIX)
+GenAndInstallAdditionalDep()
 
 add_custom_target(CJOBS ALL  echo EXECUTING BUILD STEP
 
-
-#output pp files
-COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${ENGINE} ${C_INCLUDES} ${META_OUT}engine.i
-
-COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${GAME} ${C_INCLUDES} ${META_OUT}game.i
-
-#run generator on pp files
-COMMAND cparser engine.i -meta ../include/generated/engine_meta.h
-
-COMMAND cparser game.i -component ../include/generated/gamecomp_meta.h -meta ../include/generated/game_meta.h
-
 )
-
-
-#generate wayland extension files if they exist
-if(UNIX)
-
-find_file(FOUND_WAYLAND_EXT_XML xdg-shell.xml PATHS /usr/share/wayland-protocols/stable/xdg-shell/ NO_DEFAULT_PATH)
-
-find_program(FOUND_WAYLAND_SCANNER wayland-scanner)
-
-
-if(FOUND_WAYLAND_EXT_XML AND FOUND_WAYLAND_SCANNER)
-
-add_custom_target(WAYLAND_PROTOCOLS ALL  echo GENERATE WAYLAND PROTOCOLS
-
-#generate wayland files
-COMMAND wayland-scanner code </usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml >../include/generated/xdg-shell.c
-
-COMMAND wayland-scanner client-header </usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml >../include/generated/xdg-shell.h
-
-)
-
-else()
-
-if(NOT FOUND_WAYLAND_SCANNER)
-
-message(STATUS "WARNING: wayland-scanner not found!\n")
-
-endif()
-
-if(NOT FOUND_WAYLAND_EXT_XML)
-message(STATUS "WARNING: wayland extension xml not found!\n")
-endif()
-
-message(STATUS "WARNING: Building without wayland extensions\n")
-
-add_definitions(-DNO_WAYLAND_EXTENSIONS)
-
-endif()
-
-endif(UNIX)
-
-
-
 
 
 if(BUILD_STEP)
 
-
 #SHADER COMPILING
-
-#SHADER COMPILING SPECIAL CASES
-add_custom_command(TARGET CJOBS PRE_BUILD
-
-
-#model skel
-
-COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -DUSE_SKEL ../src/shaders/model.vert -o ../rsrc/shaders/model_skel.vert.spv
-
-COMMAND glslparser -DUSE_SKEL ../src/shaders/model.vert ../rsrc/shaders/model_skel.vert.spv
-
-
-#gui font
-
-COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -DUSE_TEXTURE ../src/shaders/m_gui.frag -o ../rsrc/shaders/m_gui_tex.frag.spv
-
-COMMAND glslparser -DUSE_TEXTURE ../src/shaders/m_gui.frag ../rsrc/shaders/m_gui_tex.frag.spv
-
-)
-
-
-file(GLOB SHADERS src/shaders/*)
-
-foreach(shader ${SHADERS})
-
-get_filename_component(SHADERNAME ${shader} NAME)
-
-add_custom_command(TARGET CJOBS PRE_BUILD
-
-
-#compile
-COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/${SHADERNAME}.spv
-
-#reflect
-COMMAND glslparser ../src/shaders/${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.spv
-
-)
-
-endforeach()
-
-
+CompileAllShaders(CJOBS)
+CompileShaderCase(CJOBS USE_SKEL model.vert model_skel.vert)
+CompileShaderCase(CJOBS USE_TEXTURE m_gui.frag m_gui_tex.frag)
 
 endif()
 
 
 
 
-#we should separate these two
 add_library(cu_std STATIC ${CU_STD})
-
-
-if(WAYLAND_PROTOCOLS)
-add_dependencies(cu_std WAYLAND_PROTOCOLS)
-endif()
 
 add_executable(assetpacker ${ASSETPACKER})
 add_executable(cparser ${CPARSER})
@@ -271,44 +85,26 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 #for these we do not want to have stdc++
 
-if(UNIX)
+add_library(game ${PDLL} ${GAME} ${METACALL_SRC})
+set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
 
-  add_executable(cu_engine ${ENGINE})
-  
-  add_library(game SHARED ${GAME})
-  set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
-  
-  target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS} m)
-  set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
-  
-else(UNIX)
-
-add_executable(cu_engine ${ENGINE} src/asm_win32/cparser_win32.asm)
-
+add_executable(cu_engine ${ENGINE} ${METACALL_SRC})
 target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
 set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
 
-add_library(game MODULE ${GAME} src/asm_win32/cparser_win32.asm)
-target_link_libraries(game cu_std ${PLATFORM_LIBS})
 
-string(TIMESTAMP VERSION "%Y_%m_%d_%H_%M_%S")
+if(WIN32)
 
-set_target_properties(game PROPERTIES
-PDB_NAME "game_${VERSION}"
+  set_target_properties(game PROPERTIES
+  PDB_NAME "game_${VERSION}"
 )
   
-endif(UNIX)
-
-add_dependencies(cu_engine CJOBS)
-add_dependencies(game CJOBS)
-
-#files that include things that require dependencies
+endif(WIN32)
 
 
-# src/cu_std/cu/debugtimer.h:#include "tthread.h"
-# src/cu_std/cu/vvulkan.h:#include "tthreadx.h"
+set(C_INCLUDES "")
+Gen_IncludeList(C_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
+Add_Metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine)
+Add_MetaCompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game)
 
-# src/cu_std/cu/vvulkan.cpp:#include "libload.h"
-# src/cu_std/linux/aaudio.cpp:#include "libload.h"
-# src/cu_std/linux/wwindow.cpp:#include "libload.h"

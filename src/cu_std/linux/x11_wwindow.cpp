@@ -281,6 +281,10 @@ logic InternalCreateX11Window(WWindowContext* context,const s8* title,WCreateFla
     auto XVisualIDFromVisual_fptr =
         (VisualID (*)(Visual*))LGetLibFunction(wwindowlib_handle,"XVisualIDFromVisual");
     
+    auto XGetVisualInfo_fptr = (XVisualInfo* (*)(Display*,long,XVisualInfo*,s32*))LGetLibFunction(wwindowlib_handle,"XGetVisualInfo");
+    
+    auto XFree_fptr = (void (*)(void*))LGetLibFunction(wwindowlib_handle,"XFree");
+    
     context->type = _X11_WINDOW;
     context->width = width;
     context->height = height;
@@ -296,10 +300,54 @@ logic InternalCreateX11Window(WWindowContext* context,const s8* title,WCreateFla
     
     _kill("failed to open display\n",!context->handle);
     
-    auto visual_ptr = DefaultVisual(context->handle,0);
-    auto depth = DefaultDepth(context->handle,0);
+    Visual* visual_ptr = 0;
+    u32 depth = 0;
     
-    context->x11_visualid = XVisualIDFromVisual_fptr(visual_ptr);
+    {
+        XVisualInfo v = {
+            0,
+            0,
+            0,
+            24,
+            TrueColor,
+            
+            //Aren't used but pretty sure these are the only formats for true color anyway
+            0xFF0000,//red mask
+            0x00FF00,//green mask
+            0x0000FF,//blue mask
+            
+            0,
+            8,
+        };
+        s32 info_count = 0;
+        
+        auto info_array = XGetVisualInfo_fptr((Display*)context->handle,VisualClassMask | VisualDepthMask | VisualRedMaskMask | VisualGreenMaskMask | VisualBlueMaskMask |VisualBitsPerRGBMask,&v,&info_count);
+        
+#if 0
+        
+        printf("count %d\n",info_count);
+        
+        for(s32 i = 0; i < info_count; i++){
+            
+            auto info = info_array[i];
+            
+            printf("(%d %d):%d 0x%08x 0x%08x 0x%08x %d %d %d\n",(u32)info.visualid,info.screen,info.depth,(u32)info.red_mask,
+                   (u32)info.green_mask,(u32)info.blue_mask,info.bits_per_rgb,info.colormap_size,info.c_class);
+        }
+        
+#endif
+        
+        _kill("no suitable window format\n",!info_count);
+        
+        auto vis = info_array[0];
+        
+        visual_ptr = vis.visual;
+        depth = vis.depth;
+        context->x11_visualid = vis.visualid;
+        
+        
+        XFree_fptr(info_array);
+    }
     
     XSetWindowAttributes frame_attrib = {};
     frame_attrib.background_pixel = XWhitePixel_fptr((Display*)context->handle,0);
