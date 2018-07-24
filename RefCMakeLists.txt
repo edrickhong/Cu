@@ -85,15 +85,17 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 
 #for these we do not want to have stdc++
 
-add_library(game ${PDLL} ${GAME} ${METACALL_SRC})
-set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
-
 add_executable(cu_engine ${ENGINE} ${METACALL_SRC})
 target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
 set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
 
 
+add_library(game ${PDLL} ${GAME} ${METACALL_SRC})
+set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
+
 if(WIN32)
+
+  target_link_libraries(game cu_std ${PLATFORM_LIBS})
 
   set_target_properties(game PROPERTIES
   PDB_NAME "game_${VERSION}"
