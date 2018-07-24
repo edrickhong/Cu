@@ -7,7 +7,8 @@
   Vec4(x,y,z,0) - vector rotating this will create a new vector(eg rotating a translation)
 */
 
-//we will update this to use avx in 2 years
+//AVX2 is slow. to get full speed of avx, it has to downclock the cpu
+//maybe this will change in time (https://gist.github.com/rygorous/32bc3ea8301dba09358fd2c64e02d774)
 
 #include "math.h"//we can replace this too I guess
 #include "mode.h"
@@ -22,11 +23,11 @@
 
 #ifdef _row_major
 
-#define MATRIX_COLUMN_MAJOR _row_major
+#define MATRIX_ROW_MAJOR _row_major
 
 #else
 
-#define MATRIX_COLUMN_MAJOR 1
+#define MATRIX_ROW_MAJOR 1
 
 #endif
 
@@ -36,21 +37,29 @@
 #define _radians(degrees) (degrees * (_pi/180.0f))
 #define _degrees(radians) (radians * (180.0f/_pi))
 
+
+//direct element access
 #define _ac4(x,y) [x + (y * 4)]
-
 #define _ac3(x,y) [x + (y * 3)]
-
 #define _ac2(x,y) [x + (y * 2)]
 
-#if 1
 
-#define _clamp(x, upper, lower) (fmin(upper, fmax(x, lower)))
+//access element as if it were row major
+#if MATRIX_ROW_MAJOR
+
+#define _rc4(x,y) _ac4(x,y)
+#define _rc3(x,y) _ac3(x,y)
+#define _rc2(x,y) _ac2(x,y)
 
 #else
 
-#define _clamp(x, upper, lower) x
+#define _rc4(y,x) [x + (y * 4)]
+#define _rc3(y,x) [x + (y * 3)]
+#define _rc2(y,x) [x + (y * 2)]
 
 #endif
+
+#define _clamp(x, upper, lower) (fmin(upper, fmax(x, lower)))
 
 typedef __m128 simd4f;
 typedef __m64 simd2f;
@@ -365,15 +374,7 @@ Matrix4b4 DualQuaternionToMatrix(DualQuaternion d);
 
 Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
     
-#if MATRIX_COLUMN_MAJOR
-    
-    return Vector3{matrix _ac4(3,0),matrix _ac4(3,1),matrix _ac4(3,2)};
-    
-#else
-    
-    return Vector3{matrix _ac4(0,3),matrix _ac4(1,3),matrix _ac4(2,3)};
-    
-#endif
+    return Vector3{matrix _rc4(3,0),matrix _rc4(3,1),matrix _rc4(3,2)};
 }
 
 //print
@@ -387,7 +388,7 @@ Matrix4b4 _ainline PositionMatrix(Vector3 position){
     
     Matrix4b4 matrix = 
     
-#if MATRIX_COLUMN_MAJOR
+#if MATRIX_ROW_MAJOR
     
     {
         {
@@ -418,7 +419,7 @@ Matrix4b4 _ainline PositionMatrix(Vector3 position){
 
 Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
     
-#if MATRIX_COLUMN_MAJOR
+#if MATRIX_ROW_MAJOR
     
     f32 cosv = cosf(rotation.x);
     f32 sinv = sinf(rotation.x);
