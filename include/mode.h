@@ -6,7 +6,7 @@
 //MARK: this should be tied to shaders as well
 
 #define _ignore_driver 1
-#define _row_major 0
+#define _row_major 1
 
 
 #define _encode_rgba(r,g,b,a) ((u8(r)) | ((u8(g)) << 8) | ((u8(b)) << 16) | ((u8(a)) << 24))

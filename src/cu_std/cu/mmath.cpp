@@ -291,31 +291,22 @@ ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     b = -1.0f * Dot(up,position),
     c = Dot(forward,position);
     
-    Matrix4b4 matrix = 
+    Matrix4b4 matrix = IdentityMatrix4b4();
     
-#if MATRIX_ROW_MAJOR
+    matrix _rc4(0,0) = side.x;
+    matrix _rc4(1,0) = side.y;
+    matrix _rc4(2,0) = side.z;
+    matrix _rc4(3,0) = a;
     
-    {
-        {
-            side.x,side.y,side.z,a,
-            up.x,up.y,up.z,b,
-            -forward.x,-forward.y,-forward.z,c,
-            0,0,0,1,
-        }
-    };
+    matrix _rc4(0,1) = up.x;
+    matrix _rc4(1,1) = up.y;
+    matrix _rc4(2,1) = up.z;
+    matrix _rc4(3,1) = b;
     
-#else
-    
-    {
-        {
-            side.x,up.x,-forward.x,0,
-            side.y,up.y,-forward.y,0,
-            side.z,up.z,-forward.z,0,
-            a,b,c,1,
-        }
-    };
-    
-#endif
+    matrix _rc4(0,2) = -forward.x;
+    matrix _rc4(1,2) = -forward.y;
+    matrix _rc4(2,2) = -forward.z;
+    matrix _rc4(3,2) = c;
     
     
 #ifdef DEBUG
@@ -375,31 +366,13 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
     
 #endif
     
-    Matrix4b4 matrix = 
+    Matrix4b4 matrix = {};
     
-#if MATRIX_ROW_MAJOR
-    
-    {
-        {
-            a,0,0,0,
-            0,b,0,0,
-            0,0,c,d,
-            0,0,-1.0f,0
-        }
-    };
-    
-#else
-    
-    {
-        {
-            a,0,0,0,
-            0,b,0,0,
-            0,0,c,-1.0f,
-            0,0,d,0
-        }
-    };
-    
-#endif
+    matrix _rc4(0,0) = a;
+    matrix _rc4(1,1) = b;
+    matrix _rc4(2,2) = c;
+    matrix _rc4(3,2) = d;
+    matrix _rc4(2,3) = -1.0f;
     
     
 #ifdef DEBUG
@@ -671,38 +644,20 @@ Vector3 RotateVector(Vector3 vec,Vector3 rotation){
       
       {rotated x,  = {cos0 ,-sin0,  * {x,
       rotated y}      sin0,cos0}       y}
+      
+      TODO:since we are only rotating one point, we should optimize for this case here
     */
     
     
     //NOTE: This is not the most efficiet method. add 2x2 matrices
-    
     Matrix4b4 rot_matrix = RotationMatrix(rotation);
     
-    Matrix4b4 vec_matrix = 
+    Matrix4b4 vec_matrix = {};
     
-#if MATRIX_ROW_MAJOR
-    
-    {
-        {
-            vec.x,0,0,0,
-            vec.y,0,0,0,
-            vec.z,0,0,0,
-            1,0,0,0
-        }
-    };
-    
-#else
-    
-    {
-        {
-            vec.x,vec.y,vec.z,1,
-            0,0,0,0,
-            0,0,0,0,
-            0,0,0,0
-        }
-    };
-    
-#endif
+    vec_matrix _rc4(0,0) = vec.x;
+    vec_matrix _rc4(0,1) = vec.y;
+    vec_matrix _rc4(0,2) = vec.z;
+    vec_matrix _rc4(0,3) = 1.0f;
     
     Matrix4b4 ret_matrix = rot_matrix * vec_matrix;
     
@@ -1022,28 +977,21 @@ Matrix4b4 QuaternionToMatrix(Quaternion quaternion){
     f32 h = ((quaternion.y * quaternion.z) + (quaternion.w * quaternion.x)) * 2;
     f32 i = 1 - (2 * (squared.x + squared.y));
     
-    Matrix4b4 matrix =
+    Matrix4b4 matrix = {};
     
-#if MATRIX_ROW_MAJOR
+    matrix _rc4(0,0) = a;
+    matrix _rc4(1,0) = b;
+    matrix _rc4(2,0) = c;
     
+    matrix _rc4(0,1) = d;
+    matrix _rc4(1,1) = e;
+    matrix _rc4(2,1) = f;
     
-    {
-        a,b,c,0,
-        d,e,f,0,
-        g,h,i,0,
-        0,0,0,1,
-    };
+    matrix _rc4(0,2) = g;
+    matrix _rc4(1,2) = h;
+    matrix _rc4(2,2) = i;
     
-#else
-    
-    {
-        a,d,g,0,
-        b,e,h,0,
-        c,f,i,0,
-        0,0,0,1,
-    };
-    
-#endif
+    matrix _rc4(3,3) = 1.0f;
     
     return matrix;
 }
@@ -1262,31 +1210,14 @@ Vector2 Normalize(Vector2 a){
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj){
     
-    Matrix4b4 vertmat = 
+    //TODO:since we are only rotating one point, we should optimize for this case here
     
-#if MATRIX_ROW_MAJOR
+    Matrix4b4 vertmat = {};
     
-    {
-        {
-            pos.x,0,0,0,
-            pos.y,0,0,0,
-            pos.z,0,0,0,
-            1,0,0,0
-        }
-    };
-    
-#else
-    
-    {
-        {
-            pos.x,pos.y,pos.z,1,
-            0,0,0,0,
-            0,0,0,0,
-            0,0,0,0
-        }
-    };
-    
-#endif
+    vertmat _rc4(0,0) = pos.x;
+    vertmat _rc4(0,1) = pos.y;
+    vertmat _rc4(0,2) = pos.z;
+    vertmat _rc4(0,3) = 1.0f;
     
     auto mat = viewproj * vertmat;
     
@@ -1301,31 +1232,12 @@ Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj){
     
     auto inv_viewproj = Inverse(viewproj);
     
-    Matrix4b4 vertmat = 
+    Matrix4b4 vertmat = {};
     
-#if MATRIX_ROW_MAJOR
-    
-    {
-        {
-            pos.x,0,0,0,
-            pos.y,0,0,0,
-            pos.z,0,0,0,
-            pos.w,0,0,0
-        }
-    };
-    
-#else
-    
-    {
-        {
-            pos.x,pos.y,pos.z,pos.w,
-            0,0,0,0,
-            0,0,0,0,
-            0,0,0,0
-        }
-    };
-    
-#endif
+    vertmat _rc4(0,0) = pos.x;
+    vertmat _rc4(0,1) = pos.y;
+    vertmat _rc4(0,2) = pos.z;
+    vertmat _rc4(0,3) = pos.w;
     
     auto mat = inv_viewproj * vertmat;
     

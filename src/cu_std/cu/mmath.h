@@ -386,31 +386,11 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectration,f32 nearz,f32 farz);
 
 Matrix4b4 _ainline PositionMatrix(Vector3 position){
     
-    Matrix4b4 matrix = 
+    Matrix4b4 matrix = IdentityMatrix4b4();
     
-#if MATRIX_ROW_MAJOR
-    
-    {
-        {
-            1,0,0,position.x,
-            0,1,0,position.y,
-            0,0,1,position.z,
-            0,0,0,1
-        }
-    };
-    
-#else
-    
-    {
-        {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0,
-            position.x,position.y,position.z,1
-        }
-    };
-    
-#endif
+    matrix _rc4(3,0) = position.x;
+    matrix _rc4(3,1) = position.y;
+    matrix _rc4(3,2) = position.z;
     
     return matrix;
     
@@ -419,83 +399,35 @@ Matrix4b4 _ainline PositionMatrix(Vector3 position){
 
 Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
     
-#if MATRIX_ROW_MAJOR
-    
     f32 cosv = cosf(rotation.x);
     f32 sinv = sinf(rotation.x);
     
-    Matrix4b4 rotationx_matrix4b4 = {
-        {
-            1,0,0,0,
-            0,cosv,-sinv,0,
-            0,sinv,cosv,0,
-            0,0,0,1
-        }
-    };
+    Matrix4b4 rotationx_matrix4b4 = IdentityMatrix4b4();
+    
+    rotationx_matrix4b4 _rc4(1,1) = cosv;
+    rotationx_matrix4b4 _rc4(2,1) = -sinv;
+    rotationx_matrix4b4 _rc4(1,2) = sinv;
+    rotationx_matrix4b4 _rc4(2,2) = cosv;
     
     cosv = cosf(rotation.y);
     sinv = sinf(rotation.y);
     
-    Matrix4b4 rotationy_matrix4b4 = {
-        {
-            cosv,0,sinv,0,
-            0,1,0,0,
-            -sinv,0,cosv,0,
-            0,0,0,1
-        }
-    };
+    Matrix4b4 rotationy_matrix4b4 = IdentityMatrix4b4();
+    
+    rotationy_matrix4b4 _rc4(0,0) = cosv;
+    rotationy_matrix4b4 _rc4(2,0) = sinv;
+    rotationy_matrix4b4 _rc4(0,2) = -sinv;
+    rotationy_matrix4b4 _rc4(2,2) = cosv;
     
     cosv = cosf(rotation.z);
     sinv = sinf(rotation.z);
     
-    Matrix4b4 rotationz_matrix4b4 = {
-        {
-            cosv,-sinv,0,0,
-            sinv,cosv,0,0,
-            0,0,1,0,
-            0,0,0,1
-        }
-    };
+    Matrix4b4 rotationz_matrix4b4 = IdentityMatrix4b4();
     
-#else
-    
-    f32 cosv = cosf(rotation.x);
-    f32 sinv = sinf(rotation.x);
-    
-    Matrix4b4 rotationx_matrix4b4 = {
-        {
-            1,0,0,0,
-            0,cosv,sinv,0,
-            0,-sinv,cosv,0,
-            0,0,0,1
-        }
-    };
-    
-    cosv = cosf(rotation.y);
-    sinv = sinf(rotation.y);
-    
-    Matrix4b4 rotationy_matrix4b4 = {
-        {
-            cosv,0,-sinv,0,
-            0,1,0,0,
-            sinv,0,cosv,0,
-            0,0,0,1
-        }
-    };
-    
-    cosv = cosf(rotation.z);
-    sinv = sinf(rotation.z);
-    
-    Matrix4b4 rotationz_matrix4b4 = {
-        {
-            cosv,sinv,0,0,
-            -sinv,cosv,0,0,
-            0,0,1,0,
-            0,0,0,1
-        }
-    };
-    
-#endif
+    rotationz_matrix4b4 _rc4(0,0) = cosv;
+    rotationz_matrix4b4 _rc4(1,0) = -sinv;
+    rotationz_matrix4b4 _rc4(0,1) = sinv;
+    rotationz_matrix4b4 _rc4(1,1) = cosv;
     
     return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
 }
