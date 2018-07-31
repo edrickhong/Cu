@@ -56,6 +56,16 @@ s32 main(s32 argc,s8** argv){
         
         if(isModel(a,b,c)){
             
+#if MATRIX_ROW_MAJOR
+            
+            printf("operating in matrix ROW major!\n");
+            
+#else
+            
+            printf("operating in matrix COLUMN major!\n");
+            
+#endif
+            
             auto assimp = AssimpLoad(string);
             
             string[len - 3] = 'm';

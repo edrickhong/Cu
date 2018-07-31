@@ -61,7 +61,20 @@ void FileReadAnimation(FileHandle file,void* data,u32* count,u32 animcount){
 
 void FileReadAnimBoneLinear(FileHandle file,void* data,u32* count,u32 bonecount,
                             u32 animsetcount,ALinearBone** root_linearskeleton,
-                            u32* bone_count){//MARK:the last bone count seems redundant
+                            u32* bone_count){
+    
+#if MATRIX_ROW_MAJOR
+    
+    _kill("asset matrix layout is incompatible (Asset is COLUMN major)\n",
+          (bonecount & (1 << 31)));
+    
+#else
+    
+    _kill("asset matrix layout is incompatible (Asset is ROW major)\n",!(bonecount & (1 << 31)));
+    
+    bonecount = _removesignedbit(bonecount);
+    
+#endif
     
     auto data_count = *count;
     auto data_ptr = (s8*)data;

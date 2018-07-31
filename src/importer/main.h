@@ -821,7 +821,14 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
         auto node_index = InternalFindIndex(bone->mName.data,*bonenodelist);
         auto bonenode = &(*bonenodelist)[node_index];
         
+        
         memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Matrix4b4));
+        
+#if !MATRIX_ROW_MAJOR
+        
+        bonenode->offset = Transpose(bonenode->offset);
+        
+#endif
         
         for(u32 j = 0; j < bone->mNumWeights;j++){
             
@@ -874,6 +881,12 @@ void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
     //default bone transform. some nodes aren't bound to vertices but are still needed for correct transform
     memcpy(&bonenode.offset,&(node->mTransformation),sizeof(Matrix4b4));
+    
+#if !MATRIX_ROW_MAJOR
+    
+    bonenode.offset = Transpose(bonenode.offset);
+    
+#endif
     
     bonenodelist->PushBack(bonenode);
     
@@ -1351,6 +1364,16 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 
                 header = _encode('B','L','I','N');
                 datasize = data.bone_count;
+                
+                _kill("too many bones (signed bit is reserved)\n",
+                      (datasize & (1 << 31)));
+                
+                //we top bit indicates column major if it is set
+#if !MATRIX_ROW_MAJOR
+                
+                datasize = _addsignedbit(datasize);
+                
+#endif
                 
 #if _print_log
                 
