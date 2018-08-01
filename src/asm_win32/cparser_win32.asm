@@ -34,11 +34,11 @@ _DATA ENDS
 	mov qword ptr r8,[rax + 10h]
 	mov qword ptr r9,[rax + 18h]
 
-	movss ptr xmm0,[rax + 20h]
-	movss ptr xmm1,[rax + 28h]
+	movss xmm0,[rax + 20h]
+	movss xmm1,[rax + 28h]
 
-	movss ptr xmm2,[rax + 30h]
-	movss ptr xmm3,[rax + 38h]
+	movss xmm2,[rax + 30h]
+	movss xmm3,[rax + 38h]
 
 	mov qword ptr r10,[rsp + 30h]
 	call r10
