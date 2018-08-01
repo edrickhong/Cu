@@ -29,23 +29,16 @@ _DATA ENDS
 	;; load values
 	mov rax,rdx
 	
-	 mov qword ptr rcx,[rax]
-	 mov qword ptr rdx,[rax + 8h]
-	 mov qword ptr r8,[rax + 10h]
-	 mov qword ptr r9,[rax + 18h]
+	mov qword ptr rcx,[rax]
+	mov qword ptr rdx,[rax + 8h]
+	mov qword ptr r8,[rax + 10h]
+	mov qword ptr r9,[rax + 18h]
 
-	 mov qword ptr r10,[rax + 20h]
-	 mov qword ptr r11,[rax + 28h]
+	movss ptr xmm0,[rax + 20h]
+	movss ptr xmm1,[rax + 28h]
 
-	
-	movq xmm0,r10
-	movq xmm1,r11
-
-	mov qword ptr r10,[rax + 30h]
-	mov qword ptr r11,[rax + 38h]
-
-	movq xmm2,r10
-	movq xmm3,r11
+	movss ptr xmm2,[rax + 30h]
+	movss ptr xmm3,[rax + 38h]
 
 	mov qword ptr r10,[rsp + 30h]
 	call r10

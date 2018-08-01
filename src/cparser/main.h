@@ -1325,15 +1325,14 @@ InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_val
         "movq %[a2],%%rsi\n"
         "movq %[a3],%%rdx\n"
         "movq %[a4],%%rcx\n"
-        "movq %[a7],%%xmm0\n"
-        "movq %[a8],%%xmm1\n"
-        "movq %[a9],%%xmm2\n"
-        "movq %[a10],%%xmm3\n"
+        "movss %[a7],%%xmm0\n"
+        "movss %[a8],%%xmm1\n"
+        "movss %[a9],%%xmm2\n"
+        "movss %[a10],%%xmm3\n"
         
         "callq *%[c]\n"
         "movq %%rax,%[r1]\n"
-        "movq %%xmm0,%%rax\n"
-        "movq %%rax,%[r2]\n":[r1] "=g"(ret_value),[r2] "=g"(fret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
+        "movss %%xmm0,%[r2]\n":[r1] "=g"(ret_value),[r2] "=g"(fret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
         );
         
 #endif
