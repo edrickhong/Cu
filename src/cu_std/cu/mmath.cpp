@@ -56,6 +56,107 @@ void InternalCmpMatrix(f32* f1,f32* f2){
 
 #endif
 
+Matrix2b2 operator+(Matrix2b2 lhs,Matrix2b2 rhs){
+    
+    Matrix2b2 matrix;
+    
+    matrix.simd = _addsimd4f(lhs.simd,rhs.simd);
+    
+    return matrix;
+}
+
+
+Matrix2b2 operator-(Matrix2b2 lhs,Matrix2b2 rhs){
+    
+    Matrix2b2 matrix;
+    
+    matrix.simd = _subsimd4f(lhs.simd,rhs.simd);
+    
+    return matrix;
+    
+}
+
+
+
+Matrix2b2 operator*(f32 lhs,Matrix2b2 rhs){
+    
+    Matrix2b2 matrix;
+    simd4f k = _setksimd4f(lhs);
+    
+    matrix.simd = _mulsimd4f(rhs.simd,k);
+    
+    return matrix;
+}
+
+Matrix2b2 operator*(Matrix2b2 lhs,f32 rhs){
+    return rhs * lhs;
+}
+
+
+Matrix2b2 Transpose(Matrix2b2 matrix){
+    
+    matrix.simd = _shufflesimd4f(matrix.simd,matrix.simd,_MM_SHUFFLE(3,1,2,0));
+    
+    return matrix;
+}
+
+Matrix2b2 operator*(Matrix2b2 lhs,Matrix2b2 rhs){
+    
+    Matrix2b2 matrix = {};
+    
+#if MATRIX_ROW_MAJOR
+    
+    rhs = Transpose(rhs);
+    
+#else
+    
+    lhs = Transpose(lhs);
+    
+#endif
+    
+    simd4f a = _mulsimd4f(lhs.simd,rhs.simd);
+    
+    rhs.simd = _shufflesimd4f(rhs.simd,rhs.simd,_MM_SHUFFLE(1,0,3,2));
+    
+    simd4f b = _mulsimd4f(lhs.simd,rhs.simd);
+    
+    
+    
+    
+    simd4f c = _shufflesimd4f(a,b,_MM_SHUFFLE(1,3,3,0));
+    c = _shufflesimd4f(c,c,_MM_SHUFFLE(1,2,3,0));
+    
+    
+    simd4f d = _shufflesimd4f(a,b,_MM_SHUFFLE(0,2,2,1));
+    d = _shufflesimd4f(d,d,_MM_SHUFFLE(1,2,3,0));
+    
+    matrix.simd = _addsimd4f(c,d);
+    
+    return matrix;
+}
+
+Matrix2b2 Inverse(Matrix2b2 matrix){
+    
+    f32 a = matrix _rc2(0,0);
+    f32 b = matrix _rc2(1,0);
+    f32 c = matrix _rc2(0,1);
+    f32 d = matrix _rc2(1,1);
+    
+    f32 k = 1.0f/((a * d) - (b * c));
+    
+    matrix _rc2(0,0) = d;
+    matrix _rc2(1,0) = -b;
+    matrix _rc2(0,1) = -c;
+    matrix _rc2(1,1) = a;
+    
+    return matrix * k;
+}
+
+Matrix2b2 operator/(Matrix2b2 lhs,Matrix2b2 rhs){
+    
+    return lhs * Inverse(rhs);
+}
+
 Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs){
     
     Matrix4b4 matrix;

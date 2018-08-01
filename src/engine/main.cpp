@@ -19,6 +19,14 @@ _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 s32 main(s32 argc,s8** argv){
     
+    Matrix2b2 a = {1,2,3,4};
+    
+    Matrix2b2 b = {5,6,7,8};
+    
+    auto c = a * b;
+    
+    return 0;
+    
 #if  0
     
 #ifdef _WIN32

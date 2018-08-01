@@ -365,6 +365,15 @@ Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs);
 Matrix4b4 Transpose(Matrix4b4 matrix);
 Matrix4b4 Inverse(Matrix4b4 matrix);
 
+Matrix2b2 operator+(Matrix2b2 lhs,Matrix2b2 rhs);
+Matrix2b2 operator-(Matrix2b2 lhs,Matrix2b2 rhs);
+Matrix2b2 operator*(Matrix2b2 lhs,Matrix2b2 rhs);
+Matrix2b2 operator*(f32 lhs,Matrix2b2 rhs);
+Matrix2b2 operator*(Matrix2b2 lhs,f32 rhs);
+Matrix2b2 operator/(Matrix2b2 lhs,Matrix2b2 rhs);
+Matrix2b2 Transpose(Matrix2b2 matrix);
+Matrix2b2 Inverse(Matrix2b2 matrix);
+
 
 //conversions
 Matrix4b4 QuaternionToMatrix(Quaternion quaternion);
