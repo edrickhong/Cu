@@ -47,7 +47,7 @@ file(GLOB CPARSER src/cparser/main.cpp)
 file(GLOB ENGINE src/engine/main.cpp)
 file(GLOB ASSETPACKER src/assetpacker/main.cpp)
 file(GLOB GAME src/game/game.cpp)
-file(GLOB CU_STD src/cu_std/cu/main.cpp)
+file(GLOB CU_STD src/cu_std/cu/gui_bin.cpp src/cu_std/cu/main.cpp)
 
 GenAndInstallAdditionalDep()
 

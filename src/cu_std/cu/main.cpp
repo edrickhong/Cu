@@ -20,8 +20,6 @@
 #include "aanimation.cpp"
 //debug timer
 #include "debugtimer.cpp"
-//gui
-#include "gui_draw.cpp"
 //math
 #include "mmath.cpp"
 //parse
@@ -32,3 +30,6 @@
 
 //vulkan
 #include "vvulkan.cpp"
+
+//gui
+#include "gui_draw.cpp"

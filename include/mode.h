@@ -5,7 +5,6 @@
 
 //MARK: this should be tied to shaders as well
 
-#define _ignore_driver 1
 #define _row_major 1
 
 

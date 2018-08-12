@@ -57,7 +57,7 @@ set(CMAKE_CXX_FLAGS  ${FLAGS})
 #disable wayland extensions. don't need it for ci tests
 add_definitions(-DNO_WAYLAND_EXTENSIONS)
 
-file(GLOB CU_STD src/cu_std/cu/main.cpp)
+file(GLOB CU_STD src/cu_std/cu/gui_bin.cpp src/cu_std/cu/main.cpp)
 
 set(ASSIMP_LIB "${CMAKE_BINARY_DIR}/../extlib/libassimp.so.4")
 

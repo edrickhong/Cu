@@ -3283,7 +3283,6 @@ void VGetPipelineCacheData(const VDeviceContext* _in_ vdevice,VkPipelineCache ca
 }
 
 
-//TODO: allow filtering out presentable devices only
 void VEnumeratePhysicalDevices(VkPhysicalDevice* array,u32* count,WWindowContext* window){
     
     u32 c = 0;
@@ -3362,15 +3361,10 @@ void VEnumeratePhysicalDevices(VkPhysicalDevice* array,u32* count,WWindowContext
                     
                     present_support = vkGetPhysicalDeviceXlibPresentationSupportKHR(d,famindex,(Display*)window->handle,window->x11_visualid);
                     
-#if _ignore_driver
                     
-                    printf("x11 present support %d\n",present_support);
-                    
-#endif
                 }
 #endif
-                //FIMXE: work around driver bug
-                if(present_support || _ignore_driver){
+                if(present_support){
                     
                     if(array){
                         array[c] = d;

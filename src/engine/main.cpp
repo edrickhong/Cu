@@ -19,9 +19,17 @@ _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 s32 main(s32 argc,s8** argv){
     
-    Matrix2b2 a = {1,2,3,4};
+    Matrix3b3 a = {
+        0,1,2,
+        3,4,5,
+        6,7,8,
+    };
     
-    Matrix2b2 b = {5,6,7,8};
+    Matrix3b3 b = {
+        9,10,11,
+        12,13,14,
+        15,16,17,
+    };
     
     auto c = a * b;
     
