@@ -73,6 +73,10 @@ struct simd4f{
         return k[i];
     }
     
+    operator __m128(){
+        return a;
+    }
+    
 };
 
 struct simd2f{
@@ -83,6 +87,10 @@ struct simd2f{
         
         auto k = (f32*)&a;
         return k[i];
+    }
+    
+    operator __m64(){
+        return a;
     }
 };
 
