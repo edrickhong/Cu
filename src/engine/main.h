@@ -520,6 +520,11 @@ void _ainline GetCmdBufferArray(RenderContext* context,
         count += context->rendergroup[i].cmdbufferlist.count;
     }
     
+    //NOTE: Handles the case where there are no cmdbuffers
+    if(!count){
+        return;
+    }
+    
     auto cmdbuffers = TAlloc(VkCommandBuffer,count);
     
     count = 0;
@@ -835,7 +840,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
         ThisThreadExecuteRenderBatch(context,&pdata->drawcmdbuffer);
     }
     
-    VkCommandBuffer* cmdbuffers;
+    VkCommandBuffer* cmdbuffers = 0;
     u32 cmdbuffers_count = 0;
     
     
@@ -844,7 +849,11 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     _vthreaddump("cmdbufferlistcount %d\n",cmdbuffers_count);
     
-    vkCmdExecuteCommands(cmdbuffer,cmdbuffers_count,cmdbuffers);
+    if(cmdbuffers_count){
+        vkCmdExecuteCommands(cmdbuffer,cmdbuffers_count,cmdbuffers);
+    }
+    
+    
     
     VEndRenderPass(cmdbuffer);
     

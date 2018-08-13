@@ -159,6 +159,8 @@ void DebugPrintMallocEntry(u32 i){
 
 void* DebugMalloc(size_t size,const s8* file,const s8* function,u32 line){
     
+    _kill("alloc size cannot be 0\n",!size);
+    
     auto ptr = malloc(size);
     DebugSubmitMalloc(ptr,size,file,function,line);
     
@@ -172,6 +174,8 @@ void DebugFree(void* ptr){
 
 
 void* DebugRealloc(void* old_ptr,size_t size,const s8* file,const s8* function,u32 line){
+    
+    _kill("alloc size cannot be 0\n",!size);
     
     for(u32 i = 0; i < alloc_context->malloc_count; i++){
         
@@ -197,6 +201,8 @@ void* DebugRealloc(void* old_ptr,size_t size,const s8* file,const s8* function,u
 }
 
 void* DebugTAlloc(u32 size,const s8* file,const s8* function,u32 line){
+    
+    _kill("alloc size cannot be 0\n",!size);
     
     auto ptr = TAlloc(size);
     
