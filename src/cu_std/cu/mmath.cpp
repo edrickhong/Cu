@@ -304,17 +304,17 @@ Matrix3b3 operator*(Matrix3b3 lhs,Matrix3b3 rhs){
     
     //NOTE: god I hope the compiler reorders this
     
-    matrix _rc3(0,0) = h[0] + h[1] + h[2];
-    matrix _rc3(1,0) = i[0] + i[1] + i[2];
-    matrix _rc3(2,0) = j[0] + j[1] + j[2];
+    matrix _rc3(0,0) = ((f32*)&h)[0] + ((f32*)&h)[1] + ((f32*)&h)[2];
+    matrix _rc3(1,0) = ((f32*)&i)[0] + ((f32*)&i)[1] + ((f32*)&i)[2];
+    matrix _rc3(2,0) = ((f32*)&j)[0] + ((f32*)&j)[1] + ((f32*)&j)[2];
     
-    matrix _rc3(0,1) = j[3] + k[0] + k[1];
-    matrix _rc3(1,1) = h[3] + l[0] + l[1];
-    matrix _rc3(2,1) = i[3] + m[0] + m[1];
+    matrix _rc3(0,1) = ((f32*)&j)[3] + ((f32*)&k)[0] + ((f32*)&k)[1];
+    matrix _rc3(1,1) = ((f32*)&h)[3] + ((f32*)&l)[0] + ((f32*)&l)[1];
+    matrix _rc3(2,1) = ((f32*)&i)[3] + ((f32*)&m)[0] + ((f32*)&m)[1];
     
-    matrix _rc3(0,2) = m[2] + m[3] + o[0];
-    matrix _rc3(1,2) = k[2] + k[3] + o[1];
-    matrix _rc3(2,2) = l[2] + l[3] + o[2];
+    matrix _rc3(0,2) = ((f32*)&m)[2] + ((f32*)&m)[3] + ((f32*)&o)[0];
+    matrix _rc3(1,2) = ((f32*)&k)[2] + ((f32*)&k)[3] + ((f32*)&o)[1];
+    matrix _rc3(2,2) = ((f32*)&l)[2] + ((f32*)&l)[3] + ((f32*)&o)[2];
     
     return matrix;
     
