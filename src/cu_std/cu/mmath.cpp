@@ -1,3 +1,5 @@
+//TODO: I actually don't know if inverse works in column major
+
 
 #define _test_matrices 1
 
@@ -50,6 +52,49 @@ void InternalCmpMatrix(f32* f1,f32* f2){
         
     }
     
+}
+
+void _ainline GetMinorMatrix(f32* in_matrix,u32 n,u32 k_x,u32 k_y,f32* out_matrix){
+    
+    u32 index = 0;
+    
+    for(u32 y = 0; y < n; y++){
+        
+        for(u32 x = 0; x < n; x++){
+            
+            if(y != k_y && x != k_x){
+                out_matrix[index] = in_matrix[(y * n) + x];
+                index++;
+            }
+            
+        }
+        
+    }
+    
+}
+
+Matrix4b4 CompMul(Matrix4b4 a,Matrix4b4 b){
+    
+    Matrix4b4 matrix;
+    
+    for(u32 i = 0; i < 4; i++){
+        matrix.simd[i] = _mulsimd4f(a.simd[i],b.simd[i]);
+    }
+    
+    
+    return matrix;
+}
+
+Matrix3b3 CompMul(Matrix3b3 a,Matrix3b3 b){
+    
+    Matrix3b3 matrix;
+    
+    matrix.simd[0] = _mulsimd4f(a.simd[0],b.simd[0]);
+    matrix.simd[1] = _mulsimd4f(a.simd[1],b.simd[1]);
+    matrix.k = a.k * b.k;
+    
+    
+    return matrix;
 }
 
 #endif
@@ -156,6 +201,177 @@ Matrix2b2 operator/(Matrix2b2 lhs,Matrix2b2 rhs){
     
     return lhs * Inverse(rhs);
 }
+
+
+
+
+Matrix3b3 operator+(Matrix3b3 lhs,Matrix3b3 rhs){
+    
+    lhs.simd[0] = _addsimd4f(lhs.simd[0],rhs.simd[0]);
+    lhs.simd[1] = _addsimd4f(lhs.simd[1],rhs.simd[1]);
+    lhs.k = lhs.k + rhs.k;
+    
+    return lhs;
+}
+
+Matrix3b3 operator-(Matrix3b3 lhs,Matrix3b3 rhs){
+    
+    lhs.simd[0] = _subsimd4f(lhs.simd[0],rhs.simd[0]);
+    lhs.simd[1] = _subsimd4f(lhs.simd[1],rhs.simd[1]);
+    lhs.k = lhs.k - rhs.k;
+    
+    return lhs;
+    
+}
+
+Matrix3b3 operator*(f32 lhs,Matrix3b3 rhs){
+    
+    simd4f k = _setksimd4f(lhs);
+    
+    rhs.simd[0]= _mulsimd4f(rhs.simd[0],k);
+    rhs.simd[1]= _mulsimd4f(rhs.simd[1],k);
+    rhs.k = rhs.k * lhs;
+    
+    return rhs;
+}
+
+Matrix3b3 operator*(Matrix3b3 lhs,f32 rhs){
+    return rhs * lhs;
+}
+
+Matrix3b3 Transpose(Matrix3b3 matrix){
+    
+    auto a = matrix.simd[0];
+    auto b = matrix.simd[1];
+    
+    auto c = _shufflesimd4f(a,b,_MM_SHUFFLE(3,0,3,0));
+    auto d = _shufflesimd4f(a,b,_MM_SHUFFLE(2,1,2,1));
+    
+    matrix.simd[0] = _shufflesimd4f(c,d,_MM_SHUFFLE(0,3,1,0));
+    matrix.simd[1] = _shufflesimd4f(c,d,_MM_SHUFFLE(2,1,3,2));
+    
+    return matrix;
+}
+
+Matrix3b3 operator*(Matrix3b3 lhs,Matrix3b3 rhs){
+    
+    Matrix3b3 matrix = {};
+    
+    
+#if MATRIX_ROW_MAJOR
+    
+    rhs = Transpose(rhs);
+    
+#else
+    
+    lhs = Transpose(lhs);
+    
+#endif
+    
+    simd4f a = rhs.simd[0];
+    
+    simd4f b = _shufflesimd4f(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(2,1,0,3));
+    b[0] = a[3];
+    
+    
+    simd4f c = _shufflesimd4f(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(0,0,3,2));
+    c[2] = rhs.k;
+    c[3] = a[0];
+    
+    simd4f d = _shufflesimd4f(rhs.simd[0],rhs.simd[0],_MM_SHUFFLE(0,3,2,1));
+    d[3] = rhs.simd[1][0];
+    
+    simd4f e = rhs.simd[1];
+    
+    simd4f f = _shufflesimd4f(rhs.simd[1],rhs.simd[0],_MM_SHUFFLE(1,0,0,3));
+    f[1] = rhs.k;
+    
+    simd4f g = {rhs.simd[0][2],rhs.simd[1][1],rhs.k};
+    
+    
+    
+    auto h = _mulsimd4f(lhs.simd[0],a);
+    auto i = _mulsimd4f(lhs.simd[0],b);
+    auto j = _mulsimd4f(lhs.simd[0],c);
+    
+    auto k = _mulsimd4f(lhs.simd[1],d);
+    auto l = _mulsimd4f(lhs.simd[1],e);
+    auto m = _mulsimd4f(lhs.simd[1],f);
+    
+    auto n = _setksimd4f(lhs.k);
+    
+    auto o = _mulsimd4f(n,g);
+    
+    //NOTE: god I hope the compiler reorders this
+    
+    matrix _rc3(0,0) = h[0] + h[1] + h[2];
+    matrix _rc3(1,0) = i[0] + i[1] + i[2];
+    matrix _rc3(2,0) = j[0] + j[1] + j[2];
+    
+    matrix _rc3(0,1) = j[3] + k[0] + k[1];
+    matrix _rc3(1,1) = h[3] + l[0] + l[1];
+    matrix _rc3(2,1) = i[3] + m[0] + m[1];
+    
+    matrix _rc3(0,2) = m[2] + m[3] + o[0];
+    matrix _rc3(1,2) = k[2] + k[3] + o[1];
+    matrix _rc3(2,2) = l[2] + l[3] + o[2];
+    
+    return matrix;
+    
+}
+
+Matrix3b3 Inverse(Matrix3b3 matrix){
+    
+    //see Inverse(Matrix4b4)
+    
+    f32 first_row[] = {
+        matrix _ac3(0,0),matrix _ac3(1,0),matrix _ac3(2,0)
+    };
+    
+    Matrix3b3 adj_matrix = {};
+    
+    for(u32 y = 0; y < 3; y++){
+        
+        for(u32 x = 0; x < 3; x++){
+            
+            Matrix2b2 minormatrix = {};
+            
+            GetMinorMatrix((f32*)&matrix[0],3,x,y,(f32*)&minormatrix);
+            
+            f32 a = minormatrix _rc2(0,0);
+            f32 b = minormatrix _rc2(1,0);
+            f32 c = minormatrix _rc2(0,1);
+            f32 d = minormatrix _rc2(1,1);
+            
+            adj_matrix _ac3(x,y) = ((a * d) - (b * c));
+        }
+        
+    }
+    
+    Matrix3b3 checkerboard_matrix = {
+        1,-1,1,
+        -1,1,-1,
+        1,-1,1,
+    };
+    
+    adj_matrix = CompMul(adj_matrix,checkerboard_matrix);
+    
+    f32 det = 0;
+    
+    for(u32 i = 0; i < 3; i++){
+        det += first_row[i] * adj_matrix _ac3(i,0);
+    }
+    
+    adj_matrix = (1.0f/det) * Transpose(adj_matrix);
+    
+    return adj_matrix;
+}
+
+Matrix3b3 operator/(Matrix3b3 lhs,Matrix3b3 rhs){
+    return lhs * Inverse(rhs);
+}
+
+
 
 Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs){
     
@@ -750,7 +966,7 @@ Vector3 RotateVector(Vector3 vec,Vector3 rotation){
     */
     
     
-    //NOTE: This is not the most efficiet method. add 2x2 matrices
+    //NOTE: This is not the most efficiet method. add 3x3 matrices
     Matrix4b4 rot_matrix = RotationMatrix(rotation);
     
     Matrix4b4 vec_matrix = {};
@@ -818,37 +1034,6 @@ void PrintVector2(Vector2 vec){
 
 void PrintQuaternion(Quaternion vec){
     printf("%f   %f   %f   %f\n",vec.w,vec.x,vec.y,vec.z);
-}
-
-Matrix4b4 CompMul(Matrix4b4 a,Matrix4b4 b){
-    
-    Matrix4b4 matrix;
-    
-    for(u32 i = 0; i < 4; i++){
-        matrix.simd[i] = _mulsimd4f(a.simd[i],b.simd[i]);
-    }
-    
-    
-    return matrix;
-}
-
-void _ainline GetMinorMatrix(f32* in_matrix,u32 n,u32 k_x,u32 k_y,f32* out_matrix){
-    
-    u32 index = 0;
-    
-    for(u32 y = 0; y < n; y++){
-        
-        for(u32 x = 0; x < n; x++){
-            
-            if(y != k_y && x != k_x){
-                out_matrix[index] = in_matrix[(y * n) + x];
-                index++;
-            }
-            
-        }
-        
-    }
-    
 }
 
 

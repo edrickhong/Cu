@@ -61,8 +61,37 @@
 
 #define _clamp(x, upper, lower) (fmin(upper, fmax(x, lower)))
 
+#ifdef _WIN32
+
+struct simd4f{
+    
+    __m128 a;
+    
+    f32& operator[](ptrsize i){
+        
+        auto k = (f32*)&a;
+        return k[i];
+    }
+    
+};
+
+struct simd2f{
+    
+    __m64 a;
+    
+    f32& operator[](ptrsize i){
+        
+        auto k = (f32*)&a;
+        return k[i];
+    }
+};
+
+#else
+
 typedef __m128 simd4f;
 typedef __m64 simd2f;
+
+#endif
 
 #define _setksimd4f _mm_set1_ps
 
@@ -187,6 +216,7 @@ union Matrix4b4{
 }_align(16);
 
 
+//NOTE: do we want to use simd for 3b3
 union Matrix3b3{
     f32 container[9];
     
@@ -364,6 +394,15 @@ Matrix4b4 operator*(Matrix4b4 lhs,f32 rhs);
 Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs);
 Matrix4b4 Transpose(Matrix4b4 matrix);
 Matrix4b4 Inverse(Matrix4b4 matrix);
+
+Matrix3b3 operator+(Matrix3b3 lhs,Matrix3b3 rhs);
+Matrix3b3 operator-(Matrix3b3 lhs,Matrix3b3 rhs);
+Matrix3b3 operator*(Matrix3b3 lhs,Matrix3b3 rhs);
+Matrix3b3 operator*(f32 lhs,Matrix3b3 rhs);
+Matrix3b3 operator*(Matrix3b3 lhs,f32 rhs);
+Matrix3b3 operator/(Matrix3b3 lhs,Matrix3b3 rhs);
+Matrix3b3 Transpose(Matrix3b3 matrix);
+Matrix3b3 Inverse(Matrix3b3 matrix);
 
 Matrix2b2 operator+(Matrix2b2 lhs,Matrix2b2 rhs);
 Matrix2b2 operator-(Matrix2b2 lhs,Matrix2b2 rhs);
