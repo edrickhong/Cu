@@ -668,7 +668,7 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
     
     for(u32 i = 0; i < scene->mNumAnimations;i++){
         
-        AssimpAnimation animation;
+        AssimpAnimation animation = {};
         aiAnimation* anim = scene->mAnimations[i];
         
         animation.data_count = anim->mNumChannels;
@@ -679,9 +679,11 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
         
         u32 len = strlen(anim->mName.data);
         
-        animation.name = (s8*)alloc(len);
-        
-        memcpy(animation.name,anim->mName.data,len);
+        if(len){
+            
+            animation.name = (s8*)alloc(len);
+            memcpy(animation.name,anim->mName.data,len);
+        }
         
         animation.data =
             (AssimpAnimationData*)alloc(anim->mNumChannels * sizeof(AssimpAnimationData));
