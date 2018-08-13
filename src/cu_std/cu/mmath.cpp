@@ -271,22 +271,22 @@ Matrix3b3 operator*(Matrix3b3 lhs,Matrix3b3 rhs){
     simd4f a = rhs.simd[0];
     
     simd4f b = _shufflesimd4f(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(2,1,0,3));
-    b[0] = a[3];
+    ((f32*)&b)[0] = ((f32*)&a)[3];
     
     
     simd4f c = _shufflesimd4f(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(0,0,3,2));
-    c[2] = rhs.k;
-    c[3] = a[0];
+    ((f32*)&c)[2] = rhs.k;
+    ((f32*)&c)[3] = ((f32*)&a)[0];
     
     simd4f d = _shufflesimd4f(rhs.simd[0],rhs.simd[0],_MM_SHUFFLE(0,3,2,1));
-    d[3] = rhs.simd[1][0];
+    ((f32*)&d)[3] = ((f32*)&rhs.simd[1])[0];
     
     simd4f e = rhs.simd[1];
     
     simd4f f = _shufflesimd4f(rhs.simd[1],rhs.simd[0],_MM_SHUFFLE(1,0,0,3));
-    f[1] = rhs.k;
+    ((f32*)&f)[1] = rhs.k;
     
-    simd4f g = {rhs.simd[0][2],rhs.simd[1][1],rhs.k};
+    simd4f g = {((f32*)&rhs.simd[0])[2],((f32*)&rhs.simd[1])[1],rhs.k};
     
     
     

@@ -61,45 +61,8 @@
 
 #define _clamp(x, upper, lower) (fmin(upper, fmax(x, lower)))
 
-#ifdef _WIN32
-
-struct simd4f{
-    
-    __m128 a;
-    
-    f32& operator[](ptrsize i){
-        
-        auto k = (f32*)&a;
-        return k[i];
-    }
-    
-    operator __m128(){
-        return a;
-    }
-    
-};
-
-struct simd2f{
-    
-    __m64 a;
-    
-    f32& operator[](ptrsize i){
-        
-        auto k = (f32*)&a;
-        return k[i];
-    }
-    
-    operator __m64(){
-        return a;
-    }
-};
-
-#else
-
 typedef __m128 simd4f;
 typedef __m64 simd2f;
-
-#endif
 
 #define _setksimd4f _mm_set1_ps
 
