@@ -439,7 +439,6 @@ enum GUIType{
 #define _reserve_count 1024 * 4
 
 
-//TODO: remove the index buffer, we never reuse anyway
 struct GUIContext{
     
     GUIFont* default_font;
@@ -1442,13 +1441,15 @@ void GUIString(const s8* string){
 
 void GUIInternalEndWindow(){
     
-#if 0
+#if 1
     
     auto sub = &gui->submit_array[gui->submit_count - 1];
     
 #else
     
-    //    _kill("TODO: implement this\n",1);
+#error implement this
+    
+    _kill("TODO: implement this\n",1);
     
 #endif
     

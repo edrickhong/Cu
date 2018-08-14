@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mode.h"
+
 #include "wwindow.h"
 
 #include "aaudio.h"
@@ -8,7 +10,6 @@
 #include "kkeycode.h"
 #include "debugtimer.h"
 #include "ssys.h"
-#include "mode.h"
 #include "tthread.h"
 #include "ffileio.h"
 #include "libload.h"
@@ -28,13 +29,11 @@
 
 /*
   TODO:
-  Change the multithreaded renderer. it is a mess rn
+  See if we can make render jobs just regular thread jobs
   
   NOTE: stb_vorbis_decode_filename("somefile.ogg", &channels, &sample_rate, &output);
 */
 
-
-//TODO: Make this easier to log with
 
 #ifdef DEBUG
 

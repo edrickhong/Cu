@@ -394,3 +394,31 @@ void _ainline PExtractScopeC(s8* scope_buffer,s8* buffer,u32* a){
     
     *a = count;
 }
+
+enum CParseTags{
+    TAG_SYMBOL = 0,
+    TAG_CTYPE,
+    TAG_STRUCT,
+    TAG_KEY,
+    TAG_VALUE,
+    TAG_START_ARG,
+    TAG_END_ARG,
+    TAG_ENUM,
+    TAG_UNION,
+    TAG_INDIR,
+    TAG_ASSIGN,
+    
+    TAG_START_SQUARE,
+    TAG_END_SQUARE,
+    TAG_START_CURLY,
+    TAG_END_CURLY,
+    
+    TAG_DOUBLE_QUOTE,
+};
+
+struct EvalChar{
+    u64 hash;
+    s8 string[128] = {};
+    
+    u32 tag;
+};

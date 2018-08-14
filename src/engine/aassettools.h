@@ -6,6 +6,8 @@
 #include "aanimation.h"
 #include "aallocator.h"
 
+#include "spx_common.h"
+
 #define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
 
 /*NOTE: All loading functions are considered obsolete and will not be used in the main 
@@ -245,39 +247,6 @@ TDFHeader GetHeaderInfoTDF(const s8* filepath);
 void GetTileDataTDF(FileHandle file,u32 w,u32 h,u32 t_x,u32 t_y,u32 mip,f32 bpp,void* data);
 
 /* MARK:These are from glslparser::main.cpp::GenerateShaderTable */
-
-struct VertexEntry{
-    VkFormat format;
-    u32 size;
-};
-
-struct DescEntry{
-    VkDescriptorType type;
-    u32 set;
-    u32 bind;
-    u32 array_count;
-};
-
-struct PushConstEntry{
-    VkFormat format;
-};
-
-struct VertexLayout{
-    VertexEntry entry_array[16];
-    u16 entry_count = 0;
-    u16 size;
-};
-
-struct DescLayout{
-    DescEntry entry_array[16];
-    u32 entry_count = 0;
-};
-
-struct PushConstLayout{
-    PushConstEntry entry_array[16];
-    u16 entry_count = 0;
-    u16 size;
-};
 
 struct SPXData{
     //meta data

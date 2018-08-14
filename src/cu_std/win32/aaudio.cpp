@@ -2,11 +2,6 @@
 #include "aaudio.h"
 #include "aallocator.h"
 
-/*
-  TODO: replace this with WASAPI instead
-  https://msdn.microsoft.com/en-us/library/windows/desktop/dd316756(v=vs.85).aspx
-*/
-
 _persist bool audio_initialized;
 
 #define COBJMACROS

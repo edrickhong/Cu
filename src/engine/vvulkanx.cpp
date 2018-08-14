@@ -79,7 +79,7 @@ void DebugCompareSet(VShaderObj::DescSetEntry* set,DescEntry* entry){
         auto el = &set->element_array[i];
         
         if(el->binding_no == entry->bind){
-            _kill("elements do not match\n",(el->type != entry->type) || (el->array_count != entry->array_count));
+            _kill("elements do not match\n",(el->type != entry->type) || (el->array_count != entry->total_count));
             return;
         }
     }
@@ -89,7 +89,7 @@ void DebugCompareSet(VShaderObj::DescSetEntry* set,DescEntry* entry){
 
 
 void _ainline SetAddElement(VShaderObj::DescSetEntry* set,DescEntry* entry){
-    VPushBackSetElement(set,entry->type,entry->bind,entry->array_count);
+    VPushBackSetElement(set,entry->type,entry->bind,entry->total_count);
 }
 
 void ConstructDescSets(VShaderObj* obj,SPXData* spx){

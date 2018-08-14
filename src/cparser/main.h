@@ -162,34 +162,6 @@ struct GenericStruct : GenericTypeDec{
     GenericTypeDef members_array[256];
 };
 
-enum ParseTags{
-    TAG_SYMBOL = 0,
-    TAG_CTYPE,
-    TAG_STRUCT,
-    TAG_KEY,
-    TAG_VALUE,
-    TAG_START_ARG,
-    TAG_END_ARG,
-    TAG_ENUM,
-    TAG_UNION,
-    TAG_INDIR,
-    TAG_ASSIGN,
-    
-    //TODO: implement this
-    TAG_START_SQUARE,
-    TAG_END_SQUARE,
-    TAG_START_CURLY,
-    TAG_END_CURLY,
-    
-    TAG_DOUBLE_QUOTE,
-};
-
-struct EvalChar{
-    u64 hash;
-    s8 string[128] = {};
-    ParseTags tag;
-};
-
 logic IsParserKeyword(u64 hash){
     
     ParserKeyWord array[] = {
@@ -1040,7 +1012,6 @@ return 0;
 #ifdef _WIN32
 
 /*
-TODO:Windows has way less registers to play with. Need to limit our args to that
 
 RCX, RDX, R8, R9 for the first four integer or pointer arguments
 
@@ -1072,8 +1043,6 @@ __asm__ volatile (
 "statement 1\n"
 "statement 2\n": output operands: input operands
 )
-
-TODO: collect the floating point return as well
 
 */
 

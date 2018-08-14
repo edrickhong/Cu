@@ -309,7 +309,6 @@ void ADFGetInfo(const s8* filepath,u16* compression_type,u32* data_size){
 }
 
 
-//TODO: We might want to wrap around or not wrap or whatever
 void ADFGetData(const s8* filepath,void* data,u32* offset,u32 size){
     
     //TODO: Why not just keep the file open

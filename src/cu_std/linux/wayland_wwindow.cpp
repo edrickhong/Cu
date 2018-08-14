@@ -2,12 +2,8 @@
 
 /*
 TODO:
-
 fix the pointer to use the default pointer (requires dumb parsing)
 fix quit message (requires xdg extensions)
-
-
-
 
 xdg-shell-client-protocol.h
 */
@@ -90,8 +86,6 @@ struct WaylandData{
 
 
 logic InternalLoadLibraryWayland(){
-    
-    //TODO: we should check if vulkan supports this first. return failure if  it doesn't
     
     if(wwindowlib_handle){
         
@@ -237,8 +231,6 @@ void WaylandKeyboardLeave(void* data,wl_keyboard* keyboard,u32 serial,wl_surface
 
 void WaylandKeyboardKey(void* data,wl_keyboard* keyboard,u32 serial,u32 time,u32 key,u32 state){
     
-    /*TODO: fill these w key press events*/
-    
     _kill("too many events\n",wayland_event_count > _arraycount(wayland_event_array));
     
     auto event = &wayland_event_array[wayland_event_count];
@@ -270,8 +262,6 @@ void WaylandPointerLeave(void* data,wl_pointer* pointer,u32 serial,wl_surface* s
 
 void WaylandPointerMotion(void* data,wl_pointer* pointer,u32 time, wl_fixed_t sx, wl_fixed_t sy){
     
-    /*TODO: fill w motion events*/
-    
     _kill("too many events\n",wayland_event_count > _arraycount(wayland_event_array));
     
     auto event = &wayland_event_array[wayland_event_count];
@@ -284,8 +274,6 @@ void WaylandPointerMotion(void* data,wl_pointer* pointer,u32 time, wl_fixed_t sx
 }
 
 void WaylandPointerButton(void* data,wl_pointer* pointer,u32 serial,u32 time,u32 button,u32 state){
-    
-    /*TODO: fill w button events*/
     
     _kill("too many events\n",wayland_event_count > _arraycount(wayland_event_array));
     
@@ -318,7 +306,7 @@ void WaylandPointerButton(void* data,wl_pointer* pointer,u32 serial,u32 time,u32
 
 void WaylandPointerAxis(void* data,wl_pointer* pointer,u32 time,u32 axis,wl_fixed_t value){
     
-    /*TODO: fill w mouse scroll events*/
+    /*MARK: fill mouse scroll events here*/
 }
 
 

@@ -1,6 +1,3 @@
-//TODO: I actually don't know if inverse works in column major
-
-
 #define _test_matrices 1
 
 #ifdef DEBUG

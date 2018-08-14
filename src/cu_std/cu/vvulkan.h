@@ -1,7 +1,5 @@
 #pragma once
 
-//TODO: separate structs from this file
-
 #ifdef _WIN32
 
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -367,7 +365,7 @@ struct VBufferContext{
             u16 inst_count;
         };
         
-        //TODO: we will set the top most bit if 32bit, else it is 16bit
+        //NOTE: we will set the top most bit if 32bit, else it is 16bit
         u32 ind_count;
     };
     

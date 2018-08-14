@@ -157,12 +157,16 @@ get_filename_component(SHADERNAME ${shader} NAME)
 
 add_custom_command(TARGET ${TARGET} PRE_BUILD
 
+COMMAND echo Shader Compiling ${SHADERNAME} to ${SHADERNAME}.spv
+
+#output preprocessed
+COMMAND glslc -DPREPROCESS -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/pp_${SHADERNAME}
 
 #compile
 COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/${SHADERNAME}.spv
 
 #reflect
-COMMAND glslparser ../src/shaders/${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.spv
+COMMAND glslparser ../rsrc/shaders/pp_${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.spv
 
 )
 
@@ -174,10 +178,14 @@ function(CompileShaderCase TARGET DEF IN OUT)
 
 add_custom_command(TARGET ${TARGET} PRE_BUILD
 
+COMMAND echo Shader Compiling ${IN} to ${OUT}
+
+#output preprocessed
+COMMAND glslc -DPREPROCESS -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${IN} -o ../rsrc/shaders/pp_${OUT}
 
 COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -D${DEF} ../src/shaders/${IN} -o ../rsrc/shaders/${OUT}.spv
 
-COMMAND glslparser -D${DEF} ../src/shaders/${IN} ../rsrc/shaders/${OUT}.spv
+COMMAND glslparser -D${DEF} ../rsrc/shaders/pp_${OUT} ../rsrc/shaders/${OUT}.spv
 
 )
 

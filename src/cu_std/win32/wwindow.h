@@ -11,7 +11,6 @@
 TODO:
 set icon
 drag and drop with xdnd protocol
-keyboard support
 message box?
 */
 

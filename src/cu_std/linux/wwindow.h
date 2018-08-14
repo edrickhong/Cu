@@ -18,7 +18,6 @@ struct WWindowContext{
     u16 width;
     u16 height;
     
-    //TODO: we'll replace the first 2 with void pointers
     void* handle;
     void* window;
     
@@ -41,7 +40,6 @@ enum WCreateFlags{
     W_CREATE_NONE = 0,
     W_CREATE_NORESIZE = 1,
     
-    //TODO: actually use these
     W_CREATE_FORCE_WAYLAND = 1 << 1,
     W_CREATE_FORCE_XLIB = 1 << 2,
 };
@@ -142,7 +140,6 @@ u32 WWaitForWindowEvent(WWindowContext* windowcontext,WWindowEvent* event);
 WWindowContext WCreateWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,u32 width,
                              u32 height);
 
-//TODO: implement this
 WWindowContext WCreateVulkanWindow(const s8* title,WCreateFlags flags,u32 x,u32 y,u32 width,
                                    u32 height);
 
@@ -152,7 +149,7 @@ void WMessageBox(WWindowContext* windowcontext,const s8* text,const s8* caption,
 
 s8 WKeyCodeToASCII(u32 keycode);
 
-//TODO: Doesn't work
+//TODO: implement this (win32,xlib,wayland)
 void WSetIcon(WWindowContext* windowcontext,void* icondata,u32 width,u32 height);
 
 void WSetTitle(WWindowContext* windowcontext,const s8* title_string);

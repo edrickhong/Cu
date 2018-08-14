@@ -212,7 +212,7 @@ _persist LibHandle vklib = 0;
 
 void VInitVulkan(){
     
-    //TODO: expand this list
+    //MARK: expand this list
     const s8* vklib_array[] = {
         
 #ifdef _WIN32
@@ -317,7 +317,7 @@ void InternalLoadVulkanInstanceLevelFunctions(){
     
     if(VK_VERSION_MINOR(global_version_no)){
         
-        //TODO: deprecated 1.0 functions (set them to -1)
+        //TODO: deprecate 1.0 functions (set them to -1)
         
         _instproc(vkenumeratephysicaldevicegroups,global_instance,vkEnumeratePhysicalDeviceGroups);
     }
@@ -331,8 +331,6 @@ void InternalLoadVulkanFunctions(void* k,void* load_fptr){
     auto load = (void* (*)(void*,const s8*))load_fptr;
     
 #define _initfunc(func,var) var = (void*)load(k,""#func); if(!var){printf("%s %s %d :: Failed to load function %s\n",__FUNCTION__,__FILE__,__LINE__,""#func);_kill("",1);}
-    
-    //TODO: remove instance level functions and run them in instance creation
     
     
     _initfunc(vkCmdPipelineBarrier,vkcmdpipelinebarrier);
@@ -2795,7 +2793,7 @@ void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
 }
 
 
-//TODO: VkSampleMask* samplemask is a dependency
+//TODO: VkSampleMask* samplemask is a dependency (do we not save it?)
 void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
                                          VkSampleCountFlagBits samplecount_bits,
                                          VkBool32 is_persample_perfragment,//true = sample,else frag

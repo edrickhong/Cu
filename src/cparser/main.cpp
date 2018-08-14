@@ -81,6 +81,8 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
 }
 
 
+
+//TODO: prep this to move into pparse
 logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count){
     
     auto cur = *a;
@@ -184,7 +186,7 @@ logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* te
     }
     
     
-    //TODO: do we need this?
+    //MARK: do we need this? (kill here and see what's happening. we'll see if we can do better)
     if(buffer[cur] == ';' && !ret){
         evaluation_count = 0;
     }
@@ -216,7 +218,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     
     logic is_assign = false;
     
-    
+    //TODO: we shouldn't need to do this
     for(u32 j = 0; j < _arraycount(member->dim_array);j++){
         member->dim_array[j] = 1;
     }
@@ -226,21 +228,12 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     
     for(u32 j = 0; j < membereval_count;j++){
         
-        
-        auto prev_x = &membereval_array[j - 1];
-        
-        if(i == 0){
-            prev_x = 0;
-        }
-        
         auto x = &membereval_array[j];
         
         //                    printf("::%s ",&x->string[0]);
         
         
         if(j == 0){
-            
-            //TODO: handle anonymous structs
             
             if(x->tag == TAG_SYMBOL){
                 
@@ -294,7 +287,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         
         /*
         TODO: I do not like how initialization is done rn
-        How do we handle many dimensionds?
+        How do we handle many dimensions?
 */
         if(is_assign){
             
@@ -329,7 +322,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         
         else{
             
-            //FIXME: this is messy. deal explicitly w arrays
+            //handle arrays
             if(PIsStringInt(&x->string[0])){
                 
                 _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
@@ -464,6 +457,7 @@ void DebugPrintGenericFunction(GenericFunction* f){
     }
 }
 
+//TODO: allow pouinter types
 void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericFunction* function_array,u32* function_count){
     
     for(u32 i = 0; i < count; i++){
@@ -486,7 +480,6 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
         
         auto c = &eval_buffer[i];
         
-        //TODO: allow pouinter types
         if(i == 0){
             
             memcpy(f->ret.type_string,c->string,strlen(c->string));
@@ -507,7 +500,6 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
             f->name_hash = c->hash;
         }
         
-        //TODO: allow pouinter types
         if(c->tag == TAG_START_ARG){
             
             u32 cur = i + 1;
@@ -533,8 +525,6 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
                 return;
                 
             }
-            
-            //TODO: need to limit the number of args
             
             u32 int_count = 0;
             u32 float_count = 0;
@@ -775,7 +765,6 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     u32 cur = 0;
     
     
-    //TODO: we should abstract this away (so we can recurse this)
     for(;;){
         
         PSanitizeStringC(buffer,&cur);
@@ -820,9 +809,6 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
             }
             
             PSkipBracketBlock(buffer,&cur);
-            
-            
-            
             evaluation_count = 0;
         }
         
@@ -834,7 +820,10 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     }
 }
 
-void CParser(s8** argv,s32 argc){
+s32 main(s32 argc,s8** argv){
+    
+    argv++;
+    argc--;
     
 #ifdef DEBUG
     
@@ -848,7 +837,7 @@ void CParser(s8** argv,s32 argc){
         
         if(PHashString(argv[i]) == PHashString("-help") || argc == 0){
             printf("Format:cparser src1 src2 src3 -component componentfile -meta metafile\n");
-            return;
+            return -1;
         }
         
     }
@@ -863,22 +852,22 @@ void CParser(s8** argv,s32 argc){
     
     if(source_count == (u32)-1){
         printf("Error: Commandline args format is wrong\n");
-        return;
+        return -1;
     }
     
     if(!source_count){
         printf("Error: No source files specified\n");
-        return;
+        return -1;
     }
     
     if(!componentfile && !metafile){
         printf("Error: No output files specified\n");
-        return;
+        return -1;
     }
     
     if(!metafile){
         printf("Error: No metafile file specified\n");
-        return;
+        return -1;
     }
     
     
@@ -966,15 +955,6 @@ void CParser(s8** argv,s32 argc){
     printf("TARGET %s PARSE TIME: %f(s)\n",metafile,diff/1000.0f);
     
 #endif
-    
-}
-
-s32 main(s32 argc,s8** argv){
-    
-    argv++;
-    argc--;
-    
-    CParser(argv,argc);
     
     return 0;
 }

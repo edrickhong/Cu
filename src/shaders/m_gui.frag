@@ -7,14 +7,14 @@ layout(set=0, binding=0) uniform sampler2D sTexture;
 layout (location = 0) out vec4 outFragColor;
 
 void main(){
-  
+    
 #ifdef  USE_TEXTURE
-
-  vec4 tcolor = texture(sTexture, UV.st);
-
-  outFragColor = Color * tcolor;
-  
+    
+    vec4 tcolor = texture(sTexture, UV.st);
+    
+    outFragColor = Color * tcolor;
+    
 #else
-  outFragColor = vec4(Color.r,Color.g,Color.b,1.0f);
+    outFragColor = vec4(Color.r,Color.g,Color.b,1.0f);
 #endif
 }

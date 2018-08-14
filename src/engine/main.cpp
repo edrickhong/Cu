@@ -373,9 +373,6 @@ s32 main(s32 argc,s8** argv){
 /*
   TODO: 
   
-  Setup a standard build environment for linux:
-  https://linuxconfig.org/how-to-debootstrap-on-centos-linux
-  
   Compile all assets into an adb file (asset data base). We will build a function a constexpr
   function at compile time which translates filepaths to indices and an adb file w raw data.
   We will keep the adb file open at all times and just read from the offset as required.
@@ -387,7 +384,6 @@ s32 main(s32 argc,s8** argv){
   
   
   memory protect our allocations
-  Transition to avx
   Support drawing multiple objects off a single buffer(use vert & index buffer offsets into buffer)
   implement quaternion double cover
   Implement Dual quaternion blending in MDF
