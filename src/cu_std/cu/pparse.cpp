@@ -346,3 +346,49 @@ void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
     }
     
 }
+
+void PSanitizeStringC(s8* buffer,u32* k){
+    
+    auto cur = *k;
+    
+    PIgnoreWhiteSpace(buffer,&cur);
+    
+    for(;;){
+        
+        logic reparse = false;
+        
+        if(PIsCommentC(buffer[cur],buffer[cur + 1])){
+            PSkipLine(buffer,&cur);
+            reparse = true;
+        }
+        
+        
+        if(PIsPreprocessorC(buffer[cur])){
+            PSkipLine(buffer,&cur);
+            reparse = true;
+        }
+        
+        
+        auto keep_parsing = PIsStartCommentC(buffer[cur],buffer[cur + 1]);
+        
+        while(keep_parsing){
+            
+            keep_parsing = !PIsEndCommentC(buffer[cur],buffer[cur + 1]);
+            cur++;
+            
+            if(!keep_parsing){
+                cur += 2;
+                reparse = true;
+            }
+        }
+        
+        
+        if(!reparse){
+            break;
+        }
+        
+        
+    }
+    
+    *k = cur;
+}

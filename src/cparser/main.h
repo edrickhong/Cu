@@ -19,23 +19,7 @@
 
 #endif
 
-logic IsPreprocessor(s8 c){
-    return c == '#';
-}
-
-logic IsComment(s8 c1,s8 c2){
-    return c1 == '/'  && c2 == '/';
-}
-
-logic IsStartComment(s8 c1,s8 c2){
-    return c1 == '/'  && c2 == '*';
-}
-
-logic IsEndComment(s8 c1,s8 c2){
-    return c1 == '*'  && c2 == '/';
-}
-
-
+//TODO: these are not generic enought (int etc. do that and we can move this to pparse)
 enum CType{
     
     CType_U8 = PHashString("u8"),
@@ -77,90 +61,6 @@ logic IsIntType(u32 type){
 logic IsFloatType(u32 type){
     return type == CType_F32 ||
         type == CType_F64;
-}
-
-
-void IgnoreWhiteSpace(s8* buffer,u32* cur){
-    
-    auto k = *cur;
-    
-    while(PIsWhiteSpace(buffer[k])){
-        k++;
-    }
-    
-    *cur = k;
-}
-
-void IgnorePreprocessorAndComments(s8* buffer,u32* cur){
-    
-    auto k = *cur;
-    
-    
-    
-    auto is_block = IsStartComment(buffer[k],buffer[k + 1]);
-    
-    while(is_block){
-        
-        is_block = IsEndComment(buffer[k],buffer[k + 1]);
-        k++;
-        
-        if(!is_block){
-            
-            k+=2;
-            IgnoreWhiteSpace(buffer,cur);
-        }
-        
-    }
-    
-    *cur = k;
-}
-
-
-
-void SanitizeString(s8* buffer,u32* k){
-    
-    auto cur = *k;
-    
-    IgnoreWhiteSpace(buffer,&cur);
-    
-    for(;;){
-        
-        logic reparse = false;
-        
-        if(IsComment(buffer[cur],buffer[cur + 1])){
-            PSkipLine(buffer,&cur);
-            reparse = true;
-        }
-        
-        
-        if(IsPreprocessor(buffer[cur])){
-            PSkipLine(buffer,&cur);
-            reparse = true;
-        }
-        
-        
-        auto keep_parsing = IsStartComment(buffer[cur],buffer[cur + 1]);
-        
-        while(keep_parsing){
-            
-            keep_parsing = !IsEndComment(buffer[cur],buffer[cur + 1]);
-            cur++;
-            
-            if(!keep_parsing){
-                cur += 2;
-                reparse = true;
-            }
-        }
-        
-        
-        if(!reparse){
-            break;
-        }
-        
-        
-    }
-    
-    *k = cur;
 }
 
 logic IsCType(u64 hash){
@@ -381,68 +281,6 @@ logic IsReflFunc(EvalChar* eval_buffer,u32 count){
     return has_return_type && has_arg_brackets && has_key;
 }
 
-//NOTE: we will crash if we encounter a '}' first
-void SkipBracketBlock(s8* buffer,u32* a){
-    
-    auto cur = *a;
-    
-    u32 k = 0;
-    
-    for(;;cur++){
-        
-        auto c = buffer[cur];
-        
-        if(c == '{'){
-            k++;
-        }
-        
-        if(c == '}'){
-            
-            _kill("incomplete scope error\n",!k);
-            
-            k --;
-        }
-        
-        if(!k){
-            break;
-        }
-    }
-    
-    *a = cur;
-}
-
-void ExtractScope(s8* scope_buffer,s8* buffer,u32* a){
-    
-    u32 scope_count = 0;
-    u32 count = *a;
-    u32 i = 0;
-    
-    for(;;){
-        
-        auto c = buffer[count];
-        scope_buffer[i] = c;
-        
-        if(c == '{'){
-            scope_count++;
-        }
-        
-        if(c == '}'){
-            scope_count--;
-        }
-        
-        
-        count++;
-        i++;
-        
-        
-        if(!scope_count){
-            break;
-        }
-    }
-    
-    *a = count;
-}
-
 void InternalBufferGetString(s8* default_string,EvalChar* membereval_array,u32 membereval_count,u32* j){
     
     auto string = default_string;
@@ -538,7 +376,7 @@ void DebugPrintGenericStruct(GenericStruct* s){
 
 void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** componentfile,s8** metafile){
     
-    u32 i = 1;
+    u32 i = 0;
     
     for(; i < argc; i++){
         
@@ -549,13 +387,13 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
         }
     }
     
-    *source_count = i - 1;
+    *source_count = i;
     
     if((*source_count)){
-        *source_array = &argv[1];
+        *source_array = &argv[0];
     }
     
-    u32 k = (argc - (*source_count) - 1);
+    u32 k = (argc - (*source_count));
     
     if(k != 4 && k != 2){
         
@@ -588,7 +426,7 @@ const s8* InternalGetMainFile(const s8* string){
     
     for(u32 i = len - 1; i != (u32)-1; i--){
         
-        if(string[i] == '/'){
+        if(string[i] == '/' || string[i] == '\\'){
             return &string[i + 1];
         }
     }

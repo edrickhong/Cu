@@ -1,4 +1,4 @@
-
+#include "ttimer.h"
 #include "main.h"
 
 #define _autoexpand_structs 1
@@ -7,10 +7,12 @@
   TODO: 
   handle inheritance?
   ptr inspection can be implemented in assembly
+  
+  we should handle unions as well
+  handle typedef struct{...} Name 1,etc
 */
 
 //TODO: struct union and enum have the same parse structure (should we condense here?)
-
 void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
     for(u32 i = 0; i < count; i++){
@@ -628,14 +630,14 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
     
     s8 scope_buffer[1024 * 4] = {};
     
-    ExtractScope(&scope_buffer[0],buffer,a);
+    PExtractScopeC(&scope_buffer[0],buffer,a);
     
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
     
     for(u32 i = 0;;i++){
         
-        SanitizeString(&scope_buffer[0],&i);
+        PSanitizeStringC(&scope_buffer[0],&i);
         
         auto c = scope_buffer[i];
         
@@ -697,14 +699,14 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     
     s8 scope_buffer[1024 * 4] = {};
     
-    ExtractScope(&scope_buffer[0],buffer,a);
+    PExtractScopeC(&scope_buffer[0],buffer,a);
     
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
     
     for(u32 i = 0;;i++){
         
-        SanitizeString(&scope_buffer[0],&i);
+        PSanitizeStringC(&scope_buffer[0],&i);
         
         auto c = scope_buffer[i];
         
@@ -765,7 +767,6 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     
 }
 
-
 void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,GenericFunction* function_array,u32* function_count){
     
     u32 evaluation_count = 0;
@@ -777,7 +778,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     //TODO: we should abstract this away (so we can recurse this)
     for(;;){
         
-        SanitizeString(buffer,&cur);
+        PSanitizeStringC(buffer,&cur);
         
         if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{')){
             
@@ -818,7 +819,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
                 GenerateGenericFunction(&evaluation_buffer[0],evaluation_count,buffer,&cur,function_array,function_count);
             }
             
-            SkipBracketBlock(buffer,&cur);
+            PSkipBracketBlock(buffer,&cur);
             
             
             
@@ -833,10 +834,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     }
 }
 
-#include "ttimer.h"
-
-//TODO: we should handle unions as well
-s32 main(s32 argc,s8** argv){
+void CParser(s8** argv,s32 argc){
     
 #ifdef DEBUG
     
@@ -846,11 +844,11 @@ s32 main(s32 argc,s8** argv){
     
 #endif
     
-    for(s32 i = 1; i < argc; i++){
+    for(s32 i = 0; i < argc; i++){
         
-        if(PHashString(argv[i]) == PHashString("-help") || argc == 1){
+        if(PHashString(argv[i]) == PHashString("-help") || argc == 0){
             printf("Format:cparser src1 src2 src3 -component componentfile -meta metafile\n");
-            return 0;
+            return;
         }
         
     }
@@ -865,22 +863,22 @@ s32 main(s32 argc,s8** argv){
     
     if(source_count == (u32)-1){
         printf("Error: Commandline args format is wrong\n");
-        return 0;
+        return;
     }
     
     if(!source_count){
         printf("Error: No source files specified\n");
-        return 0;
+        return;
     }
     
     if(!componentfile && !metafile){
         printf("Error: No output files specified\n");
-        return 0;
+        return;
     }
     
     if(!metafile){
         printf("Error: No metafile file specified\n");
-        return 0;
+        return;
     }
     
     
@@ -894,7 +892,7 @@ s32 main(s32 argc,s8** argv){
         printf("component file:%s\n",componentfile);
         printf("meta file:%s\n",metafile);
         
-        return 0;
+        return;
     }
 #endif
     
@@ -956,7 +954,7 @@ s32 main(s32 argc,s8** argv){
     unalloc(enum_array);
     unalloc(function_array);
     
-#if DEBUG
+#ifdef DEBUG
     
     
     TimeSpec end;
@@ -968,6 +966,15 @@ s32 main(s32 argc,s8** argv){
     printf("TARGET %s PARSE TIME: %f(s)\n",metafile,diff/1000.0f);
     
 #endif
+    
+}
+
+s32 main(s32 argc,s8** argv){
+    
+    argv++;
+    argc--;
+    
+    CParser(argv,argc);
     
     return 0;
 }

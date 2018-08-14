@@ -398,6 +398,7 @@ Vector3 _ainline MatrixToTranslationVector(Matrix4b4 matrix){
 
 //print
 void PrintMatrix(Matrix4b4 matrix);
+void PrintMatrix(Matrix3b3 matrix);
 
 
 Matrix4b4 ViewMatrix(Vector3 position,Vector3 lookpoint,Vector3 updir);
@@ -416,39 +417,40 @@ Matrix4b4 _ainline PositionMatrix(Vector3 position){
     
 }
 
-Matrix4b4 _ainline RotationMatrix(Vector3 rotation){
+//MARK: not tested
+Matrix3b3 _ainline RotationMatrix(Vector3 rotation){
     
     f32 cosv = cosf(rotation.x);
     f32 sinv = sinf(rotation.x);
     
-    Matrix4b4 rotationx_matrix4b4 = IdentityMatrix4b4();
+    Matrix3b3 rotationx_matrix3b3 = IdentityMatrix3b3();
     
-    rotationx_matrix4b4 _rc4(1,1) = cosv;
-    rotationx_matrix4b4 _rc4(2,1) = -sinv;
-    rotationx_matrix4b4 _rc4(1,2) = sinv;
-    rotationx_matrix4b4 _rc4(2,2) = cosv;
+    rotationx_matrix3b3 _rc3(1,1) = cosv;
+    rotationx_matrix3b3 _rc3(2,1) = -sinv;
+    rotationx_matrix3b3 _rc3(1,2) = sinv;
+    rotationx_matrix3b3 _rc3(2,2) = cosv;
     
     cosv = cosf(rotation.y);
     sinv = sinf(rotation.y);
     
-    Matrix4b4 rotationy_matrix4b4 = IdentityMatrix4b4();
+    Matrix3b3 rotationy_matrix3b3 = IdentityMatrix3b3();
     
-    rotationy_matrix4b4 _rc4(0,0) = cosv;
-    rotationy_matrix4b4 _rc4(2,0) = sinv;
-    rotationy_matrix4b4 _rc4(0,2) = -sinv;
-    rotationy_matrix4b4 _rc4(2,2) = cosv;
+    rotationy_matrix3b3 _rc3(0,0) = cosv;
+    rotationy_matrix3b3 _rc3(2,0) = sinv;
+    rotationy_matrix3b3 _rc3(0,2) = -sinv;
+    rotationy_matrix3b3 _rc3(2,2) = cosv;
     
     cosv = cosf(rotation.z);
     sinv = sinf(rotation.z);
     
-    Matrix4b4 rotationz_matrix4b4 = IdentityMatrix4b4();
+    Matrix3b3 rotationz_matrix3b3 = IdentityMatrix3b3();
     
-    rotationz_matrix4b4 _rc4(0,0) = cosv;
-    rotationz_matrix4b4 _rc4(1,0) = -sinv;
-    rotationz_matrix4b4 _rc4(0,1) = sinv;
-    rotationz_matrix4b4 _rc4(1,1) = cosv;
+    rotationz_matrix3b3 _rc3(0,0) = cosv;
+    rotationz_matrix3b3 _rc3(1,0) = -sinv;
+    rotationz_matrix3b3 _rc3(0,1) = sinv;
+    rotationz_matrix3b3 _rc3(1,1) = cosv;
     
-    return rotationz_matrix4b4 * rotationy_matrix4b4 * rotationx_matrix4b4;
+    return rotationz_matrix3b3 * rotationy_matrix3b3 * rotationx_matrix3b3;
 }
 
 

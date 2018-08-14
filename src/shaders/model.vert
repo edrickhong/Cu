@@ -32,7 +32,7 @@ struct Material{
 
 
 layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
-    
+    //TODO: make this a common struct (make glsl parser parse every struct)
     mat4 world;
     mat4 bone_array[_max_bones];
     uint texture_id[16];

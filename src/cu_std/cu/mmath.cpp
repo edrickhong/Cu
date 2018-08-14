@@ -570,7 +570,7 @@ Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale){
     
     Matrix4b4 scale_matrix4b4 = ScaleMatrix(scale);
     
-    Matrix4b4 rotation_matrix4b4 = RotationMatrix(rotation);
+    Matrix4b4 rotation_matrix4b4 = ToMatrix4b4(RotationMatrix(rotation));
     
     
     matrix = WorldMatrix(position_matrix4b4,rotation_matrix4b4,scale_matrix4b4);
@@ -961,28 +961,31 @@ Vector3 RotateVector(Vector3 vec,Vector3 rotation){
       
       {rotated x,  = {cos0 ,-sin0,  * {x,
       rotated y}      sin0,cos0}       y}
-      
-      TODO:since we are only rotating one point, we should optimize for this case here
     */
     
+    auto rot_matrix = RotationMatrix(rotation);
     
-    //NOTE: This is not the most efficiet method. add 3x3 matrices
-    Matrix4b4 rot_matrix = RotationMatrix(rotation);
+    auto a = rot_matrix.simd[0];
+    auto b = rot_matrix.simd[1];
+    auto c = rot_matrix.k;
     
-    Matrix4b4 vec_matrix = {};
+    auto k = ToVec4(vec).simd;
     
-    vec_matrix _rc4(0,0) = vec.x;
-    vec_matrix _rc4(0,1) = vec.y;
-    vec_matrix _rc4(0,2) = vec.z;
-    vec_matrix _rc4(0,3) = 1.0f;
+    auto d = _shufflesimd4f(k,k,_MM_SHUFFLE(3,2,1,0));
+    auto e = _shufflesimd4f(k,k,_MM_SHUFFLE(1,0,2,1));
     
-    Matrix4b4 ret_matrix = rot_matrix * vec_matrix;
+    auto f = _mulsimd4f(a,d);
+    auto g = _mulsimd4f(b,e);
+    auto h = c * vec.z;
     
-    vec.x = ret_matrix _rc4(0,0);
-    vec.y = ret_matrix _rc4(0,1);
-    vec.z = ret_matrix _rc4(0,2);
     
-    return vec/ret_matrix _rc4(0,3);
+    //MARK: technically we can shuffle here and do an sse add.
+    //idk what the wins are for
+    auto x = ((f32*)&f)[0] + ((f32*)&f)[1] + ((f32*)&f)[2];
+    auto y = ((f32*)&f)[3] + ((f32*)&g)[0] + ((f32*)&g)[1];
+    auto z = ((f32*)&g)[2] + ((f32*)&g)[3] + h;
+    
+    return {x,y,z};
 }
 
 

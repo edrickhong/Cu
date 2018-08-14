@@ -6,6 +6,10 @@
 #include "string.h"
 
 /*
+This is for general string parsing and to support the general parsing of C-like functions
+*/
+
+/*
 TODO: we should make size or pos to ptrsize instead of u32
 */
 
@@ -273,4 +277,120 @@ constexpr logic PStringCmp(const s8* string1,const s8* string2){
     }
     
     return true;
+}
+
+logic _ainline PIsPreprocessorC(s8 c){
+    return c == '#';
+}
+
+logic  _ainline PIsCommentC(s8 c1,s8 c2){
+    return c1 == '/'  && c2 == '/';
+}
+
+logic  _ainline PIsStartCommentC(s8 c1,s8 c2){
+    return c1 == '/'  && c2 == '*';
+}
+
+logic  _ainline PIsEndCommentC(s8 c1,s8 c2){
+    return c1 == '*'  && c2 == '/';
+}
+
+void _ainline PIgnoreWhiteSpace(s8* buffer,u32* cur){
+    
+    auto k = *cur;
+    
+    while(PIsWhiteSpace(buffer[k])){
+        k++;
+    }
+    
+    *cur = k;
+}
+
+void _ainline PIgnorePreprocessorAndCommentsC(s8* buffer,u32* cur){
+    
+    auto k = *cur;
+    
+    
+    
+    auto is_block = PIsStartCommentC(buffer[k],buffer[k + 1]);
+    
+    while(is_block){
+        
+        is_block = PIsEndCommentC(buffer[k],buffer[k + 1]);
+        k++;
+        
+        if(!is_block){
+            
+            k+=2;
+            PIgnoreWhiteSpace(buffer,cur);
+        }
+        
+    }
+    
+    *cur = k;
+}
+
+
+void PSanitizeStringC(s8* buffer,u32* k);
+
+//NOTE: we will crash if we encounter a '}' first
+void _ainline PSkipBracketBlock(s8* buffer,u32* a){
+    
+    auto cur = *a;
+    
+    u32 k = 0;
+    
+    for(;;cur++){
+        
+        auto c = buffer[cur];
+        
+        if(c == '{'){
+            k++;
+        }
+        
+        if(c == '}'){
+            
+            _kill("incomplete scope error\n",!k);
+            
+            k --;
+        }
+        
+        if(!k){
+            break;
+        }
+    }
+    
+    *a = cur;
+}
+
+void _ainline PExtractScopeC(s8* scope_buffer,s8* buffer,u32* a){
+    
+    u32 scope_count = 0;
+    u32 count = *a;
+    u32 i = 0;
+    
+    for(;;){
+        
+        auto c = buffer[count];
+        scope_buffer[i] = c;
+        
+        if(c == '{'){
+            scope_count++;
+        }
+        
+        if(c == '}'){
+            scope_count--;
+        }
+        
+        
+        count++;
+        i++;
+        
+        
+        if(!scope_count){
+            break;
+        }
+    }
+    
+    *a = count;
 }
