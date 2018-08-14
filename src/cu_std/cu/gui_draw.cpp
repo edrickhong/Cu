@@ -13,12 +13,11 @@
 #include "wwindow.h"
 #include "ffileio.h"
 
-
 //MARK: these have to update according to the generated gui_bin.h
-extern u32 m_gui_vert_spv[1484];
-extern u32 m_gui_frag_spv[880];
-extern u32 m_gui_tex_frag_spv[812];
-extern u32 Ubuntu_B_fbmp[199508];
+extern unsigned char m_gui_vert_spv[1484];
+extern unsigned char m_gui_frag_spv[880];
+extern unsigned char m_gui_tex_frag_spv[812];
+extern unsigned char Ubuntu_B_fbmp[199508];
 
 
 //TODO: do not draw widgets if the pos is not within the screen
