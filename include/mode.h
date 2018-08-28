@@ -102,7 +102,7 @@
 
 #define _winapi
 
-#define _dllexport
+#define _dllexport __attribute__ ((visibility ("default")))
 
 #endif
 

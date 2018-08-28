@@ -190,8 +190,12 @@ struct GameReloadData{
     VkRenderPass renderpass;
     WWindowContext* window;
     SceneContext* context;
+    
+    
+    
     GUIContext* guicontext;
     AAllocatorContext* allocatorcontext;
+    void* debugtimercontext;
 };
 
 extern "C"{

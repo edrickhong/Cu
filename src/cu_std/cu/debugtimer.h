@@ -44,7 +44,10 @@
 
 #define PAUSEGRAPH() PauseTimer()
 
-#define INIT_DEBUG_TIMER()
+#define INIT_DEBUG_TIMER() InitDebugTimer()
+
+#define DEBUGTIMERGETCONTEXT() DebugTimerGetContext()
+#define DEBUGTIMERSETCONTEXT(context) DebugTimerSetContext(context)
 
 
 #else
@@ -60,6 +63,8 @@
 #define PRINTTIMEBLOCK(COLOR)
 #define PAUSEGRAPH()
 #define INIT_DEBUG_TIMER()
+#define DEBUGTIMERGETCONTEXT() 0
+#define DEBUGTIMERSETCONTEXT(context)
 #define PRINTTIMEBLOCKTAGGED(NAME)
 #endif
 
@@ -76,19 +81,9 @@ struct DebugRecord{
     u32 line;
 };
 
-#ifndef WIN32DLL
+void InitDebugTimer();
 
 void SubmitRecord(ThreadID tid,DebugRecord record);
-
-#else
-
-_persist  f32 (*timediff)(TimeSpec,TimeSpec) = 0;
-
-#define GetTimeDifferenceMS(a,b) timediff(a,b)
-
-_persist  void (*SubmitRecord)(ThreadID,DebugRecord) = 0;
-
-#endif
 
 void RecordThread();
 
@@ -221,3 +216,6 @@ struct DebugTable{
     RecordArray record_array[15];
     u32 recordcount_array[15] = {};
 };
+
+void* DebugTimerGetContext();
+void DebugTimerSetContext(void* context);

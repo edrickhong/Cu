@@ -9,6 +9,10 @@ endif()
 
 if(UNIX)
 
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
+set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
+
+
 
 if(DEBUG)
 
@@ -93,6 +97,15 @@ endif()
   set(METACALL_SRC src/asm_win32/cparser_win32.asm)
 
 endif(UNIX)
+
+
+
+
+
+
+
+
+
 
 
 function(Gen_IncludeList RET_LIST CMAKE_CUR_SRC_DIR)

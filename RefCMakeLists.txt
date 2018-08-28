@@ -18,7 +18,7 @@ if(DEBUG)
 
 endif()
 
-  set(FLAGS "-march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
+  set(FLAGS "-fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
   
 endif(UNIX)
 
@@ -70,6 +70,10 @@ endif()
 
 add_library(cu_std STATIC ${CU_STD})
 
+if(UNIX)
+target_compile_options(cu_std BEFORE PRIVATE -fPIC)
+endif(UNIX)
+
 add_executable(assetpacker ${ASSETPACKER})
 add_executable(cparser ${CPARSER})
 add_executable(importer ${IMPORTER})
@@ -86,6 +90,7 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 #for these we do not want to have stdc++
 
 add_executable(cu_engine ${ENGINE} ${METACALL_SRC})
+
 target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
 set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
 
@@ -93,9 +98,9 @@ set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
 add_library(game ${PDLL} ${GAME} ${METACALL_SRC})
 set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
 
-if(WIN32)
+target_link_libraries(game cu_std ${PLATFORM_LIBS})
 
-  target_link_libraries(game cu_std ${PLATFORM_LIBS})
+if(WIN32)
 
   set_target_properties(game PROPERTIES
   PDB_NAME "game_${VERSION}"

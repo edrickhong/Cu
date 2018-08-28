@@ -68,14 +68,13 @@ s32 main(s32 argc,s8** argv){
     void(*reload)(GameReloadData*) = 0;
     
     //init code
+    TInitTimer();
+    INIT_DEBUG_TIMER();
     
     InitInternalAllocator();
     InitTAlloc(_megabytes(32));
     
     SetupData((void**)&pdata,(void**)&gdata);
-    
-    TInitTimer();
-    INIT_DEBUG_TIMER();
     
     VInitVulkan();
     
@@ -277,7 +276,7 @@ s32 main(s32 argc,s8** argv){
                     
                     GameReloadData reloaddata = {
                         gdata,pdata->vdevice,pdata->renderpass,&pdata->window,context,GetGUIContext(),
-                        GetAAllocatorContext()
+                        GetAAllocatorContext(),DEBUGTIMERGETCONTEXT()
                     };
                     
                     vkDeviceWaitIdle(pdata->vdevice.device);

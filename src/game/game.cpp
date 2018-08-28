@@ -1,34 +1,11 @@
-#ifdef _WIN32
-
-#define WIN32DLL 1
-
-#endif
-
 #include "stdio.h"
 #include "mode.h"
 
 #include "wwindow.h"
-
 #include "game.h"
-
-#ifdef _WIN32
-
-#undef TIMEBLOCK
-#undef TIMEBLOCKTAGGED
-
-#define TIMEBLOCK(COLOR)
-#define TIMEBLOCKTAGGED(NAME,COLOR)
-
-#else
-
 #include "debugtimer.h"
-
-#endif
-
 #include "ccolor.h"
-
 #include "kkeycode.h"
-
 #include "pparse.h"
 
 #ifndef CPP_PASS
@@ -924,6 +901,7 @@ extern "C" {
         
         SetGUIContext(reloaddata->guicontext);
         SetAAllocatorContext(reloaddata->allocatorcontext);
+        DEBUGTIMERSETCONTEXT(reloaddata->debugtimercontext);
         
         data = (GameData*)reloaddata->memory;
         

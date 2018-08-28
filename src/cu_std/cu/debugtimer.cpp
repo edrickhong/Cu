@@ -2,28 +2,56 @@
 #include "tthreadx.h"
 #include "gui_draw.h"
 
-_persist DebugTable debugtable = {};
-
-
 #define _max_debugtables 12000
 
-_persist auto  global_debugtable_array =
-(DebugTable*)SSysAlloc(0,sizeof(DebugTable) * _max_debugtables,
-                       MEMPROT_READWRITE,0);
-
-_persist auto  global_debugtable_count = 0;
 
 struct PrintEntry{
     const s8* name;
     f32 time;
 };
 
-_persist PrintEntry print_array[500];
-_persist u32 print_count = 0;
+
+struct DebugTimerContext{
+    
+    DebugTable debugtable;
+    
+    DebugTable* global_debugtable_array;
+    
+    u32 global_debugtable_count;
+    
+    PrintEntry print_array[500];
+    u32 print_count = 0;
+    
+    f32 frame_time = 0;
+    f32 exec_time = 0;
+    u32 is_paused = 0;
+    
+    SpinMutex locker = 0;
+    
+};
+
+_persist DebugTimerContext* context = 0;
+
+void InitDebugTimer(){
+    
+    context = (DebugTimerContext*)alloc(sizeof(DebugTimerContext));
+    
+    context->global_debugtable_array =
+        (DebugTable*)SSysAlloc(0,sizeof(DebugTable) * _max_debugtables,
+                               MEMPROT_READWRITE,0);
+}
+
+void* DebugTimerGetContext(){
+    return context;
+}
+
+void DebugTimerSetContext(void* tcontext){
+    context = (DebugTimerContext*)tcontext;
+}
 
 void PrintEntries(){
     
-    qsort(print_array,print_count,sizeof(PrintEntry),
+    qsort(context->print_array,context->print_count,sizeof(PrintEntry),
           [](const void * a, const void* b)->s32 {
           
           auto a_ptr = (PrintEntry*)a;
@@ -34,8 +62,8 @@ void PrintEntries(){
           return ret;
           });
     
-    for(u32 i = 0; i < print_count; i++){
-        auto ent = &print_array[i];
+    for(u32 i = 0; i < context->print_count; i++){
+        auto ent = &context->print_array[i];
         
         printf("%s : %f\n",ent->name,ent->time);
     }
@@ -46,10 +74,6 @@ void InternalClearDebugTable(DebugTable* table){
         table->recordcount_array[i] = 0;
     }  
 }
-
-_persist f32 frame_time = 0;
-_persist f32 exec_time = 0;
-_persist u32 is_paused = 0;
 
 void BuildGraph(logic to_draw){
     
@@ -68,7 +92,7 @@ void BuildGraph(logic to_draw){
         GUIBeginWindow("Profile View",&pos,&dim);
         
         const DebugRecord* masterblock =
-            &debugtable.record_array[0][debugtable.recordcount_array[0] - 1];
+            &context->debugtable.record_array[0][context->debugtable.recordcount_array[0] - 1];
         
         s8 buffer[128] = {};
         
@@ -85,10 +109,10 @@ void BuildGraph(logic to_draw){
                 display_profile = true;
             }
             
-            if(is_paused){
+            if(context->is_paused){
                 
                 if(GUIButton("Play")){
-                    is_paused = false;
+                    context->is_paused = false;
                 }
                 
             }
@@ -96,12 +120,12 @@ void BuildGraph(logic to_draw){
             else{
                 
                 if(GUIButton("Pause")){
-                    is_paused = true;
+                    context->is_paused = true;
                 }
                 
                 
                 frame_array[cur_frame_count] =
-                {(f32)global_debugtable_count,masterblock->timelen};
+                {(f32)context->global_debugtable_count,masterblock->timelen};
                 
                 cur_frame_count++;
                 
@@ -115,7 +139,7 @@ void BuildGraph(logic to_draw){
         else{
             
             auto table =
-                &global_debugtable_array[(u32)frame_array[frame_index].x];
+                &context->global_debugtable_array[(u32)frame_array[frame_index].x];
             
             if(GUIProfileView("Main Profile",table,{0.5f,1.5f})){
             }
@@ -133,36 +157,34 @@ void BuildGraph(logic to_draw){
     
     
     
-    if(!is_paused){
-        global_debugtable_array[global_debugtable_count] = debugtable;
-        global_debugtable_count++;
+    if(!context->is_paused){
+        context->global_debugtable_array[context->global_debugtable_count] = context->debugtable;
+        context->global_debugtable_count++;
         
-        if(global_debugtable_count == _max_debugtables){
-            global_debugtable_count = 0;
+        if(context->global_debugtable_count == _max_debugtables){
+            context->global_debugtable_count = 0;
         }  
     }
     
     
-    InternalClearDebugTable(&debugtable);
+    InternalClearDebugTable(&context->debugtable);
 }
-
-_persist SpinMutex locker = 0;
 
 
 void RecordThread(){
     
-    SpinLock(&locker);
+    SpinLock(&context->locker);
     
-    auto threadid_ptr = &debugtable.threadid_array[debugtable.thread_count];
+    auto threadid_ptr = &context->debugtable.threadid_array[context->debugtable.thread_count];
     
     *threadid_ptr = TGetThisThreadID();
     
-    debugtable.thread_count = debugtable.thread_count + 1;
+    context->debugtable.thread_count = context->debugtable.thread_count + 1;
     
-    printf("Tracking thread index: %d : %lu\n",debugtable.thread_count - 1,
+    printf("Tracking thread index: %d : %lu\n",context->debugtable.thread_count - 1,
            *threadid_ptr);
     
-    SpinUnlock(&locker);
+    SpinUnlock(&context->locker);
     
 }
 
@@ -170,9 +192,9 @@ u32 GetThreadIndex(ThreadID tid){
     
     u32 threadindex;
     
-    for(threadindex = 0; threadindex < debugtable.thread_count; threadindex++){
+    for(threadindex = 0; threadindex < context->debugtable.thread_count; threadindex++){
         
-        if(debugtable.threadid_array[threadindex] == tid){
+        if(context->debugtable.threadid_array[threadindex] == tid){
             break;
         }
     }
@@ -185,31 +207,31 @@ void SubmitRecord(ThreadID tid,DebugRecord record){
     
     u32 threadindex = GetThreadIndex(tid);
     
-#define _recordcount debugtable.recordcount_array[threadindex]
+#define _recordcount context->debugtable.recordcount_array[threadindex]
     
-    debugtable.record_array[threadindex][ _recordcount] = record;
+    context->debugtable.record_array[threadindex][ _recordcount] = record;
     _recordcount++;
     
-    _kill("too many records\n", _recordcount >= _arraycount(debugtable.record_array[threadindex]));
+    _kill("too many records\n", _recordcount >= _arraycount(context->debugtable.record_array[threadindex]));
     
 #undef _recordcount
     
 }
 
 void SetStartTimeBlock(TimeSpec timestamp){
-    debugtable.timestamp = timestamp;
+    context->debugtable.timestamp = timestamp;
 }
 
 void PauseTimer(){
-    is_paused = true;
+    context->is_paused = true;
 }
 
 
 void SetFrameTime(f32 time){
-    frame_time = time; 
+    context->frame_time = time; 
 }
 
 
 void SetExecTime(f32 time){
-    exec_time = time; 
+    context->exec_time = time; 
 }
