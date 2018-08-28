@@ -51,6 +51,81 @@ enum PTokenType{
 };
 
 
+void _ainline PCharToHexString(u8 c,s8* dst_buffer){
+    
+    *dst_buffer = '0';
+    dst_buffer++;
+    
+    *dst_buffer = 'x';
+    dst_buffer++;
+    
+    if(c < 16){
+        
+        *dst_buffer = '0';
+        dst_buffer++;
+    }
+    
+    s8 tbuffer[128] = {};
+    u32 count = 0;
+    
+    while(c){
+        
+        auto k = c % 16;
+        c /= 16;
+        
+        if(k < 10){
+            
+            tbuffer[count] = k + 48;
+            count++;
+        }
+        
+        else{
+            
+            switch(k){
+                
+                case 10:{
+                    tbuffer[count] = 'A';
+                    count++;
+                }break;
+                
+                case 11:{
+                    tbuffer[count] = 'B';
+                    count++;
+                }break;
+                
+                case 12:{
+                    tbuffer[count] = 'C';
+                    count++;
+                }break;
+                
+                case 13:{
+                    tbuffer[count] = 'D';
+                    count++;
+                }break;
+                
+                case 14:{
+                    tbuffer[count] = 'E';
+                    count++;
+                }break;
+                
+                case 15:{
+                    tbuffer[count] = 'F';
+                    count++;
+                }break;
+                
+            }
+        }
+    }
+    
+    for(u32 i = count - 1; i != (u32)-1; i--){
+        
+        *dst_buffer = tbuffer[i];
+        dst_buffer++;
+    }
+    
+}
+
+
 logic _ainline PIsWhiteSpace(s8 c){
     return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
 }
@@ -258,7 +333,7 @@ void PBufferToByteArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
 void PBufferToDWordArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
 
 
-void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
+void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size,u32* arraycount = 0);
 
 constexpr logic PStringCmp(const s8* string1,const s8* string2){
     

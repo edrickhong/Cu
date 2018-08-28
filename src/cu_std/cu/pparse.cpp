@@ -257,10 +257,14 @@ logic PSkipWhiteSpace(s8* src_string,u32* pos){
 }
 
 
-void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size){
+void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size,u32* arraycount){
     
     if(dst_size){
         (*dst_size) = 0;
+    }
+    
+    if(arraycount){
+        (*arraycount) = 0;
     }
     
     
@@ -296,8 +300,15 @@ void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
         
         if(len){
             
+            if(arraycount){
+                (*arraycount)++;
+            }
+            
             s8 out_string[512] = {};
             out_string[0] = '"';
+            
+            
+            u32 offset = 1;
             
             for(u32 j = 0; j < len;j++){
                 
@@ -305,27 +316,30 @@ void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
                     continue;
                 }
                 
+                out_string[j + offset] = t_buffer[j];
+                
                 if(t_buffer[j] == '\\'){
                     
-                    //TODO: handle this
+                    offset++;
+                    out_string[j + offset] = '\\';
                 }
-                
-                out_string[j + 1] = t_buffer[j];
             }
             
-            out_string[len + 1] = '"';
-            out_string[len + 2] = ',';
-            out_string[len + 3] = '\n';
+            auto nlen = (u32)strlen(out_string) - 1;
             
-            len += 4;
+            out_string[nlen + 1] = '"';
+            out_string[nlen + 2] = ',';
+            out_string[nlen + 3] = '\n';
+            
+            nlen += 4;
             
             if(dst_size){
-                (*dst_size) += len;
+                (*dst_size) += nlen;
             }
             
             if(dst_buffer){
-                memcpy(dst_buffer,out_string,len);
-                dst_buffer += len;
+                memcpy(dst_buffer,out_string,nlen);
+                dst_buffer += nlen;
             }
         }
     }
@@ -391,4 +405,69 @@ void PSanitizeStringC(s8* buffer,u32* k){
     }
     
     *k = cur;
+}
+
+
+#define _hex_row_count 8
+
+
+void PBufferToByteArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size){
+    
+    {
+        s8 buffer[256] = {};
+        
+        sprintf(buffer,"%s[] = {\n",array_name);
+        u32 len = strlen(buffer);
+        
+        if(dst_buffer){
+            memcpy(dst_buffer,buffer,len);
+            dst_buffer += len;
+        }
+        
+        if(dst_size){
+            (*dst_size) = len;
+        }
+    }
+    
+    
+    
+    for(u32 i = 0; i < src_size; i++){
+        
+        auto c = src_buffer[i];
+        
+        s8 buffer[128] = {};
+        
+        PCharToHexString(c,buffer);
+        
+        buffer[4] = ',';
+        
+        if(((i + 1) % _hex_row_count) == 0){
+            buffer[5] = '\n';
+        }
+        
+        u32 len = strlen(buffer);
+        
+        if(dst_buffer){
+            memcpy(dst_buffer,buffer,len);
+            dst_buffer += len;
+        }
+        
+        if(dst_size){
+            (*dst_size) += len;
+        }
+    }
+    
+    
+    {
+        auto string = "\n};";
+        u32 len = strlen(string);
+        
+        if(dst_buffer){
+            memcpy(dst_buffer,string,len);
+        }
+        
+        if(dst_size){
+            (*dst_size) += len;
+        }
+    }
 }
