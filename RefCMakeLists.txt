@@ -48,6 +48,8 @@ file(GLOB ENGINE src/engine/main.cpp)
 file(GLOB ASSETPACKER src/assetpacker/main.cpp)
 file(GLOB GAME src/game/game.cpp)
 file(GLOB CU_STD src/cu_std/cu/gui_bin.cpp src/cu_std/cu/main.cpp)
+file(GLOB FILEARRAY src/filearray/main.cpp)
+file(GLOB FBMP src/fbmpgenerator/main.cpp)
 
 GenAndInstallAdditionalDep()
 
@@ -78,12 +80,16 @@ add_executable(assetpacker ${ASSETPACKER})
 add_executable(cparser ${CPARSER})
 add_executable(importer ${IMPORTER})
 add_executable(glslparser ${GLSLPARSER})
+add_executable(filearray ${FILEARRAY})
+add_executable(fbmp ${FBMP})
 
 #we shouldn't have to link platform libs (the only thing we shoud have to link to is libdl)
 target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
 target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
 target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
 target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
+target_link_libraries(filearray cu_std ${PLATFORM_LIBS})
+target_link_libraries(fbmp cu_std ${PLATFORM_LIBS})
 
 
 
