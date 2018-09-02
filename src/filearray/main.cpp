@@ -118,7 +118,7 @@ s32 main(s32 argc,s8** argv){
                 InternalGetFileNameToStringArrayVar(arrayname_string,source);
                 
                 
-                u32 dst_size = 0;
+                ptrsize dst_size = 0;
                 
                 PBufferToByteArrayString(arrayname_string,buffer,size,0,&dst_size);
                 
@@ -183,7 +183,7 @@ s32 main(s32 argc,s8** argv){
                 InternalGetFileNameToStringArrayVar(arrayname_string,source);
                 
                 
-                u32 dst_size = 0;
+                ptrsize dst_size = 0;
                 u32 arraycount = 0;
                 
                 PBufferListToArrayString(arrayname_string,buffer,size,0,&dst_size);

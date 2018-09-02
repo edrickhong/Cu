@@ -971,6 +971,8 @@ struct VGraphicsPipelineSpecObj{
     VkSpecializationInfo spec_array[8];
     VkShaderModule shadermodule_array[8];
     u32 shadermodule_count = 0;
+    
+    VkSampleMask* samplemask = 0;
 };
 
 u32 VGetDescriptorSetLayoutHash(VShaderObj* obj,u32 descset_no);

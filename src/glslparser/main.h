@@ -714,123 +714,7 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
 }
 
-logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count){
-    
-    auto cur = *a;
-    
-    u32 evaluation_count = *k;
-    
-    u32 symbol_len = 0;
-    s8 symbol_buffer[128] = {};
-    
-    logic ret = false;
-    
-    PGetSymbol(&symbol_buffer[0],buffer,&cur,&symbol_len);
-    
-    if(symbol_len){
-        
-        //printf("%s\n",&symbol_buffer[0]);
-        
-        evaluation_buffer[evaluation_count] =
-        {PHashString(&symbol_buffer[0])};
-        memcpy(&evaluation_buffer[evaluation_count].string[0],&symbol_buffer[0],strlen(&symbol_buffer[0]));
-        
-        evaluation_count++;
-    }
-    
-    if(buffer[cur] == '('){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString("("),"("};
-        
-        evaluation_count++;
-    }
-    
-    if(buffer[cur] == ')'){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString(")"),")"};
-        
-        evaluation_count++;
-        
-    }
-    
-    if(buffer[cur] == '*'){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString("*"),"*"};
-        
-        evaluation_count++;
-        
-    }
-    
-    if(buffer[cur] == '='){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString("="),"="};
-        
-        evaluation_count++;
-    }
-    
-    if(buffer[cur] == '"'){
-        
-        for(;;){
-            
-            s8 t[2] = {buffer[cur],0};
-            
-            evaluation_buffer[evaluation_count] =
-                EvalChar{PHashString(&t[0]),buffer[cur]};
-            evaluation_count++;
-            
-            //printf("%c",buffer[cur]);
-            
-            cur++;
-            
-            if(buffer[cur] == '"'){
-                
-                s8 t[2] = {buffer[cur],0};
-                
-                evaluation_buffer[evaluation_count] =
-                    EvalChar{PHashString(&t[0]),buffer[cur]};
-                evaluation_count++;
-                
-                //printf("%c",buffer[cur]);
-                
-                break;
-            }
-        }
-    }
-    
-    
-    
-    for(u32 j = 0; j < terminator_count;j++){
-        
-        if(buffer[cur] == terminator_array[j]){
-            
-            TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
-            ret = true;
-            break;
-        }
-        
-    }
-    
-    
-    if(buffer[cur] == ';' && !ret){
-        evaluation_count = 0;
-    }
-    
-    
-    
-    *k = evaluation_count;
-    *a = cur;
-    
-    return ret;
-}
 
-logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 terminator){
-    
-    return FillEvalBuffer(buffer,a,evaluation_buffer,k,&terminator,1);
-}
 
 struct GenericTypeDec{
     s8 type_string[128];
@@ -849,7 +733,7 @@ struct GenericStruct : GenericTypeDec{
     GenericTypeDef members_array[256];
 };
 
-void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,u32* cur){
+void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
     
     
     auto i = *cur;
@@ -906,7 +790,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     *cur = i;
 }
 
-void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count){
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericStruct* struct_array,u32* struct_count){
     
     auto s_count = *struct_count;
     
@@ -939,14 +823,14 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
     
-    for(u32 i = 0;;i++){
+    for(ptrsize i = 0;;i++){
         
         PSanitizeStringC(&scope_buffer[0],&i);
         
         auto c = scope_buffer[i];
         s8 terminator_array[] = {';','{'};
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array))){
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
             
             
             if(membereval_count){
@@ -1151,7 +1035,7 @@ void GenericStructToFormatSize(GenericStruct* basestruct,GenericStruct* struct_a
 }
 
 
-void InternalHandlePushConst(s8* buffer,u32* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,PushConstLayout* pushconstlayout){
+void InternalHandlePushConst(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,PushConstLayout* pushconstlayout){
     
     GenericStruct genericstruct = {};
     u32 g_count = 0;
@@ -1509,7 +1393,7 @@ void GetAttribDominantAndSecondary(GLSLType* type_array,u32 type_count,GLSLType*
     _kill("no dominant attrib found\n",!(*dominant));
 }
 
-void InternalHandleDesclayout(s8* buffer,u32* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,DescLayout* desclayout){
+void InternalHandleDesclayout(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,DescLayout* desclayout){
     
     /*
     There are two kinds of descset patterns
@@ -1620,7 +1504,7 @@ TODO: handle std430 std140
 
 
 
-void InternalHandleLayout(s8* buffer,u32* cur,ShaderType type,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout,PushConstLayout* pushconstlayout,DescLayout* desclayout){
+void InternalHandleLayout(s8* buffer,ptrsize* cur,ShaderType type,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout,PushConstLayout* pushconstlayout,DescLayout* desclayout){
     
     switch(InternalGetParseType(eval_buffer,eval_count)){
         
@@ -1658,7 +1542,7 @@ void InternalParseSource(ShaderType type,s8* buffer,u32 size,GenericStruct* stru
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
     
-    u32 cur = 0;
+    ptrsize cur = 0;
     
     for(;;){
         
@@ -1666,7 +1550,7 @@ void InternalParseSource(ShaderType type,s8* buffer,u32 size,GenericStruct* stru
         
         s8 terminator_array[] = {'{',';'};
         
-        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,terminator_array,_arraycount(terminator_array))){
+        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,terminator_array,_arraycount(terminator_array),TagEvalBuffer)){
             
 #if 0
             

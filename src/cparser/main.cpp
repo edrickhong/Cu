@@ -4,15 +4,18 @@
 #define _autoexpand_structs 1
 
 /*
+
+NOTE:
+if arraycount is 0, it is treated as 1d array w 1 element
+we treat enums the same way we treat structs
+
   TODO: 
   handle inheritance?
   ptr inspection can be implemented in assembly
   
-  we should handle unions as well
   handle typedef struct{...} Name 1,etc
 */
 
-//TODO: struct union and enum have the same parse structure (should we condense here?)
 void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
     for(u32 i = 0; i < count; i++){
@@ -21,7 +24,7 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         //        printf("%s",c->string);
         
-        if(c->hash == PHashString("struct")){
+        if(c->hash == PHashString("struct") ||c->hash == PHashString("union")){
             c->tag = TAG_STRUCT;
             
             //            printf("[struct] ");
@@ -82,133 +85,7 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
 
 
 
-//TODO: prep this to move into pparse
-logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count){
-    
-    auto cur = *a;
-    
-    u32 evaluation_count = *k;
-    
-    u32 symbol_len = 0;
-    s8 symbol_buffer[128] = {};
-    
-    logic ret = false;
-    
-    PGetSymbol(&symbol_buffer[0],buffer,&cur,&symbol_len);
-    
-    if(symbol_len){
-        
-        //printf("%s\n",&symbol_buffer[0]);
-        
-        
-        
-        evaluation_buffer[evaluation_count] =
-        {PHashString(&symbol_buffer[0])};
-        memcpy(&evaluation_buffer[evaluation_count].string[0],&symbol_buffer[0],strlen(&symbol_buffer[0]));
-        
-        evaluation_count++;
-    }
-    
-    if(buffer[cur] == '('){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString("("),"("};
-        
-        evaluation_count++;
-    }
-    
-    if(buffer[cur] == ')'){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString(")"),")"};
-        
-        evaluation_count++;
-        
-    }
-    
-    if(buffer[cur] == '*'){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString("*"),"*"};
-        
-        evaluation_count++;
-        
-    }
-    
-    if(buffer[cur] == '='){
-        
-        evaluation_buffer[evaluation_count] =
-            EvalChar{PHashString("="),"="};
-        
-        evaluation_count++;
-    }
-    
-    if(buffer[cur] == '"'){
-        
-        for(;;){
-            
-            s8 t[2] = {buffer[cur],0};
-            
-            evaluation_buffer[evaluation_count] =
-                EvalChar{PHashString(&t[0]),buffer[cur]};
-            evaluation_count++;
-            
-            //printf("%c",buffer[cur]);
-            
-            cur++;
-            
-            if(buffer[cur] == '"'){
-                
-                s8 t[2] = {buffer[cur],0};
-                
-                evaluation_buffer[evaluation_count] =
-                    EvalChar{PHashString(&t[0]),buffer[cur]};
-                evaluation_count++;
-                
-                //printf("%c",buffer[cur]);
-                
-                break;
-            }
-        }
-    }
-    
-    
-    
-    for(u32 j = 0; j < terminator_count;j++){
-        
-        if(buffer[cur] == terminator_array[j]){
-            
-            TagEvalBuffer(&evaluation_buffer[0],evaluation_count);
-            ret = true;
-            break;
-        }
-        
-    }
-    
-    
-    //MARK: do we need this? (kill here and see what's happening. we'll see if we can do better)
-    if(buffer[cur] == ';' && !ret){
-        evaluation_count = 0;
-    }
-    
-    
-    
-    *k = evaluation_count;
-    *a = cur;
-    
-    return ret;
-}
-
-
-
-logic FillEvalBuffer(s8* buffer,u32* a,EvalChar* evaluation_buffer,u32* k,s8 terminator){
-    
-    return FillEvalBuffer(buffer,a,evaluation_buffer,k,&terminator,1);
-}
-
-
-
-void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,u32* cur){
+void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
     auto i = *cur;
     
     auto member = &t->members_array[t->members_count];
@@ -458,7 +335,7 @@ void DebugPrintGenericFunction(GenericFunction* f){
 }
 
 //TODO: allow pouinter types
-void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericFunction* function_array,u32* function_count){
+void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericFunction* function_array,u32* function_count){
     
     for(u32 i = 0; i < count; i++){
         
@@ -598,7 +475,7 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,G
     }
 }
 
-void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
+void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
     
     s8 name_buffer[256] = {};
     
@@ -625,7 +502,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
     
-    for(u32 i = 0;;i++){
+    for(ptrsize i = 0;;i++){
         
         PSanitizeStringC(&scope_buffer[0],&i);
         
@@ -633,7 +510,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
         
         s8 terminator_array[] = {',','}'};
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,terminator_array,_arraycount(terminator_array))){
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,terminator_array,_arraycount(terminator_array),TagEvalBuffer)){
             
             if(membereval_count){
                 
@@ -659,7 +536,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gener
     //DebugPrintGenericEnum(e);
 }
 
-void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
     
     
     //Struct info
@@ -694,7 +571,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
     
-    for(u32 i = 0;;i++){
+    for(ptrsize i = 0;;i++){
         
         PSanitizeStringC(&scope_buffer[0],&i);
         
@@ -702,7 +579,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,u32* a,Gen
         
         s8 terminator_array[] = {';','{'};
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array))){
+        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
             
             if(membereval_count){
                 
@@ -762,14 +639,14 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
     
-    u32 cur = 0;
+    ptrsize cur = 0;
     
     
     for(;;){
         
         PSanitizeStringC(buffer,&cur);
         
-        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{')){
+        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{',TagEvalBuffer)){
             
             //start evaluating
             

@@ -1496,43 +1496,60 @@ Vector2 Normalize(Vector2 a){
 
 Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj){
     
-    //TODO:since we are only rotating one point, we should optimize for this case here
+#if !MATRIX_ROW_MAJOR
     
-    Matrix4b4 vertmat = {};
+    viewproj = Transpose(viewproj);
     
-    vertmat _rc4(0,0) = pos.x;
-    vertmat _rc4(0,1) = pos.y;
-    vertmat _rc4(0,2) = pos.z;
-    vertmat _rc4(0,3) = 1.0f;
+#endif
     
-    auto mat = viewproj * vertmat;
+    auto vert = pos.simd;
     
-    pos.x = mat _rc4(0,0);
-    pos.y = mat _rc4(0,1);
-    pos.z = mat _rc4(0,2);
+    auto a = _mulsimd4f(viewproj.simd[0],vert);
+    auto b = _mulsimd4f(viewproj.simd[1],vert);
+    auto c = _mulsimd4f(viewproj.simd[2],vert);
+    auto d = _mulsimd4f(viewproj.simd[3],vert);
     
-    return pos/mat _rc4(0,3);
+    f32 x = ((f32*)&a)[0] + ((f32*)&a)[1] + ((f32*)&a)[2] + ((f32*)&a)[3];
+    
+    f32 y = ((f32*)&b)[0] + ((f32*)&b)[1] + ((f32*)&b)[2] + ((f32*)&b)[3];
+    
+    f32 z = ((f32*)&c)[0] + ((f32*)&c)[1] + ((f32*)&c)[2] + ((f32*)&c)[3];
+    
+    f32 w = ((f32*)&d)[0] + ((f32*)&d)[1] + ((f32*)&d)[2] + ((f32*)&d)[3];
+    
+    Vector4 ret = {x,y,z,w};
+    
+    return ret/ret.w;
 }
 
 Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj){
     
     auto inv_viewproj = Inverse(viewproj);
     
-    Matrix4b4 vertmat = {};
+#if !MATRIX_ROW_MAJOR
     
-    vertmat _rc4(0,0) = pos.x;
-    vertmat _rc4(0,1) = pos.y;
-    vertmat _rc4(0,2) = pos.z;
-    vertmat _rc4(0,3) = pos.w;
+    inv_viewproj = Transpose(inv_viewproj);
     
-    auto mat = inv_viewproj * vertmat;
+#endif
     
-    pos.x = mat _rc4(0,0);
-    pos.y = mat _rc4(0,1);
-    pos.z = mat _rc4(0,2);
-    pos.w = mat _rc4(0,3);
+    auto vert = pos.simd;
     
-    return pos/pos.w;
+    auto a = _mulsimd4f(inv_viewproj.simd[0],vert);
+    auto b = _mulsimd4f(inv_viewproj.simd[1],vert);
+    auto c = _mulsimd4f(inv_viewproj.simd[2],vert);
+    auto d = _mulsimd4f(inv_viewproj.simd[3],vert);
+    
+    f32 x = ((f32*)&a)[0] + ((f32*)&a)[1] + ((f32*)&a)[2] + ((f32*)&a)[3];
+    
+    f32 y = ((f32*)&b)[0] + ((f32*)&b)[1] + ((f32*)&b)[2] + ((f32*)&b)[3];
+    
+    f32 z = ((f32*)&c)[0] + ((f32*)&c)[1] + ((f32*)&c)[2] + ((f32*)&c)[3];
+    
+    f32 w = ((f32*)&d)[0] + ((f32*)&d)[1] + ((f32*)&d)[2] + ((f32*)&d)[3];
+    
+    Vector4 ret = {x,y,z,w};
+    
+    return ret/ret.w;
 }
 
 
@@ -1624,51 +1641,39 @@ logic TypedIntersect(Line3 a,Line3 b){
     return false;
 }
 
-//TODO: this is very inefficient. we can solve this in 2d space easier
 logic Intersect(Line2 a_2,Line2 b_2){
     
-    Line3 a = {Vector3{a_2.pos.x,a_2.pos.y,1.0f},Vector3{a_2.dir.x,a_2.dir.y,1.0f}};
-    Line3 b = {Vector3{b_2.pos.x,b_2.pos.y,1.0f},Vector3{b_2.dir.x,b_2.dir.y,1.0f}};
+    a_2.dir = Normalize(a_2.dir);
+    b_2.dir = Normalize(b_2.dir);
     
-    auto cross_ab = Cross(a.dir,b.dir);
-    auto cross_diff = Cross(b.pos - a.pos,b.dir);
+    auto dot = Dot(a_2.dir,b_2.dir);
     
-    auto dot = Dot(Normalize(cross_ab),Normalize(cross_diff));
-    
-    return (u32)(fabsf(dot) + _f32_error_offset);
+    return !(u32)(fabsf(dot) + _f32_error_offset);
 }
 
-//TODO: this is very inefficient. we can solve this in 2d space easier
 logic Intersect(Line2 a_2,Line2 b_2,Point2* out_point){
     
-    Line3 a = {Vector3{a_2.pos.x,a_2.pos.y,1.0f},Vector3{a_2.dir.x,a_2.dir.y,1.0f}};
-    Line3 b = {Vector3{b_2.pos.x,b_2.pos.y,1.0f},Vector3{b_2.dir.x,b_2.dir.y,1.0f}};
+    a_2.dir = Normalize(a_2.dir);
+    b_2.dir = Normalize(b_2.dir);
     
-    auto cross_ab = Cross(a.dir,b.dir);
-    auto cross_diff = Cross(b.pos - a.pos,b.dir);
-    
-    auto dot = Dot(Normalize(cross_ab),Normalize(cross_diff));
+    auto dot = Dot(a_2.dir,b_2.dir);
     
     if(!(u32)(fabsf(dot) + _f32_error_offset)){
         return false;
     }
     
-    f32 t = 0.0f;
+    //this uses y = mx + c (TODO: test this)
     
-    for(u32 i = 0; i < 3; i++){
-        
-        m32 fi1;
-        
-        fi1.f = cross_ab.floats[i];
-        
-        if(fi1.i){
-            t = cross_diff.floats[i]/cross_ab.floats[i];
-            break;
-        }
-        
-    }
+    auto m1 = a_2.dir.y/a_2.dir.x;
+    auto m2 = b_2.dir.y/b_2.dir.x;
     
-    *out_point = (a_2.dir * t) + a_2.pos;
+    auto c1 = a_2.pos.y - (a_2.pos.x * m1);
+    auto c2 = b_2.pos.y - (b_2.pos.x * m2);
+    
+    auto x = (-1.0f * (c1 - c2))/(m1 - m2);
+    auto y = (m1 * x) + c1;
+    
+    *out_point = {x,y};
     
     return true;
 }

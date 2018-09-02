@@ -9,10 +9,6 @@
 This is for general string parsing and to support the general parsing of C-like functions
 */
 
-/*
-TODO: we should make size or pos to ptrsize instead of u32
-*/
-
 enum PTokenType{
     
     PTOKEN_SYMBOL,
@@ -147,7 +143,7 @@ logic _ainline PIsVisibleChar(s8 c){
     return (c > 32) && (c < 127);
 }
 
-constexpr u32 PStrLen(const s8* string){
+constexpr ptrsize PStrLen(const s8* string){
     
     u32 len = 0;
     
@@ -171,7 +167,7 @@ constexpr u64 PHashString(const s8* string){
     
 #define _prime_value(a) prime_array[(a) % _arraycount(prime_array)]
     
-    u32 len = PStrLen(string);
+    auto len = PStrLen(string);
     
     u64 hash = 0;
     
@@ -214,19 +210,19 @@ f32 PHexStringToFloat(const s8* string);
 
 //We should add an function pointer to allow different criteria 
 
-void PGetWord(s8* dst_string,s8* src_string,u32* pos,u32* word_count);
+void PGetWord(s8* dst_string,s8* src_string,ptrsize* pos,u32* word_count);
 
-void PGetSymbol(s8* dst_string,s8* src_string,u32* pos,u32* word_count);
+void PGetSymbol(s8* dst_string,s8* src_string,ptrsize* pos,u32* word_count);
 
-void PGetLine(s8* dst_string,s8* src_string,u32* pos,u32* len);
+void PGetLine(s8* dst_string,s8* src_string,ptrsize* pos,u32* len);
 
-void PSkipLine(s8* src_string,u32* pos);
+void PSkipLine(s8* src_string,ptrsize* pos);
 
-logic PSkipWhiteSpace(s8* src_string,u32* pos);
+logic PSkipWhiteSpace(s8* src_string,ptrsize* pos);
 
-void PSkipUntilChar(s8* src_string,u32* pos,s8 c);
+void PSkipUntilChar(s8* src_string,ptrsize* pos,s8 c);
 
-void PParseUntilChar(s8* dst_string,s8* src_string,u32* pos,s8 c,u32* len);
+void PParseUntilChar(s8* dst_string,s8* src_string,ptrsize* pos,s8 c,u32* len);
 
 void PGetFileExtension(s8* dst_string,const s8* file,u32* len);
 
@@ -290,7 +286,7 @@ logic _ainline PIsStringFloat(s8* string){
 }
 
 constexpr u32 PFindStringInBuffer(const s8* target_string,const s8* buffer,
-                                  u32 buffer_len){
+                                  ptrsize buffer_len){
     
     auto target_len = PStrLen(target_string);
     
@@ -327,13 +323,10 @@ constexpr u32 PFindStringInBuffer(const s8* target_string,const s8* buffer,
 #define PFindStringInString(target,ref) PFindStringInBuffer(target,ref,PStrLen(ref))
 
 
-//TODO:
-void PBufferToByteArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
-
-void PBufferToDWordArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size);
+void PBufferToByteArrayString(s8* array_name,s8* src_buffer,ptrsize src_size,s8* dst_buffer,ptrsize* dst_size);
 
 
-void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size,u32* arraycount = 0);
+void PBufferListToArrayString(s8* array_name,s8* src_buffer,ptrsize src_size,s8* dst_buffer,ptrsize* dst_size,u32* arraycount = 0);
 
 constexpr logic PStringCmp(const s8* string1,const s8* string2){
     
@@ -370,7 +363,7 @@ logic  _ainline PIsEndCommentC(s8 c1,s8 c2){
     return c1 == '*'  && c2 == '/';
 }
 
-void _ainline PIgnoreWhiteSpace(s8* buffer,u32* cur){
+void _ainline PIgnoreWhiteSpace(s8* buffer,ptrsize* cur){
     
     auto k = *cur;
     
@@ -381,7 +374,7 @@ void _ainline PIgnoreWhiteSpace(s8* buffer,u32* cur){
     *cur = k;
 }
 
-void _ainline PIgnorePreprocessorAndCommentsC(s8* buffer,u32* cur){
+void _ainline PIgnorePreprocessorAndCommentsC(s8* buffer,ptrsize* cur){
     
     auto k = *cur;
     
@@ -406,10 +399,10 @@ void _ainline PIgnorePreprocessorAndCommentsC(s8* buffer,u32* cur){
 }
 
 
-void PSanitizeStringC(s8* buffer,u32* k);
+void PSanitizeStringC(s8* buffer,ptrsize* cur);
 
 //NOTE: we will crash if we encounter a '}' first
-void _ainline PSkipBracketBlock(s8* buffer,u32* a){
+void _ainline PSkipBracketBlock(s8* buffer,ptrsize* a){
     
     auto cur = *a;
     
@@ -438,7 +431,7 @@ void _ainline PSkipBracketBlock(s8* buffer,u32* a){
     *a = cur;
 }
 
-void _ainline PExtractScopeC(s8* scope_buffer,s8* buffer,u32* a){
+void _ainline PExtractScopeC(s8* scope_buffer,s8* buffer,ptrsize* a){
     
     u32 scope_count = 0;
     u32 count = *a;
@@ -497,3 +490,12 @@ struct EvalChar{
     
     u32 tag;
 };
+
+
+
+
+logic FillEvalBuffer(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8* terminator_array,u32 terminator_count,void (*tagevalbuffer)(EvalChar*,u32));
+
+
+
+logic FillEvalBuffer(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32));

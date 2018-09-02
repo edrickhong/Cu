@@ -1,7 +1,7 @@
 #include "pparse.h"
 #include "string.h"
 
-void PSkipUntilChar(s8* src_string,u32* pos,s8 c){
+void PSkipUntilChar(s8* src_string,ptrsize* pos,s8 c){
     
     u32 curpos = *pos;
     
@@ -13,12 +13,12 @@ void PSkipUntilChar(s8* src_string,u32* pos,s8 c){
     
 }
 
-void PSkipLine(s8* src_string,u32* pos){
+void PSkipLine(s8* src_string,ptrsize* pos){
     PSkipUntilChar(src_string,pos,'\n');
     (*pos)++;
 }
 
-void PParseUntilChar(s8* dst_string,s8* src_string,u32* pos,s8 c,u32* outlen){
+void PParseUntilChar(s8* dst_string,s8* src_string,ptrsize* pos,s8 c,u32* outlen){
     
     
     u32 startpos = *pos;
@@ -40,7 +40,7 @@ void PParseUntilChar(s8* dst_string,s8* src_string,u32* pos,s8 c,u32* outlen){
     
 }
 
-void PGetLine(s8* dst_string,s8* src_string,u32* pos,u32* outlen){
+void PGetLine(s8* dst_string,s8* src_string,ptrsize* pos,u32* outlen){
     
     PParseUntilChar(dst_string,src_string,pos,'\n',outlen);
     (*pos)++;
@@ -163,7 +163,7 @@ f32 PHexStringToFloat(const s8* string){
 }
 
 
-void PGetWord(s8* dst_string,s8* src_string,u32* pos,u32* word_count){
+void PGetWord(s8* dst_string,s8* src_string,ptrsize* pos,u32* word_count){
     
     u32 startpos = *pos;
     u32 curpos = *pos;
@@ -185,7 +185,7 @@ void PGetWord(s8* dst_string,s8* src_string,u32* pos,u32* word_count){
     
 }
 
-void PGetSymbol(s8* dst_string,s8* src_string,u32* pos,u32* word_count){
+void PGetSymbol(s8* dst_string,s8* src_string,ptrsize* pos,u32* word_count){
     
     u32 startpos = *pos;
     u32 curpos = *pos;
@@ -234,7 +234,7 @@ void PGetFileExtension(s8* dst_string,const s8* file,u32* len){
 }
 
 
-logic PSkipWhiteSpace(s8* src_string,u32* pos){
+logic PSkipWhiteSpace(s8* src_string,ptrsize* pos){
     
     u32 start = *pos;
     u32 cur = *pos;
@@ -257,7 +257,7 @@ logic PSkipWhiteSpace(s8* src_string,u32* pos){
 }
 
 
-void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size,u32* arraycount){
+void PBufferListToArrayString(s8* array_name,s8* src_buffer,ptrsize src_size,s8* dst_buffer,ptrsize* dst_size,u32* arraycount){
     
     if(dst_size){
         (*dst_size) = 0;
@@ -287,7 +287,7 @@ void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
         
     }
     
-    for(u32 i = 0;;){
+    for(ptrsize i = 0;;){
         
         if(i >= src_size){
             break;
@@ -361,7 +361,7 @@ void PBufferListToArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
     
 }
 
-void PSanitizeStringC(s8* buffer,u32* k){
+void PSanitizeStringC(s8* buffer,ptrsize* k){
     
     auto cur = *k;
     
@@ -411,7 +411,7 @@ void PSanitizeStringC(s8* buffer,u32* k){
 #define _hex_row_count 8
 
 
-void PBufferToByteArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst_buffer,u32* dst_size){
+void PBufferToByteArrayString(s8* array_name,s8* src_buffer,ptrsize src_size,s8* dst_buffer,ptrsize* dst_size){
     
     {
         s8 buffer[256] = {};
@@ -470,4 +470,129 @@ void PBufferToByteArrayString(s8* array_name,s8* src_buffer,u32 src_size,s8* dst
             (*dst_size) += len;
         }
     }
+}
+
+
+
+
+logic FillEvalBuffer(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count,void (*tagevalbuffer)(EvalChar*,u32)){
+    
+    auto cur = *a;
+    
+    u32 evaluation_count = *k;
+    
+    u32 symbol_len = 0;
+    s8 symbol_buffer[128] = {};
+    
+    logic ret = false;
+    
+    PGetSymbol(&symbol_buffer[0],buffer,&cur,&symbol_len);
+    
+    if(symbol_len){
+        
+        //printf("%s\n",&symbol_buffer[0]);
+        
+        
+        
+        evaluation_buffer[evaluation_count] =
+        {PHashString(&symbol_buffer[0])};
+        memcpy(&evaluation_buffer[evaluation_count].string[0],&symbol_buffer[0],strlen(&symbol_buffer[0]));
+        
+        evaluation_count++;
+    }
+    
+    if(buffer[cur] == '('){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("("),"("};
+        
+        evaluation_count++;
+    }
+    
+    if(buffer[cur] == ')'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString(")"),")"};
+        
+        evaluation_count++;
+        
+    }
+    
+    if(buffer[cur] == '*'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("*"),"*"};
+        
+        evaluation_count++;
+        
+    }
+    
+    if(buffer[cur] == '='){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("="),"="};
+        
+        evaluation_count++;
+    }
+    
+    if(buffer[cur] == '"'){
+        
+        for(;;){
+            
+            s8 t[2] = {buffer[cur],0};
+            
+            evaluation_buffer[evaluation_count] =
+                EvalChar{PHashString(&t[0]),buffer[cur]};
+            evaluation_count++;
+            
+            //printf("%c",buffer[cur]);
+            
+            cur++;
+            
+            if(buffer[cur] == '"'){
+                
+                s8 t[2] = {buffer[cur],0};
+                
+                evaluation_buffer[evaluation_count] =
+                    EvalChar{PHashString(&t[0]),buffer[cur]};
+                evaluation_count++;
+                
+                //printf("%c",buffer[cur]);
+                
+                break;
+            }
+        }
+    }
+    
+    
+    
+    for(u32 j = 0; j < terminator_count;j++){
+        
+        if(buffer[cur] == terminator_array[j]){
+            
+            tagevalbuffer(&evaluation_buffer[0],evaluation_count);
+            ret = true;
+            break;
+        }
+        
+    }
+    
+    
+    if(buffer[cur] == ';' && !ret){
+        evaluation_count = 0;
+    }
+    
+    
+    
+    *k = evaluation_count;
+    *a = cur;
+    
+    return ret;
+}
+
+
+
+logic FillEvalBuffer(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32)){
+    
+    return FillEvalBuffer(buffer,a,evaluation_buffer,k,&terminator,1,tagevalbuffer);
 }

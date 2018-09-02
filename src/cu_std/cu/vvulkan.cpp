@@ -1599,7 +1599,7 @@ VDeviceContext VCreateDeviceContext(VkPhysicalDevice* physdevice_array,u32 physd
     
     context.phys_info = (VDeviceContext::PhysDeviceInfo*)alloc(sizeof(VDeviceContext::PhysDeviceInfo));
     
-    //TODOO: handle multi gpu
+    //TODO: handle multi gpu
     memcpy(&context.phys_info->physicaldevice_array[0],&physdevice_array[0],sizeof(VkPhysicalDevice) * physdevice_count);
     
     context.phys_info->physicaldevice_count = physdevice_count;
@@ -2793,7 +2793,6 @@ void VSetFixedViewportGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
 }
 
 
-//TODO: VkSampleMask* samplemask is a dependency (do we not save it?)
 void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
                                          VkSampleCountFlagBits samplecount_bits,
                                          VkBool32 is_persample_perfragment,//true = sample,else frag
@@ -2801,6 +2800,8 @@ void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
                                          VkSampleMask* samplemask,
                                          VkBool32 enable_alpha_to_coverage,
                                          VkBool32 enable_alpha_to_one){
+    
+    
     spec->multisample.sType =VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     
     spec->multisample.pNext = 0;
@@ -2811,6 +2812,8 @@ void VSetMultisampleGraphicsPipelineSpec(VGraphicsPipelineSpecObj* spec,
     spec->multisample.pSampleMask= samplemask;
     spec->multisample.alphaToCoverageEnable = enable_alpha_to_coverage;
     spec->multisample.alphaToOneEnable = enable_alpha_to_one;
+    
+    spec->samplemask = samplemask;
 }
 
 

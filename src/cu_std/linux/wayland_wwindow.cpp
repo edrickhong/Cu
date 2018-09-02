@@ -140,6 +140,17 @@ logic InternalLoadLibraryWayland(){
 }
 
 
+void InternalUnloadLibraryWayland(){
+    
+    LUnloadLibrary(wwindowlib_handle);
+    wwindowlib_handle = 0;
+    loaded_lib_type = 0;
+    
+    LUnloadLibrary(xkb_lib);
+    xkb_lib = 0;
+}
+
+
 
 //wayland stuff
 
@@ -205,21 +216,24 @@ void WSetTitleWayland(WWindowContext* context,const s8* title){
 
 void WaylandKeyboardMap(void* data,wl_keyboard* keyboard,u32 format,s32 fd,u32 size){
     
-    auto string = mmap(0,size,PROT_READ,MAP_SHARED,fd,0);
-    
-    
-    auto xkb_keymap_new_from_string_fptr = (xkb_keymap* (*)(xkb_context*,const s8*,xkb_keymap_format,xkb_keymap_compile_flags))
-        LGetLibFunction(xkb_lib,"xkb_keymap_new_from_string");
-    
-    auto xkb_state_new_fptr = (xkb_state* (*)(xkb_keymap*))LGetLibFunction(xkb_lib,"xkb_state_new");
-    
-    //TODO: we might want to free if already initialized?
-    
-    xkb_kbmap = xkb_keymap_new_from_string_fptr(xkb_ctx,(const s8*)string,XKB_KEYMAP_FORMAT_TEXT_V1,XKB_KEYMAP_COMPILE_NO_FLAGS);
-    
-    xkb_kbstate = xkb_state_new_fptr(xkb_kbmap);
-    
-    munmap(string,size);
+    if(!xkb_kbmap){
+        
+        
+        auto string = mmap(0,size,PROT_READ,MAP_SHARED,fd,0);
+        
+        
+        auto xkb_keymap_new_from_string_fptr = (xkb_keymap* (*)(xkb_context*,const s8*,xkb_keymap_format,xkb_keymap_compile_flags))
+            LGetLibFunction(xkb_lib,"xkb_keymap_new_from_string");
+        
+        auto xkb_state_new_fptr = (xkb_state* (*)(xkb_keymap*))LGetLibFunction(xkb_lib,"xkb_state_new");
+        
+        xkb_kbmap = xkb_keymap_new_from_string_fptr(xkb_ctx,(const s8*)string,XKB_KEYMAP_FORMAT_TEXT_V1,XKB_KEYMAP_COMPILE_NO_FLAGS);
+        
+        xkb_kbstate = xkb_state_new_fptr(xkb_kbmap);
+        
+        munmap(string,size);
+        
+    }
 }
 
 void WaylandKeyboardEnter(void* data,wl_keyboard* keyboard,u32 serial,
@@ -506,11 +520,26 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     xkb_ctx= xkb_context_new_fptr(XKB_CONTEXT_NO_FLAGS);
     
     if(!display || !xkb_ctx){
-        LUnloadLibrary(wwindowlib_handle);
-        wwindowlib_handle = 0;
-        loaded_lib_type = 0;
         
-        //TODO: disconnect display and xkb_ctx
+        if(display){
+            
+            auto wl_display_disconnect_fptr =
+                (void (*)(wl_display*))LGetLibFunction(wwindowlib_handle,"wl_display_disconnect");
+            
+            wl_display_disconnect_fptr(display);
+        }
+        
+        if(xkb_ctx){
+            
+            auto xkb_context_unref_fptr = (void (*)(xkb_context*))
+                LGetLibFunction(xkb_lib,"xkb_context_unref");
+            
+            xkb_context_unref_fptr(xkb_ctx);
+            
+        }
+        
+        //MARK: we probably don't need to do this
+        InternalUnloadLibraryWayland();
         
         return false;
     }
