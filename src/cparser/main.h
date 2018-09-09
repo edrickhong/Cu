@@ -1275,7 +1275,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
             }
             
             sprintf(outbuffer,
-                    "{(u32)((u64)((&((ComponentStruct*)0)->%s_array))),(u32)((u64)((&((ComponentStruct*)0)->%s_count))),sizeof(ComponentStruct::%s_array[0]),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
+                    "{offsetof(ComponentStruct,%s_array),offsetof(ComponentStruct,%s_count),sizeof(ComponentStruct::%s_array[0]),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
                     lowercasebuffer,lowercasebuffer,lowercasebuffer,s->name_string,
                     (u32)s->name_hash,s->name_string,
                     s->name_string);

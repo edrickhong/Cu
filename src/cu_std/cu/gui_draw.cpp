@@ -574,7 +574,11 @@ struct GUIContext{
         };
         
         //textbox
-        s8 text_buffer[1024 * 2];
+        struct{
+            s8 input_buffer[256];
+            s8 text_buffer[1024 * 2];
+        };
+        
         
     };
     
@@ -1294,8 +1298,8 @@ void  GUIInternalMakeSubmission(WindowClipState to_make_window,GUIVec2 pos,GUIDi
     };
     
     
-    //DEBUG:
-#if 1
+    //DEBUG: (For finding null draws)
+#if 0
     if(gui->submit_count){
         
         _kill("",(gui->vert_offset == gui->submit_array[gui->submit_count - 1].vert_offset) && gui->vert_offset != 0);
@@ -1353,8 +1357,12 @@ void _ainline InternalGetWindowTextDim(GUIFont* font,f32* w,f32* h,f32 scale,
     }  
 }
 
-void GUIUpdate(WWindowContext* window,KeyboardState* keyboardstate,
+void GUIUpdate(WWindowContext* window,KeyboardState* keyboardstate,s8* keyboard_ascii_buffer,u32 keyboard_ascii_count,
                MouseState* mousestate,Matrix4b4 view,Matrix4b4 proj){
+    
+    
+    memcpy(gui->input_buffer,keyboard_ascii_buffer,keyboard_ascii_count);
+    gui->input_buffer[keyboard_ascii_count] = 0;
     
     gui->internal_width = window->width;
     gui->internal_height = window->height;
@@ -1860,7 +1868,7 @@ void GUIDraw(VkCommandBuffer cmdbuffer){
         
         auto vert_offset = sub->vert_offset;
         
-        u32 vert_count;
+        u32 vert_count = 0;
         
         if((i + 1) < gui->submit_count){
             auto next_sub = &gui->submit_array[i + 1];
@@ -1950,19 +1958,12 @@ logic GUITextBox(const s8* label,const s8* buffer,logic fill_w,GUIDim2 dim){
             return false;
         }
         
-        for(u32 i = 0; i < _arraycount(gui->internal_curkeystate); i++){
+        
+        {
+            auto nlen = strlen(gui->input_buffer);
+            memcpy(&in_buffer[len],gui->input_buffer,nlen);
             
-            if(IsKeyPressed(&state,i)){
-                
-                auto c = WKeyCodeToASCII(i);
-                
-                if(PIsVisibleChar(c)){
-                    in_buffer[len] = c;
-                    len++;
-                }
-                
-            }
-            
+            len += nlen;
         }
         
     }

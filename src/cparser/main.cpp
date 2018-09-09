@@ -9,9 +9,10 @@ NOTE:
 if arraycount is 0, it is treated as 1d array w 1 element
 we treat enums the same way we treat structs
 
+ptr inspection can be implemented in assembly
+
   TODO: 
-  handle inheritance?
-  ptr inspection can be implemented in assembly
+  
   
   handle typedef struct{...} Name 1,etc
 */

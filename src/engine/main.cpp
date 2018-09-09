@@ -223,7 +223,29 @@ s32 main(s32 argc,s8** argv){
             
 #if _enable_gui
             
-            GUIUpdate(&pdata->window,&pdata->keyboardstate,&pdata->mousestate,
+            s8 ascii_buffer[256] = {};
+            u32 ascii_count = 0;
+            
+            if(GUIIsAnyElementActive()){
+                
+                for(u32 i = 0; i < _arraycount(pdata->keyboardstate.curkeystate); i++){
+                    
+                    if(IsKeyPressed(&pdata->keyboardstate,i)){
+                        
+                        auto c = WKeyCodeToASCII(i);
+                        
+                        if(PIsVisibleChar(c)){
+                            ascii_buffer[ascii_count] = c;
+                            ascii_count++;
+                        }
+                        
+                    }
+                    
+                }
+                
+            }
+            
+            GUIUpdate(&pdata->window,&pdata->keyboardstate,ascii_buffer,ascii_count,&pdata->mousestate,
                       pdata->view,pdata->proj);
             
             GUIBegin();
@@ -371,6 +393,8 @@ s32 main(s32 argc,s8** argv){
 
 /*
   TODO: 
+  
+  Make keyboardstate and mousestate a bit array
   
   Compile all assets into an adb file (asset data base). We will build a function a constexpr
   function at compile time which translates filepaths to indices and an adb file w raw data.
