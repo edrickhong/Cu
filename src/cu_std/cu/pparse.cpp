@@ -527,6 +527,15 @@ logic FillEvalBuffer(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8
         
     }
     
+    if(buffer[cur] == ':'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString(":"),":"};
+        
+        evaluation_count++;
+        
+    }
+    
     if(buffer[cur] == '='){
         
         evaluation_buffer[evaluation_count] =

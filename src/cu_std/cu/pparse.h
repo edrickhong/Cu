@@ -482,6 +482,9 @@ enum CParseTags{
     TAG_END_CURLY,
     
     TAG_DOUBLE_QUOTE,
+    
+    //These have more context in C++
+    TAG_COLON,
 };
 
 struct EvalChar{

@@ -436,7 +436,7 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
                 
                 //TODO: support more than 1d arrays
                 //Remove ref_metadatacomp_index
-                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)offsetof(%s,%s),%d,(u32)-1},\n"
+                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)((u64)((&((%s*)0)->%s))),%d,(u32)-1},\n"
                         ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,m->dim_array[0]);
                 
                 FWrite(file,(void*)buffer,strlen(buffer));
@@ -1275,7 +1275,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
             }
             
             sprintf(outbuffer,
-                    "{offsetof(ComponentStruct,%s_array),offsetof(ComponentStruct,%s_count),sizeof(ComponentStruct::%s_array[0]),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
+                    "{(u32)((u64)((&((ComponentStruct*)0)->%s_array))),(u32)((u64)((&((ComponentStruct*)0)->%s_count))),sizeof(ComponentStruct::%s_array[0]),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
                     lowercasebuffer,lowercasebuffer,lowercasebuffer,s->name_string,
                     (u32)s->name_hash,s->name_string,
                     s->name_string);

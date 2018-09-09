@@ -68,6 +68,10 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
             c->tag = TAG_DOUBLE_QUOTE;
         }
         
+        else if(c->hash == PHashString(":")){
+            c->tag = TAG_COLON;
+        }
+        
         else if(PIsStringFloat(c->string) || PIsStringInt(c->string)){
             c->tag = TAG_VALUE;
         }
@@ -536,6 +540,44 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,G
     //DebugPrintGenericEnum(e);
 }
 
+GenericStruct* GetHParent(EvalChar* eval_buffer,u32 count,GenericStruct* struct_array,u32 struct_count){
+    
+    logic has_parent = false;
+    
+    for(u32 i = 0; i < count; i++){
+        
+        auto e = &eval_buffer[i];
+        
+        if(has_parent && e->tag == TAG_SYMBOL){
+            
+            GenericStruct* s = 0;
+            
+            for(u32 j = 0; j < struct_count; j++){
+                
+                if(struct_array[j].name_hash == e->hash){
+                    s = &struct_array[j];
+                }
+            }
+            
+            _kill("HParent not found\n",!s);
+            
+            return s;
+        }
+        
+        if(e->tag == TAG_COLON){
+            has_parent = true;
+        }
+        
+    }
+    
+    return 0;
+}
+
+/*
+NOTE: parent_name refers to the parent struct scope that this scope is declared in
+
+HParent is the heirarchical parent 
+*/
 void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
     
     
@@ -563,6 +605,24 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
     memcpy(&t->type_string[0],"struct",strlen("struct"));
     
     t->pkey = pkey;
+    
+    
+    //handles inheritance
+    {
+        auto parent = GetHParent(eval_buffer,count,struct_array,*struct_count);
+        
+        if(parent){
+            
+            for(u32 i = 0; i < parent->members_count; i++){
+                
+                t->members_array[t->members_count] = parent->members_array[i];
+                
+                t->members_count++;
+                
+            }
+        }
+    }
+    
     
     s8 scope_buffer[1024 * 4] = {};
     
