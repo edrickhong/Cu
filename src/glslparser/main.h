@@ -830,7 +830,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
         auto c = scope_buffer[i];
         s8 terminator_array[] = {';','{'};
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
+        if(PFillEvalBufferC(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
             
             
             if(membereval_count){
@@ -906,7 +906,7 @@ void InternalParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayout
     u32 location = (u32)-1;
     
     //check if it is instance rate
-    for(u32 i = eval_count; i != (u32)-1; i--){
+    for(u32 i = eval_count - 1; i != (u32)-1; i--){
         
         if(eval_buffer[i].hash == PHashString("INSTRATE")){
             layout = instancelayout;
@@ -920,7 +920,7 @@ void InternalParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayout
     _kill("location not found\n",location == (u32)-1);
     
     
-    for(u32 i = eval_count; i != (u32)-1; i--){
+    for(u32 i = eval_count - 1; i != (u32)-1; i--){
         
         auto tag = eval_buffer[i].tag;
         
@@ -930,6 +930,7 @@ void InternalParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayout
             u32 size = 0;
             
             GetInternalFormatAndSize((GLSLType)PHashString(eval_buffer[i].string),&format,&size);
+            
             
             layout->entry_array[layout->entry_count] = {format,size,location};
             layout->size += size;
@@ -1541,16 +1542,16 @@ void InternalParseSource(ShaderType type,s8* buffer,u32 size,GenericStruct* stru
     
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
-    
     ptrsize cur = 0;
     
     for(;;){
         
         PSanitizeStringC(buffer,&cur);
         
+        
         s8 terminator_array[] = {'{',';'};
         
-        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,terminator_array,_arraycount(terminator_array),TagEvalBuffer)){
+        if(PFillEvalBufferC(buffer,&cur,&evaluation_buffer[0],&evaluation_count,terminator_array,_arraycount(terminator_array),TagEvalBuffer)){
             
 #if 0
             

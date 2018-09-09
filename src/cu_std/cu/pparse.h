@@ -497,8 +497,8 @@ struct EvalChar{
 
 
 
-logic FillEvalBuffer(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8* terminator_array,u32 terminator_count,void (*tagevalbuffer)(EvalChar*,u32));
+logic PFillEvalBufferC(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8* terminator_array,u32 terminator_count,void (*tagevalbuffer)(EvalChar*,u32));
 
 
 
-logic FillEvalBuffer(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32));
+logic PFillEvalBufferC(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32));

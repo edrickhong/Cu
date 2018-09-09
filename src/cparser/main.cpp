@@ -514,7 +514,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,G
         
         s8 terminator_array[] = {',','}'};
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,terminator_array,_arraycount(terminator_array),TagEvalBuffer)){
+        if(PFillEvalBufferC(scope_buffer,&i,&membereval_array[0],&membereval_count,terminator_array,_arraycount(terminator_array),TagEvalBuffer)){
             
             if(membereval_count){
                 
@@ -639,7 +639,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
         
         s8 terminator_array[] = {';','{'};
         
-        if(FillEvalBuffer(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
+        if(PFillEvalBufferC(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
             
             if(membereval_count){
                 
@@ -706,7 +706,7 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
         
         PSanitizeStringC(buffer,&cur);
         
-        if(FillEvalBuffer(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{',TagEvalBuffer)){
+        if(PFillEvalBufferC(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{',TagEvalBuffer)){
             
             //start evaluating
             
