@@ -194,7 +194,7 @@ add_custom_command(TARGET ${TARGET} PRE_BUILD
 COMMAND echo Shader Compiling ${IN} to ${OUT}
 
 #output preprocessed
-COMMAND glslc -DPREPROCESS -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${IN} -o ../rsrc/shaders/pp_${OUT}
+COMMAND glslc -D${DEF} -DPREPROCESS -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${IN} -o ../rsrc/shaders/pp_${OUT}
 
 COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -D${DEF} ../src/shaders/${IN} -o ../rsrc/shaders/${OUT}.spv
 
