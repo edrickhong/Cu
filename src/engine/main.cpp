@@ -5,6 +5,8 @@
 
 _persist auto ustring = "patchthisvalueinatassetpacktime";
 
+
+
 #ifndef CPP_PASS
 
 #include "engine_meta.h"

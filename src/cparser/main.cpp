@@ -10,9 +10,6 @@ if arraycount is 0, it is treated as 1d array w 1 element
 we treat enums the same way we treat structs
 
 ptr inspection can be implemented in assembly
-
-  TODO: 
-  handle typedef struct{...} Name 1,etc
 */
 
 void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
@@ -577,15 +574,61 @@ NOTE: parent_name refers to the parent struct scope that this scope is declared 
 
 HParent is the heirarchical parent 
 */
-void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){
+void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,REFLSTRUCTTYPE type,const s8* parent_name = 0){
+    
+    s8 scope_buffer[1024 * 4] = {};
+    PExtractScopeC(&scope_buffer[0],buffer,a);
     
     
-    //Struct info
-    
-    ParserKeyWord pkey = PARSERKEYWORD_REFL;
     s8 name_buffer[256] = {};
+    ParserKeyWord pkey = PARSERKEYWORD_REFL;
     
-    if(ValidateAndFillNameBufferStruct(eval_buffer,count,parent_name,name_buffer,&pkey)){
+    //For typedefs, we only take the first name
+    if(type == REFLSTRUCTTYPE_TYPEDEF_STRUCT){
+        
+        
+        EvalChar e_array[256] = {};
+        u32 e_count = 0;
+        
+        for(;;(*a)++){
+            
+            PSanitizeStringC(buffer,a);
+            
+            auto c = buffer[(*a)];
+            
+            s8 terminator_array[] = {';','{'};
+            
+            if(PFillEvalBufferC(buffer,a,&e_array[0],&e_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
+                
+                for(u32 i = 0; i < e_count; i++){
+                    
+                    auto e = &e_array[i];
+                    
+                    if(e->tag == TAG_SYMBOL){
+                        
+                        memcpy(name_buffer,e->string,strlen(e->string));
+                    }
+                    
+                    
+                    
+                    
+                }
+                
+                break;
+            }
+            
+        }
+        
+        
+        if(ValidateNameBufferStruct(eval_buffer,count,parent_name,name_buffer,&pkey)){
+            printf("WARNING: Skipped %s. \"__\" is not allowed\n",name_buffer);
+            return;
+        }
+        
+    }
+    
+    
+    else if(ValidateAndFillNameBufferStruct(eval_buffer,count,parent_name,name_buffer,&pkey)){
         printf("WARNING: Skipped %s. \"__\" is not allowed\n",name_buffer);
         return;
     }
@@ -593,6 +636,9 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
     if(IsDuplicateStruct(struct_array,*struct_count,name_buffer)){
         return;
     }
+    
+    
+    //Struct info
     
     auto t = &struct_array[*struct_count];
     (*struct_count)++;
@@ -621,11 +667,6 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
             }
         }
     }
-    
-    
-    s8 scope_buffer[1024 * 4] = {};
-    
-    PExtractScopeC(&scope_buffer[0],buffer,a);
     
     EvalChar membereval_array[256] = {};
     u32 membereval_count = 0;
@@ -662,7 +703,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
                         
                         if(membereval_array[0].tag == TAG_STRUCT){
                             
-                            GenerateGenericStruct(&membereval_array[0],membereval_count,scope_buffer,&i,struct_array,struct_count,enum_array,enum_count,&t->name_string[0]);
+                            GenerateGenericStruct(&membereval_array[0],membereval_count,scope_buffer,&i,struct_array,struct_count,enum_array,enum_count,type,&t->name_string[0]);
                             
                         }
                         
@@ -709,12 +750,17 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
             
             //start evaluating
             
-            if(IsReflStruct(&evaluation_buffer[0],evaluation_count)){
+            
+            
+            
+            {
+                auto type = IsReflStruct(&evaluation_buffer[0],evaluation_count);
                 
                 
-                
-                GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],struct_count,enum_array,enum_count);
-                
+                if(type){
+                    
+                    GenerateGenericStruct(&evaluation_buffer[0],evaluation_count,buffer,&cur,&struct_array[0],struct_count,enum_array,enum_count,type);
+                }
             }
             
             if(IsReflEnum(&evaluation_buffer[0],evaluation_count)){

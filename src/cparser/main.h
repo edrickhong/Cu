@@ -182,22 +182,47 @@ logic IsParserKeyword(u64 hash){
     return false;
 }
 
-logic IsReflStruct(EvalChar* eval_buffer,u32 count){
+enum REFLSTRUCTTYPE{
+    REFLSTRUCTTYPE_NONE = 0,
+    REFLSTRUCTTYPE_NAMED_STRUCT = 1,
+    REFLSTRUCTTYPE_TYPEDEF_STRUCT = 2,
+};
+
+REFLSTRUCTTYPE IsReflStruct(EvalChar* eval_buffer,u32 count){
     
-    logic is_struct = eval_buffer[0].tag == TAG_STRUCT;
-    
+    logic is_struct = false;
     logic has_keyword = false;
+    logic is_typedef = false;
     
-    for(u32 i = 1; i < count; i++){
+    for(u32 i = 0; i < count; i++){
         
-        has_keyword = eval_buffer[i].tag == TAG_KEY;
+        if(!is_struct){
+            is_struct = eval_buffer[i].tag == TAG_STRUCT;
+        }
         
-        if(has_keyword){
+        if(!has_keyword){
+            has_keyword = eval_buffer[i].tag == TAG_KEY;
+        }
+        
+        if(!is_typedef){
+            
+            is_typedef = eval_buffer[i].hash == PHashString("typedef");
+        }
+        
+        if(has_keyword && is_struct){
             break;
         }
     }
     
-    return is_struct && has_keyword;
+    if(is_struct && has_keyword && is_typedef){
+        return REFLSTRUCTTYPE_TYPEDEF_STRUCT;
+    }
+    
+    if(is_struct && has_keyword){
+        return REFLSTRUCTTYPE_NAMED_STRUCT;
+    }
+    
+    return REFLSTRUCTTYPE_NONE;
 }
 
 logic IsReflEnum(EvalChar* eval_buffer,u32 count){
@@ -1473,4 +1498,33 @@ logic ValidateAndFillNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* 
     }
     
     return false;
+}
+
+logic ValidateNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* parent_name,s8* name_buffer,ParserKeyWord* key = 0){
+    
+    _kill("name buffer must be prefilled\n",!strlen(name_buffer));
+    
+    
+    for(u32 i = 0; i < count; i++){
+        
+        auto c = &eval_buffer[i];
+        
+        if(c->tag == TAG_KEY && key){
+            *key = (ParserKeyWord)c->hash;
+        }
+        
+    }
+    
+    
+    if(parent_name){
+        sprintf(&name_buffer[0],"%s__%s",parent_name,name_buffer);
+    }
+    
+    else{
+        
+        return !IsValidName(name_buffer);
+    }
+    
+    return false;
+    
 }
