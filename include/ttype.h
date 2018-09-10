@@ -27,10 +27,17 @@ typedef unsigned int ptrsize;
 
 
 union m32{
+    
+    u32 u;
     u32 i;
     f32 f;
     
     operator u32(){
+        
+        return u;
+    }
+    
+    operator s32(){
         
         return i;
     }
@@ -41,7 +48,7 @@ union m32{
     }
     
     void operator=(u32 o){
-        i = o;
+        u = o;
     }
     
     void operator=(f32 o){
@@ -50,10 +57,26 @@ union m32{
 };
 
 union m64{
-    u64 i;
+    
+    u64 u;
+    s64 i;
     f64 f;
     
+    void* ptr;
+    
+    m32 array[2];
+    
+    m32& operator [](ptrsize index){
+        
+        return array[index];
+    }
+    
     operator u64(){
+        
+        return u;
+    }
+    
+    operator s64(){
         
         return i;
     }
@@ -64,7 +87,7 @@ union m64{
     }
     
     void operator=(u64 o){
-        i = o;
+        u= o;
     }
     
     void operator=(f64 o){

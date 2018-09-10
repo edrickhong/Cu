@@ -12,8 +12,6 @@ we treat enums the same way we treat structs
 ptr inspection can be implemented in assembly
 
   TODO: 
-  
-  
   handle typedef struct{...} Name 1,etc
 */
 

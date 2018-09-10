@@ -1614,7 +1614,7 @@ logic Intersect(Line3 a,Line3 b,Point3* out_point){
         
         fi1.f = cross_ab.floats[i];
         
-        if(fi1.i){
+        if(fi1.u){
             t = cross_diff.floats[i]/cross_ab.floats[i];
             break;
         }
@@ -1703,7 +1703,7 @@ logic Intersect(Line3 a,Plane b){
     //if they are perpendicular, f is 0 and they do not intersect
     fi1.f = Dot(Normalize(a.dir),Normalize(b.norm));
     
-    return fi1.i != 0;
+    return fi1.u != 0;
 }
 
 logic TypedIntersect(Line3 a,Plane b){
@@ -1721,7 +1721,7 @@ logic TypedIntersect(Line3 a,Plane b){
     
     fi.f = Dot(dir,Normalize(b.norm));//check if on the plane
     
-    auto is_perpendicular = !fi.i;
+    auto is_perpendicular = !fi.u;
     
     if(!is_intersect && is_perpendicular){
         return INTERSECT_INFINITE;

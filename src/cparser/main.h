@@ -101,6 +101,11 @@ logic IsCType(u64 hash){
     return false;
 }
 
+enum ParserKeyWord{
+    PARSERKEYWORD_REFL = PHashString("REFL"),
+    PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
+};
+
 struct GenericTypeDec{
     
     s8 type_string[128];
@@ -133,6 +138,13 @@ struct GenericEnumEntry{
     s8 name_string[128];
 };
 
+struct GenericStruct : GenericTypeDec{
+    ParserKeyWord pkey;
+    u32 members_count = 0;
+    GenericTypeDef members_array[256];
+};
+
+
 struct GenericEnum{
     u64 name_hash;
     s8 name_string[128];
@@ -151,16 +163,7 @@ struct GenericFunction{
     u32 args_count;
 };
 
-enum ParserKeyWord{
-    PARSERKEYWORD_REFL = PHashString("REFL"),
-    PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
-};
 
-struct GenericStruct : GenericTypeDec{
-    ParserKeyWord pkey;
-    u32 members_count = 0;
-    GenericTypeDef members_array[256];
-};
 
 logic IsParserKeyword(u64 hash){
     

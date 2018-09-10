@@ -483,6 +483,12 @@ enum CParseTags{
     
     TAG_DOUBLE_QUOTE,
     
+    //for math
+    TAG_MUL = TAG_INDIR,
+    TAG_DIV,
+    TAG_ADD,
+    TAG_SUB,
+    
     //These have more context in C++
     TAG_COLON,
 };
