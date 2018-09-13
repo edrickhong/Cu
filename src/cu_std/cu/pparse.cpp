@@ -606,3 +606,450 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,
     
     return PFillEvalBufferC(buffer,a,evaluation_buffer,k,&terminator,1,tagevalbuffer);
 }
+
+
+
+//string execution
+
+m64 OpIntAdd(m64 a,m64 b){
+    return {a.u + b.u};
+}
+
+m64 OpIntSub(m64 a,m64 b){
+    return {a.u - b.u};
+}
+
+m64 OpIntMul(m64 a,m64 b){
+    return {a.u * b.u};
+}
+
+m64 OpIntDiv(m64 a,m64 b){
+    return {a.u / b.u};
+}
+
+enum OpCharType{
+    
+    OpChar_UNKNOWN = 0,
+    
+    OpChar_VALUE = 1,
+    
+    OpChar_ADD = 2,
+    OpChar_SUB = 3,
+    
+    OpChar_DIV = 4,
+    OpChar_MUL = 5,
+    
+};
+
+logic IsMathOp(OpCharType type){
+    
+    OpCharType array[] = {
+        OpChar_SUB,
+        OpChar_ADD,
+        OpChar_DIV,
+        OpChar_MUL,
+    };
+    
+    for(u32 i = 0; i < _arraycount(array); i++){
+        
+        if(type == array[i]){
+            
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+struct OpChar{
+    OpCharType type;
+    s8 string[128];
+};
+
+struct OpNode{
+    
+    m64 (*op)(m64,m64);
+    
+    union{
+        m64 value;
+    };
+    
+    union{
+        
+        struct{
+            OpNode* a;
+            OpNode* b;
+        };
+        
+        
+        struct{
+            u64 dep_a;
+            u64 dep_b;
+        };
+        
+    };
+    
+    
+    
+};
+
+struct OpDepInfo{
+    
+    OpNode* node;
+    OpCharType type;
+    
+    
+    u32 dep_a;
+    u32 dep_b;
+    
+    u32 dep_array[32];
+    
+    u32 dep_count;
+    
+    u32 to_skip;
+};
+
+OpNode* BuildDepTree(OpDepInfo* info_array,u32 info_count){
+    
+    
+    for(u32 i = 0; i < info_count; i++){
+        
+        auto a = &info_array[i];
+        
+        
+        if(a->to_skip){
+            continue;
+        }
+        
+        for(u32 j = 0; j < info_count; j++){
+            
+            auto b = &info_array[j];
+            
+            if(b->to_skip){
+                continue;
+            }
+            
+            if(a->node != b->node && a->type >= b->type){
+                
+                for(u32 k = 0; k < a->dep_count; k++){
+                    
+                    auto dep = a->dep_array[k];
+                    
+                    if(b->dep_a == dep){
+                        
+                        b->node->a = a->node;
+                        b->to_skip = true;
+                        
+                        //not sure about this
+                        a->dep_array[a->dep_count] = b->dep_b;
+                        a->dep_count++;
+                        
+                        a->node = b->node;
+                        a->type = b->type;
+                        
+                        a->dep_b = b->dep_b;
+                        break;
+                    }
+                    
+                    
+                    if(b->dep_b == dep){
+                        
+                        b->node->b = a->node;
+                        b->to_skip = true;
+                        
+                        //not sure about this
+                        a->dep_array[a->dep_count] = b->dep_a;
+                        a->dep_count++;
+                        
+                        a->node = b->node;
+                        a->type = b->type;
+                        
+                        a->dep_a = b->dep_a;
+                        break;
+                    }
+                    
+                    
+                }
+            }
+            
+            
+        }
+        
+        
+        
+        
+    }
+    
+    OpNode* node = 0;
+    
+    for(u32 i = 0; i < info_count; i++){
+        
+        auto info = &info_array[i];
+        
+        if(!info->to_skip){
+            
+            _kill("there is more than 1 valid node left\n",node);
+            
+            node = info->node;
+            
+#ifndef DEBUG
+            break;
+#endif
+        }
+        
+    }
+    
+    
+    return node;
+}
+
+
+m64 ExecuteOpTree(OpNode* node){
+    
+    
+    if(node->op){
+        
+        auto value_a = ExecuteOpTree(node->a);
+        auto value_b = ExecuteOpTree(node->b);
+        
+        node->value = node->op(value_a,value_b);
+        
+    }
+    
+    return node->value;
+}
+
+
+m64 PEvaluateMathString(s8* string){
+    
+    /*
+    TODO: extract brackets and support float promotion
+*/
+    
+    
+    //tagging the string
+    
+    OpChar char_array[32] = {};
+    u32 char_count = 0;
+    
+    u32 len = strlen(string);
+    
+    
+    for(ptrsize i = 0; i < len; i++){
+        
+        s8 symbol_buffer[128] = {};
+        u32 symbol_len = 0;
+        
+        OpCharType type = OpChar_UNKNOWN;
+        
+        
+        PGetSymbol(&symbol_buffer[0],(s8*)string,&i,&symbol_len);
+        
+        if(symbol_len){
+            
+            if(PIsStringInt(symbol_buffer)){
+                
+                type = OpChar_VALUE;
+            }
+        }
+        
+        else if(string[i] == '+'){
+            type = OpChar_ADD;
+            
+            symbol_buffer[0]  = '+';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '-'){
+            type = OpChar_SUB;
+            
+            symbol_buffer[0]  = '-';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '*'){
+            type = OpChar_MUL;
+            
+            symbol_buffer[0]  = '*';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '/'){
+            type = OpChar_DIV;
+            
+            symbol_buffer[0]  = '+';
+            symbol_len = 1;
+        }
+        
+        else{
+            
+            printf("WARNING: UNEXPECTED CHAR IN STRING\n");
+        }
+        
+        
+        if(symbol_len){
+            
+            char_array[char_count] = {type};
+            memcpy(char_array[char_count].string,symbol_buffer,symbol_len);
+            char_count++;
+        }
+        
+        
+        
+    }
+    
+    //building op tree - first get the values and add in math ops and store its dependent values by index
+    
+    m64 value_array[64] = {};
+    u32 value_count = 0;
+    
+    
+    OpNode node_array[64] = {};
+    OpDepInfo info_array[64] = {};
+    u32 node_count = 0;
+    
+    for(u32 i = 0; i < char_count; i++){
+        
+        auto c = &char_array[i];
+        
+        if(c->type == OpChar_VALUE){
+            
+            value_array[value_count].u = atoi(c->string);
+            value_count++;
+        }
+        
+        if(IsMathOp(c->type)){
+            
+            m64 (*op)(m64,m64) = 0;
+            
+            switch(c->type){
+                
+                case OpChar_SUB:{
+                    op = OpIntSub;
+                }break;
+                
+                case OpChar_ADD:{
+                    op = OpIntAdd;
+                }break;
+                
+                case OpChar_DIV:{
+                    op = OpIntDiv;
+                }break;
+                
+                case OpChar_MUL:{
+                    op = OpIntMul;
+                }break;
+                
+            }
+            
+            
+            _kill("",!op);
+            
+            
+            node_array[node_count].op = op;
+            
+            node_array[node_count].dep_a = value_count - 1;
+            node_array[node_count].dep_b = value_count;
+            
+            
+            info_array[node_count].node = &node_array[node_count];
+            
+            info_array[node_count].type = c->type;
+            
+            info_array[node_count].dep_a = value_count - 1;
+            info_array[node_count].dep_b = value_count;
+            
+            info_array[node_count].dep_array[0] = value_count - 1;
+            info_array[node_count].dep_array[1] = value_count;
+            
+            
+            info_array[node_count].dep_count = 2;
+            
+            node_count++;
+        }
+    }
+    
+    u32 info_count = node_count;
+    
+    
+    
+    //sort according to pemdas
+    
+    qsort(info_array,info_count,
+          sizeof(OpDepInfo),
+          [](const void * a, const void* b)->s32 {
+          
+          auto node_a = (OpDepInfo*)a;
+          auto node_b = (OpDepInfo*)b;
+          
+          
+          //descending order in type
+          if(node_a->type != node_b->type){
+          return node_b->type - node_a->type;
+          }
+          
+          //ascending order in dep_b
+          else{
+          
+          return node_a->dep_b - node_b->dep_b;
+          
+          };
+          
+          
+          });
+    
+#if 0
+    
+    
+    
+    printf("cnode count %d\n",info_count);
+    
+    for(u32 i = 0; i < info_count; i++){
+        
+        auto n = &info_array[i];
+        
+        printf("%d: %d(%d) %d(%d)\n",n->type,(u32)n->dep_a,(u32)value_array[n->dep_a].u,(u32)n->dep_b,(u32)value_array[n->dep_b].u);
+    }
+    
+#endif
+    
+    
+    auto root_node = BuildDepTree(info_array,info_count);
+    
+    //add value nodes and match values
+    {
+        
+        u32 ncount = node_count;
+        
+        for(u32 i = 0; i < ncount; i++){
+            
+            auto n = &node_array[i];
+            
+            //this is max array count for dep. use macro
+            if(n->dep_a < 32){
+                
+                node_array[node_count] = {0,value_array[n->dep_a],0,0};
+                
+                n->a = &node_array[node_count];
+                
+                node_count++;
+            }
+            
+            
+            if(n->dep_b < 32){
+                
+                node_array[node_count] = {0,value_array[n->dep_b],0,0};
+                
+                n->b = &node_array[node_count];
+                
+                node_count++;
+            }
+            
+        }
+    }
+    
+    auto value = ExecuteOpTree(root_node);
+    
+    return value;
+}

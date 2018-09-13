@@ -68,6 +68,18 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
             c->tag = TAG_COLON;
         }
         
+        else if(c->hash == PHashString("/")){
+            c->tag = TAG_DIV;
+        }
+        
+        else if(c->hash == PHashString("+")){
+            c->tag = TAG_ADD;
+        }
+        
+        else if(c->hash == PHashString("-")){
+            c->tag = TAG_SUB;
+        }
+        
         else if(PIsStringFloat(c->string) || PIsStringInt(c->string)){
             c->tag = TAG_VALUE;
         }
@@ -200,6 +212,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         else{
             
             //handle arrays
+            //TODO: this does not handle array[3 * 32]
             if(PIsStringInt(&x->string[0])){
                 
                 _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
@@ -802,7 +815,11 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
     }
 }
 
+
+
+
 s32 main(s32 argc,s8** argv){
+    
     
     argv++;
     argc--;

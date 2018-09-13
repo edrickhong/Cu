@@ -508,3 +508,13 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_c
 
 
 logic PFillEvalBufferC(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_count,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32));
+
+
+
+
+
+
+//string execution
+
+
+m64 PEvaluateMathString(s8* string);

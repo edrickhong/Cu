@@ -19,7 +19,6 @@
 
 #endif
 
-//TODO: these are not generic enought (int etc. do that and we can move this to pparse)
 enum CType{
     
     CType_U8 = PHashString("u8"),
@@ -1175,7 +1174,7 @@ InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_val
 m64 return_m = {};
 
 if(function->ret.is_int){
-return_m.i = ret_value;
+return_m.u = ret_value;
 }
 
 else{
