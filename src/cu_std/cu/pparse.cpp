@@ -639,6 +639,9 @@ enum OpCharType{
     OpChar_DIV = 4,
     OpChar_MUL = 5,
     
+    OpChar_BRACEBLOCK_START = 6,
+    OpChar_BRACEBLOCK_END = 7,
+    
 };
 
 logic IsMathOp(OpCharType type){
@@ -648,6 +651,8 @@ logic IsMathOp(OpCharType type){
         OpChar_ADD,
         OpChar_DIV,
         OpChar_MUL,
+        OpChar_BRACEBLOCK_START,
+        OpChar_BRACEBLOCK_END,
     };
     
     for(u32 i = 0; i < _arraycount(array); i++){
@@ -821,83 +826,55 @@ m64 ExecuteOpTree(OpNode* node){
 }
 
 
-m64 PEvaluateMathString(s8* string){
+//bare bone extracts the block but ommits the first start and end block
+void ExtractBraceBlock(OpChar* dst_array,u32* dst_count,OpChar* char_array,u32* cur,u32 len){
     
-    /*
-    TODO: extract brackets and support float promotion
-*/
+    u32 scope_count = 0;
+    u32 count = 0;
     
-    
-    //tagging the string
-    
-    OpChar char_array[32] = {};
-    u32 char_count = 0;
-    
-    u32 len = strlen(string);
-    
-    
-    for(ptrsize i = 0; i < len; i++){
+    for(u32 i = (*cur); i < len; i++){
         
-        s8 symbol_buffer[128] = {};
-        u32 symbol_len = 0;
+        auto c = &char_array[i];
         
-        OpCharType type = OpChar_UNKNOWN;
-        
-        
-        PGetSymbol(&symbol_buffer[0],(s8*)string,&i,&symbol_len);
-        
-        if(symbol_len){
+        if(c->type == OpChar_BRACEBLOCK_START){
             
-            if(PIsStringInt(symbol_buffer)){
-                
-                type = OpChar_VALUE;
+            if(scope_count){
+                dst_array[count] = *c;
+                count++;
             }
+            
+            scope_count++;
         }
         
-        else if(string[i] == '+'){
-            type = OpChar_ADD;
+        else if(c->type == OpChar_BRACEBLOCK_END){
+            scope_count--;
             
-            symbol_buffer[0]  = '+';
-            symbol_len = 1;
-        }
-        
-        else if(string[i] == '-'){
-            type = OpChar_SUB;
-            
-            symbol_buffer[0]  = '-';
-            symbol_len = 1;
-        }
-        
-        else if(string[i] == '*'){
-            type = OpChar_MUL;
-            
-            symbol_buffer[0]  = '*';
-            symbol_len = 1;
-        }
-        
-        else if(string[i] == '/'){
-            type = OpChar_DIV;
-            
-            symbol_buffer[0]  = '+';
-            symbol_len = 1;
+            if(scope_count){
+                dst_array[count] = *c;
+                count++;
+            }
         }
         
         else{
             
-            printf("WARNING: UNEXPECTED CHAR IN STRING\n");
+            dst_array[count] = *c;
+            count++;
         }
         
         
-        if(symbol_len){
-            
-            char_array[char_count] = {type};
-            memcpy(char_array[char_count].string,symbol_buffer,symbol_len);
-            char_count++;
+        if(!scope_count){
+            (*dst_count) = count;
+            (*cur) = i;
+            return;
         }
-        
-        
         
     }
+    
+    
+}
+
+m64 BuildAndExecuteOpChar(OpChar* char_array,u32 char_count){
+    
     
     //building op tree - first get the values and add in math ops and store its dependent values by index
     
@@ -941,10 +918,32 @@ m64 PEvaluateMathString(s8* string){
                     op = OpIntMul;
                 }break;
                 
+                
+                case OpChar_BRACEBLOCK_START:{
+                    
+                    OpChar brace_char_array[64] = {};
+                    u32 brace_char_count = 0;
+                    
+                    ExtractBraceBlock(brace_char_array,&brace_char_count,char_array,&i,char_count);
+                    
+                    auto value = BuildAndExecuteOpChar(brace_char_array,brace_char_count);
+                    
+                    
+                    value_array[value_count] = value;
+                    value_count++;
+                    
+                    continue;
+                    
+                }break;
+                
+                
+                case OpChar_BRACEBLOCK_END:{
+                    
+                    _kill("all brace blocks should be parsed out above\n",1);
+                    
+                }break;
+                
             }
-            
-            
-            _kill("",!op);
             
             
             node_array[node_count].op = op;
@@ -970,9 +969,13 @@ m64 PEvaluateMathString(s8* string){
         }
     }
     
+    
+    if(!node_count && value_count == 1){
+        return value_array[0];
+    }
+    
+    
     u32 info_count = node_count;
-    
-    
     
     //sort according to pemdas
     
@@ -1049,7 +1052,109 @@ m64 PEvaluateMathString(s8* string){
         }
     }
     
-    auto value = ExecuteOpTree(root_node);
+    return ExecuteOpTree(root_node);
     
-    return value;
+}
+
+
+m64 PEvaluateMathString(s8* string){
+    
+    /*
+    TODO: support float and float promotion
+*/
+    
+    
+    //tagging the string
+    
+    OpChar char_array[32] = {};
+    u32 char_count = 0;
+    
+    u32 len = strlen(string);
+    
+    
+    for(ptrsize i = 0; i < len; i++){
+        
+        PSanitizeStringC((s8*)string,&i);
+        
+        s8 symbol_buffer[128] = {};
+        u32 symbol_len = 0;
+        
+        OpCharType type = OpChar_UNKNOWN;
+        
+        
+        PGetSymbol(&symbol_buffer[0],(s8*)string,&i,&symbol_len);
+        
+        if(symbol_len){
+            
+            //PGetSymbol puts i right after the symbol (we don't want that)
+            i--;
+            
+            if(PIsStringInt(symbol_buffer)){
+                
+                type = OpChar_VALUE;
+            }
+        }
+        
+        else if(string[i] == '+'){
+            type = OpChar_ADD;
+            
+            symbol_buffer[0]  = '+';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '-'){
+            type = OpChar_SUB;
+            
+            symbol_buffer[0]  = '-';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '*'){
+            type = OpChar_MUL;
+            
+            symbol_buffer[0]  = '*';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '/'){
+            type = OpChar_DIV;
+            
+            symbol_buffer[0]  = '/';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == '('){
+            type = OpChar_BRACEBLOCK_START;
+            
+            symbol_buffer[0]  = '(';
+            symbol_len = 1;
+        }
+        
+        else if(string[i] == ')'){
+            type = OpChar_BRACEBLOCK_END;
+            
+            symbol_buffer[0]  = ')';
+            symbol_len = 1;
+        }
+        
+        else{
+            
+            printf("WARNING: UNEXPECTED CHAR IN STRING (%c)\n",string[i]);
+        }
+        
+        
+        if(symbol_len){
+            
+            char_array[char_count] = {type};
+            memcpy(char_array[char_count].string,symbol_buffer,symbol_len);
+            char_count++;
+        }
+        
+        
+        
+    }
+    
+    
+    
+    return BuildAndExecuteOpChar(char_array,char_count);
 }

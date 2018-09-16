@@ -7,6 +7,9 @@
 
 /*
 This is for general string parsing and to support the general parsing of C-like functions
+
+TODO: 
+our symbol extracting functions put the cur position on the char after the symbol. we should put it at the last char on the symbol instead
 */
 
 enum PTokenType{
