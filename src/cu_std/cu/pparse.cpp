@@ -501,6 +501,8 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,
         evaluation_count++;
     }
     
+    //MARK: why not just fill in the char anyway instead of all these ifs
+    
     if(buffer[cur] == '('){
         
         evaluation_buffer[evaluation_count] =
@@ -543,6 +545,66 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,
         
         evaluation_count++;
     }
+    
+    
+    
+    
+    if(buffer[cur] == '['){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("["),"["};
+        
+        evaluation_count++;
+    }
+    
+    
+    if(buffer[cur] == ']'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("]"),"]"};
+        
+        evaluation_count++;
+        
+    }
+    
+    
+    if(buffer[cur] == '+'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("+"),"+"};
+        
+        evaluation_count++;
+        
+    }
+    
+    if(buffer[cur] == '-'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("-"),"-"};
+        
+        evaluation_count++;
+        
+    }
+    
+    if(buffer[cur] == '/'){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString("/"),"/"};
+        
+        evaluation_count++;
+        
+    }
+    
+    
+    if(buffer[cur] == ','){
+        
+        evaluation_buffer[evaluation_count] =
+            EvalChar{PHashString(","),","};
+        
+        evaluation_count++;
+        
+    }
+    
     
     if(buffer[cur] == '"'){
         
@@ -611,38 +673,38 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,
 
 //string execution
 
-m64 OpIntAdd(m64 a,m64 b){
+m64 OpAdd_U64(m64 a,m64 b){
     return {a.u + b.u};
 }
 
-m64 OpIntSub(m64 a,m64 b){
+m64 OpSub_U64(m64 a,m64 b){
     return {a.u - b.u};
 }
 
-m64 OpIntMul(m64 a,m64 b){
+m64 OpMul_U64(m64 a,m64 b){
     return {a.u * b.u};
 }
 
-m64 OpIntDiv(m64 a,m64 b){
+m64 OpDiv_U64(m64 a,m64 b){
     return {a.u / b.u};
 }
 
-enum OpCharType{
-    
-    OpChar_UNKNOWN = 0,
-    
-    OpChar_VALUE = 1,
-    
-    OpChar_ADD = 2,
-    OpChar_SUB = 3,
-    
-    OpChar_DIV = 4,
-    OpChar_MUL = 5,
-    
-    OpChar_BRACEBLOCK_START = 6,
-    OpChar_BRACEBLOCK_END = 7,
-    
-};
+
+m64 OpAdd_S64(m64 a,m64 b){
+    return {(u64)(a.i + b.i)};
+}
+
+m64 OpSub_S64(m64 a,m64 b){
+    return {(u64)(a.i - b.i)};
+}
+
+m64 OpMul_S64(m64 a,m64 b){
+    return {(u64)(a.i * b.i)};
+}
+
+m64 OpDiv_S64(m64 a,m64 b){
+    return {(u64)(a.i / b.i)};
+}
 
 logic IsMathOp(OpCharType type){
     
@@ -665,12 +727,6 @@ logic IsMathOp(OpCharType type){
     
     return false;
 }
-
-
-struct OpChar{
-    OpCharType type;
-    s8 string[128];
-};
 
 struct OpNode{
     
@@ -903,19 +959,19 @@ m64 BuildAndExecuteOpChar(OpChar* char_array,u32 char_count){
             switch(c->type){
                 
                 case OpChar_SUB:{
-                    op = OpIntSub;
+                    op = OpSub_U64;
                 }break;
                 
                 case OpChar_ADD:{
-                    op = OpIntAdd;
+                    op = OpAdd_U64;
                 }break;
                 
                 case OpChar_DIV:{
-                    op = OpIntDiv;
+                    op = OpDiv_U64;
                 }break;
                 
                 case OpChar_MUL:{
-                    op = OpIntMul;
+                    op = OpMul_U64;
                 }break;
                 
                 
@@ -1056,8 +1112,13 @@ m64 BuildAndExecuteOpChar(OpChar* char_array,u32 char_count){
     
 }
 
+m64 PEvaluateMathString(OpChar* char_array,u32 char_count,OpExecMode mode){
+    
+    return BuildAndExecuteOpChar(char_array,char_count);
+}
 
-m64 PEvaluateMathString(s8* string){
+
+m64 PEvaluateMathString(s8* string,OpExecMode mode){
     
     /*
     TODO: support float and float promotion
@@ -1154,7 +1215,5 @@ m64 PEvaluateMathString(s8* string){
         
     }
     
-    
-    
-    return BuildAndExecuteOpChar(char_array,char_count);
+    return PEvaluateMathString(char_array,char_count);
 }

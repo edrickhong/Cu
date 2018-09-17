@@ -484,6 +484,8 @@ enum CParseTags{
     TAG_START_CURLY,
     TAG_END_CURLY,
     
+    TAG_COMMA,
+    
     TAG_DOUBLE_QUOTE,
     
     //for math
@@ -519,5 +521,44 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32* eval_c
 
 //string execution
 
+enum OpCharType{
+    
+    OpChar_UNKNOWN = 0,
+    
+    OpChar_VALUE = 1,
+    
+    OpChar_ADD = 2,
+    OpChar_SUB = 3,
+    
+    OpChar_DIV = 4,
+    OpChar_MUL = 5,
+    
+    OpChar_BRACEBLOCK_START = 6,
+    OpChar_BRACEBLOCK_END = 7,
+    
+};
 
-m64 PEvaluateMathString(s8* string);
+enum OpExecMode{
+    
+    OpExecMode_S32,
+    OpExecMode_U32,
+    
+    OpExecMode_S64,
+    OpExecMode_U64,
+    
+    OpExecMode_F32,
+    OpExecMode_F64,
+};
+
+struct OpChar{
+    OpCharType type;
+    s8 string[128];
+};
+
+//TODO: actually use OpExecMode
+
+
+m64 PEvaluateMathString(OpChar* char_array,u32 char_count,OpExecMode mode = OpExecMode_S32);
+
+
+m64 PEvaluateMathString(s8* string,OpExecMode mode = OpExecMode_S32);

@@ -34,14 +34,6 @@ struct REFLCOMPONENT EntityAudioData{
 
 struct REFLCOMPONENT PointLight{
     
-    enum TESTING{
-        
-        TESTING_1,
-        TESTING_2,
-        TESTING_3,
-        
-    };
-    
     ObjectID id;
     f32 R;
     f32 G;

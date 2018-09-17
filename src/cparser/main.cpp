@@ -80,6 +80,18 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
             c->tag = TAG_SUB;
         }
         
+        else if(c->hash == PHashString("[")){
+            c->tag = TAG_START_SQUARE;
+        }
+        
+        else if(c->hash == PHashString("]")){
+            c->tag = TAG_END_SQUARE;
+        }
+        
+        else if(c->hash == PHashString(",")){
+            c->tag = TAG_COMMA;
+        }
+        
         else if(PIsStringFloat(c->string) || PIsStringInt(c->string)){
             c->tag = TAG_VALUE;
         }
@@ -95,6 +107,52 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
     
 }
 
+m64 Eval_EvalCharMath(EvalChar* eval_array,u32 eval_count){
+    
+    OpChar char_array[32] = {};
+    u32 char_count = 0;
+    
+    for(u32 i = 0; i < eval_count; i++){
+        
+        auto e = &eval_array[i];
+        
+        OpCharType type = OpChar_UNKNOWN;
+        
+        switch(e->tag){
+            
+            case TAG_MUL:{
+                type = OpChar_MUL;
+            }break;
+            
+            case TAG_DIV:{
+                type = OpChar_DIV;
+            }break;
+            
+            case TAG_ADD:{
+                type = OpChar_ADD;
+            }break;
+            
+            case TAG_SUB:{
+                type = OpChar_SUB;
+            }break;
+            
+            
+            case TAG_VALUE:{
+                type = OpChar_VALUE;
+            }break;
+            
+        }
+        
+        char_array[char_count].type = type;
+        memcpy(char_array[char_count].string,e->string,strlen(e->string));
+        
+        char_count++;
+        
+    }
+    
+    return PEvaluateMathString(char_array,char_count);
+}
+
 
 
 void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
@@ -106,11 +164,6 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     
     
     logic is_assign = false;
-    
-    //TODO: we shouldn't need to do this
-    for(u32 j = 0; j < _arraycount(member->dim_array);j++){
-        member->dim_array[j] = 1;
-    }
     
     
     
@@ -142,6 +195,33 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
             member->name_hash = x->hash;
             
             memcpy(&member->name_string[0],&x->string[0],strlen(&x->string[0]));
+            
+        }
+        
+        if(x->tag == TAG_START_SQUARE){
+            
+            j++;
+            
+            
+            EvalChar eval_array[32] = {};
+            u32 eval_count = 0;
+            
+            for(;j < membereval_count;j++){
+                
+                auto k = &membereval_array[j];
+                
+                if(k->tag == TAG_END_SQUARE){
+                    break;
+                }
+                
+                eval_array[eval_count] = *k;
+                eval_count++;
+            }
+            
+            auto value = Eval_EvalCharMath(eval_array,eval_count);
+            
+            member->dim_array[member->dim_count] = (u32)value.u;
+            member->dim_count++;
             
         }
         
@@ -177,6 +257,8 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         /*
         TODO: I do not like how initialization is done rn
         How do we handle many dimensions?
+        
+        We will do full member parsing. we will need to do this to support the console anyway
 */
         if(is_assign){
             
@@ -209,21 +291,6 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
             }
         }
         
-        else{
-            
-            //handle arrays
-            //TODO: this does not handle array[3 * 32]
-            if(PIsStringInt(&x->string[0])){
-                
-                _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
-                
-                member->dim_array[member->dim_array_count] = atoi(&x->string[0]);
-                member->dim_array_count++;
-                
-                
-            }
-        }
-        
         
         
         
@@ -238,7 +305,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     
 #if _autoexpand_structs
     
-    if(member->type == CType_STRUCT && !member->dim_array_count){
+    if(member->type == CType_STRUCT && !member->dim_count){
         //Lookup
         
         GenericStruct* sptr = 0;
@@ -347,16 +414,131 @@ void DebugPrintGenericFunction(GenericFunction* f){
     }
 }
 
-//TODO: allow pouinter types
+
+void InternalHandleArgs(GenericFunction* f,u32* function_count, EvalChar* eval_buffer,u32 cur,u32 dst){
+    
+    
+    u32 int_count = 0;
+    u32 float_count = 0;
+    
+    EvalChar* start = &eval_buffer[cur];
+    
+    
+    for(;cur < dst; cur++){
+        
+        auto end = &eval_buffer[cur];
+        
+        
+        if(end->tag == TAG_COMMA || end->tag == TAG_END_ARG){
+            
+            CType ctype = CType_UNKNOWN;
+            EvalChar* name = 0;
+            EvalChar* type = 0;
+            u32 indir_count = 0;
+            
+            for(;start <= end; start++){
+                
+                if(start->tag == TAG_CTYPE){
+                    
+                    ctype = (CType)start->hash;
+                    type = start;
+                }
+                
+                if(start->tag == TAG_SYMBOL){
+                    
+                    if(ctype == CType_UNKNOWN){
+                        
+                        ctype = CType_STRUCT;
+                        type = start;
+                    }
+                    
+                    else{
+                        name = start;
+                    }
+                }
+                
+                if(start->tag == TAG_INDIR){
+                    indir_count++;
+                }
+                
+            }
+            
+            
+            //TODO: handle struct types (structs cannot be opaque)
+            if(ctype == CType_STRUCT){
+                
+                printf("Error: We do not allow struct types\n");
+                
+                memset(f,0,sizeof(GenericFunction));
+                (*function_count)--;
+                return;
+            }
+            
+            if(IsIntType(ctype)){
+                int_count++;
+                
+                if(int_count > 4){
+                    
+                    printf("Error: Int arguments exceed the limit of 4\n");
+                    
+                    memset(f,0,sizeof(GenericFunction));
+                    (*function_count)--;
+                    return;
+                }
+            }
+            
+            if(IsFloatType(ctype)){
+                float_count++;
+                
+                if(float_count > 4){
+                    
+                    printf("Error: Float arguments exceed the limit of 4\n");
+                    
+                    memset(f,0,sizeof(GenericFunction));
+                    (*function_count)--;
+                    return;
+                }
+            }
+            
+            if (float_count + int_count > 4) {
+                printf("Error: Total arguments exceed the limit of 4\n");
+                
+                memset(f, 0, sizeof(GenericFunction));
+                (*function_count)--;
+                return;
+            }
+            
+            
+            auto arg = &f->args_array[f->args_count];
+            f->args_count++;
+            
+            memcpy(arg->type_string,type->string,strlen(type->string));
+            arg->type = (CType)(type->hash);
+            
+            memcpy(arg->name_string,name->string,strlen(name->string));
+            arg->name_hash = PHashString(name->string);
+            
+            arg->indir_count = indir_count;
+            
+        }
+        
+    }
+    
+}
+
+
+//MARK: arrays should be passed by ptr. pls check
 void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericFunction* function_array,u32* function_count){
     
+    
+    //TODO: treat arrays as pointers
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
         
-        if(c->tag == TAG_INDIR || c->tag == TAG_START_SQUARE || c->tag == TAG_END_SQUARE){
+        if(c->tag == TAG_START_SQUARE || c->tag == TAG_END_SQUARE){
             
-            printf("Error Functions cannot have pointers or arrays\n");
+            printf("Error Functions cannot have arrays\n");
             
             return;
         }
@@ -369,6 +551,8 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize*
     for(u32 i = 0; i < count; i++){
         
         auto c = &eval_buffer[i];
+        
+        
         
         if(i == 0){
             
@@ -390,6 +574,7 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize*
             f->name_hash = c->hash;
         }
         
+        
         if(c->tag == TAG_START_ARG){
             
             u32 cur = i + 1;
@@ -400,92 +585,27 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize*
                 auto c = &eval_buffer[j];
                 
                 if(c->tag == TAG_END_ARG){
-                    dst = j - 1;
+                    dst = j + 1;
                     break;
                 }
                 
             }
             
-            if(!((dst - cur) % 2)){
-                
-                printf("Error type name format is wrong. We do not allow pointer types\n");
-                
-                memset(f,0,sizeof(GenericFunction));
-                (*function_count)--;
-                return;
-                
-            }
             
-            u32 int_count = 0;
-            u32 float_count = 0;
-            
-            for(;cur < dst;cur += 2){
-                
-                auto type = &eval_buffer[cur];
-                auto name = &eval_buffer[cur + 1];
-                
-                auto ctype = (CType)(type->hash);
-                
-                if(ctype == CType_STRUCT){
-                    
-                    printf("Error: We do not allow struct types\n");
-                    
-                    memset(f,0,sizeof(GenericFunction));
-                    (*function_count)--;
-                    return;
-                }
-                
-                if(IsIntType(ctype)){
-                    int_count++;
-                    
-                    if(int_count > 4){
-                        
-                        printf("Error: Int arguments exceed the limit of 4\n");
-                        
-                        memset(f,0,sizeof(GenericFunction));
-                        (*function_count)--;
-                        return;
-                    }
-                }
-                
-                if(IsFloatType(ctype)){
-                    float_count++;
-                    
-                    if(float_count > 4){
-                        
-                        printf("Error: Float arguments exceed the limit of 4\n");
-                        
-                        memset(f,0,sizeof(GenericFunction));
-                        (*function_count)--;
-                        return;
-                    }
-                }
-                
-                if (float_count + int_count > 4) {
-                    printf("Error: Total arguments exceed the limit of 4\n");
-                    
-                    memset(f, 0, sizeof(GenericFunction));
-                    (*function_count)--;
-                    return;
-                }
-                
-                auto arg = &f->args_array[f->args_count];
-                f->args_count++;
-                
-                memcpy(arg->type_string,type->string,strlen(type->string));
-                arg->type = (CType)(type->hash);
-                
-                memcpy(arg->name_string,name->string,strlen(name->string));
-                arg->name_hash = PHashString(name->string);
-            }
-            
-            //DebugPrintGenericFunction(f);
+            InternalHandleArgs(f,function_count,eval_buffer,cur,dst);
             
             return;
+            
         }
         
         
+        
+        
     }
+    
+    
+    
+    //DebugPrintGenericFunction(f);
 }
 
 void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,GenericEnum* enum_array,u32* enum_count,const s8* parent_name = 0){

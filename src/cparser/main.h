@@ -19,7 +19,12 @@
 
 #endif
 
+//TODO:
+//Remove ref_metadatacomp_index
+
 enum CType{
+    
+    CType_UNKNOWN = 0,
     
     CType_U8 = PHashString("u8"),
     CType_U16 = PHashString("u16"),
@@ -116,7 +121,7 @@ struct GenericTypeDec{
 struct GenericTypeDef : GenericTypeDec{
     
     u8 indir_count;
-    u8 dim_array_count;
+    u8 dim_count;
     u8 default_count;//MARK: -1 is {}
     
     
@@ -156,9 +161,9 @@ struct GenericFunction{
     u64 name_hash;
     s8 name_string[128];
     
-    GenericTypeDec ret;
+    GenericTypeDef ret;
     
-    GenericTypeDec args_array[256];
+    GenericTypeDef args_array[256];
     u32 args_count;
 };
 
@@ -329,7 +334,7 @@ void DebugPrintGenericStruct(GenericStruct* s){
         
         printf("%s",f->name_string);
         
-        for(u32 k = 0; k < f->dim_array_count;k++){
+        for(u32 k = 0; k < f->dim_count;k++){
             
             printf("[%d]",f->dim_array[k]);
         }
@@ -461,10 +466,16 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
                 
                 s8 buffer[256] = {};
                 
-                //TODO: support more than 1d arrays
-                //Remove ref_metadatacomp_index
+                u32 element_count = 1;
+                
+                for(u32 i = 0; i < m->dim_count; i++){
+                    element_count *= m->dim_array[i];
+                }
+                
+                
+                
                 sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)((u64)((&((%s*)0)->%s))),%d,(u32)-1},\n"
-                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,m->dim_array[0]);
+                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,element_count);
                 
                 FWrite(file,(void*)buffer,strlen(buffer));
             }
@@ -629,6 +640,28 @@ void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
     
 }
 
+void ConstructTypeStringSize(s8* dst_string,GenericTypeDef* type){
+    
+    
+    if(type->type == CType_VOID && !type->indir_count){
+        dst_string[0] = '0';
+        dst_string[1] = 0;
+        return;
+    }
+    
+    s8 type_buffer[256] = {};
+    u32 len = strlen(type->type_string);
+    
+    memcpy(type_buffer,type->type_string,len);
+    
+    for(u32 i = 0; i < type->indir_count; i++){
+        type_buffer[len + i] = '*';
+    }
+    
+    sprintf(dst_string,"(u32)sizeof(%s)",type_buffer);
+    
+}
+
 void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 function_count){
     
     auto start_string = "\n\nMetaFunctionData META_FUNCTION_ARRAY[] = {\n";
@@ -651,33 +684,26 @@ void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 
             
             {
                 s8 buffer[256] = {};
+                s8 typesize_buffer[256] = {};
                 
-                if(f->ret.type == CType_VOID){
-                    
-                    sprintf(buffer,
-                            "{(void*)%s,\"%s\",%d,{\"%s\",\"%s\",%d,0,%d},{",
-                            f->name_string,
-                            f->name_string,
-                            (u32)f->name_hash,
-                            f->ret.type_string,
-                            f->ret.name_string,
-                            (u32)f->ret.name_hash,
-                            IsIntType(PHashString(f->ret.type_string)));
-                }
+                ConstructTypeStringSize(typesize_buffer,&f->ret);
                 
-                else{
-                    
-                    sprintf(buffer,
-                            "{(void*)%s,\"%s\",%d,{\"%s\",\"%s\",%d,(u32)sizeof(%s),%d},{",
-                            f->name_string,
-                            f->name_string,
-                            (u32)f->name_hash,
-                            f->ret.type_string,
-                            f->ret.name_string,
-                            (u32)f->ret.name_hash,
-                            f->ret.type_string,IsIntType(PHashString(f->ret.type_string)));
-                    
-                }
+                sprintf(buffer,
+                        "{(void*)%s,\"%s\",%d,{\"%s\",\"%s\",%d,%s,%d,%d},{",
+                        f->name_string,
+                        f->name_string,
+                        (u32)f->name_hash,
+                        
+                        
+                        f->ret.type_string,
+                        f->ret.name_string,
+                        (u32)f->ret.name_hash,
+                        
+                        typesize_buffer,
+                        
+                        IsIntType(PHashString(f->ret.type_string)),
+                        f->ret.indir_count
+                        );
                 
                 FWrite(file,(void*)buffer,strlen(buffer));
                 
@@ -688,11 +714,18 @@ void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 
                 auto a = &f->args_array[j];
                 
                 s8 buffer[256] = {};
+                s8 typesize_buffer[256] = {};
+                
+                ConstructTypeStringSize(typesize_buffer,a);
                 
                 sprintf(buffer,
-                        "{\"%s\",\"%s\",%d,(u32)sizeof(%s),%d},",
-                        a->type_string,a->name_string,(u32)a->name_hash,
-                        a->type_string,IsIntType(PHashString(a->type_string)));
+                        "{\"%s\",\"%s\",%d,%s,%d,%d},",
+                        a->type_string,
+                        a->name_string,
+                        (u32)a->name_hash,
+                        
+                        typesize_buffer,IsIntType(PHashString(a->type_string)),
+                        a->indir_count);
                 
                 FWrite(file,(void*)buffer,strlen(buffer));
             }
@@ -782,7 +815,8 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
         u64 name_hash;
         
         u32 size;
-        u32 is_int;
+        u16 is_int;
+        u16 indir_count;
         };
         
         struct MetaFunctionData{
