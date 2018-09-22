@@ -18,6 +18,8 @@ struct REFL B : A{
 
 #ifndef CPP_PASS
 
+//TODO: I feel like cparser should output both a c file and a header file to better manage this
+
 #include "engine_meta.h"
 
 #endif
@@ -30,7 +32,7 @@ _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 s32 main(s32 argc,s8** argv){
     
-    ParseSettings();
+    InitAllSystems();
     
     return 0;
     
@@ -404,6 +406,12 @@ s32 main(s32 argc,s8** argv){
     return 0;
     
 }
+
+//add cpp's here to limit scope
+#include "aassettools.cpp"
+#include "vvulkanx.cpp"
+#include "aassetmanager.cpp"
+
 
 
 /*

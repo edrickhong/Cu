@@ -162,7 +162,12 @@ constexpr ptrsize PStrLen(const s8* string){
     return len;
 }
 
-constexpr u64 PHashString(const s8* string){
+//TODO: replace things that use this hash to this type for clarity
+
+typedef u64 str_hash64;
+typedef u32 str_hash32;
+
+constexpr str_hash64 PHashString(const s8* string){
     
     u64 prime_array[] = {
         13,5701,41,353,7,5023,193,11,13883,7109,8929,3,59149,21107,83,179

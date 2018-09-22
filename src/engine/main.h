@@ -16,26 +16,24 @@
 #include "ttimer.h"
 #include "pparse.h"
 
-
-#include "aassettools.cpp"
-#include "vvulkanx.cpp"
 #include "dynamic_reload.cpp"
-#include "aassetmanager.cpp"
 #include "tthreadx.h"
 
 
 //settings parser
 
-void ParseSettings(){
+struct Settings{
     
-    struct Settings{
-        
-        u32 window_width = 1280;
-        u32 window_height = 1280;
-        u32 window_x = 0;
-        u32 window_y = 0;
-        u32 swapchain_depth = 3;
-    };
+    u32 window_width = 1280;
+    u32 window_height = 1280;
+    u32 window_x = 0;
+    u32 window_y = 0;
+    u32 swapchain_depth = 3;
+};
+
+Settings ParseSettings(){
+    
+    
     
     Settings settings;
     
@@ -106,6 +104,13 @@ void ParseSettings(){
     FCloseFile(file);
     
     
+    
+    return settings;
+}
+
+
+void InitAllSystems(){
+    ParseSettings();
 }
 
 
