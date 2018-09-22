@@ -19,30 +19,20 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         auto c = &eval_buffer[i];
         
-        //        printf("%s",c->string);
-        
         if(c->hash == PHashString("struct") ||c->hash == PHashString("union")){
             c->tag = TAG_STRUCT;
-            
-            //            printf("[struct] ");
         }
         
         else if(c->hash == PHashString("enum")){
             c->tag = TAG_ENUM;
-            
-            //            printf("[struct] ");
         }
         
         else if(IsCType(c->hash)){
             c->tag = TAG_CTYPE;
-            
-            //            printf("[type] ");
         }
         
         else if(IsParserKeyword(c->hash)){
             c->tag = TAG_KEY;
-            
-            //            printf("[key] ");
         }
         
         else if(c->hash == PHashString("(")){
@@ -99,12 +89,8 @@ void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
         
         else{
             c->tag = TAG_SYMBOL;
-            
-            //            printf("[symbol] ");
         }
     }
-    
-    //    printf("\n\n");
     
 }
 

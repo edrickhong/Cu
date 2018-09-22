@@ -20,18 +20,18 @@
 #define A_DEVICE_DEFAULT "default"
 
 struct AAudioBuffer{
-  void* data;
-  u32 size_frames;
-  u32 size;
-  u32 cur_pos;
-  u32 curpos_frames;
+    void* data;
+    u32 size_frames;
+    u32 size;
+    u32 cur_pos;
+    u32 curpos_frames;
 };
 
 
 struct AAudioContext{
-  snd_pcm_t* handle;
-  u32 channels;
-  u32 sample_size;
+    snd_pcm_t* handle;
+    u32 channels;
+    u32 sample_size;
 };
 
 typedef void (AudioOperation(void* args));

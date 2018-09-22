@@ -30,6 +30,10 @@ _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 s32 main(s32 argc,s8** argv){
     
+    ParseSettings();
+    
+    return 0;
+    
 #if  0
     
 #ifdef _WIN32

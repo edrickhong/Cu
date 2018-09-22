@@ -89,9 +89,11 @@ ptrsize _ainline FCurFilePosition(FileHandle filehandle){
 
 ptrsize _ainline FGetFileSize(FileHandle filehandle){
     
+    auto curpos = FCurFilePosition(filehandle);
+    
     ptrsize size = FSeekFile(filehandle,0,F_METHOD_END);
     
-    FSeekFile(filehandle,0,F_METHOD_START);
+    FSeekFile(filehandle,curpos,F_METHOD_START);
     
     return size;
 }

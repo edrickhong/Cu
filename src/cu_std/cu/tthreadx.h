@@ -12,7 +12,7 @@ struct ThreadWorkEntry{
 };
 
 struct ThreadWorkQueue{
-    volatile ThreadWorkEntry buffer[40];
+    volatile ThreadWorkEntry buffer[32];
     volatile  _cachealign u32 count = 0;
     volatile  _cachealign u32 index = 0;
     volatile  _cachealign u32 completed_count = 0;
