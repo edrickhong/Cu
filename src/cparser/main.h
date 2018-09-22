@@ -438,6 +438,31 @@ const s8* InternalGetMainFile(const s8* string){
     return 0;
 }
 
+
+void InternalGetInheritancdTypeString(s8* dst_string,s8* src_string){
+    
+    
+    u32 len = strlen(src_string);
+    
+    
+    for(u32 i = 0; i <  len; i++){
+        
+        dst_string[i] = src_string[i];
+        
+        
+        
+        if(src_string[i] == '_' && src_string[i + 1] == '_'){
+            
+            dst_string[i] = ':';
+            
+            i++;
+            
+            dst_string[i] = ':';
+        }
+    }
+    
+}
+
 void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct_count){
     
     //structs
@@ -456,11 +481,16 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
             
         }
         
+        s8 struct_name_buffer[256] = {};
+        
+        InternalGetInheritancdTypeString(struct_name_buffer,s->name_string);
+        
         
         
         {
             
             for(u32 j = 0; j < s->members_count;j++){
+                
                 
                 auto m = &s->members_array[j];
                 
@@ -474,8 +504,15 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
                 
                 
                 
-                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s),(u32)((u64)((&((%s*)0)->%s))),%d,(u32)-1},\n"
-                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string,m->name_string,m->type_string,s->name_string,m->name_string,element_count);
+                sprintf(buffer,"{(u32)%d,(u32)%d,\"%s\",\"%s\",(u32)sizeof(%s::%s),(u32)((u64)((&((%s*)0)->%s))),%d,(u32)-1},\n"
+                        ,(u32)PHashString(m->type_string),(u32)m->name_hash,m->type_string
+                        ,m->name_string,
+                        
+                        struct_name_buffer,m->name_string,
+                        
+                        struct_name_buffer,m->name_string
+                        
+                        ,element_count);
                 
                 FWrite(file,(void*)buffer,strlen(buffer));
             }
@@ -499,18 +536,15 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
                 
                 auto s = &struct_array[i];
                 
-                u32 len = strlen(s->name_string);
-                
                 s8 outbuffer[2048] = {};
-                s8 lowercasebuffer[256] = {};
                 
-                for(u32 j = 0; j < len; j++){
-                    lowercasebuffer[j] = tolower(s->name_string[j]);
-                }
+                s8 struct_name_buffer[256] = {};
+                
+                InternalGetInheritancdTypeString(struct_name_buffer,s->name_string);
                 
                 sprintf(outbuffer,
                         "{sizeof(%s),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
-                        s->name_string,s->name_string,
+                        struct_name_buffer,s->name_string,
                         (u32)s->name_hash,s->name_string,
                         s->name_string);
                 

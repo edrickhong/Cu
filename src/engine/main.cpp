@@ -5,6 +5,16 @@
 
 _persist auto ustring = "patchthisvalueinatassetpacktime";
 
+struct REFL A{
+    u32 a;
+    u32 b;
+};
+
+struct REFL B : A{
+    u32 c;
+    u32 d;
+};
+
 
 #ifndef CPP_PASS
 

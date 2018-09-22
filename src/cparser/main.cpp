@@ -1,7 +1,9 @@
 #include "ttimer.h"
 #include "main.h"
 
-#define _autoexpand_structs 1
+
+//FIXME: this straught up doesn't work anymore (Just don't do this?)
+#define _autoexpand_structs 0
 
 /*
 
@@ -154,6 +156,21 @@ m64 Eval_EvalCharMath(EvalChar* eval_array,u32 eval_count){
 }
 
 
+void PrintEvalChar(EvalChar* eval_array,u32 eval_count){
+    
+    printf("PRINT EVAL:: ");
+    
+    for(u32 i = 0; i < eval_count; i++){
+        
+        printf("%s ",eval_array[i].string);
+        
+    }
+    
+    printf("\n\n");
+    
+}
+
+
 
 void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
     auto i = *cur;
@@ -233,23 +250,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         
         if(x->tag == TAG_ASSIGN){
             
-            if(member->type == CType_STRUCT){
-                
-                printf("WARNING: struct initialization ignored:");
-                
-                for(u32 k = 0; k < membereval_count; k++){
-                    
-                    printf("%s ",&membereval_array[k].string[0]);
-                }
-                
-                printf("\n");
-                
-                break;
-            }
-            
-            else{
-                is_assign = true;
-            }
+            is_assign = true;
             
         }
         
@@ -264,7 +265,14 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
             
             _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
             
-            auto hash = PHashString(member->type_string);
+            //this is the member type
+            auto type = member->type;
+            
+#if 0
+            
+            printf("X:: %s\n",x->string);
+            
+#endif
             
             if(x->tag == TAG_DOUBLE_QUOTE){
                 
@@ -275,13 +283,13 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
             
             if(PIsStringFloat(&x->string[0])){
                 
-                if(IsIntType(hash)){
+                if(IsIntType(type)){
                     
                     member->default_array[member->default_count] = atoi(x->string);
                     member->default_count++;
                 }
                 
-                if(IsFloatType(hash)){
+                if(IsFloatType(type)){
                     
                     member->defaultf_array[member->default_count] = atof(x->string);
                     member->default_count++;
@@ -340,6 +348,8 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
                 s8 tbuffer[1024] = {};
                 
                 sprintf(&tbuffer[0],"%s::%s",member->name_string,m->name_string);
+                
+                printf("tbuffer %s\n",tbuffer);
                 
                 memcpy(c_m->name_string,tbuffer,strlen(tbuffer));
                 
