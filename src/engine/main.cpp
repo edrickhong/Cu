@@ -11,7 +11,7 @@ struct REFL A{
 };
 
 struct REFL B : A{
-    u32 c;
+    u32 c = 1;
     u32 d;
 };
 

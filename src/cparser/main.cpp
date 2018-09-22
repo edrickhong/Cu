@@ -1,10 +1,6 @@
 #include "ttimer.h"
 #include "main.h"
 
-
-//FIXME: this straught up doesn't work anymore (Just don't do this?)
-#define _autoexpand_structs 0
-
 /*
 
 NOTE:
@@ -12,6 +8,9 @@ if arraycount is 0, it is treated as 1d array w 1 element
 we treat enums the same way we treat structs
 
 ptr inspection can be implemented in assembly
+
+TODO:
+no automatic way to know if a given struct is nested or not and who the parent of the nested struct is
 */
 
 void TagEvalBuffer(EvalChar* eval_buffer,u32 count){
@@ -182,14 +181,9 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     
     logic is_assign = false;
     
-    
-    
-    
     for(u32 j = 0; j < membereval_count;j++){
         
         auto x = &membereval_array[j];
-        
-        //                    printf("::%s ",&x->string[0]);
         
         
         if(j == 0){
@@ -255,113 +249,14 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
         }
         
         
-        /*
-        TODO: I do not like how initialization is done rn
-        How do we handle many dimensions?
-        
-        We will do full member parsing. we will need to do this to support the console anyway
-*/
         if(is_assign){
-            
-            _kill("too many default initializers\n",member->default_count >= _arraycount(member->default_array));
-            
-            //this is the member type
-            auto type = member->type;
-            
-#if 0
-            
-            printf("X:: %s\n",x->string);
-            
-#endif
-            
-            if(x->tag == TAG_DOUBLE_QUOTE){
-                
-                InternalBufferGetString(&member->default_string[0],&membereval_array[0],membereval_count,&j);
-                
-                member->default_count = (u8)-2;
-            }
-            
-            if(PIsStringFloat(&x->string[0])){
-                
-                if(IsIntType(type)){
-                    
-                    member->default_array[member->default_count] = atoi(x->string);
-                    member->default_count++;
-                }
-                
-                if(IsFloatType(type)){
-                    
-                    member->defaultf_array[member->default_count] = atof(x->string);
-                    member->default_count++;
-                    
-                }
-                
-            }
+            continue;
         }
         
         
         
         
     }
-    
-    if(is_assign && !member->default_count){
-        member->default_count = (u8)-1;
-    }
-    
-    
-    //MARK: Should we auto expand structs?
-    
-#if _autoexpand_structs
-    
-    if(member->type == CType_STRUCT && !member->dim_count){
-        //Lookup
-        
-        GenericStruct* sptr = 0;
-        
-        s8 buffer[256] = {};
-        sprintf(buffer,"%s__%s",t->name_string,member->type_string);
-        
-        auto struct_hash = PHashString(member->type_string);
-        auto sub_struct_hash = PHashString(buffer);
-        
-        for(u32 j = 0; j < (*struct_count);j++){
-            
-            auto s = &struct_array[j];
-            
-            if(s->name_hash == struct_hash || s->name_hash == sub_struct_hash){
-                sptr = s;
-                break;
-            }
-        }
-        
-        if(sptr){
-            
-            for(u32 j = 0; j < sptr->members_count;j++){
-                
-                auto c_m = &t->members_array[t->members_count];
-                t->members_count++;
-                
-                auto m = &sptr->members_array[j];
-                
-                memcpy(c_m,m,sizeof(GenericTypeDef));
-                
-                s8 tbuffer[1024] = {};
-                
-                sprintf(&tbuffer[0],"%s::%s",member->name_string,m->name_string);
-                
-                printf("tbuffer %s\n",tbuffer);
-                
-                memcpy(c_m->name_string,tbuffer,strlen(tbuffer));
-                
-            }
-            
-            
-        }
-        
-        
-    }
-    
-#endif
     
     *cur = i;
 }

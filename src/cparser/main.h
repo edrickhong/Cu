@@ -126,15 +126,6 @@ struct GenericTypeDef : GenericTypeDec{
     
     
     u16 dim_array[8];
-    
-    union{
-        s8 default_string[256];
-        u64 default_array[32];
-        double defaultf_array[32];
-    };
-    
-    
-    
 };
 
 struct GenericEnumEntry{
@@ -337,39 +328,6 @@ void DebugPrintGenericStruct(GenericStruct* s){
         for(u32 k = 0; k < f->dim_count;k++){
             
             printf("[%d]",f->dim_array[k]);
-        }
-        
-        if(f->default_count){
-            
-            if(f->default_count == (u8)-1){
-                
-                printf("= {}");
-            }
-            
-            else if(f->default_count == (u8)-2){
-                
-                printf("= \"%s\"",&f->default_string[0]);
-            }
-            
-            else{
-                
-                printf("= {");
-                
-                for(u32 j = 0; j < f->default_count; j++){
-                    
-                    
-                    if(IsIntType(PHashString(f->type_string))){
-                        printf(" %d ",(u32)f->default_array[j]);
-                    }
-                    
-                    if(IsFloatType(PHashString(f->type_string))){
-                        printf("%f ",f->defaultf_array[j]);
-                    }
-                }
-                
-                printf("}");
-            }
-            
         }
         
         
