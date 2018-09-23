@@ -10,7 +10,7 @@
 
 #ifndef CPP_PASS
 
-#include "gamecomp_meta.h"
+#include "gamecomp_meta.cpp"
 
 #endif
 

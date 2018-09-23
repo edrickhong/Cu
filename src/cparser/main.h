@@ -336,6 +336,8 @@ void DebugPrintGenericStruct(GenericStruct* s){
     }
 }
 
+
+//TODO: separate header files and c files
 void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** componentfile,s8** metafile){
     
     u32 i = 0;
@@ -344,7 +346,7 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
         
         auto hash = PHashString(argv[i]);
         
-        if(hash == PHashString("-component") || hash == PHashString("-meta")){
+        if(hash == PHashString("-component-source") || hash == PHashString("-meta-source")){
             break;
         }
     }
@@ -366,12 +368,12 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
     
     for(; i < argc; i++){
         
-        if(PHashString(argv[i]) == PHashString("-component")){
+        if(PHashString(argv[i]) == PHashString("-component-source")){
             i++;
             *componentfile = argv[i];
         }
         
-        if(PHashString(argv[i]) == PHashString("-meta")){
+        if(PHashString(argv[i]) == PHashString("-meta-source")){
             i++;
             *metafile = argv[i];
         }

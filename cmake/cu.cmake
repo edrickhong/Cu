@@ -132,7 +132,7 @@ add_custom_command( TARGET ${TARGET} PRE_BUILD
 COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC} ${META_OUT}${OUT}.i
 
 #run generator on pp files
-COMMAND cparser ${OUT}.i -meta ../include/generated/${OUT}_meta.h
+COMMAND cparser ${OUT}.i -meta-source ../include/generated/${OUT}_meta.cpp
 
 )
 
@@ -150,7 +150,7 @@ add_custom_command( TARGET ${TARGET} PRE_BUILD
 COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC} ${META_OUT}${OUT}.i
 
 #run generator on pp files
-COMMAND cparser ${OUT}.i -component ../include/generated/${OUT}comp_meta.h -meta ../include/generated/${OUT}_meta.h
+COMMAND cparser ${OUT}.i -component-source ../include/generated/${OUT}comp_meta.cpp -meta-source ../include/generated/${OUT}_meta.cpp
 
 )
 

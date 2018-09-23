@@ -27,9 +27,7 @@ struct REFL TEST{
 
 #ifndef CPP_PASS
 
-//TODO: I feel like cparser should output both a c file and a header file to better manage this
-
-#include "engine_meta.h"
+#include "engine_meta.cpp"
 
 #endif
 
