@@ -11,8 +11,17 @@ struct REFL A{
 };
 
 struct REFL B : A{
+    
+    struct T{
+        u32 k;
+    };
+    
     u32 c = 1;
     u32 d;
+};
+
+struct REFL TEST{
+    struct A a;
 };
 
 

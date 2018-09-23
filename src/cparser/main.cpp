@@ -158,6 +158,7 @@ void PrintEvalChar(EvalChar* eval_array,u32 eval_count){
 
 
 void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
+    
     auto i = *cur;
     
     auto member = &t->members_array[t->members_count];
@@ -166,13 +167,17 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     
     
     logic is_assign = false;
+    logic next_is_struct = false;
     
     for(u32 j = 0; j < membereval_count;j++){
         
         auto x = &membereval_array[j];
         
         
-        if(j == 0){
+        if(j == 0 || next_is_struct){
+            
+            next_is_struct = x->tag == TAG_STRUCT || x->tag == TAG_ENUM || x->tag == TAG_UNION;
+            
             
             if(x->tag == TAG_SYMBOL){
                 
@@ -183,7 +188,11 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
                 member->type = (CType)x->hash;
             }
             
-            memcpy(&member->type_string[0],&x->string[0],strlen(&x->string[0]));
+            if(!next_is_struct){
+                memcpy(&member->type_string[0],&x->string[0],strlen(&x->string[0]));
+            }
+            
+            
             
         }
         
@@ -703,13 +712,13 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
         
         s8 terminator_array[] = {';','{'};
         
-        if(PFillEvalBufferC(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
+        if(auto terminator = PFillEvalBufferC(scope_buffer,&i,&membereval_array[0],&membereval_count,&terminator_array[0],_arraycount(terminator_array),TagEvalBuffer)){
             
             if(membereval_count){
                 
                 
                 //Handle internal structs
-                if(membereval_array[0].tag == TAG_STRUCT || membereval_array[0].tag == TAG_ENUM){
+                if(terminator == '{'&& (membereval_array[0].tag == TAG_STRUCT || membereval_array[0].tag == TAG_ENUM)){
                     
                     logic named_struct = false;
                     

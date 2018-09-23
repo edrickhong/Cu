@@ -475,7 +475,7 @@ void PBufferToByteArrayString(s8* array_name,s8* src_buffer,ptrsize src_size,s8*
 
 
 
-logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count,void (*tagevalbuffer)(EvalChar*,u32)){
+s8 PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8* terminator_array,u32 terminator_count,void (*tagevalbuffer)(EvalChar*,u32)){
     
     auto cur = *a;
     
@@ -641,9 +641,15 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,
         
         if(buffer[cur] == terminator_array[j]){
             
+            auto terminator = terminator_array[j];
+            
             tagevalbuffer(&evaluation_buffer[0],evaluation_count);
             
-            ret = true && evaluation_count;
+            if(evaluation_count){
+                ret = terminator;
+            }
+            
+            
             break;
         }
         
@@ -664,7 +670,7 @@ logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,
 
 
 
-logic PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32)){
+s8 PFillEvalBufferC(s8* buffer,ptrsize* a,EvalChar* evaluation_buffer,u32* k,s8 terminator,void (*tagevalbuffer)(EvalChar*,u32)){
     
     return PFillEvalBufferC(buffer,a,evaluation_buffer,k,&terminator,1,tagevalbuffer);
 }
