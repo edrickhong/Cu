@@ -19,98 +19,14 @@
 #include "dynamic_reload.cpp"
 #include "tthreadx.h"
 
-
-//settings parser
-
-struct Settings{
-    
-    u32 window_width = 1280;
-    u32 window_height = 1280;
-    u32 window_x = 0;
-    u32 window_y = 0;
-    u32 swapchain_depth = 3;
-};
-
-Settings ParseSettings(){
-    
-    
-    
-    Settings settings;
-    
-    
-    //TODO: we should write the values from settings (use the struct's defaults)
-    auto default_settings = R"FOO(
-    
-    #choose between DIRECT/XLIB/WAYLAND/CHOOSE_BEST
-    WINDOW_BACKEND : XLIB
-    
-    WINDOW_WIDTH : 1280
-    WINDOW_HEIGHT : 720
-    
-    #choose CENTER to centre window
-    WINDOW_POSX : 0
-    WINDOW_POSY : 0
-    
-    SWAPCHAIN_DEPTH : 3
-    
-    #choose between OFF/NORMAL/FAST/CHOOSE_BEST
-    VSYNC_MODE : CHOOSE_BEST
-    
-    
-    #in megabytes
-    FRAME_ALLOC_SIZE : 32
-    HOST_ALLOC_SIZE : 1024
-    GPU_ALLOC_SIZE : 22
-    
-    #in tiles (a tile is 128 x 128 pixels large)
-    VT_PHYS_WIDTH : 16384
-    VT_HEIGHT_WIDTH : 8192
-    
-    # [DATA_FORMAT]_[CHANNEL_FORMAT]
-    # DATA_FORMAT S16/S24/S32/F32/F64
-    # CHANNEL_FORMAT STEREO/5.1/7.1
-    AUDIO_OUTPUT : S16_STEREO
-    
-    #cboose between 44.1/48
-    AUDIO_OUTPUT_FREQUENCY : 48
-    
-    PLAYBUFFER_SIZE_MS : 24
-    
-    # 0 to 1
-    MASTER_VOLUME_FACTOR : 1.0
-    
-    # choose ALL to launch all
-    # this exlcudes the main thread
-    LAUNCH_THREADS : ALL
-    
-    GPU_DEVICE : DEFAULT
-    
-)FOO";
-    
-    
-    auto file = FOpenFile("SETTINGS.txt",F_FLAG_CREATE | F_FLAG_READWRITE);
-    
-    auto size = FGetFileSize(file);
-    
-    if(!size){
-        
-        FWrite(file,(s8*)default_settings,strlen(default_settings));
-    }
-    
-    else{
-        
-    }
-    
-    FCloseFile(file);
-    
-    
-    
-    return settings;
-}
+#include "settings.cpp"
 
 
 void InitAllSystems(){
-    ParseSettings();
+    
+    auto settings = ParseSettings();
+    
+    exit(0);
 }
 
 

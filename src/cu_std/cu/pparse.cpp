@@ -365,7 +365,7 @@ void PSanitizeStringC(s8* buffer,ptrsize* k){
     
     auto cur = *k;
     
-    PIgnoreWhiteSpace(buffer,&cur);
+    PSkipWhiteSpace(buffer,&cur);
     
     for(;;){
         
