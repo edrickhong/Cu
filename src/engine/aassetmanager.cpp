@@ -1080,10 +1080,11 @@ void CommitAudio(AudioAssetHandle* handle){
 
 //Virtual Texture table
 
-#define _width _kilobytes(16)
-#define _height _kilobytes(8)
 #define _tpage_side 128
-#define _totalpages (_width/_tpage_side) * (_height/_tpage_side)
+
+_persist u32 phys_w = 0;
+_persist u32 phys_h = 0;
+_persist u32 total_pages = 0;
 
 
 #define _fetch_dim_scale_w 8
@@ -1091,7 +1092,7 @@ void CommitAudio(AudioAssetHandle* handle){
 
 _persist VTextureContext global_texturecache = {};
 
-_persist u32 texturepage_timestamp[_totalpages] = {};
+_persist u32* texturepage_timestamp = 0;
 
 _persist TextureAssetHandle texturehandle_array[16] = {};
 _persist u32 texturehandle_count = 0;
@@ -1134,7 +1135,7 @@ _persist VTReadbackPixelFormat* debug_pixels = 0;
 #endif
 
 void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
-                        VDeviceContext* _restrict vdevice,VSwapchainContext* swapchain){
+                        u32 phys_w_tiles,u32 phys_h_tiles,VDeviceContext* _restrict vdevice,VSwapchainContext* swapchain){
     
     global_memstate.global_ptr = SSysAlloc(0,size,MEMPROT_READWRITE,0);
     
@@ -1183,15 +1184,27 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     global_device = vdevice;
     
+    
+    
+    //init phys texture stuff
+    {
+        total_pages = phys_w_tiles * phys_h_tiles;
+        
+        phys_w = phys_w_tiles * _tpage_side;
+        phys_h = phys_h_tiles * _tpage_side;
+        
+        texturepage_timestamp = (u32*)alloc(sizeof(u32) * total_pages);
+    }
+    
 #if _usergba
     
     global_texturecache =
-        VCreateTextureCache(vdevice,_width,_height,VK_FORMAT_R8G8B8A8_UNORM);
+        VCreateTextureCache(vdevice,phys_w,phys_h,VK_FORMAT_R8G8B8A8_UNORM);
     
 #else
     
     global_texturecache =
-        VCreateTextureCache(vdevice,_width,_height,VK_FORMAT_BC1_RGB_UNORM_BLOCK);
+        VCreateTextureCache(vdevice,phys_w,phys_h,VK_FORMAT_BC1_RGB_UNORM_BLOCK);
     
 #endif
     
@@ -1443,8 +1456,8 @@ const VTextureContext* GetTextureCache(){
 
 _ainline void GetPhysCoord(u32 page,u8* x,u8* y){
     //MARK: Hopefully the compiler is smart enough to fold this into a single div
-    *y = page / (_width/_tpage_side);
-    *x = page % (_width/_tpage_side);
+    *y = page / (phys_w/_tpage_side);
+    *x = page % (phys_w/_tpage_side);
 }
 
 void CommitTexture(TextureAssetHandle* handle){
@@ -1484,7 +1497,7 @@ u32 EvictTexturePage(TPageQuadNode* _restrict node){
 
 u32 GetAvailablePage(){
     
-    if(texturepage_count > _totalpages){
+    if(texturepage_count > total_pages){
         
         qsort(texturehandle_array,texturehandle_count,
               sizeof(TextureAssetHandle),
@@ -2463,8 +2476,8 @@ VkSpecializationInfo VTFragmentShaderSpecConst(){
     pdata[2] = (f32)vt_readbackbuffer.w;
     pdata[3] = (f32)vt_readbackbuffer.h;
     pdata[4] = (f32)_tpage_side;
-    pdata[5] = (f32)_width;
-    pdata[6] = (f32)_height;
+    pdata[5] = (f32)phys_w;
+    pdata[6] = (f32)phys_h;
     
 #if 0
     

@@ -10,6 +10,8 @@ This is for general string parsing and to support the general parsing of C-like 
 
 TODO: 
 our symbol extracting functions put the cur position on the char after the symbol. we should put it at the last char on the symbol instead
+
+clean this up. we may have some duplicate functions
 */
 
 enum PTokenType{
@@ -371,17 +373,6 @@ logic  _ainline PIsEndCommentC(s8 c1,s8 c2){
     return c1 == '*'  && c2 == '/';
 }
 
-void _ainline PIgnoreWhiteSpace(s8* buffer,ptrsize* cur){
-    
-    auto k = *cur;
-    
-    while(PIsWhiteSpace(buffer[k])){
-        k++;
-    }
-    
-    *cur = k;
-}
-
 void _ainline PIgnorePreprocessorAndCommentsC(s8* buffer,ptrsize* cur){
     
     auto k = *cur;
@@ -398,7 +389,7 @@ void _ainline PIgnorePreprocessorAndCommentsC(s8* buffer,ptrsize* cur){
         if(!is_block){
             
             k+=2;
-            PIgnoreWhiteSpace(buffer,cur);
+            PSkipWhiteSpace(buffer,cur);
         }
         
     }

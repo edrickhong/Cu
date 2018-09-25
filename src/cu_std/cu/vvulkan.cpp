@@ -1087,7 +1087,6 @@ VkImage CreateImage(VkDevice device,VkImageCreateFlags flags,
     return image;
 }
 
-
 VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicaldevice,
                                   VkDevice device,
                                   VkPhysicalDeviceMemoryProperties memoryproperties,
@@ -1219,6 +1218,50 @@ VSwapchainContext CreateSwapchain(VkInstance instance,VkPhysicalDevice physicald
             surfaceformat = surfaceformat_array[0];
         
     }
+    
+    
+    if(sync_type == VSYNC_CHOOSE_BEST){
+        
+        VkPresentModeKHR presentmode_array[10] = {};
+        u32 presentmode_count = 0;
+        
+        _vktest(GetSurfacePresentModes(physicaldevice,surface,(u32*)&presentmode_count,0));
+        
+        _kill("", presentmode_count > 10);
+        
+        _vktest(GetSurfacePresentModes(physicaldevice,surface,(u32*)&presentmode_count,
+                                       presentmode_array));
+        
+        VPresentSyncType sync_array[] = 
+        {VSYNC_FAST,VSYNC_NORMAL,VSYNC_LAZY
+        };
+        
+        
+        
+        //TODO: put this into a function
+        for(u32 i = 0; i < _arraycount(sync_array); i++){
+            
+            
+            for(u32 j = 0; j < presentmode_count; j++){
+                
+                if(sync_array[i] == (VPresentSyncType)presentmode_array[j]){
+                    sync_type = (VPresentSyncType)presentmode_array[j];
+                    break;
+                }
+                
+            }
+            
+            
+            if(sync_type != VSYNC_CHOOSE_BEST){
+                break;
+            }
+            
+        }
+        
+    }
+    
+    _kill("failed to get best vsync\n",sync_type == VSYNC_CHOOSE_BEST);
+    
     
     VkPresentModeKHR presentmode = (VkPresentModeKHR)sync_type;
     

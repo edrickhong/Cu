@@ -1,10 +1,5 @@
 #include "main.h"
 
-#define _targetframerate 16.0f//33.33f
-#define _ms2s(ms)  ((f32)ms/1000.0f)
-
-_persist auto ustring = "patchthisvalueinatassetpacktime";
-
 struct REFL A{
     u32 a;
     u32 b;
@@ -41,199 +36,16 @@ s32 main(s32 argc,s8** argv){
     
     InitAllSystems();
     
-    return 0;
-    
-#if  0
-    
-#ifdef _WIN32
-#define _fontfile FONT_PATH(arial.ttf)
-#else
-#define _fontfile FONT_PATH(ubuntu-font-family/Ubuntu-B.ttf)
-#endif
-    
-    GUIGenFontFile(_fontfile,"Ubuntu-B.fbmp",100.0f);//200.0f
-    exit(0);
-    
-#endif
-    
 #ifdef DEBUG
     
 #if 0
-    {
-        
-        if(ustring[0] != '!'){
-            printf("binary has not been patched\n");
-            return -1;
-        }
-        
-        auto exec_size = *((u32*)&ustring[1]);
-        
-        printf("exec size %d\n",exec_size);
-        
-        auto file = FOpenFile(&argv[0][2],F_FLAG_READONLY);
-        
-        FSeekFile(file,exec_size,F_METHOD_START);
-        
-        s8 buffer[1024] = {};
-        u32 size;
-        
-        FRead(file,&size,sizeof(size));
-        FRead(file,&buffer[0],size);
-        
-        printf("%s\n",&buffer[0]);
-        
-        FCloseFile(file);
-    }
-    
+    GetExecFileAssetData();
 #endif
     
 #endif
     
     void(*reload)(GameReloadData*) = 0;
     
-    //init code
-    TInitTimer();
-    INIT_DEBUG_TIMER();
-    
-    InitInternalAllocator();
-    InitTAlloc(_megabytes(32));
-    
-    SetupData((void**)&pdata,(void**)&gdata);
-    
-    VInitVulkan();
-    
-    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE | W_CREATE_FORCE_XLIB),100,100,1280,720);
-    
-    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
-    
-    _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
-    
-    {
-        
-        VkPhysicalDevice phys_array[16] = {};
-        u32 phys_count;
-        
-        VEnumeratePhysicalDevices(&phys_array[0],&phys_count,&pdata->window);
-        
-        pdata->vdevice = VCreateDeviceContext(&phys_array[0]);
-        
-    }
-    
-    
-    //MARK: we should prefer fast if available
-    pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,_swapchain_count,&pdata->window,
-                                               VSYNC_NORMAL);
-    
-    InitAssetAllocator(_gigabytes(1),_megabytes(22),&pdata->vdevice,
-                       &pdata->swapchain);
-    
-    pdata->present_fence = VCreateFence(&pdata->vdevice,(VkFenceCreateFlagBits)0);
-    
-    printf("swapchain count %d\n",pdata->swapchain.image_count);
-    
-    pdata->root_queue = VGetQueue(&pdata->vdevice,VQUEUETYPE_ROOT);
-    
-    pdata->drawcmdbuffer =
-        CreateThreadRenderData(&pdata->vdevice);
-    
-    pdata->transfer_queue = VGetQueue(&pdata->vdevice,VQUEUETYPE_ROOT);
-    
-    //MARK: just reuse a cmdbuffer
-    VkCommandBuffer transfercmdbuffer =
-        VAllocateCommandBuffer(&pdata->vdevice,pdata->drawcmdbuffer.pool,
-                               VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    
-    //MARK: Handle case where a compute queue doesn't exist
-    pdata->compute_queue = VGetQueue(&pdata->vdevice,VQUEUETYPE_COMPUTE);
-    
-    pdata->waitacquireimage_semaphore = VCreateSemaphore(&pdata->vdevice);
-    pdata->waitfinishrender_semaphore = VCreateSemaphore(&pdata->vdevice);
-    
-    pdata->renderpass = SetupRenderPass(&pdata->vdevice,pdata->swapchain);
-    
-    SetupFrameBuffers(&pdata->vdevice,transfercmdbuffer,pdata->transfer_queue,
-                      pdata->renderpass,&pdata->swapchain);
-    
-    SetupPipelineCache();
-    
-    pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),VMAPPED_NONE);
-    
-    pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),VMAPPED_NONE);
-    
-    //MARK: keep the obj buffer permanently mapped
-    
-    VMapMemory(&pdata->vdevice,pdata->skel_ubo.memory,
-               0,pdata->skel_ubo.size,(void**)&pdata->objupdate_ptr);
-    
-    VMapMemory(&pdata->vdevice,pdata->light_ubo.memory,
-               0,pdata->light_ubo.size,(void**)&pdata->lightupdate_ptr);
-    
-    memset(pdata->lightupdate_ptr,0,pdata->light_ubo.size);
-    
-    
-    {
-        pdata->submit_audiobuffer.size_frames =
-            (u32)(_48ms2frames(_targetframerate) + _48ms2frames(8));
-        
-        pdata->submit_audiobuffer.size =
-            pdata->submit_audiobuffer.size_frames * sizeof(s16) * 2;
-        
-        pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size); 
-    }
-    
-    pdata->audio =
-        ACreateAudioDevice(A_DEVICE_DEFAULT,48000,2,A_FORMAT_S16LE);
-    
-    InitSceneContext(pdata,transfercmdbuffer,pdata->transfer_queue);
-    
-    //Kickoff worker threads
-    {
-        
-        pdata->worker_sem = TCreateSemaphore();
-        pdata->main_sem = TCreateSemaphore();
-        
-        auto info = TAlloc(Threadinfo,1);
-        
-        info->this_sem = pdata->worker_sem;
-        info->main_sem = pdata->main_sem;
-        info->queue = &pdata->threadqueue;
-        info->rendercontext = &pdata->rendercontext;
-        info->vdevicecontext = pdata->vdevice;
-        pdata->fetchqueue = {};
-        pdata->fetchqueue.buffer = ((ThreadFetchBatch*)alloc(_FetchqueueSize *
-                                                             sizeof(ThreadFetchBatch)));
-        info->fetchqueue = &pdata->fetchqueue;
-        
-        pdata->threadcount = DeployAllThreads(info);
-    }
-    
-    
-    pdata->rendercmdbuffer_array =
-        CreatePrimaryRenderCommandbuffer(&pdata->vdevice,
-                                         pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
-    
-#if _enable_gui
-    
-    GUIInit(&pdata->vdevice,&pdata->swapchain,pdata->renderpass,pdata->transfer_queue,
-            transfercmdbuffer,pdata->pipelinecache);
-    
-#endif
-    
-    GameInitData initdata = {
-        &pdata->scenecontext,gdata,&pdata->window,pdata->vdevice,pdata->renderpass,
-        transfercmdbuffer,pdata->transfer_queue
-    };
-    
-    
-    void (*gameinit_funptr)(GameInitData*);
-    pdata->lib = InitGameLibrary((void**)(&gameinit_funptr));
-    
-    
-    gameinit_funptr(&initdata);
-    
-    pdata->deltatime = 0;
-    
-    ResetTransferBuffer();
     
     while(gdata->running){
         

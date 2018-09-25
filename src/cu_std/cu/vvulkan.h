@@ -548,6 +548,7 @@ enum VPresentSyncType{
     VSYNC_NORMAL = VK_PRESENT_MODE_FIFO_KHR,
     VSYNC_LAZY = VK_PRESENT_MODE_FIFO_RELAXED_KHR,
     VSYNC_FAST = VK_PRESENT_MODE_MAILBOX_KHR,
+    VSYNC_CHOOSE_BEST = -1,
 };
 
 VSwapchainContext VCreateSwapchainContext(const VDeviceContext* _in_ vdevice,

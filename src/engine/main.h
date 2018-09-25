@@ -19,106 +19,15 @@
 #include "dynamic_reload.cpp"
 #include "tthreadx.h"
 
-
-//settings parser
-
-struct Settings{
-    
-    u32 window_width = 1280;
-    u32 window_height = 1280;
-    u32 window_x = 0;
-    u32 window_y = 0;
-    u32 swapchain_depth = 3;
-};
-
-Settings ParseSettings(){
-    
-    
-    
-    Settings settings;
-    
-    
-    //TODO: we should write the values from settings (use the struct's defaults)
-    auto default_settings = R"FOO(
-    
-    #choose between DIRECT/XLIB/WAYLAND/CHOOSE_BEST
-    WINDOW_BACKEND : XLIB
-    
-    WINDOW_WIDTH : 1280
-    WINDOW_HEIGHT : 720
-    
-    #choose CENTER to centre window
-    WINDOW_POSX : 0
-    WINDOW_POSY : 0
-    
-    SWAPCHAIN_DEPTH : 3
-    
-    #choose between OFF/NORMAL/FAST/CHOOSE_BEST
-    VSYNC_MODE : CHOOSE_BEST
-    
-    
-    #in megabytes
-    FRAME_ALLOC_SIZE : 32
-    HOST_ALLOC_SIZE : 1024
-    GPU_ALLOC_SIZE : 22
-    
-    #in tiles (a tile is 128 x 128 pixels large)
-    VT_PHYS_WIDTH : 16384
-    VT_HEIGHT_WIDTH : 8192
-    
-    # [DATA_FORMAT]_[CHANNEL_FORMAT]
-    # DATA_FORMAT S16/S24/S32/F32/F64
-    # CHANNEL_FORMAT STEREO/5.1/7.1
-    AUDIO_OUTPUT : S16_STEREO
-    
-    #cboose between 44.1/48
-    AUDIO_OUTPUT_FREQUENCY : 48
-    
-    PLAYBUFFER_SIZE_MS : 24
-    
-    # 0 to 1
-    MASTER_VOLUME_FACTOR : 1.0
-    
-    # choose ALL to launch all
-    # this exlcudes the main thread
-    LAUNCH_THREADS : ALL
-    
-    GPU_DEVICE : DEFAULT
-    
-)FOO";
-    
-    
-    auto file = FOpenFile("SETTINGS.txt",F_FLAG_CREATE | F_FLAG_READWRITE);
-    
-    auto size = FGetFileSize(file);
-    
-    if(!size){
-        
-        FWrite(file,(s8*)default_settings,strlen(default_settings));
-    }
-    
-    else{
-        
-    }
-    
-    FCloseFile(file);
-    
-    
-    
-    return settings;
-}
+#include "settings.cpp"
 
 
-void InitAllSystems(){
-    ParseSettings();
-}
-
-
-
+#define _targetframerate 16.0f//33.33f
+#define _ms2s(ms)  ((f32)ms/1000.0f)
 
 #define _mute_sound 1
 
-#define _swapchain_count 3
+#define _max_swapchain_count 4
 
 /*
   TODO:
@@ -126,6 +35,37 @@ void InitAllSystems(){
   
   NOTE: stb_vorbis_decode_filename("somefile.ogg", &channels, &sample_rate, &output);
 */
+
+
+u32 GetExecFileAssetData(const s8* exec_filepath){
+    
+    _persist auto ustring = "patchthisvalueinatassetpacktime";
+    
+    if(ustring[0] != '!'){
+        printf("binary has not been patched\n");
+        return (u32)-1;
+    }
+    
+    auto exec_size = *((u32*)&ustring[1]);
+    
+    printf("exec size %d\n",exec_size);
+    
+    auto file = FOpenFile(exec_filepath,F_FLAG_READONLY);
+    
+    FSeekFile(file,exec_size,F_METHOD_START);
+    
+    s8 buffer[1024] = {};
+    u32 size;
+    
+    FRead(file,&size,sizeof(size));
+    FRead(file,&buffer[0],size);
+    
+    printf("%s\n",&buffer[0]);
+    
+    FCloseFile(file);
+    
+    return 0;
+}
 
 
 #ifdef DEBUG
@@ -339,7 +279,11 @@ void _ainline InternalDraw(VkCommandBuffer commandbuffer,
 
 struct ThreadRenderData{
     VkCommandPool pool;
-    VkCommandBuffer cmdbuffer[_swapchain_count * _rendergroupcount];
+    
+    
+    VkCommandBuffer cmdbuffer[_max_swapchain_count * _rendergroupcount];
+    
+    
     u32 active_group;
     u8 group_submit_count[4];
     
@@ -768,6 +712,7 @@ struct PlatformData{
 
 _persist PlatformData* pdata;
 _persist GameData* gdata;
+
 
 void _ainline PushUpdateEntry(u32 id,u32 offset,u32 data_size,void* data){
     
@@ -2045,4 +1990,205 @@ void PrintFileAsArray(const s8* filepath){
     
     FCloseFile(file);
     unalloc(dst);
+}
+
+
+
+u64 GenGPUHash(VkPhysicalDeviceProperties* prop){
+    
+    return (PHashString(prop->deviceName) * (prop->deviceType + 13)) ^ ((prop->vendorID + 1) * (prop->deviceID + 1) * 19);
+}
+
+
+void InitAllSystems(){
+    
+    auto settings = ParseSettings();
+    
+    TInitTimer();
+    INIT_DEBUG_TIMER();
+    
+    InitInternalAllocator();
+    InitTAlloc(_megabytes(settings.frame_alloc_size));
+    
+    SetupData((void**)&pdata,(void**)&gdata);
+    
+    
+    {
+        pdata->submit_audiobuffer.size_frames =
+            (u32)(_48ms2frames(settings.playbuffer_size_ms));
+        
+        pdata->submit_audiobuffer.size =
+            pdata->submit_audiobuffer.size_frames * sizeof(s16) * 2;
+        
+        pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size); 
+    }
+    
+    pdata->audio =
+        ACreateAudioDevice(A_DEVICE_DEFAULT,settings.audio_frequency,settings.audio_channels,settings.audio_format);
+    
+    
+    VInitVulkan();
+    
+    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE | settings.backend),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
+    
+    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    
+    _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
+    
+    {
+        
+        VkPhysicalDevice phys_array[16] = {};
+        u32 phys_count = 0;
+        
+        VEnumeratePhysicalDevices(&phys_array[0],&phys_count,&pdata->window);
+        
+        //search thru and find device by hash
+        
+        u32 phys_index = 0;
+        
+        for(u32 i = 0; i < phys_count; i++){
+            
+            auto phys = phys_array[i];
+            
+            VkPhysicalDeviceProperties prop;
+            
+            vkGetPhysicalDeviceProperties(phys,
+                                          &prop);
+            
+            auto hash = GenGPUHash(&prop);
+            
+            printf("GPUHASH %d\n",(u32)hash);
+            
+            if(hash == settings.gpu_device_hash){
+                phys_index = i;
+                break;
+            }
+        }
+        
+        
+        pdata->vdevice = VCreateDeviceContext(&phys_array[0]);
+        
+    }
+    
+    
+    _kill("cannot exceed the max allocated swapchain\n",settings.swapchain_depth > _max_swapchain_count);
+    
+    
+    //MARK: maybe we should separate surface creation and swapchaiun creation to make it possible to query present modes
+    pdata->swapchain = VCreateSwapchainContext(&pdata->vdevice,settings.swapchain_depth,&pdata->window,
+                                               (VPresentSyncType)settings.vsync_mode);
+    
+    
+    InitAssetAllocator(_megabytes(settings.host_alloc_size),_megabytes(settings.gpu_alloc_size),settings.vt_width,settings.vt_height,&pdata->vdevice,
+                       &pdata->swapchain);
+    
+    
+    
+    {
+        
+        
+        
+        pdata->present_fence = VCreateFence(&pdata->vdevice,(VkFenceCreateFlagBits)0);
+        
+        printf("swapchain count %d\n",pdata->swapchain.image_count);
+        
+        pdata->root_queue = VGetQueue(&pdata->vdevice,VQUEUETYPE_ROOT);
+        
+        pdata->drawcmdbuffer =
+            CreateThreadRenderData(&pdata->vdevice);
+        
+        pdata->transfer_queue = VGetQueue(&pdata->vdevice,VQUEUETYPE_ROOT);
+        
+        //MARK: just reuse a cmdbuffer
+        VkCommandBuffer transfercmdbuffer =
+            VAllocateCommandBuffer(&pdata->vdevice,pdata->drawcmdbuffer.pool,
+                                   VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        
+        //MARK: Handle case where a compute queue doesn't exist
+        pdata->compute_queue = VGetQueue(&pdata->vdevice,VQUEUETYPE_COMPUTE);
+        
+        pdata->waitacquireimage_semaphore = VCreateSemaphore(&pdata->vdevice);
+        pdata->waitfinishrender_semaphore = VCreateSemaphore(&pdata->vdevice);
+        
+        pdata->renderpass = SetupRenderPass(&pdata->vdevice,pdata->swapchain);
+        
+        SetupFrameBuffers(&pdata->vdevice,transfercmdbuffer,pdata->transfer_queue,
+                          pdata->renderpass,&pdata->swapchain);
+        
+        SetupPipelineCache();
+        
+        pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),VMAPPED_NONE);
+        
+        pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),VMAPPED_NONE);
+        
+        //MARK: keep the obj buffer permanently mapped
+        
+        VMapMemory(&pdata->vdevice,pdata->skel_ubo.memory,
+                   0,pdata->skel_ubo.size,(void**)&pdata->objupdate_ptr);
+        
+        VMapMemory(&pdata->vdevice,pdata->light_ubo.memory,
+                   0,pdata->light_ubo.size,(void**)&pdata->lightupdate_ptr);
+        
+        memset(pdata->lightupdate_ptr,0,pdata->light_ubo.size);
+        
+        InitSceneContext(pdata,transfercmdbuffer,pdata->transfer_queue);
+        
+        
+        pdata->rendercmdbuffer_array =
+            CreatePrimaryRenderCommandbuffer(&pdata->vdevice,
+                                             pdata->drawcmdbuffer.pool,pdata->swapchain.image_count);
+        
+#if _enable_gui
+        
+        GUIInit(&pdata->vdevice,&pdata->swapchain,pdata->renderpass,pdata->transfer_queue,
+                transfercmdbuffer,pdata->pipelinecache);
+        
+#endif
+        
+        GameInitData initdata = {
+            &pdata->scenecontext,gdata,&pdata->window,pdata->vdevice,pdata->renderpass,
+            transfercmdbuffer,pdata->transfer_queue
+        };
+        
+        
+        void (*gameinit_funptr)(GameInitData*);
+        pdata->lib = InitGameLibrary((void**)(&gameinit_funptr));
+        
+        
+        gameinit_funptr(&initdata);
+        
+        pdata->deltatime = 0;
+        
+        ResetTransferBuffer();
+    }
+    
+    
+    //Kickoff worker threads
+    {
+        
+        pdata->worker_sem = TCreateSemaphore();
+        pdata->main_sem = TCreateSemaphore();
+        
+        auto info = TAlloc(Threadinfo,1);
+        
+        info->this_sem = pdata->worker_sem;
+        info->main_sem = pdata->main_sem;
+        info->queue = &pdata->threadqueue;
+        info->rendercontext = &pdata->rendercontext;
+        info->vdevicecontext = pdata->vdevice;
+        pdata->fetchqueue = {};
+        pdata->fetchqueue.buffer = ((ThreadFetchBatch*)alloc(_FetchqueueSize *
+                                                             sizeof(ThreadFetchBatch)));
+        info->fetchqueue = &pdata->fetchqueue;
+        
+        
+        if(settings.launch_threads == (u32)-1){
+            pdata->threadcount = DeployAllThreads(info);
+        }
+        
+        else{
+            pdata->threadcount = settings.launch_threads;
+        }
+        
+    }
 }
