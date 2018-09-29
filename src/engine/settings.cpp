@@ -238,6 +238,7 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
     LaunchThreadsNoToString(settings->launch_threads,threads_string);
     
     sprintf(buffer,
+            
             R"FOO(
             
             #choose between DIRECT/XLIB/WAYLAND/CHOOSE_BEST
@@ -284,7 +285,10 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
             
             GPU_DEVICE : %s
             
-            )FOO",backend_string,
+            )FOO",
+            
+            
+            backend_string,
             settings->window_width,
             settings->window_height,
             settings->window_x,
