@@ -2,6 +2,14 @@
 
 #include "mode.h"
 
+
+#ifndef CPP_PASS
+
+#include "engine_meta.h"
+
+#endif
+
+
 #include "wwindow.h"
 
 #include "aaudio.h"

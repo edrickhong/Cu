@@ -19,12 +19,17 @@ struct REFL TEST{
     struct A a;
 };
 
+enum REFL EN{
+    EN_1,
+    EN_2,
+    EN_3,
+};
 
-#ifndef CPP_PASS
-
-#include "engine_meta.cpp"
-
-#endif
+enum REFL AN{
+    AN_1,
+    AN_2,
+    AN_3,
+};
 
 _compile_kill(sizeof(SkelUBO) > _kilobytes(64));
 _compile_kill(sizeof(PushConst) > 128);
@@ -231,6 +236,11 @@ s32 main(s32 argc,s8** argv){
 #include "vvulkanx.cpp"
 #include "aassetmanager.cpp"
 
+#ifndef CPP_PASS
+
+#include "engine_meta.cpp"
+
+#endif
 
 
 /*

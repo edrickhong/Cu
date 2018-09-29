@@ -3,7 +3,7 @@
 
 //TODO: seems like a perfect candidate for reflection tbh
 
-struct Settings{
+struct REFL Settings{
     u32 backend = W_CREATE_FORCE_XLIB;
     u32 window_width = 1280;
     u32 window_height = 720;
@@ -468,6 +468,7 @@ Settings ParseSettings(){
     
     
     Settings settings;
+    
     
     s8 default_settings_string[2048] = {};
     
