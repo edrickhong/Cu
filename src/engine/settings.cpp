@@ -28,6 +28,13 @@ struct REFL Settings{
 
 void WindowBackendFlagToString(u32 flag,s8* dst_string){
     
+#ifdef _WIN32
+    
+    auto string = "CHOOSE_BEST";
+    memcpy(dst_string,string,strlen(string));
+    
+#else
+    
     switch(flag){
         
         case W_CREATE_FORCE_WAYLAND:{
@@ -51,6 +58,8 @@ void WindowBackendFlagToString(u32 flag,s8* dst_string){
             _kill("not supported right now\n",1);
         }break;
     }
+    
+#endif
     
 }
 
@@ -140,6 +149,8 @@ u32 WindowBackendStringToFlag(s8* string){
     
     auto hash = PHashString(string);
     
+#ifndef _WIN32
+    
     switch(hash){
         
         case PHashString("WAYLAND"):{
@@ -157,6 +168,8 @@ u32 WindowBackendStringToFlag(s8* string){
             return 0;
         }break;
     }
+    
+#endif
     
     return 0;
 }
@@ -239,54 +252,51 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
     
     sprintf(buffer,
             
-            R"FOO(
-            
-            #choose between DIRECT/XLIB/WAYLAND/CHOOSE_BEST
-            WINDOW_BACKEND : %s
-            
-            WINDOW_WIDTH : %d
-            WINDOW_HEIGHT : %d
-            
-            #choose CENTER to centre window
-            WINDOW_POSX : %d
-            WINDOW_POSY : %d
-            
-            SWAPCHAIN_DEPTH : %d
-            
-            #choose between OFF/NORMAL/FAST/LAZY/CHOOSE_BEST
-            VSYNC_MODE : %s
-            
-            
-            #in megabytes
-            FRAME_ALLOC_SIZE : %d
-            HOST_ALLOC_SIZE : %d
-            GPU_ALLOC_SIZE : %d
-            
-            #in tiles (a tile is 128 x 128 pixels large)
-            VT_PHYS_WIDTH : %d
-            VT_HEIGHT_WIDTH : %d
-            
-            # [DATA_FORMAT]_[CHANNEL_FORMAT]
-            # DATA_FORMAT S16/S24/S32/F32/F64
-            # CHANNEL_FORMAT STEREO/5.1/7.1
-            AUDIO_OUTPUT : %s
-            
-            #cboose between 44100/48000
-            AUDIO_OUTPUT_FREQUENCY : %d
-            
-            PLAYBUFFER_SIZE_MS : %d
-            
-            # 0 to 1
-            MASTER_VOLUME_FACTOR : %f
-            
-            # choose ALL to launch all
-            # this exlcudes the main thread
-            LAUNCH_THREADS : %s
-            
-            GPU_DEVICE : %s
-            
-            )FOO",
-            
+            "\n"
+            "#choose between DIRECT/XLIB/WAYLAND/CHOOSE_BEST\n"
+            "WINDOW_BACKEND : %s\n"
+            "\n"
+            "WINDOW_WIDTH : %d\n"
+            "WINDOW_HEIGHT : %d\n"
+            "\n"
+            "#choose CENTER to centre window\n"
+            "WINDOW_POSX : %d\n"
+            "WINDOW_POSY : %d\n"
+            "\n"
+            "SWAPCHAIN_DEPTH : %d\n"
+            "\n"
+            "#choose between OFF/NORMAL/FAST/LAZY/CHOOSE_BEST\n"
+            "VSYNC_MODE : %s\n"
+            "\n"
+            "\n"
+            "#in megabytes\n"
+            "FRAME_ALLOC_SIZE : %d\n"
+            "HOST_ALLOC_SIZE : %d\n"
+            "GPU_ALLOC_SIZE : %d\n"
+            "\n"
+            "#in tiles (a tile is 128 x 128 pixels large)\n"
+            "VT_PHYS_WIDTH : %d\n"
+            "VT_HEIGHT_WIDTH : %d\n"
+            "\n"
+            "# [DATA_FORMAT]_[CHANNEL_FORMAT]\n"
+            "# DATA_FORMAT S16/S24/S32/F32/F64\n"
+            "# CHANNEL_FORMAT STEREO/5.1/7.1\n"
+            "AUDIO_OUTPUT : %s\n"
+            "\n"
+            "#cboose between 44100/48000\n"
+            "AUDIO_OUTPUT_FREQUENCY : %d\n"
+            "\n"
+            "PLAYBUFFER_SIZE_MS : %d\n"
+            "\n"
+            "# 0 to 1\n"
+            "MASTER_VOLUME_FACTOR : %f\n"
+            "\n"
+            "# choose ALL to launch all\n"
+            "# this exlcudes the main thread\n"
+            "LAUNCH_THREADS : %s\n"
+            "\n"
+            "GPU_DEVICE : %s\n"
+            "\n",
             
             backend_string,
             settings->window_width,

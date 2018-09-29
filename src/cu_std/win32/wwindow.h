@@ -43,8 +43,8 @@ enum WCreateFlags{
     W_CREATE_NONE = 0,
     W_CREATE_NORESIZE =  1,
     
-    W_CREATE_FORCE_WAYLAND = 1 << 31,
-    W_CREATE_FORCE_XLIB = 1 << 30,
+    W_CREATE_FORCE_WAYLAND = W_CREATE_NONE,
+    W_CREATE_FORCE_XLIB = W_CREATE_NONE,
 };
 
 enum MouseButton{
