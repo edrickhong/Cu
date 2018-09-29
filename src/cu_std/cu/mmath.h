@@ -59,7 +59,7 @@
 
 #endif
 
-#define _clamp(x, upper, lower) (fmin(upper, fmax(x, lower)))
+#define _clamp(x,lower,upper) (fmin(upper,fmax(x,lower)))
 
 typedef __m128 simd4f;
 typedef __m64 simd2f;

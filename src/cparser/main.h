@@ -337,8 +337,7 @@ void DebugPrintGenericStruct(GenericStruct* s){
 }
 
 
-//TODO: separate header files and c files
-void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** componentfile,s8** metafile){
+void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** component_src,s8** meta_src,s8** component_h,s8** meta_h){
     
     u32 i = 0;
     
@@ -346,7 +345,7 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
         
         auto hash = PHashString(argv[i]);
         
-        if(hash == PHashString("-component-source") || hash == PHashString("-meta-source")){
+        if(hash == PHashString("-component-source") || hash == PHashString("-meta-source") || hash == PHashString("-component-header") || hash == PHashString("-meta-header")){
             break;
         }
     }
@@ -357,25 +356,36 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
         *source_array = &argv[0];
     }
     
-    u32 k = (argc - (*source_count));
+#if 0
     
-    if(k != 4 && k != 2){
-        
-        *source_count = (u32)-1;
-        
-        return;
+    for(u32 k = i; k < argc; k++){
+        printf("%s\n",argv[k]);
     }
+    
+#endif
     
     for(; i < argc; i++){
         
         if(PHashString(argv[i]) == PHashString("-component-source")){
             i++;
-            *componentfile = argv[i];
+            *component_src = argv[i];
         }
         
         if(PHashString(argv[i]) == PHashString("-meta-source")){
             i++;
-            *metafile = argv[i];
+            *meta_src = argv[i];
+        }
+        
+        
+        if(PHashString(argv[i]) == PHashString("-meta-header")){
+            i++;
+            *meta_h = argv[i];
+        }
+        
+        
+        if(PHashString(argv[i]) == PHashString("-component-header")){
+            i++;
+            *component_h = argv[i];
         }
         
     }
@@ -423,7 +433,7 @@ void InternalGetInheritancdTypeString(s8* dst_string,s8* src_string){
     
 }
 
-void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct_count){
+void InternalWriteStructs(FileHandle src_file,FileHandle header_file,GenericStruct* struct_array,u32 struct_count){
     
     //structs
     
@@ -431,13 +441,25 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
         
         auto s = &struct_array[i];
         
+        
+        if(header_file){
+            
+            s8 buffer[256] = {};
+            
+            sprintf(buffer,"\n\nextern MetaStructEntry %s_META_STRUCT[%d];\n",s->name_string,s->members_count);
+            
+            FWrite(header_file,(void*)buffer,strlen(buffer));
+            
+        }
+        
+        
         {
             
             s8 buffer[256] = {};
             
-            sprintf(buffer,"\n\n_persist MetaStructEntry %s_META_STRUCT[] = {\n",s->name_string);
+            sprintf(buffer,"\n\nMetaStructEntry %s_META_STRUCT[] = {\n",s->name_string);
             
-            FWrite(file,(void*)buffer,strlen(buffer));
+            FWrite(src_file,(void*)buffer,strlen(buffer));
             
         }
         
@@ -474,21 +496,38 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
                         
                         ,element_count);
                 
-                FWrite(file,(void*)buffer,strlen(buffer));
+                FWrite(src_file,(void*)buffer,strlen(buffer));
             }
             
             
             auto end_struct = "};";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
+            FWrite(src_file,(void*)end_struct,strlen(end_struct));
             
         }
     }
     
     
     {
+        
+        if(header_file){
+            
+            auto count = struct_count;
+            
+            if(!count){
+                count = 1;
+            }
+            
+            s8 buffer[256] = {};
+            
+            sprintf(buffer,"\n\n\nextern MetaDataStructEntry META_STRUCT_ARRAY[%d];\n",count);
+            
+            FWrite(header_file,(void*)buffer,strlen(buffer));
+            
+        }
+        
         auto metacomp_string = "\n\n\nMetaDataStructEntry META_STRUCT_ARRAY[] = {\n";
         
-        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+        FWrite(src_file,(void*)metacomp_string,strlen(metacomp_string));
         
         if(struct_count){
             
@@ -508,7 +547,7 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
                         (u32)s->name_hash,s->name_string,
                         s->name_string);
                 
-                FWrite(file,(void*)outbuffer,strlen(outbuffer));
+                FWrite(src_file,(void*)outbuffer,strlen(outbuffer));
             }
             
         }
@@ -516,12 +555,12 @@ void InternalWriteStructs(FileHandle file,GenericStruct* struct_array,u32 struct
         else{
             
             auto buffer = "{},\n";
-            FWrite(file,(void*)buffer,strlen(buffer));
+            FWrite(src_file,(void*)buffer,strlen(buffer));
         }
         
         metacomp_string = "\n};\n";
         
-        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+        FWrite(src_file,(void*)metacomp_string,strlen(metacomp_string));
     }
     
 }
@@ -544,7 +583,7 @@ void InternalMakeParentString(s8* dst_name,const s8* src_name){
 }
 
 
-void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
+void InternalWriteEnums(FileHandle src_file,FileHandle header_file,GenericEnum* enum_array,u32 enum_count){
     
     //enums
     
@@ -559,12 +598,25 @@ void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
             
             InternalMakeParentString(converted_buffer,e->name_string);
             
+            
+            if(header_file){
+                
+                s8 buffer[256] = {};
+                
+                sprintf(buffer,"\n\nextern MetaEnumEntry %s_META_ENUM[%d];\n",e->name_string,e->members_count);
+                
+                FWrite(header_file,(void*)buffer,strlen(buffer));
+                
+            }
+            
+            
+            
             {
                 s8 buffer[256] = {};
                 
-                sprintf(buffer,"\n\n_persist MetaEnumEntry %s_META_ENUM[] = {\n",e->name_string);
+                sprintf(buffer,"\n\nMetaEnumEntry %s_META_ENUM[] = {\n",e->name_string);
                 
-                FWrite(file,(void*)buffer,strlen(buffer));
+                FWrite(src_file,(void*)buffer,strlen(buffer));
             }
             
             
@@ -580,19 +632,36 @@ void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
                     sprintf(buffer,"{%d,\"%s\",(u64)%s::%s},\n",
                             (u32)m->name_hash,m->name_string,converted_buffer,m->name_string);
                     
-                    FWrite(file,(void*)buffer,strlen(buffer));
+                    FWrite(src_file,(void*)buffer,strlen(buffer));
                 }
             }
             
             auto end_struct = "};";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
+            FWrite(src_file,(void*)end_struct,strlen(end_struct));
         }
         
         {
             
+            if(header_file){
+                
+                auto count = enum_count;
+                
+                if(!count){
+                    count = 1;
+                }
+                
+                s8 buffer[256] = {};
+                
+                sprintf(buffer,"\n\n\nextern MetaEnumData META_ENUM_ARRAY[%d];\n",count);
+                
+                FWrite(header_file,(void*)buffer,strlen(buffer));
+                
+            }
+            
+            
             auto metacomp_string = "\n\n\nMetaEnumData META_ENUM_ARRAY[] = {\n";
             
-            FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+            FWrite(src_file,(void*)metacomp_string,strlen(metacomp_string));
             
             if(enum_count){
                 
@@ -610,7 +679,7 @@ void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
                         sprintf(buffer,"{%d,\"%s\",sizeof(%s::%s),_arraycount(%s_META_ENUM),&%s_META_ENUM[0]},\n",
                                 (u32)e->name_hash,e->name_string,converted_buffer,e->members_array[0].name_string,e->name_string,e->name_string);
                         
-                        FWrite(file,(void*)buffer,strlen(buffer));
+                        FWrite(src_file,(void*)buffer,strlen(buffer));
                     }
                     
                 }
@@ -620,14 +689,14 @@ void InternalWriteEnums(FileHandle file,GenericEnum* enum_array,u32 enum_count){
             else{
                 
                 auto buffer = "{},\n";
-                FWrite(file,(void*)buffer,strlen(buffer));
+                FWrite(src_file,(void*)buffer,strlen(buffer));
                 
             }
             
             
             
             auto end_struct = "};";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
+            FWrite(src_file,(void*)end_struct,strlen(end_struct));
             
         }
     }
@@ -656,17 +725,33 @@ void ConstructTypeStringSize(s8* dst_string,GenericTypeDef* type){
     
 }
 
-void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 function_count){
+void InternalWriteFunctions(FileHandle src_file,FileHandle header_file,GenericFunction* function_array,u32 function_count){
+    
+    if(header_file){
+        
+        auto count = function_count;
+        
+        if(!count){
+            count = 1;
+        }
+        
+        s8 buffer[256] = {};
+        
+        sprintf(buffer,"\n\nextern MetaFunctionData META_FUNCTION_ARRAY[%d];\n",count);
+        
+        FWrite(header_file,(void*)buffer,strlen(buffer));
+        
+    }
     
     auto start_string = "\n\nMetaFunctionData META_FUNCTION_ARRAY[] = {\n";
     
-    FWrite(file,(void*)start_string,strlen(start_string));
+    FWrite(src_file,(void*)start_string,strlen(start_string));
     
     if(!function_count){
         
         auto empty_block = "{}\n";
         
-        FWrite(file,(void*)empty_block,strlen(empty_block));
+        FWrite(src_file,(void*)empty_block,strlen(empty_block));
     }
     
     
@@ -699,7 +784,7 @@ void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 
                         f->ret.indir_count
                         );
                 
-                FWrite(file,(void*)buffer,strlen(buffer));
+                FWrite(src_file,(void*)buffer,strlen(buffer));
                 
             }
             
@@ -721,7 +806,7 @@ void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 
                         typesize_buffer,IsIntType(PHashString(a->type_string)),
                         a->indir_count);
                 
-                FWrite(file,(void*)buffer,strlen(buffer));
+                FWrite(src_file,(void*)buffer,strlen(buffer));
             }
             
             {
@@ -729,34 +814,42 @@ void InternalWriteFunctions(FileHandle file,GenericFunction* function_array,u32 
                 
                 sprintf(buffer,"},%d",f->args_count);
                 
-                FWrite(file,(void*)buffer,strlen(buffer));
+                FWrite(src_file,(void*)buffer,strlen(buffer));
             }
             
             auto end_struct = "},\n";
-            FWrite(file,(void*)end_struct,strlen(end_struct));
+            FWrite(src_file,(void*)end_struct,strlen(end_struct));
             
         }
     }
     
     auto end_string = "};";
     
-    FWrite(file,(void*)end_string,strlen(end_string));
+    FWrite(src_file,(void*)end_string,strlen(end_string));
     
     
 }
 
-void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_count,GenericEnum* enum_array,u32 enum_count,GenericFunction* function_array,u32 function_count){
+
+void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,GenericStruct* struct_array,u32 struct_count,GenericEnum* enum_array,u32 enum_count,GenericFunction* function_array,u32 function_count){
     
 #if !(_testing)
     
-    auto file = FOpenFile(file_string,F_FLAG_READWRITE |
-                          F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    auto src_file = FOpenFile(src_file_string,F_FLAG_READWRITE |
+                              F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    
+    FileHandle header_file = 0;
+    
+    if(header_file_string){
+        header_file = FOpenFile(header_file_string,F_FLAG_READWRITE |
+                                F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    }
     
 #endif
     
     {
         
-        auto buffer = R"FOO(
+        auto header = R"FOO(
         /*This file is generated by the preprocessor*/ 
         #pragma once
         
@@ -777,11 +870,11 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
         };
         
         struct MetaDataStructEntry{
-        u32 element_size;
-        s8 comp_name_string[128];
-        u32 comp_name_hash;
-        MetaStructEntry* metadata_table;
-        u32 metadata_count;
+        u32 size;
+        s8 name_string[128];
+        u32 name_hash;
+        MetaStructEntry* member_array;
+        u32 member_count;
         };
         
         struct MetaEnumEntry{
@@ -845,15 +938,104 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
         
         )FOO";
         
-        FWrite(file,(void*)buffer,strlen(buffer));
+        if(header_file){
+            
+            FWrite(header_file,(void*)header,strlen(header));
+            
+            s8 buffer[1024] = {};
+            
+            sprintf(buffer,
+                    R"FOO(
+                    
+                    #include "%s"
+                    
+                    
+                    )FOO",header_file_string);
+            
+            FWrite(src_file,(void*)buffer,strlen(buffer));
+        }
+        
+        else{
+            
+            FWrite(src_file,(void*)header,strlen(header));
+            
+        }
+        
+        
         
     }
     
-    InternalWriteStructs(file,struct_array,struct_count);
+    //header declarations
     
-    InternalWriteEnums(file,enum_array,enum_count);
     
-    InternalWriteFunctions(file,function_array,function_count);
+    InternalWriteStructs(src_file,header_file,struct_array,struct_count);
+    
+    InternalWriteEnums(src_file,header_file,enum_array,enum_count);
+    
+    InternalWriteFunctions(src_file,header_file,function_array,function_count);
+    
+    if(header_file){
+        
+        auto functiondecl_string = R"FOO(
+        
+        MetaEnumData* MetaGetEnumByNameHash(u32 hash);
+        
+        MetaEnumData* MetaGetEnumByName(const s8* name);
+        
+        u64 MetaGetEnumValueByNameHash(MetaEnumEntry* array,u32 count,u32 hash);
+        
+        u64 MetaGetEnumValueByName(MetaEnumEntry* array,u32 count,const s8* name);
+        
+        void MetaGetEnumNamesByValue(u32 value,MetaEnumEntry* array,u32 count,const s8** names_array,u32* names_count);
+        
+        MetaDataStructEntry* MetaGetStructByNameHash(u32 hash);
+        
+        MetaDataStructEntry* MetaGetStructByName(const s8* name);
+        
+        MetaDataStructEntry* MetaGetStructByName(const s8* name);
+        
+        u32 MetaGetTypeByNameHash(u32 hash,MetaStructEntry* array,
+    u32 array_count);
+    
+        u32 MetaGetTypeByName(const s8* name,MetaStructEntry* array,
+    u32 array_count);
+    
+    logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaStructEntry* array,
+    u32 array_count);
+    
+    logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaStructEntry* array,
+    u32 array_count);
+    
+    logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaStructEntry* array,
+    u32 array_count);
+    
+    logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaStructEntry* array,
+    u32 array_count);
+    
+    logic MetaIsCType(u32 hash);
+    
+    logic MetaIsCType(const s8* string);
+    
+    u32 MetaStringToType(const s8* string);
+    
+    logic IsIntType(u32 type);
+    
+    logic IsFloatType(u32 type);
+    
+    MetaFunctionData* MetaGetFunctionByNameHash(u32 hash);
+    
+    MetaFunctionData* MetaGetFunctionByName(const s8* name);
+    
+    m64 MetaCallFunction(MetaFunctionData* function,u64* value_array);
+    
+    u64 MetaCallFunction(u32 hash,u64* value_array);
+    
+    u64 MetaCallFunction(const s8* name,u64* value_array);
+    
+)FOO";
+        
+        FWrite(header_file,(void*)functiondecl_string,strlen(functiondecl_string));
+    }
     
     
     
@@ -927,7 +1109,7 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
     for(u32 i = 0; i < _arraycount(META_STRUCT_ARRAY); i++){
     auto entry = &META_STRUCT_ARRAY[i];
     
-    if(hash == entry->comp_name_hash){
+    if(hash == entry->name_hash){
     return entry;
     }
     
@@ -1022,7 +1204,7 @@ void WriteMetaFile(const s8* file_string,GenericStruct* struct_array,u32 struct_
     return MetaIsCType(PHashString(string));
     }
     
-    u32 _ainline MetaStringToType(const s8* string){
+    u32 MetaStringToType(const s8* string){
     return PHashString(string);
     }
     
@@ -1224,34 +1406,41 @@ return MetaCallFunction(PHashString(name),value_array);
 
     )FOO";
     
-    FWrite(file,(void*)function_string,strlen(function_string));
+    FWrite(src_file,(void*)function_string,strlen(function_string));
     
 #if !(_testing)
     
-    FCloseFile(file);
+    FCloseFile(src_file);
     
 #endif
     
 }
 
-void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u32 struct_count,const s8* metafile){
+void WriteComponentMetaData(const s8* src_file_string,const s8* header_file_string,GenericStruct* struct_array,u32 struct_count,const s8* inc_file){
     
 #if !(_testing)
     
-    auto file = FOpenFile(file_string,F_FLAG_READWRITE |
-                          F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    auto src_file = FOpenFile(src_file_string,F_FLAG_READWRITE |
+                              F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    
+    FileHandle header_file = 0;
+    
+    if(header_file_string){
+        header_file = FOpenFile(header_file_string,F_FLAG_READWRITE |
+                                F_FLAG_TRUNCATE | F_FLAG_CREATE);
+    }
     
 #endif
     
-    _kill("meta file not found\n",!metafile);
+    _kill("meta src_file not found\n",!inc_file);
     
     {
         
-        metafile = InternalGetMainFile(metafile);
+        inc_file = InternalGetMainFile(inc_file);
         
-        s8 buffer[1024 * 4] = {};
+        s8 header[1024 * 4] = {};
         
-        sprintf(buffer,
+        sprintf(header,
                 R"FOO(
                 
                 /*This file is generated by the preprocessor*/ 
@@ -1262,28 +1451,59 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
                 struct MetaDataCompEntry{
                 u32 array; //offset to component array
                 u32 count;//offset to component count
-                u32 element_size;
-                s8 comp_name_string[128];
-                u32 comp_name_hash;
-                MetaStructEntry* metadata_table;
-                u32 metadata_count;
+                u32 size;
+                s8 name_string[128];
+                u32 name_hash;
+                MetaStructEntry* member_array;
+                u32 member_count;
                 };
                 
-                #define _component_count 200
+                struct MetaDataCompOut{
+                s8* array; //array ptr
+                u32* count;// ptr to array count
+                u32 size;
+                const s8* name_string;
+                u32 name_hash;
+                MetaStructEntry* member_array;
+                u32 member_count;
+                };
                 
                 )FOO",
-                metafile);
+                inc_file);
         
-        FWrite(file,(void*)buffer,strlen(buffer));
+        
+        if(header_file){
+            
+            FWrite(header_file,(void*)header,strlen(header));
+            
+            s8 buffer[1024] = {};
+            
+            sprintf(buffer,
+                    R"FOO(
+                    
+                    #include "%s"
+                    
+                    
+                    )FOO",header_file_string);
+            
+            FWrite(src_file,(void*)buffer,strlen(buffer));
+        }
+        
+        else{
+            
+            FWrite(src_file,(void*)header,strlen(header));
+            
+        }
         
     }
     
     
     {
         
-        auto comp_struct_string =  "\n\nstruct ComponentStruct{";
         
-        FWrite(file,(void*)comp_struct_string,strlen(comp_struct_string));
+        auto comp_struct_string =  "\n\n#define _component_count 200\n\nstruct ComponentStruct{";
+        
+        FWrite(header_file,(void*)comp_struct_string,strlen(comp_struct_string));
         
         for(u32 i = 0; i < struct_count;i++){
             
@@ -1302,19 +1522,35 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
             sprintf(outbuffer,"\n\n\n%s %s_array[_component_count];\nu32 %s_count = 0;\n",
                     s->name_string,lowercasebuffer,lowercasebuffer);
             
-            FWrite(file,(void*)outbuffer,strlen(outbuffer));
+            FWrite(header_file,(void*)outbuffer,strlen(outbuffer));
             
         }
         
         comp_struct_string =  "\n};\n\n";
         
-        FWrite(file,(void*)comp_struct_string,strlen(comp_struct_string));
+        FWrite(header_file,(void*)comp_struct_string,strlen(comp_struct_string));
     }
     
     {
+        
+        if(header_file){
+            
+            s8 buffer[1024] = {};
+            
+            sprintf(buffer,
+                    R"FOO(
+                    
+                    extern MetaDataCompEntry METACOMP_ARRAY[%d];
+                    
+                    
+                    )FOO",struct_count);
+            
+            FWrite(header_file,(void*)buffer,strlen(buffer));
+        }
+        
         auto metacomp_string = "\n\n\nMetaDataCompEntry METACOMP_ARRAY[] = {\n";
         
-        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+        FWrite(src_file,(void*)metacomp_string,strlen(metacomp_string));
         
         for(u32 i = 0; i < struct_count; i++){
             
@@ -1335,25 +1571,15 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
                     (u32)s->name_hash,s->name_string,
                     s->name_string);
             
-            FWrite(file,(void*)outbuffer,strlen(outbuffer));
+            FWrite(src_file,(void*)outbuffer,strlen(outbuffer));
         }
         
         metacomp_string = "\n};\n";
         
-        FWrite(file,(void*)metacomp_string,strlen(metacomp_string));
+        FWrite(src_file,(void*)metacomp_string,strlen(metacomp_string));
     }
     
     auto function_string = R"FOO(
-    
-    struct MetaDataCompOut{
-    s8* array; //array ptr
-    u32* count;// ptr to array count
-    u32 element_size;
-    const s8* comp_name_string;
-    u32 comp_name_hash;
-    MetaStructEntry* metadata_table;
-    u32 metadata_count;
-    };
     
     MetaDataCompOut GetComponentData(ComponentStruct* components,
     MetaDataCompEntry metacomp){
@@ -1361,9 +1587,9 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
     auto data = (s8*)components;
     
     MetaDataCompOut output = 
-    {(data + metacomp.array),(u32*)(data + metacomp.count),metacomp.element_size,
-    metacomp.comp_name_string,metacomp.comp_name_hash,metacomp.metadata_table,
-    metacomp.metadata_count};
+    {(data + metacomp.array),(u32*)(data + metacomp.count),metacomp.size,
+    metacomp.name_string,metacomp.name_hash,metacomp.member_array,
+    metacomp.member_count};
     
     return output;
     }
@@ -1373,7 +1599,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
     for(u32 i = 0; i < _arraycount(METACOMP_ARRAY); i++){
     auto entry = &METACOMP_ARRAY[i];
     
-    if(hash == entry->comp_name_hash){
+    if(hash == entry->name_hash){
     return entry;
     }
     
@@ -1406,11 +1632,11 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
     
     printf("--COMP--\n");
     
-    auto comp_entry_data = array + (j * outdata.element_size);
+    auto comp_entry_data = array + (j * outdata.size);
     
-    for(u32 k = 0; k < outdata.metadata_count; k++){
+    for(u32 k = 0; k < outdata.member_count; k++){
     
-    auto comp_meta_entry = outdata.metadata_table[k];
+    auto comp_meta_entry = outdata.member_array[k];
     
     printf("%s %s : ",comp_meta_entry.type_string,comp_meta_entry.name_string);
     
@@ -1419,7 +1645,7 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
     s8 buffer[256] = {};
     
     MetaGetValueByName(comp_entry_data,k,&buffer[0],comp_meta_entry.name_string,
-    outdata.metadata_table,outdata.metadata_count);
+    outdata.member_array,outdata.member_count);
     
     if(
     comp_meta_entry.type_hash == CType_U8 ||
@@ -1459,11 +1685,11 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
     
     auto meta_comp = &METACOMP_ARRAY[i];
     
-    printf("\nCOMP: %s\n",meta_comp->comp_name_string);
+    printf("\nCOMP: %s\n",meta_comp->name_string);
     
-    for(u32 j = 0; j < meta_comp->metadata_count; j++){
+    for(u32 j = 0; j < meta_comp->member_count; j++){
     
-    auto field_entry = &meta_comp->metadata_table[j];
+    auto field_entry = &meta_comp->member_array[j];
     
     printf("%s %s\n",field_entry->type_string,field_entry->name_string);
     }
@@ -1474,11 +1700,33 @@ void WriteComponentMetaData(const s8* file_string,GenericStruct* struct_array,u3
     
     )FOO";
     
-    FWrite(file,(void*)function_string,strlen(function_string));
+    if(header_file){
+        
+        
+        auto functiondecl_string = R"FOO(
+        
+    MetaDataCompOut GetComponentData(ComponentStruct* components,
+    MetaDataCompEntry metacomp);
+    
+MetaDataCompEntry* MetaGetCompByNameHash(u32 hash);
+
+MetaDataCompEntry* MetaGetCompByName(const s8* name);
+
+    void MetaDumpComponents(ComponentStruct* compstruct);
+    
+    void MetaDump();
+    
+    )FOO";
+        
+        FWrite(header_file,(void*)functiondecl_string,strlen(functiondecl_string));
+        
+    }
+    
+    FWrite(src_file,(void*)function_string,strlen(function_string));
     
 #if !(_testing)
     
-    FCloseFile(file);
+    FCloseFile(src_file);
     
 #endif
 }

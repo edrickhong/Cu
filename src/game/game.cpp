@@ -10,7 +10,7 @@
 
 #ifndef CPP_PASS
 
-#include "gamecomp_meta.cpp"
+#include "gamecomp_meta.h"
 
 #endif
 
@@ -37,15 +37,15 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
         
         auto metacomp = &METACOMP_ARRAY[i];
         
-        if(metacomp->comp_name_hash == compname_hash){
+        if(metacomp->name_hash == compname_hash){
             
             auto outmetacomp = GetComponentData(components,*metacomp);
             
             auto count = (*outmetacomp.count);
             
-            auto obj = outmetacomp.array + (count * outmetacomp.element_size);
+            auto obj = outmetacomp.array + (count * outmetacomp.size);
             
-            memset(obj,0,outmetacomp.element_size);
+            memset(obj,0,outmetacomp.size);
             
             (*(u32*)obj) = obj_id;
             
@@ -130,7 +130,7 @@ void RemoveComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
         
         auto metacomp = &METACOMP_ARRAY[i];
         
-        if(metacomp->comp_name_hash == compname_hash){
+        if(metacomp->name_hash == compname_hash){
             
             auto outmetacomp = GetComponentData(components,*metacomp);
             
@@ -138,7 +138,7 @@ void RemoveComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
             
             for(u32 j = 0; j < count; j++){
                 
-                auto obj = outmetacomp.array + (j * outmetacomp.element_size);
+                auto obj = outmetacomp.array + (j * outmetacomp.size);
                 
                 if((*(u32*)obj) == obj_id){
                     
@@ -155,9 +155,9 @@ void RemoveComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                     
                     (*outmetacomp.count)--;
                     
-                    auto lastobj = outmetacomp.array + ((*outmetacomp.count) * outmetacomp.element_size);
+                    auto lastobj = outmetacomp.array + ((*outmetacomp.count) * outmetacomp.size);
                     
-                    memcpy(obj,lastobj,outmetacomp.element_size);
+                    memcpy(obj,lastobj,outmetacomp.size);
                     
                     return;
                 }
@@ -216,7 +216,7 @@ void RemoveObject(u32 obj_id,SceneContext* context){
         
         auto metacomp = &METACOMP_ARRAY[i];
         
-        RemoveComponent(metacomp->comp_name_hash,obj_id,context);
+        RemoveComponent(metacomp->name_hash,obj_id,context);
     }
     
 }
@@ -312,7 +312,7 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
             
 #if _enable_read_log
             
-            printf("%d name %s\n",i,out_comp.comp_name_string);
+            printf("%d name %s\n",i,out_comp.name_string);
             
 #endif
         }
@@ -384,14 +384,14 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
                     
                     if(comp){
                         
-                        if(MetaGetTypeByNameHash(name_hash,&out_comp.metadata_table[0],
-                                                 out_comp.metadata_count) == type_hash){
+                        if(MetaGetTypeByNameHash(name_hash,&out_comp.member_array[0],
+                                                 out_comp.member_count) == type_hash){
                             
-                            s8* obj = out_comp.array + (j * out_comp.element_size);
+                            s8* obj = out_comp.array + (j * out_comp.size);
                             
                             
                             MetaSetValueByNameHash(obj,a,&buffer[0],name_hash,
-                                                   &out_comp.metadata_table[0],out_comp.metadata_count);
+                                                   &out_comp.member_array[0],out_comp.member_count);
                         } 
                     }
                 }
@@ -690,7 +690,7 @@ extern "C" {
             auto out_comp = GetComponentData((ComponentStruct*)data->components,*component);
             
             qsort(out_comp.array,(*out_comp.count),
-                  out_comp.element_size,
+                  out_comp.size,
                   [](const void * a, const void* b)->s32 {
                   
                   auto id_a = (u32*)a;
@@ -705,24 +705,24 @@ extern "C" {
             
             //comp name string
             
-            FWrite(outfile,(void*)&out_comp.comp_name_string[0],sizeof(MetaDataStructEntry::comp_name_string));
+            FWrite(outfile,(void*)&out_comp.name_string[0],sizeof(MetaDataStructEntry::name_string));
             
             //comp count
             FWrite(outfile,out_comp.count,sizeof(u32));
             
             //field count
-            FWrite(outfile,&out_comp.metadata_count,sizeof(out_comp.metadata_count));
+            FWrite(outfile,&out_comp.member_count,sizeof(out_comp.member_count));
             
             //actual comp data
             auto count = (*out_comp.count);
             
             for(u32 j = 0; j < count; j++){
                 
-                auto obj = out_comp.array + (j * out_comp.element_size);
+                auto obj = out_comp.array + (j * out_comp.size);
                 
-                for(u32 k = 0; k < out_comp.metadata_count; k++){
+                for(u32 k = 0; k < out_comp.member_count; k++){
                     
-                    auto entry = &out_comp.metadata_table[k];
+                    auto entry = &out_comp.member_array[k];
                     
                     //type string
                     FWrite(outfile,(void*)&entry->type_string[0],sizeof(entry->type_string));
@@ -741,7 +741,7 @@ extern "C" {
                         s8 buffer[128] = {};
                         
                         MetaGetValueByNameHash(obj,a,&buffer[0],entry->name_hash,
-                                               &out_comp.metadata_table[0],out_comp.metadata_count);
+                                               &out_comp.member_array[0],out_comp.member_count);
                         
                         //value
                         FWrite(outfile,&buffer[0],entry->size);
@@ -1727,35 +1727,35 @@ void EditorGUI(SceneContext* context){
             
             for(u32 j = 0; j < data_count; j++){
                 
-                auto comp_data_entry = data_array + (j * comp_meta.element_size);
+                auto comp_data_entry = data_array + (j * comp_meta.size);
                 
                 //check object id
                 u32 id;
                 
-                MetaGetValueByName(comp_data_entry,0,&id,"id",comp_meta.metadata_table,
-                                   comp_meta.metadata_count);
+                MetaGetValueByName(comp_data_entry,0,&id,"id",comp_meta.member_array,
+                                   comp_meta.member_count);
                 
                 if(id != data->obj_id){
                     continue;
                 }
                 
                 
-                comphash_array[comphash_count] = comp_meta.comp_name_hash;
+                comphash_array[comphash_count] = comp_meta.name_hash;
                 comphash_count++;
                 
-                GUIString(comp_meta.comp_name_string);
+                GUIString(comp_meta.name_string);
                 
-                if(comp_meta.comp_name_hash != PHashString("EntityAnimationData")){
+                if(comp_meta.name_hash != PHashString("EntityAnimationData")){
                     
                     if(GUIButton("X")){
-                        RemoveComponent(comp_meta.comp_name_hash,data->obj_id,context);
+                        RemoveComponent(comp_meta.name_hash,data->obj_id,context);
                     }
                     
                 }
                 
-                for(u32 k = 0; k < comp_meta.metadata_count; k++){
+                for(u32 k = 0; k < comp_meta.member_count; k++){
                     
-                    auto comp_meta_entry = comp_meta.metadata_table[k];
+                    auto comp_meta_entry = comp_meta.member_array[k];
                     
                     if(InspectorIgnoreFields(comp_meta_entry.name_hash)){
                         continue;
@@ -1766,7 +1766,7 @@ void EditorGUI(SceneContext* context){
                         s8 buffer[256] = {};
                         
                         MetaGetValueByName(comp_data_entry,a,&buffer[0],comp_meta_entry.name_string,
-                                           comp_meta.metadata_table,comp_meta.metadata_count);
+                                           comp_meta.member_array,comp_meta.member_count);
                         
                         if(IsIntType(comp_meta_entry.type_hash)){
                             sprintf(&buffer[0],"%d",*((u32*)(&buffer[0])));
@@ -1785,7 +1785,7 @@ void EditorGUI(SceneContext* context){
                             if(ret_id != (u32)-1){
                                 
                                 MetaSetValueByName(comp_data_entry,a,&ret_id,comp_meta_entry.name_string,
-                                                   comp_meta.metadata_table,comp_meta.metadata_count);
+                                                   comp_meta.member_array,comp_meta.member_count);
                             }
                             
                             continue;
@@ -1810,7 +1810,7 @@ void EditorGUI(SceneContext* context){
                                 }
                                 
                                 MetaSetValueByName(comp_data_entry,a,&cur_buffer[0],comp_meta_entry.name_string,
-                                                   comp_meta.metadata_table,comp_meta.metadata_count);
+                                                   comp_meta.member_array,comp_meta.member_count);
                             }
                         }
                         
@@ -1832,12 +1832,12 @@ void EditorGUI(SceneContext* context){
             
             auto metacomp = &METACOMP_ARRAY[i];
             
-            if(!(FindHash(metacomp->comp_name_hash,comphash_array,comphash_count) ||
-                 (metacomp->comp_name_hash == PHashString("EntityAnimationData")) ||
-                 (metacomp->comp_name_hash == PHashString("EntityAudioData"))
+            if(!(FindHash(metacomp->name_hash,comphash_array,comphash_count) ||
+                 (metacomp->name_hash == PHashString("EntityAnimationData")) ||
+                 (metacomp->name_hash == PHashString("EntityAudioData"))
                  
                  )){
-                entry_array[entry_count] = &metacomp->comp_name_string[0];
+                entry_array[entry_count] = &metacomp->name_string[0];
                 entry_count++;
             }
             
@@ -1867,5 +1867,13 @@ void EditorGUI(SceneContext* context){
     }
     
 }
+
+#endif
+
+
+#ifndef CPP_PASS
+
+#include "game_meta.cpp"
+#include "gamecomp_meta.cpp"
 
 #endif

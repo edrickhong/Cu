@@ -3,7 +3,7 @@
 
 //TODO: seems like a perfect candidate for reflection tbh
 
-struct Settings{
+struct REFL Settings{
     u32 backend = W_CREATE_FORCE_XLIB;
     u32 window_width = 1280;
     u32 window_height = 720;
@@ -14,9 +14,10 @@ struct Settings{
     u32 frame_alloc_size = 32;
     u32 host_alloc_size = 1024;
     u32 gpu_alloc_size = 22;
-    u32 vt_width = 16384;
-    u32 vt_height = 8192;
+    u32 vt_width = 128;
+    u32 vt_height = 64;
     u32 audio_format = A_FORMAT_S16LE;
+    u32 audio_channels = 2;
     u32 audio_frequency = 48000;
     u32 playbuffer_size_ms = 24;
     f32 master_volume = 1.0f;
@@ -98,21 +99,15 @@ void VsyncFlagToString(u32 flag,s8* dst_string){
 
 
 
-void AudioFormatFlagToString(u32 flag,s8* dst_string){
+void AudioFormatFlagToString(u32 flag,u32 channels,s8* dst_string){
     
-    switch(flag){
-        
-        case A_FORMAT_S16LE:{
-            auto string = "S16_STEREO";
-            memcpy(dst_string,string,strlen(string));
-        }break;
-        
-        default:{
-            
-            _kill("not supported right now\n",1);
-            
-        }break;
-        
+    if(flag == A_FORMAT_S16LE && channels == 2){
+        auto string = "S16_STEREO";
+        memcpy(dst_string,string,strlen(string));
+    }
+    
+    else{
+        _kill("not supported right now\n",1);
     }
     
 }
@@ -141,7 +136,7 @@ u32 LaunchThreadStringToNo(s8* string){
 }
 
 
-u32 StringToWindowBackendFlag(s8* string){
+u32 WindowBackendStringToFlag(s8* string){
     
     auto hash = PHashString(string);
     
@@ -166,7 +161,7 @@ u32 StringToWindowBackendFlag(s8* string){
     return 0;
 }
 
-u32 StringToVsyncFlag(s8* string){
+u32 VsyncStringToFlag(s8* string){
     
     auto hash = PHashString(string);
     
@@ -200,18 +195,20 @@ u32 StringToVsyncFlag(s8* string){
     
 }
 
-u32 AudioFormatStringToFlag(s8* string){
+void AudioFormatStringToFlag(s8* string,u32* format,u32* channels){
     
     auto hash = PHashString(string);
     
     switch(hash){
         
         case PHashString("S16_STEREO"):{
-            return A_FORMAT_S16LE;
+            
+            *format = A_FORMAT_S16LE;
+            *channels = 2;
+            
+            return;
         }break;
     }
-    
-    return A_FORMAT_S16LE;
 }
 
 void GenerateSettingsString(Settings* settings,s8* buffer){
@@ -236,7 +233,7 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
     
     VsyncFlagToString(settings->vsync_mode,vsync_string);
     
-    AudioFormatFlagToString(settings->audio_format,audioformat_string);
+    AudioFormatFlagToString(settings->audio_format,settings->audio_channels,audioformat_string);
     
     LaunchThreadsNoToString(settings->launch_threads,threads_string);
     
@@ -309,11 +306,169 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
     
 }
 
+void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
+    
+    switch(name_hash){
+        
+        case PHashString("WINDOW_BACKEND"):{
+            settings->backend = WindowBackendStringToFlag(value_string);
+        }break;
+        
+        case PHashString("WINDOW_WIDTH"):{
+            
+            settings->window_width = atoi(value_string);
+            
+            if(!settings->window_width){
+                settings->window_width = 1280;
+            }
+            
+        }break;
+        
+        case PHashString("WINDOW_HEIGHT"):{
+            
+            settings->window_height= atoi(value_string);
+            
+            if(!settings->window_height){
+                settings->window_height = 720;
+            }
+            
+        }break;
+        
+        case PHashString("WINDOW_POSX"):{
+            settings->window_x = atoi(value_string);
+        }break;
+        
+        case PHashString("WINDOW_POSY"):{
+            settings->window_y = atoi(value_string);
+        }break;
+        
+        case PHashString("SWAPCHAIN_DEPTH"):{
+            
+            settings->swapchain_depth = atoi(value_string);
+            
+            if(!settings->swapchain_depth){
+                settings->swapchain_depth = 3;
+            }
+            
+        }break;
+        
+        case PHashString("VSYNC_MODE"):{
+            settings->vsync_mode = VsyncStringToFlag(value_string);
+        }break;
+        
+        case PHashString("FRAME_ALLOC_SIZE"):{
+            
+            settings->frame_alloc_size = atoi(value_string);
+            
+            if(!settings->frame_alloc_size){
+                settings->frame_alloc_size = 32;
+            }
+            
+        }break;
+        
+        case PHashString("HOST_ALLOC_SIZE"):{
+            
+            settings->host_alloc_size = atoi(value_string);
+            
+            if(!settings->host_alloc_size){
+                settings->host_alloc_size = 1024;
+            }
+            
+        }break;
+        
+        case PHashString("GPU_ALLOC_SIZE"):{
+            
+            settings->gpu_alloc_size = atoi(value_string);
+            
+            if(!settings->gpu_alloc_size){
+                settings->gpu_alloc_size = 22;
+            }
+            
+        }break;
+        
+        case PHashString("VT_PHYS_WIDTH"):{
+            
+            settings->vt_width = atoi(value_string);
+            
+            if(!settings->vt_width){
+                settings->vt_width = 16384;
+            }
+            
+        }break;
+        
+        case PHashString("VT_HEIGHT_WIDTH"):{
+            
+            settings->vt_height = atoi(value_string);
+            
+            if(!settings->vt_height){
+                settings->vt_height = 8192;
+            }
+            
+        }break;
+        
+        case PHashString("AUDIO_OUTPUT"):{
+            
+            AudioFormatStringToFlag(value_string,&settings->audio_format,&settings->audio_channels);
+        }break;
+        
+        
+        case PHashString("AUDIO_OUTPUT_FREQUENCY"):{
+            
+            settings->audio_frequency = atof(value_string);
+            
+            logic is_valid = settings->audio_frequency == 48000 || settings->audio_frequency == 44100;
+            
+            if(!is_valid){
+                settings->audio_frequency = 48000;
+            }
+            
+        }break;
+        
+        case PHashString("PLAYBUFFER_SIZE_MS"):{
+            
+            settings->playbuffer_size_ms = atoi(value_string);
+            
+            if(!settings->playbuffer_size_ms){
+                settings->playbuffer_size_ms = 24;
+            }
+            
+        }break;
+        
+        case PHashString("MASTER_VOLUME_FACTOR"):{
+            settings->master_volume = _clamp(atof(value_string),0.0f,1.0f);
+        }break;
+        
+        case PHashString("LAUNCH_THREADS"):{
+            settings->master_volume = LaunchThreadStringToNo(value_string);
+        }break;
+        
+        case PHashString("GPU_DEVICE"):{
+            
+            settings->gpu_device_hash = PHashString(value_string);
+            
+            if(settings->gpu_device_hash == PHashString("DEFAULT")){
+                settings->gpu_device_hash = (u32)-1;
+            }
+        }break;
+    }
+    
+}
+
+void DebugPrintSettings(Settings* settings){
+    
+    s8 buffer[2048] = {};
+    
+    GenerateSettingsString(settings,buffer);
+    
+    printf("%s\n",buffer);
+}
+
 Settings ParseSettings(){
     
     
     
     Settings settings;
+    
     
     s8 default_settings_string[2048] = {};
     
@@ -381,11 +536,7 @@ Settings ParseSettings(){
                     
                 }
                 
-                
-                auto hash = PHashString(name_buffer);
-                
-                //TODO: match hash to values
-                
+                WriteSettingsValue(&settings,PHashString(name_buffer),value_buffer);
                 
             }
         }
@@ -394,7 +545,6 @@ Settings ParseSettings(){
     }
     
     FCloseFile(file);
-    
     
     
     return settings;

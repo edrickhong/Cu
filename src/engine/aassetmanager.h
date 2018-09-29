@@ -192,7 +192,7 @@ void MaterialAddTexture(MaterialAssetHandle* handle,TextureType type,
                         u8 texture_index);
 
 void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
-                        VDeviceContext* _restrict vdevice,VSwapchainContext* swapchain);
+                        u32 phys_w_tiles,u32 phys_h_tiles,VDeviceContext* _restrict vdevice,VSwapchainContext* swapchain);
 
 AudioAssetHandle AllocateAssetAudio(const s8* filepath);
 

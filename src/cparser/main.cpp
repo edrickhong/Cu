@@ -157,14 +157,10 @@ void PrintEvalChar(EvalChar* eval_array,u32 eval_count){
 
 
 
-void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
-    
-    auto i = *cur;
+void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count){
     
     auto member = &t->members_array[t->members_count];
     t->members_count++;
-    
-    
     
     logic is_assign = false;
     logic next_is_struct = false;
@@ -172,6 +168,17 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     for(u32 j = 0; j < membereval_count;j++){
         
         auto x = &membereval_array[j];
+        
+        if(x->tag == TAG_ASSIGN){
+            
+            is_assign = true;
+            
+        }
+        
+        
+        if(is_assign){
+            return;
+        }
         
         
         if(j == 0 || next_is_struct){
@@ -237,23 +244,10 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
             member->indir_count++;
         }
         
-        if(x->tag == TAG_ASSIGN){
-            
-            is_assign = true;
-            
-        }
-        
-        
-        if(is_assign){
-            continue;
-        }
-        
         
         
         
     }
-    
-    *cur = i;
 }
 
 logic IsDuplicateStruct(GenericStruct* struct_array,u32 struct_count,const s8* name){
@@ -749,7 +743,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
                 
                 else{
                     
-                    InternalHandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count,&i);
+                    InternalHandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count);
                     
                 }
                 
@@ -836,8 +830,6 @@ void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
 }
 
 
-
-
 s32 main(s32 argc,s8** argv){
     
     
@@ -864,13 +856,16 @@ s32 main(s32 argc,s8** argv){
     s8** source_array = 0;
     u32 source_count = 0;
     
-    s8* componentfile = 0;
-    s8* metafile = 0;
+    s8* component_src = 0;
+    s8* meta_src = 0;
     
-    GetArgsData(argv,argc,&source_array,&source_count,&componentfile,&metafile);
+    s8* component_h = 0;
+    s8* meta_h = 0;
     
-    if(source_count == (u32)-1){
-        printf("Error: Commandline args format is wrong\n");
+    GetArgsData(argv,argc,&source_array,&source_count,&component_src,&meta_src,&component_h,&meta_h);
+    
+    if(!source_count){
+        printf("Error: Not source files specified\n");
         return -1;
     }
     
@@ -879,13 +874,13 @@ s32 main(s32 argc,s8** argv){
         return -1;
     }
     
-    if(!componentfile && !metafile){
+    if(!component_src && !meta_src){
         printf("Error: No output files specified\n");
         return -1;
     }
     
-    if(!metafile){
-        printf("Error: No metafile file specified\n");
+    if(!meta_src){
+        printf("Error: No meta_src file specified\n");
         return -1;
     }
     
@@ -897,8 +892,8 @@ s32 main(s32 argc,s8** argv){
             printf("source:%s\n",source_array[i]);
         }
         
-        printf("component file:%s\n",componentfile);
-        printf("meta file:%s\n",metafile);
+        printf("component file:%s\n",component_src);
+        printf("meta file:%s\n",meta_src);
         
         return;
     }
@@ -952,10 +947,19 @@ s32 main(s32 argc,s8** argv){
         }
     }
     
-    WriteMetaFile(metafile,struct_array,struct_count,enum_array,enum_count,function_array,function_count);
+    WriteMetaFile(meta_src,meta_h,struct_array,struct_count,enum_array,enum_count,function_array,function_count);
     
-    if(componentfile){
-        WriteComponentMetaData(componentfile,&struct_array[k],count,metafile);
+    if(component_src){
+        
+        auto inc = meta_h;
+        
+        if(!inc){
+            inc = meta_src;
+        }
+        
+        
+        WriteComponentMetaData(component_src,component_h
+                               ,&struct_array[k],count,inc);
     }
     
     unalloc(struct_array);
@@ -971,7 +975,7 @@ s32 main(s32 argc,s8** argv){
     
     auto diff = GetTimeDifferenceMS(start,end);
     
-    printf("TARGET %s PARSE TIME: %f(s)\n",metafile,diff/1000.0f);
+    printf("TARGET %s PARSE TIME: %f(s)\n",meta_src,diff/1000.0f);
     
 #endif
     
