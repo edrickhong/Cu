@@ -1909,9 +1909,11 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
     
     if(batch->fetchlist.fetch_count){
         
-        auto imagecopy_array = TAlloc(VkBufferImageCopy,batch->fetchlist.fetch_count);
+        _kill("over possible fetch tiles array\n",batch->fetchlist.fetch_count >= 21845);
         
-        auto pagecopy_array = TAlloc(VkBufferImageCopy,batch->fetchlist.fetch_count);
+        VkBufferImageCopy imagecopy_array[21845];
+        
+        VkBufferImageCopy pagecopy_array[21845];
         
         auto file = FOpenFile(batch->assetfile,F_FLAG_READONLY);
         
