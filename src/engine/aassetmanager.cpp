@@ -1490,13 +1490,14 @@ u32 EvictTexturePage(TPageQuadNode* _restrict node){
     }
     
     auto ret_value = node->page_value;
-    node->page_value = (u32)-1;
+    node->page_value = (u32)-1; //MARK: we should clear to 0
     
     return ret_value;
 }
 
-u32 GetAvailablePage(){
+u32 InternalGetAvailablePage(){
     
+    //MARK: I think we depend on this not moving
     if(texturepage_count > total_pages){
         
         qsort(texturehandle_array,texturehandle_count,
@@ -1514,6 +1515,8 @@ u32 GetAvailablePage(){
             auto t = &texturehandle_array[i];
             
             auto page = EvictTexturePage(&t->pagetree);
+            
+            //TODO: if the page was evicted, we should gen a copy cmd
             
             if(page != (u32)-1){
                 return page;
@@ -1536,7 +1539,7 @@ u32 GetAvailablePage(){
 
 u32 InternalGetPageCoord(u8* x,u8* y){
     
-    auto page = GetAvailablePage();
+    auto page = InternalGetAvailablePage();
     GetPhysCoord(page,x,y);
     
     return page;
@@ -1901,15 +1904,14 @@ u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coo
     return list->fetch_count;
 }
 
-void FetchTextureTile(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
+void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
     
     
     if(batch->fetchlist.fetch_count){
         
-        _kill("over possible fetch tiles array\n",batch->fetchlist.fetch_count >= 21845);
+        auto imagecopy_array = TAlloc(VkBufferImageCopy,batch->fetchlist.fetch_count);
         
-        VkBufferImageCopy imagecopy_array[21845];
-        VkBufferImageCopy pagecopy_array[21845];
+        auto pagecopy_array = TAlloc(VkBufferImageCopy,batch->fetchlist.fetch_count);
         
         auto file = FOpenFile(batch->assetfile,F_FLAG_READONLY);
         
@@ -2129,7 +2131,7 @@ void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue){
                              VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,0,0,0,1,
                              &transfer_imagebarrier);
         
-        FetchTextureTile(batch,queue->cmdbuffer);
+        FetchTextureTiles(batch,queue->cmdbuffer);
         
         tfetch_count += batch->fetchlist.fetch_count;
         

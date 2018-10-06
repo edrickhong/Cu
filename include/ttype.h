@@ -29,7 +29,7 @@ typedef unsigned int ptrsize;
 union m32{
     
     u32 u;
-    u32 i;
+    s32 i;
     f32 f;
     
     operator u32(){

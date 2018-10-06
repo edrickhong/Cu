@@ -42,6 +42,8 @@
   See if we can make render jobs just regular thread jobs
   
   NOTE: stb_vorbis_decode_filename("somefile.ogg", &channels, &sample_rate, &output);
+  
+  for our recording system, we are saving every frame already. we could reduce the requirements by doing a XOR on the whole struct and compress the rest of the data. XOR means only the bits that changed are encoded and the rest will be 0, making this very good for compression
 */
 
 
@@ -2009,6 +2011,8 @@ u64 GenGPUHash(VkPhysicalDeviceProperties* prop){
 
 
 void InitAllSystems(){
+    
+    Test();
     
     auto settings = ParseSettings();
     

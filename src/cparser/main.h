@@ -986,7 +986,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
         
         u64 MetaGetEnumValueByName(MetaEnumEntry* array,u32 count,const s8* name);
         
-        void MetaGetEnumNamesByValue(u32 value,MetaEnumEntry* array,u32 count,const s8** names_array,u32* names_count);
+        void MetaGetEnumNamesByValue(u64 value,MetaEnumEntry* array,u32 count,const s8** names_array,u32* names_count);
         
         MetaDataStructEntry* MetaGetStructByNameHash(u32 hash);
         
@@ -1081,7 +1081,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     return MetaGetEnumValueByNameHash(array,count,PHashString(name));
     }
     
-    void MetaGetEnumNamesByValue(u32 value,MetaEnumEntry* array,u32 count,const s8** names_array,u32* names_count){
+    void MetaGetEnumNamesByValue(u64 value,MetaEnumEntry* array,u32 count,const s8** names_array,u32* names_count){
     
     u32 c = 0;
     

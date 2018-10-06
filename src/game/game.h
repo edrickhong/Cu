@@ -39,14 +39,14 @@ struct InstData{
     u32 world;
 };
 
-enum PipelineType{
+enum REFL PipelineType{
     PSKEL = 0,
     PSTATIC= 1,
 };
 
 #define _max_objects 512
 
-struct SOAOrientationData{
+struct REFL SOAOrientationData{
     
     f32 pos_x[_max_objects];
     f32 pos_y[_max_objects];

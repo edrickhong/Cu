@@ -3,7 +3,7 @@
 
 //TODO: seems like a perfect candidate for reflection tbh
 
-struct REFL Settings{
+struct Settings{
     u32 backend = W_CREATE_FORCE_XLIB;
     u32 window_width = 1280;
     u32 window_height = 720;
@@ -25,6 +25,128 @@ struct REFL Settings{
     u32 gpu_device_hash = (u32)-1;
     
 };
+
+
+//TODO: cparser cannot handle enum REFL SETTING_VALUE : u32
+enum REFL SETTING_VALUE{
+    
+    SETTING_VALUE_CHOOSE_BEST = (s32)-2,
+    
+    
+    SETTING_VALUE_DIRECT = 0, //doesn't do anything now
+    SETTING_VALUE_XLIB = W_CREATE_FORCE_XLIB,
+    SETTING_VALUE_WAYLAND = W_CREATE_FORCE_WAYLAND,
+    
+    SETTING_VALUE_CENTER = (s32)-1,
+    
+    SETTING_VALUE_OFF = VSYNC_NONE,
+    SETTING_VALUE_NORMAL = VSYNC_NORMAL,
+    SETTING_VALUE_FAST = VSYNC_FAST,
+    SETTING_VALUE_LAZY = VSYNC_LAZY,
+    
+    
+    SETTING_VALUE_S16 = A_FORMAT_S16LE,
+    SETTING_VALUE_S24 = (s32)-3,
+    SETTING_VALUE_S32 = (s32)-4,
+    
+    SETTING_VALUE_F32 = (s32)-5,
+    SETTING_VALUE_F64 = (s32)-6,
+    
+    SETTING_VALUE_MONO = 1,
+    SETTING_VALUE_STEREO = 2,
+    SETTING_VALUE_5_1 = 6,
+    SETTING_VALUE_7_1 = 8,
+    
+    SETTING_VALUE_44100 = 44100,
+    SETTING_VALUE_48000 = 48000,
+    
+    SETTING_VALUE_ALL = (s32)-1,
+    SETTING_VALUE_DEFAULT = (s32)-1,
+};
+
+struct REFL Settings2{
+    
+    u32 WINDOW_BACKEND = SETTING_VALUE_XLIB;
+    u32 WINDOW_WIDTH = 1280;
+    u32 WINDOW_HEIGHT = 720;
+    u32 WINDOW_POSX = 0;
+    u32 WINDOW_POSY = 0;
+    u32 SWAPCHAIN_DEPTH = 3;
+    u32 VSYNC_MODE = SETTING_VALUE_CHOOSE_BEST;
+    u32 FRAME_ALLOC_SIZE = 32;
+    u32 HOST_ALLOC_SIZE = 1024;
+    u32 GPU_ALLOC_SIZE = 22;
+    u32 VT_PHYS_WIDTH = 128;
+    u32 VT_PHYS_HEIGHT = 64;
+    u32 AUDIO_FORMAT = SETTING_VALUE_S16;
+    u32 AUDIO_CHANNELS = SETTING_VALUE_STEREO;
+    u32 AUDIO_FREQUENCY = SETTING_VALUE_48000;
+    u32 PLAYBUFFER_SIZE_MS = 24;
+    f32 MASTER_VOLUME_FACTOR = 1.0f;
+    u32 LAUNCH_THREADS = SETTING_VALUE_ALL;
+    u32 GPU_DEVICE = SETTING_VALUE_DEFAULT;
+};
+
+void GenerateSettingsString2(Settings2* settings,s8* src_buffer){
+    
+    auto settings_meta = MetaGetStructByName("Settings2");
+    
+    auto enum_meta = MetaGetEnumByName("SETTING_VALUE");
+    
+    for(u32 i = 0; i < settings_meta->member_count; i++){
+        
+        auto member = &settings_meta->member_array[i];
+        
+        s8 buffer[1024] = {};
+        
+        m32 value = {};
+        
+        MetaGetValueByNameHash(settings,0,&value,member->name_hash,settings_meta->member_array,
+                               settings_meta->member_count);
+        
+        s8* enum_names_array[16] = {};
+        u32 enum_names_count = 0;
+        
+        MetaGetEnumNamesByValue((s64)value.i,enum_meta->entry_array,enum_meta->entry_count,(const s8**)&enum_names_array,&enum_names_count);
+        
+        if(enum_names_count){
+            
+            printf("%s : %s\n",member->name_string,&enum_names_array[0][14]);
+            
+        }
+        
+        else{
+            
+            if(IsIntType(member->type_hash)){
+                printf("%s : %d\n",member->name_string,value.u);
+            }
+            
+            else{
+                printf("%s : %f\n",member->name_string,value.f);
+            }
+            
+            
+            
+        }
+        
+    }
+    
+}
+
+void Test(){
+    
+    Settings2 settings;
+    
+    s8 buffer[2048] = {};
+    
+    GenerateSettingsString2(&settings,buffer);
+    
+    printf("%s\n",buffer);
+    
+    exit(0);
+}
+
+//TODO: use Settings2. it should condense to less code
 
 void WindowBackendFlagToString(u32 flag,s8* dst_string){
     
@@ -276,7 +398,7 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
             "\n"
             "#in tiles (a tile is 128 x 128 pixels large)\n"
             "VT_PHYS_WIDTH : %d\n"
-            "VT_HEIGHT_WIDTH : %d\n"
+            "VT_PHYS_HEIGHT : %d\n"
             "\n"
             "# [DATA_FORMAT]_[CHANNEL_FORMAT]\n"
             "# DATA_FORMAT S16/S24/S32/F32/F64\n"
@@ -410,7 +532,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
             
         }break;
         
-        case PHashString("VT_HEIGHT_WIDTH"):{
+        case PHashString("VT_PHYS_HEIGHT"):{
             
             settings->vt_height = atoi(value_string);
             

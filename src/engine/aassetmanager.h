@@ -244,23 +244,12 @@ struct IVector4{
 u32 GenTextureFetchList(TextureAssetHandle* asset,IVector4* src_coords,u32 count,
                         VkCommandBuffer tpage_cmdbuffer);
 
-void FetchTextureTiles(TextureAssetHandle* asset,VkCommandBuffer fetch_cmdbuffer);
-
-void FetchTextureTile(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer);
-
-
-void VTDrawPrepass();
+void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer);
 
 #ifdef DEBUG
 
 //TODO: Test this
 void InternalDefrag();
-
-VkRenderPass GetVTRenderPass();
-
-VkDescriptorSetLayout GetVTCompDescLayout();
-
-VkPipelineLayout GetVTCompPipelineLayout();
 #endif
 
 
