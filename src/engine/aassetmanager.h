@@ -244,6 +244,8 @@ struct IVector4{
 u32 GenTextureFetchList(TextureAssetHandle* asset,IVector4* src_coords,u32 count,
                         VkCommandBuffer tpage_cmdbuffer);
 
+void FetchTextureTiles(TextureAssetHandle* asset,VkCommandBuffer fetch_cmdbuffer);
+
 void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer);
 
 #ifdef DEBUG
@@ -253,9 +255,7 @@ void InternalDefrag();
 #endif
 
 
-
 struct ThreadTextureFetchQueue{
-    volatile  _cachealign u32 islocked = 0;
     ThreadFetchBatch* buffer = 0;
     u16 count = 0;
     u16 index = 0;
@@ -276,7 +276,6 @@ SetCmdBufferThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
 }
 
 void _ainline Clear(ThreadTextureFetchQueue* queue){
-    queue->islocked = false;
     queue->count = 0;
     queue->index = 0;
     queue->is_done = false;
@@ -286,7 +285,6 @@ void _ainline Clear(ThreadTextureFetchQueue* queue){
 logic _ainline IsThreadTextureFetchQueueDone(ThreadTextureFetchQueue* queue){
     
     if((queue->index != queue->count) && queue->is_done){
-        queue->islocked = false;
         queue->is_done = false;  
     }
     
@@ -296,6 +294,8 @@ logic _ainline IsThreadTextureFetchQueueDone(ThreadTextureFetchQueue* queue){
 void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
                                  TextureAssetHandle* asset,TSemaphore sem);
 
+
+//NOTE: it is expected that only one thread will enter at a time
 void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue);
 
 

@@ -3,7 +3,7 @@
 struct VT_TextureLevelContext{
     vec2 vt_dimpages;
     vec2 texture_local_coord;
-    vec4 p_data;//x:x, y:y ,z: 1.0f if page is valid , w:
+    vec4 p_data;//x:x, y:y ,z: 1.0f if page is invalid , w:
 };
 
 float GetMipLevel(vec2 uv,vec2 dim){
@@ -40,7 +40,7 @@ float GetMipLevel(vec2 uv,vec2 dim){
 }
 
 bool VT_IsContextValid(VT_TextureLevelContext context){
-    return context.p_data.z != 0.0f;
+    return context.p_data.z == 0.0f;
 }
 
 VT_TextureLevelContext VT_GetContext(sampler2D vt_texture,vec2 vt_coord,int mip_level){

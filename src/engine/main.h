@@ -129,10 +129,9 @@ struct PrimaryRenderCommandbuffer{
     VkCommandBuffer buffer;
 };
 
-void ThreadExecuteDeviceTransfers(ThreadTextureFetchQueue* queue){
-    ResetAsyncTransferBuffer();
-    ExecuteThreadTextureFetchQueue(queue);
-}
+
+
+
 
 struct RenderGroup{
     //we can force this to be contiguous
@@ -948,6 +947,35 @@ u32 _ainline GenRenderKey(u64 val1){
     return (u32)t;
 }
 
+void ThreadSingleEntryProc(Threadinfo info){
+    
+    _persist volatile  _cachealign u32 single_entry_lock = 0;
+    
+    if(single_entry_lock){
+        return;
+    }
+    
+    auto is_locked = single_entry_lock;
+    
+    u32 actual_islocked = LockedCmpXchg(&single_entry_lock,is_locked,is_locked + 1);
+    
+    if((is_locked != actual_islocked) || is_locked){
+        return;
+    }
+    
+    //TODO: do all asset transfers here too
+    
+    
+    ExecuteThreadTextureFetchQueue(info.fetchqueue);
+    
+    
+    //TODO: only do this once the device is not busy
+    //(need a way to ask if last batch was done)
+    //ResetAsyncTransferBuffer();
+    
+    single_entry_lock = 0;
+}
+
 s64 ThreadProc(void* args){
     
     RECORDTHREAD();
@@ -968,7 +996,7 @@ s64 ThreadProc(void* args){
         
         ExecuteRenderBatch(info.rendercontext,&drawbuffers);
         
-        ExecuteThreadTextureFetchQueue(info.fetchqueue);
+        ThreadSingleEntryProc(info);
         
     }
     
@@ -2012,7 +2040,7 @@ u64 GenGPUHash(VkPhysicalDeviceProperties* prop){
 
 void InitAllSystems(){
     
-    Test();
+    //Test();
     
     auto settings = ParseSettings();
     

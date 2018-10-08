@@ -1,6 +1,26 @@
 #include "aassetmanager.h"
 #include "ssys.h"
 
+/*
+VT eviction game plan:
+have a separate buffer to store the invalid coords
+do copy invalidate after
+
+if we don't : possible scenario (though it might happen so rarely it doesn't matter)
+
+host invalid but device not invalid yet (copy not done)
+device reads invalid coord and the wrong page is displayed
+
+this will be fixed once the device page invalidation goes thru
+
+Do we care in this case?
+
+we should just nuke entire asset trees after a set not using for a long time
+
+(To test, use the new settings thing to limit the phys texture to exactly the number of pages we need)
+
+*/
+
 struct InternalTransferBuffer{
     VBufferContext buffer;
     VkDeviceSize offset;
@@ -1542,6 +1562,8 @@ u32 InternalGetPageCoord(u8* x,u8* y){
     auto page = InternalGetAvailablePage();
     GetPhysCoord(page,x,y);
     
+    
+    //TODO: we should use this to return invalidated pages
     return page;
 }
 
@@ -1714,7 +1736,7 @@ TextureAssetHandle* AllocateAssetTexture(const s8* filepath,
     vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,0,0,0,1,&transfer_barrier);
     
-    VkClearColorValue color = {};
+    VkClearColorValue color = {1.0f,1.0f,1.0f,1.0f};
     
     vkCmdClearColorImage(cmdbuffer,asset->pagetable.image,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&color,1,&range);
@@ -1816,7 +1838,7 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         
         InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y);
         list->fetch_count++;
-        node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,255,255);
+        node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,0,255);
     }
     
 #ifdef DEBUG
@@ -1906,6 +1928,9 @@ u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coo
 
 void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
     
+    //MARK:printf
+    printf("async alloc %d\n",(u32)async_transferbuffer.offset);
+    
     
     if(batch->fetchlist.fetch_count){
         
@@ -1967,7 +1992,7 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                     auto x = fetch_data->dst_coord.x;
                     auto y = fetch_data->dst_coord.y;
                     
-                    *cur = _encode_rgba(x,y,255,255);
+                    *cur = _encode_rgba(x,y,0,255);
                 }
                 
                 vkUnmapMemory(global_device->device,transferbuffer.memory);
@@ -2073,15 +2098,7 @@ void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
 
 void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue){
     
-    if(queue->index == queue->count || queue->islocked){
-        return;
-    }
-    
-    auto islocked = queue->islocked;
-    
-    u32 actual_islocked = LockedCmpXchg(&queue->islocked,islocked,islocked + 1);
-    
-    if((islocked != actual_islocked) || islocked){
+    if(queue->index == queue->count){
         return;
     }
     
