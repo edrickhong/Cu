@@ -2,6 +2,11 @@
 #include "ssys.h"
 
 /*
+TODO:
+
+
+Generation and Allocation of pages should be on a separate thread too. We should just pass the thread a copy of the feedback buffer and let it sort it out
+
 VT eviction game plan:
 have a separate buffer to store the invalid coords
 do copy invalidate after
@@ -1101,10 +1106,10 @@ void CommitAudio(AudioAssetHandle* handle){
 //Virtual Texture table
 
 #define _tpage_side 128
+#define _texturehandle_max 16
 
 _persist u32 phys_w = 0;
 _persist u32 phys_h = 0;
-_persist u32 total_pages = 0;
 
 
 #define _fetch_dim_scale_w 8
@@ -1112,12 +1117,14 @@ _persist u32 total_pages = 0;
 
 _persist VTextureContext global_texturecache = {};
 
-_persist u32* texturepage_timestamp = 0;
 
-_persist TextureAssetHandle texturehandle_array[16] = {};
+
+_persist u16* vt_freepages_array = 0;
+_persist u32 vt_freepages_count = 0;
+
+_persist TextureAssetHandle texturehandle_array[_texturehandle_max] = {};
 _persist u32 texturehandle_count = 0;
 
-_persist u16 texturepage_count = 0;
 
 union VTReadbackPixelFormat{
     
@@ -1208,12 +1215,20 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     //init phys texture stuff
     {
-        total_pages = phys_w_tiles * phys_h_tiles;
+        
+        vt_freepages_count = phys_w_tiles * phys_h_tiles;
+        vt_freepages_array = (u16*)alloc(sizeof(u16) * vt_freepages_count);
+        
+        auto max_index = vt_freepages_count;
+        
+        for(u32 i = 0; i < vt_freepages_count; i++){
+            
+            vt_freepages_array[i] = max_index - i;
+            
+        }
         
         phys_w = phys_w_tiles * _tpage_side;
         phys_h = phys_h_tiles * _tpage_side;
-        
-        texturepage_timestamp = (u32*)alloc(sizeof(u32) * total_pages);
     }
     
 #if _usergba
@@ -1270,8 +1285,6 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         VSubmitCommandBuffer(queue,cmdbuffer);
         vkQueueWaitIdle(queue);
         vkDestroyCommandPool(vdevice->device,pool,0);
-        
-        //TODO: destroy this cmdbuffer
     }
     
     
@@ -1518,7 +1531,7 @@ u32 EvictTexturePage(TPageQuadNode* _restrict node){
 u32 InternalGetAvailablePage(){
     
     //MARK: I think we depend on this not moving
-    if(texturepage_count > total_pages){
+    if(!vt_freepages_count){
         
         qsort(texturehandle_array,texturehandle_count,
               sizeof(TextureAssetHandle),
@@ -1548,23 +1561,16 @@ u32 InternalGetAvailablePage(){
         
     }
     
-    u32 page = texturepage_count;
-    
-    texturepage_timestamp[page] = global_timestamp;
-    
-    texturepage_count++;
+    vt_freepages_count--;
+    u32 page = vt_freepages_array[vt_freepages_count];
     
     return page;
 }
 
-u32 InternalGetPageCoord(u8* x,u8* y){
+void InternalGetPageCoord(u8* x,u8* y){
     
     auto page = InternalGetAvailablePage();
     GetPhysCoord(page,x,y);
-    
-    
-    //TODO: we should use this to return invalidated pages
-    return page;
 }
 
 void SetupQuadTree(AQuadNode*curnode,AQuadNode* space,u32 curlevel,u32 maxlevel){
