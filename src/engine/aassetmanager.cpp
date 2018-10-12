@@ -4,7 +4,6 @@
 /*
 TODO:
 
-
 Generation and Allocation of pages should be on a separate thread too. We should just pass the thread a copy of the feedback buffer and let it sort it out
 
 VT eviction game plan:
@@ -1487,7 +1486,7 @@ const VTextureContext* GetTextureCache(){
 }
 
 
-_ainline void GetPhysCoord(u32 page,u8* x,u8* y){
+_ainline void InternalGetPhysCoord(u32 page,u8* x,u8* y){
     //MARK: Hopefully the compiler is smart enough to fold this into a single div
     *y = page / (phys_w/_tpage_side);
     *x = page % (phys_w/_tpage_side);
@@ -1497,35 +1496,10 @@ void CommitTexture(TextureAssetHandle* handle){
     handle->timestamp = global_timestamp;
 }
 
-//TODO: it should work. idk though
-u32 EvictTexturePage(TPageQuadNode* _restrict node){
-    
-    if(node->first){
-        
-        auto value = EvictTexturePage(node->first);
-        
-        if(value == (u32)-1){
-            value = EvictTexturePage(node->second);
-        }
-        
-        if(value == (u32)-1){
-            value = EvictTexturePage(node->third);
-        }
-        
-        if(value == (u32)-1){
-            value = EvictTexturePage(node->fourth);
-        }
-        
-        if(value != (u32)-1){
-            return value;  
-        }
-        
-    }
-    
-    auto ret_value = node->page_value;
-    node->page_value = (u32)-1; //MARK: we should clear to 0
-    
-    return ret_value;
+
+//TODO: actually do this
+u32 EvictAllTexturePages(TPageQuadNode* _restrict node){
+    return 0;
 }
 
 u32 InternalGetAvailablePage(){
@@ -1533,7 +1507,12 @@ u32 InternalGetAvailablePage(){
     //MARK: I think we depend on this not moving
     if(!vt_freepages_count){
         
-        qsort(texturehandle_array,texturehandle_count,
+        TextureAssetHandle handle_array[_texturehandle_max] = {};
+        
+        memcpy(handle_array,handle_array,sizeof(TextureAssetHandle) * texturehandle_count);
+        
+        
+        qsort(handle_array,texturehandle_count,
               sizeof(TextureAssetHandle),
               [](const void * a, const void* b)->s32 {
               
@@ -1545,21 +1524,24 @@ u32 InternalGetAvailablePage(){
         
         for(u32 i = 0; i < texturehandle_count; i++){
             
-            auto t = &texturehandle_array[i];
+            auto t = &handle_array[i];
             
-            auto page = EvictTexturePage(&t->pagetree);
+            u32 evict_count = 0;
             
-            //TODO: if the page was evicted, we should gen a copy cmd
+            if(global_timestamp != t->timestamp){
+                //evict texture
+                evict_count = EvictAllTexturePages(&t->pagetree);
+            }
             
-            if(page != (u32)-1){
-                return page;
+            if(evict_count){
+                break;
             }
             
         }
         
-        _kill("can't get any pages\n",1);
-        
     }
+    
+    _kill("can't get any pages\n",!vt_freepages_count);
     
     vt_freepages_count--;
     u32 page = vt_freepages_array[vt_freepages_count];
@@ -1570,7 +1552,7 @@ u32 InternalGetAvailablePage(){
 void InternalGetPageCoord(u8* x,u8* y){
     
     auto page = InternalGetAvailablePage();
-    GetPhysCoord(page,x,y);
+    InternalGetPhysCoord(page,x,y);
 }
 
 void SetupQuadTree(AQuadNode*curnode,AQuadNode* space,u32 curlevel,u32 maxlevel){

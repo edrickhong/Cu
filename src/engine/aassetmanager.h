@@ -11,6 +11,8 @@
 
 #define TIMESTAMP u32
 
+#define _fetch_list_count 1365
+
 
 //MARK:the largest possible fetch size is actually the screen size
 #define _FetchqueueSize 2048
@@ -121,7 +123,7 @@ struct FetchData{
 };
 
 struct FetchList{
-    FetchData fetch_array[1365] = {}; //4k by 4k texture
+    FetchData fetch_array[_fetch_list_count] = {}; //4k by 4k texture
     u32 fetch_count = 0;
 };
 
