@@ -62,7 +62,18 @@ union m64{
     s64 i;
     f64 f;
     
-    void* ptr;
+    
+    union{
+        
+        void* ptr;
+        
+        struct{
+            u32 pad1;
+            u16 pad2;
+            u16 top16_bits;
+        };
+    };
+    
     
     m32 array[2];
     
@@ -94,3 +105,46 @@ union m64{
         f= o;
     }
 };
+
+#define _writetop16(m64t,value) (m64t.u | (((u64)value) << 48))
+#define _gettop16(m64t) (m64t.u >> 48)
+#define _masktop16(m64t)  (m64t.u ^ 0xFFFF000000000000)
+#define _zerotop16(m64t) (m64t.u ^= 0xFFFF000000000000)
+
+void _ainline ClearPtrTop16Bits(void** ptr){
+    
+    m64 v ={};
+    v.ptr = *ptr;
+    
+    v.u ^= 0xFFFF000000000000;
+    
+    *ptr = v.ptr;
+    
+}
+
+void _ainline WritePtrTop16Bits(void** ptr,u16 value){
+    
+    ClearPtrTop16Bits(ptr);
+    
+    m64 v ={};
+    v.ptr = *ptr;
+    
+    v.u |= ((u64)value) << 48;
+    
+    *ptr = v.ptr;
+};
+
+u16 _ainline GetPtrTop16Bits(void* ptr){
+    
+    m64 v ={};
+    v.ptr = ptr;
+    
+    return (v.u >> 48);
+}
+
+_ainline void* MaskPtrTop16Bits(void* ptr){
+    
+    ClearPtrTop16Bits(&ptr);
+    
+    return ptr;
+}
