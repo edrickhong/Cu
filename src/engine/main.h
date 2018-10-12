@@ -832,7 +832,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     GUIGetVertexBufferAndOffset(&gui_vertbuffer,&gui_vertbuffer_offset);
     
-    
+    //transition from host write to device read
     {
         
         VkBufferMemoryBarrier hostwrite_membarrier_array[] = {
@@ -992,7 +992,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     }
     
     
-    //we should transition for a device write
+    //transition from device read to host write
     {
         
         VkBufferMemoryBarrier hostwrite_membarrier_array[] = {
