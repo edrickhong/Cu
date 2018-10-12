@@ -2814,3 +2814,9 @@ void GUIDebugGetCurrentHolder(){
 }
 
 #endif
+
+void GUIGetVertexBufferAndOffset(VBufferContext** vert_buffercontext,u32* offset){
+    
+    *vert_buffercontext = &gui->vert_buffer;
+    *offset = gui->vert_offset * sizeof(GUIVertex);
+}

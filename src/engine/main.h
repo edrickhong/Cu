@@ -38,6 +38,10 @@
 #define _max_swapchain_count 4
 
 /*
+FIXME: 
+have an explicit write and wait barrier for the GUI vert buffer and the UBO buffer write
+
+
   TODO:
   See if we can make render jobs just regular thread jobs
   
@@ -823,6 +827,64 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     VStartCommandBuffer(cmdbuffer,0);
     
     
+    VBufferContext* gui_vertbuffer = 0;
+    u32 gui_vertbuffer_offset = 0;
+    
+    GUIGetVertexBufferAndOffset(&gui_vertbuffer,&gui_vertbuffer_offset);
+    
+    
+    {
+        
+        VkBufferMemoryBarrier hostwrite_membarrier_array[] = {
+            
+            //gui buffer
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                0,
+                VK_ACCESS_HOST_WRITE_BIT,
+                VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                gui_vertbuffer->buffer,
+                0,
+                gui_vertbuffer_offset,
+            },
+            
+            //skel buffer
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                0,
+                VK_ACCESS_HOST_WRITE_BIT,
+                VK_ACCESS_UNIFORM_READ_BIT,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                pdata->skel_ubo.buffer,
+                0,//VkDeviceSize offset
+                pdata->skel_ubo.size,//VkDeviceSize size
+            },
+            
+            //light buffer
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                0,
+                VK_ACCESS_HOST_WRITE_BIT,
+                VK_ACCESS_UNIFORM_READ_BIT,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                pdata->light_ubo.buffer,
+                0,//VkDeviceSize offset
+                pdata->light_ubo.size,//VkDeviceSize size
+            },
+            
+        };
+        
+        //we should transition for a wait for device writes
+        vkCmdPipelineBarrier(cmdbuffer,
+                             VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,0,
+                             0,0,_arraycount(hostwrite_membarrier_array),hostwrite_membarrier_array,0,0);
+    }
+    
+    
     VTStart(cmdbuffer);
     
 #if _enable_gui
@@ -904,6 +966,86 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     VEndRenderPass(cmdbuffer);
     
     VTEnd(cmdbuffer);  
+    
+    _persist u32 is_first_present = true;
+    
+    
+    if(is_first_present){
+        is_first_present = false;
+    }
+    
+    else{
+        
+        {
+            TIMEBLOCKTAGGED("Wait for fence",Pink);
+            vkWaitForFences(pdata->vdevice.device,1,&pdata->present_fence,VK_TRUE,0xFFFFFFFFFFFFFFFF);
+            vkResetFences(pdata->vdevice.device,1,&pdata->present_fence);  
+        }
+        
+        auto fetch_cmdbuffer =
+            GenerateTextureFetchRequests(&pdata->fetchqueue,pdata->worker_sem);
+        
+        if(fetch_cmdbuffer){
+            vkCmdExecuteCommands(cmdbuffer,1,&fetch_cmdbuffer);    
+        }
+        
+    }
+    
+    
+    //we should transition for a device write
+    {
+        
+        VkBufferMemoryBarrier hostwrite_membarrier_array[] = {
+            
+            //gui buffer
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                0,
+                VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                VK_ACCESS_HOST_WRITE_BIT,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                gui_vertbuffer->buffer,
+                0,
+                gui_vertbuffer_offset,
+            },
+            
+            //skel buffer
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                0,
+                VK_ACCESS_UNIFORM_READ_BIT,
+                VK_ACCESS_HOST_WRITE_BIT,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                pdata->skel_ubo.buffer,
+                0,//VkDeviceSize offset
+                pdata->skel_ubo.size,//VkDeviceSize size
+            },
+            
+            //light buffer
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                0,
+                VK_ACCESS_UNIFORM_READ_BIT,
+                VK_ACCESS_HOST_WRITE_BIT,
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                pdata->light_ubo.buffer,
+                0,//VkDeviceSize offset
+                pdata->light_ubo.size,//VkDeviceSize size
+            },
+            
+        };
+        
+        //we should transition for a wait for device writes
+        vkCmdPipelineBarrier(cmdbuffer,
+                             VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,
+                             0,0,_arraycount(hostwrite_membarrier_array),hostwrite_membarrier_array,0,0);
+    }
+    
+    
+    VEndCommandBuffer(cmdbuffer);
     
 }
 
@@ -1247,13 +1389,10 @@ void ThreadLinearBlend(void* args,void*){
                     data->bone_count * sizeof(Matrix4b4),data->result);
 }
 
-_persist u32 is_first_present = true;
-
 void PresentBuffer(PlatformData* pdata){
     
     auto frameindex = pdata->swapchain.image_index;
     
-    VkDevice device = pdata->vdevice.device;
     VSwapchainContext swapchain = pdata->swapchain;
     VkQueue queue = pdata->root_queue;
     VkCommandBuffer commandbuffer = pdata->rendercmdbuffer_array[frameindex].buffer;
@@ -1265,30 +1404,7 @@ void PresentBuffer(PlatformData* pdata){
     
     auto cmdbuffer = pdata->rendercmdbuffer_array[frameindex].buffer;
     
-    if(is_first_present){
-        is_first_present = false;
-    }
     
-    else{
-        
-        {
-            TIMEBLOCKTAGGED("Wait for fence",Pink);
-            vkWaitForFences(device,1,&fence,VK_TRUE,0xFFFFFFFFFFFFFFFF);
-            vkResetFences(device,1,&fence);  
-        }
-        
-        auto fetch_cmdbuffer =
-            GenerateTextureFetchRequests(&pdata->fetchqueue,pdata->worker_sem);
-        
-        if(fetch_cmdbuffer){
-            vkCmdExecuteCommands(cmdbuffer,1,&fetch_cmdbuffer);    
-        }
-        
-    }
-    
-    
-    
-    VEndCommandBuffer(cmdbuffer);
     
     /*
       tell queue to wait at the transfer stage until presentation engine has gotten us an image to render to. Signal the semaphore to start presenting when we are done

@@ -141,4 +141,8 @@ void GUIDebugGetCurrentHolder();
 
 void GUIDrawAxisSphere(Vector3 obj_w,f32 radius,Color x = White,Color y = White,Color z = White);
 
+
+
+void GUIGetVertexBufferAndOffset(VBufferContext** vert_buffercontext,u32* offset);
+
 //TODO: implement a color picker (https://en.wikipedia.org/wiki/HSL_and_HSV)
