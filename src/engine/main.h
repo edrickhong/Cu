@@ -828,9 +828,8 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     
     VBufferContext* gui_vertbuffer = 0;
-    u32 gui_vertbuffer_offset = 0;
     
-    GUIGetVertexBufferAndOffset(&gui_vertbuffer,&gui_vertbuffer_offset);
+    GUIGetVertexBufferAndOffset(&gui_vertbuffer);
     
     //transition from host write to device read
     {
@@ -847,7 +846,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
                 VK_QUEUE_FAMILY_IGNORED,
                 gui_vertbuffer->buffer,
                 0,
-                gui_vertbuffer_offset,
+                gui_vertbuffer->size,
             },
             
             //skel buffer
@@ -886,12 +885,6 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     
     VTStart(cmdbuffer);
-    
-#if _enable_gui
-    
-    GameDrawGUI(context,&pdata->drawcmdbuffer,2);
-    
-#endif
     
     VkImageMemoryBarrier present_membarrier[] = {
         {
@@ -936,6 +929,12 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
                      {{0,0},{pdata->swapchain.width,
                      pdata->swapchain.height}},
                      &clearvalue[0],_arraycount(clearvalue));
+    
+#if _enable_gui
+    
+    GameDrawGUI(context,&pdata->drawcmdbuffer,2);
+    
+#endif
     
     _vthreaddump("--------new frame-------------------%s\n","");
     
@@ -1007,7 +1006,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
                 VK_QUEUE_FAMILY_IGNORED,
                 gui_vertbuffer->buffer,
                 0,
-                gui_vertbuffer_offset,
+                gui_vertbuffer->size,
             },
             
             //skel buffer
@@ -1093,8 +1092,6 @@ void ThreadSingleEntryProc(Threadinfo info){
     
     _persist volatile  _cachealign u32 single_entry_lock = 0;
     
-    
-    //TODO: make this official lock
     if(single_entry_lock){
         return;
     }
@@ -2189,7 +2186,7 @@ void InitAllSystems(){
     
     pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE | settings.backend),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
     
-    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     

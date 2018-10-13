@@ -2496,6 +2496,10 @@ logic GUIScaleGizmo(GUIVec3 world_pos,f32* scale){
     
     if(gui->internal_active_state == token){
         
+        //FIMXE: just the act of entering this causes corruption
+        //suspect wrong coords or something
+#if 1
+        
         GUISetRenderMode(GUI_RENDER_LINE);
         GUISetCameraMode(GUI_CAMERA_NONE);
         
@@ -2505,6 +2509,15 @@ logic GUIScaleGizmo(GUIVec3 world_pos,f32* scale){
         
         InternalGUIDrawLine(obj_c,(mouse_ndir * gui->start_mouse_pos_len) + obj_c,
                             gui->axis_z_color);
+        
+        printf("--------------------\n");
+        
+        //print the lines
+        PrintVector2(obj_c);
+        PrintVector2(mouse_c);
+        PrintVector2((mouse_ndir * gui->start_mouse_pos_len) + obj_c);
+        
+#endif
         
         *scale = (Magnitude(mouse_dir)/gui->start_mouse_pos_len) * gui->start_scale;
         
@@ -2815,8 +2828,7 @@ void GUIDebugGetCurrentHolder(){
 
 #endif
 
-void GUIGetVertexBufferAndOffset(VBufferContext** vert_buffercontext,u32* offset){
+void GUIGetVertexBufferAndOffset(VBufferContext** vert_buffercontext){
     
     *vert_buffercontext = &gui->vert_buffer;
-    *offset = gui->vert_offset * sizeof(GUIVertex);
 }
