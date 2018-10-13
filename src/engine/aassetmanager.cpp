@@ -1151,8 +1151,13 @@ _persist VTReadbackPixelFormat* threadtexturefetch_array = 0;
 
 
 _persist VkCommandPool fetch_pool[2];
-_persist VkCommandBuffer fetch_cmdbuffer[2];
-_persist u32 fetch_count = 0;
+_persist VkCommandBuffer fetchcmdbuffer_array[2];
+_persist u32 fetchcmdbuffer_count = 0;
+
+
+_persist TextureAssetHandle* evict_texture_handle_array[_texturehandle_max * 2] = {};
+
+_persist u32 evict_texture_handle_count = 0;
 
 #ifdef DEBUG
 
@@ -1459,7 +1464,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
                                VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                                VGetQueueFamilyIndex(VQUEUETYPE_ROOT));
         
-        fetch_cmdbuffer[i] =
+        fetchcmdbuffer_array[i] =
             VAllocateCommandBuffer(vdevice,fetch_pool[i],
                                    VK_COMMAND_BUFFER_LEVEL_SECONDARY);
     }
@@ -1486,23 +1491,126 @@ const VTextureContext* GetTextureCache(){
 }
 
 
-_ainline void InternalGetPhysCoord(u32 page,u8* x,u8* y){
+_ainline void InternalPageToPhysCoord(u32 page,u8* x,u8* y){
     //MARK: Hopefully the compiler is smart enough to fold this into a single div
     *y = page / (phys_w/_tpage_side);
     *x = page % (phys_w/_tpage_side);
 }
+
+_ainline u32 InternalPhysCoordToPage(u8 x,u8 y){
+    return x + (y * (phys_w/_tpage_side));
+}
+
 
 void CommitTexture(TextureAssetHandle* handle){
     handle->timestamp = global_timestamp;
 }
 
 
-//TODO: actually do this
-u32 EvictAllTexturePages(TPageQuadNode* _restrict node){
-    return 0;
+
+/*
+next_active_coord = (active_coord * 2) + qcoord
+*/
+
+struct EvictCoord : TCoord{
+    u16 page_value;
+};
+
+struct EvictList{
+    EvictCoord array[_fetch_list_count];
+    u32 count;
+};
+
+void InternalEvictTextureAllPagesTraverse
+(TPageQuadNode* _restrict node,EvictList* list,
+ u32 depth,u32 max_mip_level,Coord active_coord){
+    
+    if(node->page_value == (u32)-1){
+        return;
+    }
+    
+    
+    Coord n_coord = {(u8)(active_coord.x * 2),(u8)(active_coord.y * 2)};
+    
+    
+    if(node->first){
+        
+        Coord quad_coord = {0,0};
+        
+        n_coord.x += quad_coord.x;
+        n_coord.y += quad_coord.y;
+        
+        InternalEvictTextureAllPagesTraverse(node->first,list,depth + 1,max_mip_level,n_coord);
+    }
+    
+    
+    if(node->second){
+        
+        Coord quad_coord = {0,1};
+        
+        n_coord.x += quad_coord.x;
+        n_coord.y += quad_coord.y;
+        
+        InternalEvictTextureAllPagesTraverse(node->second,list,depth + 1,max_mip_level,n_coord);
+    }
+    
+    
+    if(node->third){
+        
+        Coord quad_coord = {1,0};
+        
+        n_coord.x += quad_coord.x;
+        n_coord.y += quad_coord.y;
+        
+        InternalEvictTextureAllPagesTraverse(node->third,list,depth + 1,max_mip_level,n_coord);
+    }
+    
+    
+    if(node->fourth){
+        
+        Coord quad_coord = {1,1};
+        
+        n_coord.x += quad_coord.x;
+        n_coord.y += quad_coord.y;
+        
+        InternalEvictTextureAllPagesTraverse(node->fourth,list,depth + 1,max_mip_level,n_coord);
+    }
+    
+    
+    //this make sure we don't evict the lowest mip
+    if(depth){
+        
+        struct PixFormat{
+            u8 x;
+            u8 y;
+            u8 lock;
+            u8 pad;
+        };
+        
+        auto f = (PixFormat*)&node->page_value;
+        
+        list->array[list->count].x = active_coord.x;
+        list->array[list->count].y = active_coord.y;
+        list->array[list->count].mip = max_mip_level - depth;
+        list->array[list->count].page_value = InternalPhysCoordToPage(f->x,f->y);
+        
+        list->count++;
+        
+    }
+    
 }
 
-u32 InternalGetAvailablePage(){
+//TODO: test this
+void EvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
+    
+    auto node = &handle->pagetree;
+    auto max_mip_level = handle->max_miplevel;
+    
+    InternalEvictTextureAllPagesTraverse
+        (node,list,0,max_mip_level,{});
+}
+
+u32 InternalGetAvailablePage(EvictList* list){
     
     //MARK: I think we depend on this not moving
     if(!vt_freepages_count){
@@ -1526,14 +1634,12 @@ u32 InternalGetAvailablePage(){
             
             auto t = &handle_array[i];
             
-            u32 evict_count = 0;
-            
             if(global_timestamp != t->timestamp){
                 //evict texture
-                evict_count = EvictAllTexturePages(&t->pagetree);
+                EvictAllTexturePages(t,list);
             }
             
-            if(evict_count){
+            if(list->count){
                 break;
             }
             
@@ -1549,10 +1655,10 @@ u32 InternalGetAvailablePage(){
     return page;
 }
 
-void InternalGetPageCoord(u8* x,u8* y){
+void InternalGetPageCoord(u8* x,u8* y,EvictList* list){
     
-    auto page = InternalGetAvailablePage();
-    InternalGetPhysCoord(page,x,y);
+    auto page = InternalGetAvailablePage(list);
+    InternalPageToPhysCoord(page,x,y);
 }
 
 void SetupQuadTree(AQuadNode*curnode,AQuadNode* space,u32 curlevel,u32 maxlevel){
@@ -1800,17 +1906,17 @@ Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
   dst coord - coord at the dst mip level (derived from src coord)
   quad coord - coord of the tile in the quad (derived from next src coord)
   
-  a lower mip can generate coords for a lower mip,but not the other way around
+   a higher mip can generate coords for a lower mip,but not the other way around
 */
 void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
-                             TCoord dst_coord,FetchList* list){
+                             TCoord dst_coord,FetchList* list,EvictList* evict_list){
     
     if(node->page_value == (u32)-1){
         
-        _kill("not enough fetch space\n",list->fetch_count >=
-              _arraycount(list->fetch_array));
+        _kill("not enough fetch space\n",list->count >=
+              _arraycount(list->array));
         
-        auto fetch = &list->fetch_array[list->fetch_count];
+        auto fetch = &list->array[list->count];
         
         fetch->src_coord.mip = dst_coord.mip;
         fetch->src_coord.x = dst_coord.x;
@@ -1824,8 +1930,8 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         }
 #endif
         
-        InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y);
-        list->fetch_count++;
+        InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,evict_list);
+        list->count++;
         node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,0,255);
     }
     
@@ -1877,13 +1983,13 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
     
     
     if(nextnode){
-        InternalTraverseMipTree(nextnode,src_coord,next_dst_coord,list);
+        InternalTraverseMipTree(nextnode,src_coord,next_dst_coord,list,evict_list);
     }
     
 }
 
 void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
-                                     FetchList* list){
+                                     FetchList* list,EvictList* evict_list){
     
     TCoord src = {};
     
@@ -1895,11 +2001,11 @@ void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
     
     auto node = &asset->pagetree;
     
-    InternalTraverseMipTree(node,src,dst,list);
+    InternalTraverseMipTree(node,src,dst,list,evict_list);
 }
 
 u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coords,
-                        u32 count,FetchList* list){
+                        u32 count,FetchList* list,EvictList* evict_list){
     
     
     TIMEBLOCK(Purple);
@@ -1908,10 +2014,10 @@ u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coo
         
         auto a = &src_coords[i];
         
-        InternalGenerateDependentCoords(asset,a->mip,a->x,a->y,list);
+        InternalGenerateDependentCoords(asset,a->mip,a->x,a->y,list,evict_list);
     }
     
-    return list->fetch_count;
+    return list->count;
 }
 
 void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
@@ -1920,9 +2026,9 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
     printf("async alloc %d\n",(u32)async_transferbuffer.offset);
     
     
-    if(batch->fetchlist.fetch_count){
+    if(batch->fetchlist.count){
         
-        _kill("over possible fetch tiles array\n",batch->fetchlist.fetch_count >= 21845);
+        _kill("over possible fetch tiles array\n",batch->fetchlist.count >= 21845);
         
         VkBufferImageCopy imagecopy_array[21845];
         
@@ -1935,12 +2041,12 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
             TIMEBLOCK(Purple);
             
             u32 tile_size = (u32)(batch->bpp * _tpage_side * _tpage_side);
-            u32 total_size = batch->fetchlist.fetch_count * tile_size;
+            u32 total_size = batch->fetchlist.count * tile_size;
             
             auto transferbuffer = async_transferbuffer.buffer;
             auto transferbuffer_offset =
                 AllocateTransferBuffer(&async_transferbuffer,
-                                       total_size + (sizeof(u32) * batch->fetchlist.fetch_count));
+                                       total_size + (sizeof(u32) * batch->fetchlist.count));
             
             {
                 
@@ -1949,14 +2055,14 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                 s8* mappedmemory_ptr;
                 
                 VMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
-                           total_size + (sizeof(u32) * batch->fetchlist.fetch_count),(void**)&mappedmemory_ptr);
+                           total_size + (sizeof(u32) * batch->fetchlist.count),(void**)&mappedmemory_ptr);
                 
                 //Copy image data here
-                for(u32 i = 0; i < batch->fetchlist.fetch_count; i++){
+                for(u32 i = 0; i < batch->fetchlist.count; i++){
                     
                     auto cur = mappedmemory_ptr + (tile_size * i);
                     
-                    auto fetch_data = &batch->fetchlist.fetch_array[i];
+                    auto fetch_data = &batch->fetchlist.array[i];
                     
                     auto mip = fetch_data->src_coord.mip;
                     auto x = fetch_data->src_coord.x;
@@ -1973,9 +2079,9 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                 }
                 
                 //copy page table data
-                for(u32 i = 0; i < batch->fetchlist.fetch_count; i++){
+                for(u32 i = 0; i < batch->fetchlist.count; i++){
                     auto cur = ((u32*)(mappedmemory_ptr + total_size)) + i;
-                    auto fetch_data = &batch->fetchlist.fetch_array[i];
+                    auto fetch_data = &batch->fetchlist.array[i];
                     
                     auto x = fetch_data->dst_coord.x;
                     auto y = fetch_data->dst_coord.y;
@@ -1989,13 +2095,13 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
             {
                 TIMEBLOCK(Salmon);
                 
-                for(u32 i = 0; i < batch->fetchlist.fetch_count; i++){
+                for(u32 i = 0; i < batch->fetchlist.count; i++){
                     
                     //Transfer image data
                     
                     auto data_copy = &imagecopy_array[i];
                     auto page_copy = &pagecopy_array[i];
-                    auto fetch_data = &batch->fetchlist.fetch_array[i];
+                    auto fetch_data = &batch->fetchlist.array[i];
                     
                     auto src_mip = (u32)(fetch_data->src_coord.mip);
                     
@@ -2036,13 +2142,13 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
             
             vkCmdCopyBufferToImage(fetch_cmdbuffer,transferbuffer.buffer,
                                    global_texturecache.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   batch->fetchlist.fetch_count,imagecopy_array);
+                                   batch->fetchlist.count,imagecopy_array);
             
             vkCmdCopyBufferToImage(fetch_cmdbuffer,transferbuffer.buffer,
                                    batch->pagetable.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   batch->fetchlist.fetch_count,pagecopy_array);
+                                   batch->fetchlist.count,pagecopy_array);
             
-            transferbuffer_offset += total_size + (sizeof(u32) * batch->fetchlist.fetch_count);
+            transferbuffer_offset += total_size + (sizeof(u32) * batch->fetchlist.count);
             
         }
         
@@ -2073,17 +2179,19 @@ void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
     t->assetfile = asset->assetfile;
     t->pagetable = asset->pagetable;
     
-    t->fetchlist.fetch_count = list->fetch_count;
+    t->fetchlist.count = list->count;
     t->total_miplevel = asset->max_miplevel + 1;
     
-    memcpy(t->fetchlist.fetch_array,list->fetch_array,
-           sizeof(FetchData) * list->fetch_count);
+    memcpy(t->fetchlist.array,list->array,
+           sizeof(FetchData) * list->count);
     
     queue->count++;
     
     TSignalSemaphore(sem);
 }
 
+
+//TODO: have a threaded eviction too
 void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue){
     
     if(queue->index == queue->count){
@@ -2140,7 +2248,7 @@ void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue){
         
         FetchTextureTiles(batch,queue->cmdbuffer);
         
-        tfetch_count += batch->fetchlist.fetch_count;
+        tfetch_count += batch->fetchlist.count;
         
         vkCmdPipelineBarrier(queue->cmdbuffer,
                              VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2390,12 +2498,12 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
     
     if(is_done){
         
-        auto  commit_cmdbuffer = fetch_cmdbuffer[fetch_count];
+        auto  commit_cmdbuffer = fetchcmdbuffer_array[fetchcmdbuffer_count];
         
-        fetch_count++;
+        fetchcmdbuffer_count++;
         
-        if(fetch_count >= _arraycount(fetch_cmdbuffer)){
-            fetch_count = 0;  
+        if(fetchcmdbuffer_count >= _arraycount(fetchcmdbuffer_array)){
+            fetchcmdbuffer_count = 0;  
         }
         
         SetCmdBufferThreadTextureFetchQueue(fetchqueue,commit_cmdbuffer);
@@ -2430,11 +2538,13 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             auto entry = &entry_array[i];
             FetchList list = {};
+            EvictList evict_list = {};
             
             GenTextureFetchList(entry->asset,&threadtexturefetch_array[entry->offset],entry->count,
-                                &list);
+                                &list,&evict_list);
             
-            if(list.fetch_count){
+            
+            if(list.count){
                 PushThreadTextureFetchQueue(fetchqueue,entry->asset,&list,sem);	
             }
             
@@ -2636,3 +2746,13 @@ void VTEnd(VkCommandBuffer cmdbuffer){
                          0,
                          0,0,0,0,_arraycount(layout_barrier),&layout_barrier[0]);
 }
+
+
+void VTEvictTextureHandlePages(TextureAssetHandle* handle){
+    
+    auto index = TGetEntryIndex(&evict_texture_handle_count,_arraycount(evict_texture_handle_array));
+    
+    evict_texture_handle_array[index] = handle;
+}
+
+void VTExecuteEvictTextureHandlePages(VkCommandBuffer cmdbuffer){}

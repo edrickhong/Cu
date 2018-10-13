@@ -1093,6 +1093,8 @@ void ThreadSingleEntryProc(Threadinfo info){
     
     _persist volatile  _cachealign u32 single_entry_lock = 0;
     
+    
+    //TODO: make this official lock
     if(single_entry_lock){
         return;
     }

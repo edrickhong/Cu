@@ -122,9 +122,11 @@ struct FetchData{
     u32 start_mip; // this is for generating dependency coords only
 };
 
+//TODO: clean up the vt system. there's no reason ThreadTextureFetchQueue has to be exposed
+
 struct FetchList{
-    FetchData fetch_array[_fetch_list_count] = {}; //4k by 4k texture
-    u32 fetch_count = 0;
+    FetchData array[_fetch_list_count] = {}; //4k by 4k texture
+    u32 count = 0;
 };
 
 struct ThreadFetchBatch{
@@ -319,3 +321,6 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem);
 
 void VTStart(VkCommandBuffer cmdbuffer);
 void VTEnd(VkCommandBuffer cmdbuffer);
+
+
+void VTEvictTextureHandlePages(TextureAssetHandle* handle);
