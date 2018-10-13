@@ -1223,7 +1223,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
         vt_freepages_count = phys_w_tiles * phys_h_tiles;
         vt_freepages_array = (u16*)alloc(sizeof(u16) * vt_freepages_count);
         
-        auto max_index = vt_freepages_count;
+        auto max_index = vt_freepages_count - 1;
         
         for(u32 i = 0; i < vt_freepages_count; i++){
             
@@ -1651,6 +1651,8 @@ u32 InternalGetAvailablePage(EvictList* list){
     
     vt_freepages_count--;
     u32 page = vt_freepages_array[vt_freepages_count];
+    
+    
     
     return page;
 }
