@@ -4,24 +4,7 @@
 /*
 TODO:
 
-Generation and Allocation of pages should be on a separate thread too. We should just pass the thread a copy of the feedback buffer and let it sort it out
-
-VT eviction game plan:
-have a separate buffer to store the invalid coords
-do copy invalidate after
-
-if we don't : possible scenario (though it might happen so rarely it doesn't matter)
-
-host invalid but device not invalid yet (copy not done)
-device reads invalid coord and the wrong page is displayed
-
-this will be fixed once the device page invalidation goes thru
-
-Do we care in this case?
-
-we should just nuke entire asset trees after a set not using for a long time
-
-(To test, use the new settings thing to limit the phys texture to exactly the number of pages we need)
+Fresh start, we should diff this against the working implementation and patch in eviction.
 
 */
 
@@ -1925,11 +1908,8 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         fetch->src_coord.y = dst_coord.y;
         
 #if  0
-        if(file == texturehandle_array[0].assetfile)
-        {
-            printf("f %d %d %d %p :: ",dst_coord.mip,dst_coord.x,dst_coord.y,(void*)node);
-            printf("incoord %d %d %d\n",src_coord.mip,src_coord.x,src_coord.y);
-        }
+        printf("f %d %d %d %p :: ",dst_coord.mip,dst_coord.x,dst_coord.y,(void*)node);
+        printf("incoord %d %d %d\n",src_coord.mip,src_coord.x,src_coord.y);
 #endif
         
         InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,evict_list);
@@ -2006,6 +1986,9 @@ void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
     InternalTraverseMipTree(node,src,dst,list,evict_list);
 }
 
+
+
+//MARK: start here (Get vt fetch working again and work on vt evict next)
 u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coords,
                         u32 count,FetchList* list,EvictList* evict_list){
     
@@ -2547,6 +2530,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             
             if(list.count){
+                
                 PushThreadTextureFetchQueue(fetchqueue,entry->asset,&list,sem);	
             }
             

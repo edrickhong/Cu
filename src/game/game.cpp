@@ -226,6 +226,17 @@ void KeyboardInput(SceneContext* context){
     KeyboardState* keyboardstate = context->keyboardstate;
     //f32 delta_time = context->prev_frametime;
     
+    
+    
+    if(IsKeyPressed(keyboardstate,KCODE_KEY_F1)){
+        
+        printf("Saving component state\n");
+        
+        
+        GameComponentWrite((void*)context);
+    }
+    
+    
     if(IsKeyDown(keyboardstate,KCODE_KEY_ESC)){
         data->running = false;
     }

@@ -248,8 +248,6 @@ struct IVector4{
 u32 GenTextureFetchList(TextureAssetHandle* asset,IVector4* src_coords,u32 count,
                         VkCommandBuffer tpage_cmdbuffer);
 
-void FetchTextureTiles(TextureAssetHandle* asset,VkCommandBuffer fetch_cmdbuffer);
-
 void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer);
 
 #ifdef DEBUG
@@ -295,9 +293,6 @@ logic _ainline IsThreadTextureFetchQueueDone(ThreadTextureFetchQueue* queue){
     return (queue->index == queue->count && queue->is_done);
 }
 
-void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
-                                 TextureAssetHandle* asset,TSemaphore sem);
-
 
 //NOTE: it is expected that only one thread will enter at a time
 void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue);
@@ -307,9 +302,6 @@ void BuildFetchCommandBuffer(VDeviceContext* _restrict vdevice,
                              ThreadTextureFetchQueue* fetchqueue,TSemaphore sem,
                              VkCommandBuffer t_cmdbuffer,MaterialAssetHandle** asset_array,
                              u32 count);
-
-void StartAllocateCmdBuffer(VkCommandBuffer cmdbuffer);
-void EndAllocateCmdBuffer();
 
 VImageContext GetVTReadbackBuffer();
 

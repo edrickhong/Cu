@@ -25,6 +25,9 @@
 //parse
 #include "pparse.cpp"
 
+
+#include "image.cpp"
+
 //threadx
 #include "tthreadx.cpp"
 

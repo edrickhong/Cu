@@ -8,6 +8,8 @@
 
 #include "spx_common.h"
 
+#include "image.h"
+
 #define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
 
 /*NOTE: All loading functions are considered obsolete and will not be used in the main 
@@ -25,8 +27,6 @@ union AVector3{
     };
     
 };
-
-void WriteBMP(void* data,u32 w,u32 h,const s8* outputfile);
 
 struct AssimpBoneNode{
     s8* name;

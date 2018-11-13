@@ -32,6 +32,7 @@ enum REFL AN{
 };
 
 _compile_kill(sizeof(SkelUBO) > _kilobytes(64));
+_compile_kill(sizeof(LightUBO) > _kilobytes(64));
 _compile_kill(sizeof(PushConst) > 128);
 _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
@@ -244,7 +245,10 @@ s32 main(s32 argc,s8** argv){
 
 
 /*
-  TODO: 
+  
+FIXME: renderdoc does not work with our app anymore. it refuses to create a device
+
+TODO: 
   
   Make keyboardstate and mousestate a bit array
   
@@ -320,6 +324,73 @@ VkStructureType sType; const void* pNext;
 VkMemoryAllocateFlags flags;
 uint32_t deviceMask;
 } VkMemoryAllocateFlagsInfo;
+
+
+
+// libC dependencies
+
+free
+pthread_create
+__errno_location
+stdout
+strcpy
+cosf
+qsort
+abs
+atof
+clock_gettime
+write
+opendir
+strlen
+mmap
+pthread_setaffinity_np
+printf
+nanosleep
+lseek
+__assert_fail
+sinf
+sem_timedwait
+memset
+close
+read
+__libc_start_main
+pthread_attr_init
+ceilf
+acosf
+sem_wait
+tanf
+fprintf
+__gmon_start__
+memcpy
+sqrtf
+__xstat
+readdir
+pthread_attr_setdetachstate
+dlopen
+malloc
+fflush
+sem_post
+dlclose
+pthread_attr_setstacksize
+realloc
+atan2f
+munmap
+poll
+memmove
+pthread_self
+sem_init
+open
+floorf
+pthread_attr_destroy
+atoi
+sprintf
+exit
+sem_destroy
+dlsym
+fmodf
+dlerror
+stderr
+
 
 
 */

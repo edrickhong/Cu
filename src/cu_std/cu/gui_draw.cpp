@@ -2498,7 +2498,7 @@ logic GUIScaleGizmo(GUIVec3 world_pos,f32* scale){
         
         //FIMXE: just the act of entering this causes corruption
         //suspect wrong coords or something
-#if 1
+#if 0
         
         GUISetRenderMode(GUI_RENDER_LINE);
         GUISetCameraMode(GUI_CAMERA_NONE);

@@ -619,9 +619,11 @@ struct ThreadLinearBlendRes{
     DEBUGPTR(Matrix4b4) result;//filled by the platform
 };
 
+
+//TODO: this shouldn't be a ubo. make it like a ssbo instead
 struct LightUBO{
     
-#define _lightcount 1024
+#define _lightcount 256
     
     struct PointLight{
         Vector4 pos;
@@ -985,6 +987,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
             GenerateTextureFetchRequests(&pdata->fetchqueue,pdata->worker_sem);
         
         if(fetch_cmdbuffer){
+            
             vkCmdExecuteCommands(cmdbuffer,1,&fetch_cmdbuffer);    
         }
         
