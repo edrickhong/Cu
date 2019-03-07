@@ -68,7 +68,7 @@ FileNode FGetFileNode(const s8* file){
 
 logic FFileChanged(const s8* file,FileNode* node){
     
-    new_node = FGetFileNode(file);
+    auto new_node = FGetFileNode(file);
     
     ULARGE_INTEGER newtime,oldtime = {};
     
