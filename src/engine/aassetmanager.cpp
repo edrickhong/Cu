@@ -1182,6 +1182,21 @@ void DebugRenderFeedbackBuffer(){
     
 }
 
+
+u32 InternalGetTotalNodes(u32 total_mips){
+    
+    u32 total = 0;
+    
+    for(u32 i = 0; i < total_mips; i++){
+        
+        u32 len = 1 << i;
+        
+        total += len * len;
+    }
+    
+    return total;
+};
+
 //separated it becase vt is a whole other system
 #include "vt.cpp"
 
@@ -1429,16 +1444,9 @@ TextureAssetHandle* AllocateAssetTexture(const s8* filepath,
     asset->h = header.h;
     
     //Allocate data for pagetree
+    auto total_nodes = InternalGetTotalNodes(header.mips) - 1;
     
-    auto tsize = 0;
-    auto len = header.w >> 7;
-    
-    for(u32 i = 0; i < header.mips; i++){
-        tsize+= len * len;
-        len >>= 1;
-    }
-    
-    auto treespace = (TPageQuadNode*)alloc((tsize) * sizeof(TPageQuadNode));
+    auto treespace = (TPageQuadNode*)alloc((total_nodes) * sizeof(TPageQuadNode));
     
     auto cur = &asset->pagetree;
     

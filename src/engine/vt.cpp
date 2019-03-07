@@ -67,6 +67,8 @@ Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
 
 //EVICTING PAGES
 
+//TODO:Add a evicttexturepage()
+
 /*
 next_active_coord = (active_coord * 2) + qcoord
 */
@@ -150,11 +152,45 @@ void InternalEvictTextureAllPagesTraverse
 }
 
 
+void TEvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
+    
+    auto node_count = InternalGetTotalNodes(handle->max_miplevel +
+                                            1) - 1;
+    
+    auto node_array = handle->pagetree.first;
+    
+    for(u32 i = 0; i < node_count; i++){
+        
+        auto node = &node_array[i];
+        
+        if(node->page_value != (u32)-1){
+            
+            auto page_value = node->page_value;
+            node->page_value = (u32)-1;
+            
+            EvictCoord coord = {};
+            
+            //we should be able to figure out the qcoord from the index
+            
+            /*
+            do the page values have to match up with the coord?
+*/
+            
+        }
+        
+    }
+}
+
+
 //TODO: test this
 void EvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
     
     auto node = &handle->pagetree;
     auto max_mip_level = handle->max_miplevel;
+    
+    /*
+    All trees are gauranteed to be contiguous, we could just iterate the whole thing if we need to do this
+*/
     
     InternalEvictTextureAllPagesTraverse
         (node,list,0,max_mip_level,{});
@@ -173,6 +209,8 @@ void TestEvictTextureAsset(TextureAssetHandle* _restrict handle){
         
         printf("x %d y %d mip %d page %d\n",coord->x,coord->y,coord->mip,coord->page_value);
     }
+    
+    exit(0);
     
 }
 
@@ -825,6 +863,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             if(list.count){
                 
+                //TODO: use the evict_list
                 PushThreadTextureFetchQueue(fetchqueue,entry->asset,&list,sem);	
             }
             
