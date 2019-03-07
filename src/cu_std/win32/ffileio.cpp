@@ -51,24 +51,29 @@ u32 FFindNextFile(DirectoryHandle* dirhandle,FileInfo* info){
     return 1;
 }
 
-logic FFileChanged(const s8* file,FileNode* node){
+FileNode FGetFileNode(const s8* file){
+    
+    FileNode node = {};
     
     do{
-        node->filehandle = FOpenFile(file,F_FLAG_READONLY);
-    }while(node->filehandle == F_FILE_INVALID);
+        node.filehandle = FOpenFile(file,F_FLAG_READONLY);
+    }while(node.filehandle == F_FILE_INVALID);
     
     
+    GetFileTime(node.filehandle,0,0,&node.timestamp);
+    FCloseFile(node.filehandle);
     
-    auto old_timestamp = node->timestamp;
+    return node;
+}
+
+logic FFileChanged(const s8* file,FileNode* node){
     
-    ULARGE_INTEGER newtime,oldtime;
+    new_node = FGetFileNode(file);
     
-    GetFileTime(node->filehandle,0,0,&node->timestamp);
+    ULARGE_INTEGER newtime,oldtime = {};
     
-    FCloseFile(node->filehandle);
-    
-    memcpy(&oldtime,&old_timestamp,sizeof(old_timestamp));
-    memcpy(&newtime,&node->timestamp,sizeof(node->timestamp));
+    memcpy(&oldtime,&node->timestamp,sizeof(node->timestamp));
+    memcpy(&newtime,&new_node->timestamp,sizeof(new_node->timestamp));
     
     if(newtime.QuadPart != oldtime.QuadPart){
         return 1;

@@ -104,6 +104,8 @@ u32 FFindFirstFile(const s8* dirpath,DirectoryHandle* dirhandle,FileInfo* info);
 
 u32 FFindNextFile(DirectoryHandle* dirhandle,FileInfo* info);
 
+FileNode FGetFileNode(const s8* file);
+
 logic FFileChanged(const s8* file,FileNode* node);
 
 #ifdef DEBUG

@@ -55,16 +55,27 @@ u32 FFindNextFile(DirectoryHandle* dirhandle,FileInfo* info){
     return 1;
 }
 
-logic FFileChanged(const s8* file,FileNode* node){
-    struct stat attr;
+FileNode FGetFileNode(const s8* file){
+    
+    FileNode node = {};
+    
+    struct stat attr = {};
     
     stat(file,&attr);
     
-    FileNode n = *node;
+    node = attr.st_ino;
     
-    *node = attr.st_ino;
+    return node;
+}
+
+logic FFileChanged(const s8* file,FileNode* n){
     
-    return n != attr.st_ino;
+    auto node = *n;
+    auto new_node = FGetFileNode(file);
+    
+    *n = new_node;
+    
+    return node != new_node;
 }
 
 
