@@ -73,7 +73,7 @@ logic FFileChanged(const s8* file,FileNode* node){
     ULARGE_INTEGER newtime,oldtime = {};
     
     memcpy(&oldtime,&node->timestamp,sizeof(node->timestamp));
-    memcpy(&newtime,&new_node->timestamp,sizeof(new_node->timestamp));
+    memcpy(&newtime,&new_node.timestamp,sizeof(new_node.timestamp));
     
     if(newtime.QuadPart != oldtime.QuadPart){
         return 1;
