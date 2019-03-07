@@ -208,8 +208,6 @@ s32 main(s32 argc,s8** argv){
             GetTime(&end);
             
             auto diff = GetTimeDifferenceMS(start,end);
-            
-            
             f32 sleeptime = (_targetframerate - diff);
             
             
@@ -245,11 +243,11 @@ s32 main(s32 argc,s8** argv){
 
 
 /*
-  
+
 FIXME: renderdoc does not work with our app anymore. it refuses to create a device
 
 TODO: 
-  
+
   Make keyboardstate and mousestate a bit array
   
   Compile all assets into an adb file (asset data base). We will build a function a constexpr

@@ -189,10 +189,6 @@ relevant function. Getting better cache performance when using lambdas cos of th
 
 #ifdef DEBUG
 
-#define _disable_wayland_path 1
-
-#define _not_renderdoc_friendly 0
-
 #define _test_dim 64
 
 
