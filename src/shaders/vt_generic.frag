@@ -54,9 +54,9 @@ layout (set = 1,binding = 3) uniform LIGHT_UBO{
     uint point_count;
     uint spot_count;
     
-    DirectionalLight dir_array[1024];
-    PointLight point_array[1024];
-    SpotLight spot_array[1024];
+    DirectionalLight dir_array[_lightcount];
+    PointLight point_array[_lightcount];
+    SpotLight spot_array[_lightcount];
     
     vec4 ambient_color;
     

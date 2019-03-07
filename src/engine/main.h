@@ -623,8 +623,6 @@ struct ThreadLinearBlendRes{
 //TODO: this shouldn't be a ubo. make it like a ssbo instead
 struct LightUBO{
     
-#define _lightcount 256
-    
     struct PointLight{
         Vector4 pos;
         Color color;
