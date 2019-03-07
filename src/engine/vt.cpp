@@ -160,6 +160,22 @@ void EvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
         (node,list,0,max_mip_level,{});
 }
 
+//TODO: I don't think we use evictlist in the actual write yet
+void TestEvictTextureAsset(TextureAssetHandle* _restrict handle){
+    
+    EvictList list = {};
+    
+    EvictAllTexturePages(handle,&list);
+    
+    for(u32 i = 0; i < list.count; i++){
+        
+        auto coord = &list.array[i];
+        
+        printf("x %d y %d mip %d page %d\n",coord->x,coord->y,coord->mip,coord->page_value);
+    }
+    
+}
+
 //PAGE MANAGEMENT  (MAY CONTAIN EVICT)
 
 void InternalGetPageCoord(u8* x,u8* y,EvictList* list){
