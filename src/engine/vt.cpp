@@ -67,94 +67,9 @@ Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
 
 //EVICTING PAGES
 
-/*
-NOTE: If we only evict all pages at a time, we don't need to figure out the src coords. we can just use a clear command to clear the entire page table
-*/
 
-/*
-next_active_coord = (active_coord * 2) + qcoord
-*/
-void InternalEvictTextureAllPagesTraverse
-(TPageQuadNode* _restrict node,EvictList* list,
- u32 depth,u32 max_mip_level,Coord active_coord){
-    
-    if(node->page_value == (u32)-1){
-        return;
-    }
-    
-    
-    Coord n_coord = {(u8)(active_coord.x * 2),(u8)(active_coord.y * 2)};
-    
-    
-    if(node->first){
-        
-        Coord quad_coord = {0,0};
-        
-        n_coord.x += quad_coord.x;
-        n_coord.y += quad_coord.y;
-        
-        InternalEvictTextureAllPagesTraverse(node->first,list,depth + 1,max_mip_level,n_coord);
-    }
-    
-    
-    if(node->second){
-        
-        Coord quad_coord = {0,1};
-        
-        n_coord.x += quad_coord.x;
-        n_coord.y += quad_coord.y;
-        
-        InternalEvictTextureAllPagesTraverse(node->second,list,depth + 1,max_mip_level,n_coord);
-    }
-    
-    
-    if(node->third){
-        
-        Coord quad_coord = {1,0};
-        
-        n_coord.x += quad_coord.x;
-        n_coord.y += quad_coord.y;
-        
-        InternalEvictTextureAllPagesTraverse(node->third,list,depth + 1,max_mip_level,n_coord);
-    }
-    
-    
-    if(node->fourth){
-        
-        Coord quad_coord = {1,1};
-        
-        n_coord.x += quad_coord.x;
-        n_coord.y += quad_coord.y;
-        
-        InternalEvictTextureAllPagesTraverse(node->fourth,list,depth + 1,max_mip_level,n_coord);
-    }
-    
-    
-    //this make sure we don't evict the lowest mip
-    if(depth){
-        
-        struct PixFormat{
-            u8 x;
-            u8 y;
-            u8 lock;
-            u8 pad;
-        };
-        
-        auto f = (PixFormat*)&node->page_value;
-        
-        list->array[list->count].x = active_coord.x;
-        list->array[list->count].y = active_coord.y;
-        list->array[list->count].mip = max_mip_level - depth;
-        list->array[list->count].page_value = InternalPhysCoordToPage(f->x,f->y);
-        
-        list->count++;
-        
-    }
-    
-}
-
-
-void TestEvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
+//MARK: maybe we shouldn't have a list and just directly write to the global freepages_array and return the number of pages freed
+void _ainline InternalEvictAllTexturePages(TextureAssetHandle* _restrict handle,FreepageList* list){
     
     auto node_count = InternalGetTotalNodes(handle->max_miplevel +
                                             1) - 1;
@@ -170,47 +85,37 @@ void TestEvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* li
             auto page_value = node->page_value;
             node->page_value = (u32)-1;
             
-            EvictCoord coord = {};
-            
-            //we should be able to figure out the qcoord from the index
-            
-            /*
-            do the page values have to match up with the coord?
-*/
+            list->array[list->count] = page_value;
+            list->count++;
             
         }
         
     }
+    
+    //returns a FreepageList to the global freepage_array
+    auto ReturnFreePages = [](FreepageList* list) -> void {
+        
+        for(u32 i = 0; i < list->count; i++){
+            
+            vt_freepages_array[vt_freepages_count] 
+                = InternalPhysCoordToPage(list->format_array[i].x,list->format_array[i].y);
+            vt_freepages_count++;
+        }
+        
+    };
+    
+    ReturnFreePages(list);
+    
+    //TODO: we need to have a push evict or something here
+    
 }
 
 
-//TODO: test this
-void EvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
-    
-    auto node = &handle->pagetree;
-    auto max_mip_level = handle->max_miplevel;
-    
-    /*
-    All trees are gauranteed to be contiguous, we could just iterate the whole thing if we need to do this
-*/
-    
-    InternalEvictTextureAllPagesTraverse
-        (node,list,0,max_mip_level,{});
-}
-
-//TODO: I don't think we use evictlist in the actual write yet
 void TestEvictTextureAsset(TextureAssetHandle* _restrict handle){
     
-    EvictList list = {};
+    FreepageList list = {};
     
-    EvictAllTexturePages(handle,&list);
-    
-    for(u32 i = 0; i < list.count; i++){
-        
-        auto coord = &list.array[i];
-        
-        printf("x %d y %d mip %d page %d\n",coord->x,coord->y,coord->mip,coord->page_value);
-    }
+    InternalEvictAllTexturePages(handle,&list);
     
     exit(0);
     
@@ -218,17 +123,14 @@ void TestEvictTextureAsset(TextureAssetHandle* _restrict handle){
 
 //PAGE MANAGEMENT  (MAY CONTAIN EVICT)
 
-void InternalGetPageCoord(u8* x,u8* y,EvictList* list){
+void InternalGetPageCoord(u8* x,u8* y,FreepageList* list){
     
     
     //MARK: lambda becasue I don't want this to be called anywhere
     //IDK if this is the best use of it
-    auto GetAvailablePage = [](EvictList* list) -> u32 {
+    auto GetAvailablePage = [](FreepageList* list) -> u32 {
         
         /*
-TODO:
-We can't just do this. An texture can be the LRU but also has 0 pages to give us
-
 MARK: I think we depend on this not moving
 */
         if(!vt_freepages_count){
@@ -254,9 +156,10 @@ MARK: I think we depend on this not moving
                 
                 if(global_timestamp != t->timestamp){
                     //evict texture
-                    EvictAllTexturePages(t,list);
+                    InternalEvictAllTexturePages(t,list);
                 }
                 
+                //MARK: maybe we should evict more than one texture?
                 if(list->count){
                     break;
                 }
@@ -290,7 +193,7 @@ MARK: I think we depend on this not moving
    a higher mip can generate coords for a lower mip,but not the other way around
 */
 void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
-                             TCoord dst_coord,FetchList* list,EvictList* evict_list){
+                             TCoord dst_coord,FetchList* list,FreepageList* freepage_list){
     
     if(node->page_value == (u32)-1){
         
@@ -308,7 +211,7 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         printf("incoord %d %d %d\n",src_coord.mip,src_coord.x,src_coord.y);
 #endif
         
-        InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,evict_list);
+        InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,freepage_list);
         list->count++;
         node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,0,255);
     }
@@ -361,13 +264,13 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
     
     
     if(nextnode){
-        InternalTraverseMipTree(nextnode,src_coord,next_dst_coord,list,evict_list);
+        InternalTraverseMipTree(nextnode,src_coord,next_dst_coord,list,freepage_list);
     }
     
 }
 
 void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
-                                     FetchList* list,EvictList* evict_list){
+                                     FetchList* list,FreepageList* freepage_list){
     
     TCoord src = {};
     
@@ -379,14 +282,14 @@ void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
     
     auto node = &asset->pagetree;
     
-    InternalTraverseMipTree(node,src,dst,list,evict_list);
+    InternalTraverseMipTree(node,src,dst,list,freepage_list);
 }
 
 
 
 //MARK: start here (Get vt fetch working again and work on vt evict next)
 u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coords,
-                        u32 count,FetchList* list,EvictList* evict_list){
+                        u32 count,FetchList* list,FreepageList* freepage_list){
     
     
     TIMEBLOCK(Purple);
@@ -395,7 +298,7 @@ u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coo
         
         auto a = &src_coords[i];
         
-        InternalGenerateDependentCoords(asset,a->mip,a->x,a->y,list,evict_list);
+        InternalGenerateDependentCoords(asset,a->mip,a->x,a->y,list,freepage_list);
     }
     
     return list->count;
@@ -541,6 +444,10 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
 }
 
 
+void PushThreadTextureEvictQueue(TextureAssetHandle* asset,TSemaphore sem){
+    //TODO:
+}
+
 void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
                                  TextureAssetHandle* asset,FetchList* list,TSemaphore sem){
     
@@ -575,7 +482,7 @@ void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
 
 
 //TODO: have a threaded eviction too
-void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue){
+void ThreadExecuteTextureFetchQueue(ThreadTextureFetchQueue* queue){
     
     if(queue->index == queue->count){
         return;
@@ -646,6 +553,15 @@ void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue){
     
     queue->is_done = true;
     
+}
+
+void ThreadExecuteTextureEvictQueue(){
+    //TODO: actual perform the clear
+}
+
+void ThreadExecuteVTSystem(ThreadTextureFetchQueue* queue){
+    ThreadExecuteTextureEvictQueue();
+    ThreadExecuteTextureFetchQueue(queue);
 }
 
 //we do not do temp page allocations anymore
@@ -862,15 +778,15 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
             
             auto entry = &entry_array[i];
             FetchList list = {};
-            EvictList evict_list = {};
+            FreepageList freepage_list = {};
             
             GenTextureFetchList(entry->asset,&threadtexturefetch_array[entry->offset],entry->count,
-                                &list,&evict_list);
+                                &list,&freepage_list);
             
             
             if(list.count){
                 
-                //TODO: use the evict_list
+                //TODO: clear evicted textures too
                 PushThreadTextureFetchQueue(fetchqueue,entry->asset,&list,sem);	
             }
             

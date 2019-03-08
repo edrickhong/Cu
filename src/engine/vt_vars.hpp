@@ -41,14 +41,19 @@ struct VTReadbackImageContext : VImageContext{
     u16 h;
 };
 
-
-//TODO: remove this. we actually don't need to be this granular
-struct EvictCoord : TCoord{
-    u16 page_value;
-};
-
-struct EvictList{
-    EvictCoord array[_fetch_list_count];
+struct FreepageList{
+    
+    struct PixelPageFormat{
+        u8 x;
+        u8 y;
+        u8 validflag;
+        u8 pad;
+    };
+    
+    union{
+        u32 array[_fetch_list_count];
+        PixelPageFormat format_array[_fetch_list_count];
+    };
     u32 count;
 };
 

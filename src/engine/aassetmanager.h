@@ -146,19 +146,11 @@ struct TPageQuadNode{
     TPageQuadNode* third;
     TPageQuadNode* fourth;
     
-    union{
-        
-        struct{
-            u16 page_x;
-            u16 page_y;  
-        };
-        
-        // MARK:-1 means page is not in memory.
-        // -2 means this level of the tree is not used. Do we want to use this or a completely different system
-        //for textures with no mips?
-        u32 page_value;
-    };
+    // NOTE:-1 means page is not in memory.
+    // -2 means this level of the tree is not used. Do we want to use this or a completely different system
+    //for textures with no mips?
     
+    u32 page_value;
 };
 
 
@@ -295,7 +287,7 @@ logic _ainline IsThreadTextureFetchQueueDone(ThreadTextureFetchQueue* queue){
 
 
 //NOTE: it is expected that only one thread will enter at a time
-void ExecuteThreadTextureFetchQueue(ThreadTextureFetchQueue* queue);
+void ThreadExecuteVTSystem(ThreadTextureFetchQueue* queue);
 
 
 void BuildFetchCommandBuffer(VDeviceContext* _restrict vdevice,
