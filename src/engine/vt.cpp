@@ -67,7 +67,9 @@ Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
 
 //EVICTING PAGES
 
-//TODO:Add a evicttexturepage()
+/*
+NOTE: If we only evict all pages at a time, we don't need to figure out the src coords. we can just use a clear command to clear the entire page table
+*/
 
 /*
 next_active_coord = (active_coord * 2) + qcoord
@@ -152,7 +154,7 @@ void InternalEvictTextureAllPagesTraverse
 }
 
 
-void TEvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
+void TestEvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictList* list){
     
     auto node_count = InternalGetTotalNodes(handle->max_miplevel +
                                             1) - 1;
@@ -223,7 +225,12 @@ void InternalGetPageCoord(u8* x,u8* y,EvictList* list){
     //IDK if this is the best use of it
     auto GetAvailablePage = [](EvictList* list) -> u32 {
         
-        //MARK: I think we depend on this not moving
+        /*
+TODO:
+We can't just do this. An texture can be the LRU but also has 0 pages to give us
+
+MARK: I think we depend on this not moving
+*/
         if(!vt_freepages_count){
             
             TextureAssetHandle handle_array[_texturehandle_max] = {};

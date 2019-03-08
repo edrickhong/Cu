@@ -41,6 +41,8 @@ struct VTReadbackImageContext : VImageContext{
     u16 h;
 };
 
+
+//TODO: remove this. we actually don't need to be this granular
 struct EvictCoord : TCoord{
     u16 page_value;
 };
