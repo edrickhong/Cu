@@ -154,3 +154,5 @@ void WSetIcon(WWindowContext* windowcontext,void* icondata,u32 width,u32 height)
 
 void WSetTitle(WWindowContext* windowcontext,const s8* title_string);
 
+//TODO: implement this
+void WCreateBackBuffer();

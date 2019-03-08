@@ -270,9 +270,13 @@ void WaylandKeyboardModifiers(void* data,wl_keyboard* keyboard,u32 serial,u32 mo
 void WaylandPointerEnter(void* data,wl_pointer* pointer,u32 serial, wl_surface* surface,
                          wl_fixed_t sx, wl_fixed_t sy){
     
+    //NOTE: the serial needs to be stored to perform drag operations
+    
 }
 
-void WaylandPointerLeave(void* data,wl_pointer* pointer,u32 serial,wl_surface* surface){}
+void WaylandPointerLeave(void* data,wl_pointer* pointer,u32 serial,wl_surface* surface){
+    //NOTE: the serial needs to be stored to perform drag operations
+}
 
 void WaylandPointerMotion(void* data,wl_pointer* pointer,u32 time, wl_fixed_t sx, wl_fixed_t sy){
     
@@ -288,6 +292,9 @@ void WaylandPointerMotion(void* data,wl_pointer* pointer,u32 time, wl_fixed_t sx
 }
 
 void WaylandPointerButton(void* data,wl_pointer* pointer,u32 serial,u32 time,u32 button,u32 state){
+    
+    
+    //NOTE: the serial needs to be stored to perform drag operations
     
     _kill("too many events\n",wayland_event_count > _arraycount(wayland_event_array));
     
@@ -493,7 +500,6 @@ void InternalLoadXkbSymbols(){
         LGetLibFunction(xkb_lib,"xkb_state_key_get_utf8");
 }
 
-
 logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
                                   WCreateFlags flags,u32 x,u32 y,u32 width,u32 height){
     
@@ -575,6 +581,16 @@ logic InternalCreateWaylandWindow(WWindowContext* context,const s8* title,
     wl_shell_surface_set_title((wl_shell_surface*)context->wayland_shell_surface,title);
     
     wl_shell_surface_set_class((wl_shell_surface*)context->wayland_shell_surface,title);
+    
+    /*
+    TODO:
+provide our own window decorations on wayland
+render the title bar on top of the app as a separate app
+
+set the window position - wayland does not allow setting the window relative to the screen space, only to other existing windows (seems like it is for layout purposes). said function is  wl_shell_surface_set_transient. we can use this to implement window decorations
+
+wl_shell_surface_move allows dragging windows
+*/
     
     
     impl_wkeycodetoascii = WKeyCodeToASCIIWayland;
