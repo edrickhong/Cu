@@ -173,7 +173,7 @@ void BuildGraph(logic to_draw){
 
 void RecordThread(){
     
-    SpinLock(&context->locker);
+    TSpinLock(&context->locker);
     
     auto threadid_ptr = &context->debugtable.threadid_array[context->debugtable.thread_count];
     
@@ -184,7 +184,7 @@ void RecordThread(){
     printf("Tracking thread index: %d : %lu\n",context->debugtable.thread_count - 1,
            *threadid_ptr);
     
-    SpinUnlock(&context->locker);
+    TSpinUnlock(&context->locker);
     
 }
 

@@ -4,7 +4,9 @@
 
 typedef void(*WorkProc)(void*,void*); // function args, threadcontext
 
+
 typedef volatile u32 SpinMutex;
+typedef SpinMutex EntryMutex;
 
 struct ThreadWorkEntry{
     WorkProc workcall;
@@ -42,7 +44,7 @@ void inline MainThreadDoWorkQueue(ThreadWorkQueue* queue,void* thread_data){
 
 
 
-void _ainline SpinLock(SpinMutex* mutex){
+void _ainline TSpinLock(SpinMutex* mutex){
     
     TIMEBLOCK(LimeGreen);
     
@@ -64,8 +66,15 @@ void _ainline SpinLock(SpinMutex* mutex){
     *mutex = 1;
 }
 
-void _ainline SpinUnlock(SpinMutex* mutex){
-    *mutex = 0;
+void _ainline TSpinUnlock(SpinMutex* mutex){
+    (*mutex) = 0;
+}
+
+//NOTE: only allows a single thread to enter at a time to run a proc
+void TSingleEntryLock(EntryMutex* mutex,WorkProc proc,void* args,void* threadcontext);
+
+void _ainline TSingleEntryUnlock(EntryMutex* mutex){
+    (*mutex) = 0;
 }
 
 

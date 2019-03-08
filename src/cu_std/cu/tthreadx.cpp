@@ -88,3 +88,20 @@ u32 TGetEntryIndex(volatile u32* cur_index,u32 max_count){
     
     return actual_count;
 }
+
+void TSingleEntryLock(EntryMutex* mutex,WorkProc proc,void* args,void* threadcontext){
+    
+    if((*mutex)){
+        return;
+    }
+    
+    auto is_locked = (*mutex);
+    
+    u32 actual_islocked = LockedCmpXchg(mutex,is_locked,is_locked + 1);
+    
+    if((is_locked != actual_islocked) || is_locked){
+        return;
+    }
+    
+    proc(args,threadcontext);
+}

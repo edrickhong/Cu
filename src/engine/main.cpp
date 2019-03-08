@@ -58,7 +58,7 @@ s32 main(s32 argc,s8** argv){
         {
             
             pdata->objupdate_count = 0;
-            gui_draw_is_locked = 0;
+            TSingleEntryUnlock(&gui_draw_is_locked);
             
             Clear(&pdata->rendercontext);
             ClearLightList();

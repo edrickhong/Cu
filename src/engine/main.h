@@ -746,27 +746,23 @@ void _ainline PushUpdateEntry(u32 id,u32 offset,u32 data_size,void* data){
 
 _persist u32 gui_draw_is_locked = 0;
 
-void GameDrawGUI(RenderContext* context,ThreadRenderData* render,u32 group_index){
+struct GUIDrawArgs{
+    RenderContext* context;
+    ThreadRenderData* render;
+    u32 group_index;
+};
+
+void GUISingleEntryProc(void* in_args,void*){
     
-    if(gui_draw_is_locked){
-        return;
-    }
-    
-    auto islocked = gui_draw_is_locked;
-    
-    u32 actual_islocked = LockedCmpXchg(&gui_draw_is_locked,islocked,islocked + 1);
-    
-    if(islocked != actual_islocked){
-        return;
-    }
+    auto args = (GUIDrawArgs*)in_args;
     
     auto cmdbuffer =
-        render->cmdbuffer[_arraycount(context->rendergroup) * context->swap_index +
-            group_index];
+        args->render->cmdbuffer[_arraycount(args->context->rendergroup) * args->context->swap_index +
+            args->group_index];
     
     VStartCommandBuffer(cmdbuffer,
                         VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-                        context->renderpass,context->subpass_index,context->framebuffer,VK_FALSE,0,0);
+                        args->context->renderpass,args->context->subpass_index,args->context->framebuffer,VK_FALSE,0,0);
     
     GUIDraw(cmdbuffer);
     
@@ -774,7 +770,7 @@ void GameDrawGUI(RenderContext* context,ThreadRenderData* render,u32 group_index
     
     {
         TIMEBLOCKTAGGED("VThreadEndRender::Submit",Turquoise);
-        VPushThreadCommandbufferList(&context->rendergroup[group_index].cmdbufferlist,
+        VPushThreadCommandbufferList(&args->context->rendergroup[args->group_index].cmdbufferlist,
                                      cmdbuffer);
     }
 }
@@ -932,7 +928,12 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
 #if _enable_gui
     
-    GameDrawGUI(context,&pdata->drawcmdbuffer,2);
+    {
+        GUIDrawArgs args = {context,&pdata->drawcmdbuffer,2};
+        
+        //MARK: this doesn't need to be single entry tbh
+        TSingleEntryLock(&gui_draw_is_locked,GUISingleEntryProc,(void*)&args,0);
+    }
     
 #endif
     
@@ -1089,33 +1090,14 @@ u32 _ainline GenRenderKey(u64 val1){
     return (u32)t;
 }
 
-void ThreadSingleEntryProc(Threadinfo info){
+_persist EntryMutex texturethread_lock = 0;
+
+void TextureSingleEntryProc(void* args,void*){
     
-    _persist volatile  _cachealign u32 single_entry_lock = 0;
+    auto info = (Threadinfo*)args;
+    ThreadExecuteVTSystem(info->fetchqueue);
     
-    if(single_entry_lock){
-        return;
-    }
-    
-    auto is_locked = single_entry_lock;
-    
-    u32 actual_islocked = LockedCmpXchg(&single_entry_lock,is_locked,is_locked + 1);
-    
-    if((is_locked != actual_islocked) || is_locked){
-        return;
-    }
-    
-    //TODO: do all asset transfers here too
-    
-    
-    ExecuteThreadTextureFetchQueue(info.fetchqueue);
-    
-    
-    //TODO: only do this once the device is not busy
-    //(need a way to ask if last batch was done)
-    //ResetAsyncTransferBuffer();
-    
-    single_entry_lock = 0;
+    TSingleEntryUnlock(&texturethread_lock);
 }
 
 s64 ThreadProc(void* args){
@@ -1138,7 +1120,8 @@ s64 ThreadProc(void* args){
         
         ExecuteRenderBatch(info.rendercontext,&drawbuffers);
         
-        ThreadSingleEntryProc(info);
+        TSingleEntryLock(&texturethread_lock,
+                         TextureSingleEntryProc,(void*)&info,0);
         
     }
     
