@@ -2331,3 +2331,260 @@ void InitAllSystems(){
         
     }
 }
+
+
+
+
+
+
+/// bench stuff
+
+#ifdef _WIN32
+
+void _ainline ByteCopy(void* _restrict d,void* _restrict s,u32 len){
+    
+    s8* dst = (s8*)d;
+    s8* src = (s8*)s;
+    
+    for(;len != 0; len--){
+        *dst = *src;
+        dst++;
+        src++;
+    }
+    
+}
+
+void _ainline WordCopy(void* _restrict d,void* _restrict s,u32 len){
+    
+    s16* dst = (s16*)d;
+    s16* src = (s16*)s;
+    
+    for(;len != 0; len--){
+        *dst = *src;
+        dst++;
+        src++;
+    }
+    
+}
+
+void _ainline DwordCopy(void* _restrict d,void* _restrict s,u32 len){
+    
+    s32* dst = (s32*)d;
+    s32* src = (s32*)s;
+    
+    for(;len != 0; len--){
+        *dst = *src;
+        dst++;
+        src++;
+    }
+    
+}
+
+#else
+
+#define ByteCopy(ds,sc,ln) __asm__ volatile( \
+"movl %[len],%%ebx\n" \
+"mov %%ebx,%%ecx\n" \
+"mov %[src],%%rsi\n" \
+"mov %[dst],%%rdi\n" \
+"cld\n" \
+"rep movsb\n" : [dst] "=g"  (ds): [src] "g" (sc),[len] "g" (ln) \
+)
+
+#define WordCopy(ds,sc,ln) __asm__ volatile( \
+"movl %[len],%%ebx\n" \
+"mov %%ebx,%%ecx\n" \
+"mov %[src],%%rsi\n" \
+"mov %[dst],%%rdi\n" \
+"cld\n" \
+"rep movsw\n" : [dst] "=g"  (ds): [src] "g" (sc),[len] "g" (ln) \
+)
+
+#define DwordCopy(ds,sc,ln) __asm__ volatile( \
+"movl %[len],%%ebx\n" \
+"mov %%ebx,%%ecx\n" \
+"mov %[src],%%rsi\n" \
+"mov %[dst],%%rdi\n" \
+"cld\n" \
+"rep movsd\n" : [dst] "=g"  (ds): [src] "g" (sc),[len] "g" (ln) \
+)
+
+#endif
+
+//our version of memcpy
+
+#define _testing_cpy 0
+
+//total 32 - 33 ms
+void _ainline TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
+    
+#define _use_avx 0
+    
+#if _use_avx
+    
+#define loadps _mm256_loadu_ps
+#define storeps _mm256_storeu_ps
+#define bound_size 32
+    
+#else
+    
+#define loadps _loadusimd4f
+#define storeps _storeusimd4f
+#define bound_size 16
+    
+#endif
+    
+    
+    
+    for(; len < bound_size; len -= bound_size){
+        
+        auto a = loadps((f32*)src);
+        storeps((f32*)dst,a);
+        
+        dst += bound_size;
+        src += bound_size;
+    }
+    
+    ByteCopy(dst,src,len);
+    
+}
+
+void Bench(){
+    
+#define _use_aligned_string 1
+#define _iteration_count 1000000
+    
+#if 0
+    {
+        
+        auto string = "hello world";
+        u32 len = 0;
+        
+        TimeSpec g_start,g_end;
+        TimeSpec m_start,m_end;
+        
+        GetTime(&g_start);
+        
+        for(u32 i = 0; i < _iteration_count; i++){
+            len = strlen(string);
+        }
+        
+        GetTime(&g_end);
+        
+        GetTime(&m_start);
+        
+        //asm stringlen
+        for(u32 i = 0; i < _iteration_count; i++){
+            
+            __asm__ volatile (
+            
+                "mov %[string],%%rdi\n"
+                
+                "xor %%rcx,%%rcx\n"
+                "xor %%al,%%al\n"
+                
+                "not %%rcx\n"
+                
+                "cld\n"
+                
+                "repne scasb\n"
+                
+                "not %%rcx\n"
+                "dec %%rcx\n"
+                "mov %%rcx,%[len]": : [string] "g" (string), [len] "g" (len)
+                );
+        }
+        
+        GetTime(&m_end);
+        
+        printf("strlen time :%f\n",GetTimeDifferenceMS(g_start,g_end));
+        
+        printf("asm :%f\n",GetTimeDifferenceMS(m_start,m_end));
+        
+        exit(0);
+    }
+    
+#endif
+    
+#if _use_aligned_string
+    
+    s8 string[1024 * 2] =
+    
+#else
+    
+        const s8* string = 
+    
+#endif
+    
+        R"FOO(
+Houses and rooms are full of perfumes, the shelves are crowded with perfumes,
+I breathe the fragrance myself and know it and like it,
+The distillation would intoxicate me also, but I shall not let it.
+
+The atmosphere is not a perfume, it has no taste of the distillation, it is odorless,
+It is for my mouth forever, I am in love with it,
+I will go to the bank by the wood and become undisguised and naked,
+I am mad for it to be in contact with me.
+
+The smoke of my own breath,
+Echoes, ripples, buzz’d whispers, love-root, silk-thread, crotch and vine,
+My respiration and inspiration, the beating of my heart, the passing of blood and air through my lungs,
+The sniff of green leaves and dry leaves, and of the shore and dark-color’d sea-rocks, and of hay in the barn,
+The sound of the belch’d words of my voice loos’d to the eddies of the wind,
+A few light kisses, a few embraces, a reaching around of arms,
+The play of shine and shade on the trees as the supple boughs wag,
+The delight alone or in the rush of the streets, or along the fields and hill-sides,
+The feeling of health, the full-noon trill, the song of me rising from bed and meeting the sun.
+
+Have you reckon’d a thousand acres much? have you reckon’d the earth much?
+Have you practis’d so long to learn to read?
+Have you felt so proud to get at the meaning of poems?
+
+Stop this day and night with me and you shall possess the origin of all poems,
+You shall possess the good of the earth and sun, (there are millions of suns left,)
+You shall no longer take things at second or third hand, nor look through the eyes of the dead, nor feed on the spectres in books,
+You shall not look through my eyes either, nor take things from me,
+You shall listen to all sides and filter them from your self.
+)FOO";
+    
+    s8 a[256] = {};
+    
+#if _testing_cpy
+    TestMemcpy(&a[0],(s8*)string,strlen(string));
+    printf(a);
+    exit(0);
+#endif
+    
+    TimeSpec mem_start,mem_end;
+    TimeSpec test_start,test_end;
+    
+    GetTime(&mem_start);
+    
+    for(u32 i = 0; i < _iteration_count; i++){
+        memcpy((void*)&a[0],string,strlen(string));
+    }
+    
+    GetTime(&mem_end);
+    
+    
+    GetTime(&test_start);
+    
+    for(u32 i = 0; i < _iteration_count; i++){
+        TestMemcpy(&a[0],(s8*)string,strlen(string));
+    }
+    
+    GetTime(&test_end);
+    
+    auto memcpy_total = GetTimeDifferenceMS(mem_start,mem_end);
+    auto test_total = GetTimeDifferenceMS(test_start,test_end);
+    
+    printf("memcpy time :%f\n",memcpy_total);
+    
+    printf("Test time :%f\n",test_total);
+    
+    printf("ratio %f\n",test_total/memcpy_total);
+    
+    exit(0);
+    
+}
+
