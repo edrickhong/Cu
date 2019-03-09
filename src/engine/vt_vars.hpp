@@ -3,7 +3,6 @@
 //Virtual Texture table
 
 #define _tpage_side 128
-#define _texturehandle_max 16
 
 _persist u32 phys_w = 0;
 _persist u32 phys_h = 0;

@@ -16,6 +16,7 @@
 
 //MARK:the largest possible fetch size is actually the screen size
 #define _FetchqueueSize 2048
+#define _texturehandle_max 16
 
 //160
 #define _fixed_audio (u32)(_48ms2frames(640)  * 4) //FIXME: For some reason 640ms  will not work
@@ -251,6 +252,8 @@ void InternalDefrag();
 
 struct ThreadTextureFetchQueue{
     ThreadFetchBatch* buffer = 0;
+    TextureAssetHandle* evict_array[_texturehandle_max];
+    u32 evict_count = 0;
     u16 count = 0;
     u16 index = 0;
     u16 is_done = true;

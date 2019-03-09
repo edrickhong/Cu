@@ -107,6 +107,7 @@ void _ainline InternalEvictAllTexturePages(TextureAssetHandle* _restrict handle,
     ReturnFreePages(list);
     
     //TODO: we need to have a push evict or something here
+    //PushThreadTextureEvictQueue(ThreadTextureFetchQueue* queue,handle,TSemaphore sem);
     
 }
 
@@ -311,7 +312,7 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
     //MARK:printf
     printf("async alloc %d\n",(u32)async_transferbuffer.offset);
     
-    
+    //MARK: do we ever get an empty batch??
     if(batch->fetchlist.count){
         
         _kill("over possible fetch tiles array\n",batch->fetchlist.count >= 21845);
@@ -444,8 +445,13 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
 }
 
 
-void PushThreadTextureEvictQueue(TextureAssetHandle* asset,TSemaphore sem){
-    //TODO:
+void PushThreadTextureEvictQueue(ThreadTextureFetchQueue* queue,TextureAssetHandle* asset,TSemaphore sem){
+    _kill("too many entries\n",queue->evict_count >= _arraycount(queue->evict_array));
+    
+    queue->evict_array[queue->evict_count] = asset;
+    queue->evict_count++;
+    
+    TSignalSemaphore(sem);
 }
 
 void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
@@ -480,13 +486,74 @@ void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
     TSignalSemaphore(sem);
 }
 
+void InternalExecuteTextureEvictQueue(ThreadTextureFetchQueue* queue){
+    //TODO: actual perform the clear
+    
+    for(u32 i = 0; i < queue->evict_count; i++){
+        
+        auto t = queue->evict_array[i];
+        
+        VkImageSubresourceRange range = {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            1,
+            t->max_miplevel,
+            0,
+        };
+        
+        VkImageMemoryBarrier transfer_imagebarrier =  {
+            VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            0,
+            0,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_QUEUE_FAMILY_IGNORED,
+            VK_QUEUE_FAMILY_IGNORED,
+            t->pagetable.image,
+            range
+        };
+        
+        VkImageMemoryBarrier shader_imagebarrier = {
+            VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            0,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_ACCESS_SHADER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_QUEUE_FAMILY_IGNORED,
+            VK_QUEUE_FAMILY_IGNORED,
+            t->pagetable.image,
+            range
+        };
+        
+        vkCmdPipelineBarrier(queue->cmdbuffer,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,0,0,0,1,
+                             &transfer_imagebarrier);
+        
+        VkClearColorValue color = {1.0f,1.0f,1.0f,1.0f};
+        
+        vkCmdClearColorImage(queue->cmdbuffer,t->pagetable.image,
+                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&color,1,&range);
+        
+        vkCmdPipelineBarrier(queue->cmdbuffer,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,0,0,0,1,&shader_imagebarrier);
+        
+    }
+    
+}
+
 
 //TODO: have a threaded eviction too
 void ThreadExecuteTextureFetchQueue(ThreadTextureFetchQueue* queue){
     
+    
     if(queue->index == queue->count){
         return;
     }
+    
+    InternalExecuteTextureEvictQueue(queue);
     
     u32 tfetch_count = 0;
     
@@ -548,19 +615,12 @@ void ThreadExecuteTextureFetchQueue(ThreadTextureFetchQueue* queue){
         
     }
     
-    
     queue->fetch_count = tfetch_count;
-    
     queue->is_done = true;
     
 }
 
-void ThreadExecuteTextureEvictQueue(){
-    //TODO: actual perform the clear
-}
-
 void ThreadExecuteVTSystem(ThreadTextureFetchQueue* queue){
-    ThreadExecuteTextureEvictQueue();
     ThreadExecuteTextureFetchQueue(queue);
 }
 
