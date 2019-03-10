@@ -48,6 +48,14 @@ u32 _ainline BSR(u32 r){
     return res;
 }
 
+#define MOVSB(ds,sc,ln) __movsb(ds,sc,ln)
+
+#define MOVSW(ds,sc,ln) __movsw(ds,sc,ln)
+
+#define MOVSD(ds,sc,ln) __movsd(ds,sc,ln)
+
+#define MOVSQ(ds,sc,ln) __movsq(ds,sc,ln)
+
 #else
 
 #define LockedIncrement(value) __sync_add_and_fetch(value,1)
@@ -65,5 +73,37 @@ u32 _ainline BSR(u32 r){
 #define BSR(r)  __builtin_clz (r)
 
 #define BSF(r)  __builtin_ctz (r)
+
+#define MOVSB(ds,sc,ln) __asm__ volatile ( \
+"cld\n"  \
+"rep movsb\n"  \
+:  \
+: [len] "c" (ln), [src] "S" (sc), [dst] "D" (ds) \
+: "memory" \
+);
+
+#define MOVSW(ds,sc,ln) __asm__ volatile ( \
+"cld\n"  \
+"rep movsw\n"  \
+:  \
+: [len] "c" (ln), [src] "S" (sc), [dst] "D" (ds) \
+: "memory" \
+);
+
+#define MOVSD(ds,sc,ln) __asm__ volatile ( \
+"cld\n"  \
+"rep movsl\n"  \
+:  \
+: [len] "c" (ln), [src] "S" (sc), [dst] "D" (ds) \
+: "memory" \
+);
+
+#define MOVSQ(ds,sc,ln) __asm__ volatile ( \
+"cld\n"  \
+"rep movsq\n"  \
+:  \
+: [len] "c" (ln), [src] "S" (sc), [dst] "D" (ds) \
+: "memory" \
+);
 
 #endif

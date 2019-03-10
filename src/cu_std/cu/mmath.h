@@ -61,46 +61,10 @@
 
 #define _clamp(x,lower,upper) (fmin(upper,fmax(x,lower)))
 
-typedef __m128 simd4f;
-typedef __m64 simd2f;
-
-#define _setksimd4f _mm_set1_ps
-
-#define _setsimd4f _mm_setr_ps
-
-#define _setrsimd4f _mm_set_ps
-
-#define _loadsimd4f _mm_load_ps
-
-#define _loadusimd4f _mm_loadu_ps
-
-#define _setrsimd4f _mm_set_ps
-
-#define _addsimd4f _mm_add_ps
-
-#define _subsimd4f _mm_sub_ps
-
-#define _mulsimd4f _mm_mul_ps
-#define _divsimd4f _mm_div_ps
-
-#define _divsimd4f _mm_div_ps
-
-#define _storesimd4f _mm_store_ps
-
-#define _storeusimd4f _mm_storeu_ps
-
-#define _storeksimd4f _mm_store_ps1
-
-#define _loadasymsimd4f _mm_loadh_pi
-
-#define _loadstorehsimd4f _mm_loadl_pi
-
-#define _shufflesimd4f _mm_shuffle_ps
-
 //MARK:Linear Algebra
 
 union Quaternion{
-    simd4f simd;
+    __m128 simd;
     
     struct{
         f32 w,x,y,z;
@@ -118,7 +82,7 @@ struct Vector2{
 
 union Vector4{
     
-    simd4f simd;
+    __m128 simd;
     
     struct{
         f32 x,y,z,w;
@@ -134,10 +98,10 @@ struct Vector4SOA{
     ptrsize count;
     union{
         struct{//refers to 4 floats at a time
-            simd4f* simd_x;
-            simd4f* simd_y;
-            simd4f* simd_z;
-            simd4f* simd_w;  
+            __m128* simd_x;
+            __m128* simd_y;
+            __m128* simd_z;
+            __m128* simd_w;  
         };
         
         struct{//refers to 1 floats at a time
@@ -179,7 +143,7 @@ Vector2 _ainline ToVec2(Vector3 vec){
 
 union Matrix4b4{
     f32 container[16];
-    simd4f simd[4];
+    __m128 simd[4];
     
     f32& operator[](u32 index){
         return container[index];
@@ -192,7 +156,7 @@ union Matrix3b3{
     f32 container[9];
     
     struct {
-        simd4f simd[2];
+        __m128 simd[2];
         f32 k;
     };
     
@@ -207,7 +171,7 @@ union Matrix2b2{
     f32 container[4];
     
     struct {
-        simd4f simd;
+        __m128 simd;
     };
     
     

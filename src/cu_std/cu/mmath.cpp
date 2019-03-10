@@ -1,8 +1,8 @@
-#define _test_matrices 1
+#define _test__matrices 1
 
 #ifdef DEBUG
 
-#if (_test_matrices)
+#if (_test__matrices)
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
 #define GLM_FORCE_RIGHT_HANDED 1
@@ -51,7 +51,7 @@ void InternalCmpMatrix(f32* f1,f32* f2){
     
 }
 
-void _ainline GetMinorMatrix(f32* in_matrix,u32 n,u32 k_x,u32 k_y,f32* out_matrix){
+void _ainline GetMinorMatrix(f32* in__matrix,u32 n,u32 k_x,u32 k_y,f32* out__matrix){
     
     u32 index = 0;
     
@@ -60,7 +60,7 @@ void _ainline GetMinorMatrix(f32* in_matrix,u32 n,u32 k_x,u32 k_y,f32* out_matri
         for(u32 x = 0; x < n; x++){
             
             if(y != k_y && x != k_x){
-                out_matrix[index] = in_matrix[(y * n) + x];
+                out__matrix[index] = in__matrix[(y * n) + x];
                 index++;
             }
             
@@ -75,7 +75,7 @@ Matrix4b4 CompMul(Matrix4b4 a,Matrix4b4 b){
     Matrix4b4 matrix;
     
     for(u32 i = 0; i < 4; i++){
-        matrix.simd[i] = _mulsimd4f(a.simd[i],b.simd[i]);
+        matrix.simd[i] = _mm_mul_ps(a.simd[i],b.simd[i]);
     }
     
     
@@ -86,8 +86,8 @@ Matrix3b3 CompMul(Matrix3b3 a,Matrix3b3 b){
     
     Matrix3b3 matrix;
     
-    matrix.simd[0] = _mulsimd4f(a.simd[0],b.simd[0]);
-    matrix.simd[1] = _mulsimd4f(a.simd[1],b.simd[1]);
+    matrix.simd[0] = _mm_mul_ps(a.simd[0],b.simd[0]);
+    matrix.simd[1] = _mm_mul_ps(a.simd[1],b.simd[1]);
     matrix.k = a.k * b.k;
     
     
@@ -102,7 +102,7 @@ Matrix2b2 operator+(Matrix2b2 lhs,Matrix2b2 rhs){
     
     Matrix2b2 matrix;
     
-    matrix.simd = _addsimd4f(lhs.simd,rhs.simd);
+    matrix.simd = _mm_add_ps(lhs.simd,rhs.simd);
     
     return matrix;
 }
@@ -112,7 +112,7 @@ Matrix2b2 operator-(Matrix2b2 lhs,Matrix2b2 rhs){
     
     Matrix2b2 matrix;
     
-    matrix.simd = _subsimd4f(lhs.simd,rhs.simd);
+    matrix.simd = _mm_sub_ps(lhs.simd,rhs.simd);
     
     return matrix;
     
@@ -123,9 +123,9 @@ Matrix2b2 operator-(Matrix2b2 lhs,Matrix2b2 rhs){
 Matrix2b2 operator*(f32 lhs,Matrix2b2 rhs){
     
     Matrix2b2 matrix;
-    simd4f k = _setksimd4f(lhs);
+    __m128 k = _mm_set1_ps(lhs);
     
-    matrix.simd = _mulsimd4f(rhs.simd,k);
+    matrix.simd = _mm_mul_ps(rhs.simd,k);
     
     return matrix;
 }
@@ -137,7 +137,7 @@ Matrix2b2 operator*(Matrix2b2 lhs,f32 rhs){
 
 Matrix2b2 Transpose(Matrix2b2 matrix){
     
-    matrix.simd = _shufflesimd4f(matrix.simd,matrix.simd,_MM_SHUFFLE(3,1,2,0));
+    matrix.simd = _mm_shuffle_ps(matrix.simd,matrix.simd,_MM_SHUFFLE(3,1,2,0));
     
     return matrix;
 }
@@ -156,23 +156,23 @@ Matrix2b2 operator*(Matrix2b2 lhs,Matrix2b2 rhs){
     
 #endif
     
-    simd4f a = _mulsimd4f(lhs.simd,rhs.simd);
+    __m128 a = _mm_mul_ps(lhs.simd,rhs.simd);
     
-    rhs.simd = _shufflesimd4f(rhs.simd,rhs.simd,_MM_SHUFFLE(1,0,3,2));
+    rhs.simd = _mm_shuffle_ps(rhs.simd,rhs.simd,_MM_SHUFFLE(1,0,3,2));
     
-    simd4f b = _mulsimd4f(lhs.simd,rhs.simd);
-    
-    
+    __m128 b = _mm_mul_ps(lhs.simd,rhs.simd);
     
     
-    simd4f c = _shufflesimd4f(a,b,_MM_SHUFFLE(1,3,3,0));
-    c = _shufflesimd4f(c,c,_MM_SHUFFLE(1,2,3,0));
     
     
-    simd4f d = _shufflesimd4f(a,b,_MM_SHUFFLE(0,2,2,1));
-    d = _shufflesimd4f(d,d,_MM_SHUFFLE(1,2,3,0));
+    __m128 c = _mm_shuffle_ps(a,b,_MM_SHUFFLE(1,3,3,0));
+    c = _mm_shuffle_ps(c,c,_MM_SHUFFLE(1,2,3,0));
     
-    matrix.simd = _addsimd4f(c,d);
+    
+    __m128 d = _mm_shuffle_ps(a,b,_MM_SHUFFLE(0,2,2,1));
+    d = _mm_shuffle_ps(d,d,_MM_SHUFFLE(1,2,3,0));
+    
+    matrix.simd = _mm_add_ps(c,d);
     
     return matrix;
 }
@@ -204,8 +204,8 @@ Matrix2b2 operator/(Matrix2b2 lhs,Matrix2b2 rhs){
 
 Matrix3b3 operator+(Matrix3b3 lhs,Matrix3b3 rhs){
     
-    lhs.simd[0] = _addsimd4f(lhs.simd[0],rhs.simd[0]);
-    lhs.simd[1] = _addsimd4f(lhs.simd[1],rhs.simd[1]);
+    lhs.simd[0] = _mm_add_ps(lhs.simd[0],rhs.simd[0]);
+    lhs.simd[1] = _mm_add_ps(lhs.simd[1],rhs.simd[1]);
     lhs.k = lhs.k + rhs.k;
     
     return lhs;
@@ -213,8 +213,8 @@ Matrix3b3 operator+(Matrix3b3 lhs,Matrix3b3 rhs){
 
 Matrix3b3 operator-(Matrix3b3 lhs,Matrix3b3 rhs){
     
-    lhs.simd[0] = _subsimd4f(lhs.simd[0],rhs.simd[0]);
-    lhs.simd[1] = _subsimd4f(lhs.simd[1],rhs.simd[1]);
+    lhs.simd[0] = _mm_sub_ps(lhs.simd[0],rhs.simd[0]);
+    lhs.simd[1] = _mm_sub_ps(lhs.simd[1],rhs.simd[1]);
     lhs.k = lhs.k - rhs.k;
     
     return lhs;
@@ -223,10 +223,10 @@ Matrix3b3 operator-(Matrix3b3 lhs,Matrix3b3 rhs){
 
 Matrix3b3 operator*(f32 lhs,Matrix3b3 rhs){
     
-    simd4f k = _setksimd4f(lhs);
+    __m128 k = _mm_set1_ps(lhs);
     
-    rhs.simd[0]= _mulsimd4f(rhs.simd[0],k);
-    rhs.simd[1]= _mulsimd4f(rhs.simd[1],k);
+    rhs.simd[0]= _mm_mul_ps(rhs.simd[0],k);
+    rhs.simd[1]= _mm_mul_ps(rhs.simd[1],k);
     rhs.k = rhs.k * lhs;
     
     return rhs;
@@ -241,11 +241,11 @@ Matrix3b3 Transpose(Matrix3b3 matrix){
     auto a = matrix.simd[0];
     auto b = matrix.simd[1];
     
-    auto c = _shufflesimd4f(a,b,_MM_SHUFFLE(3,0,3,0));
-    auto d = _shufflesimd4f(a,b,_MM_SHUFFLE(2,1,2,1));
+    auto c = _mm_shuffle_ps(a,b,_MM_SHUFFLE(3,0,3,0));
+    auto d = _mm_shuffle_ps(a,b,_MM_SHUFFLE(2,1,2,1));
     
-    matrix.simd[0] = _shufflesimd4f(c,d,_MM_SHUFFLE(0,3,1,0));
-    matrix.simd[1] = _shufflesimd4f(c,d,_MM_SHUFFLE(2,1,3,2));
+    matrix.simd[0] = _mm_shuffle_ps(c,d,_MM_SHUFFLE(0,3,1,0));
+    matrix.simd[1] = _mm_shuffle_ps(c,d,_MM_SHUFFLE(2,1,3,2));
     
     return matrix;
 }
@@ -265,39 +265,39 @@ Matrix3b3 operator*(Matrix3b3 lhs,Matrix3b3 rhs){
     
 #endif
     
-    simd4f a = rhs.simd[0];
+    __m128 a = rhs.simd[0];
     
-    simd4f b = _shufflesimd4f(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(2,1,0,3));
+    __m128 b = _mm_shuffle_ps(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(2,1,0,3));
     ((f32*)&b)[0] = ((f32*)&a)[3];
     
     
-    simd4f c = _shufflesimd4f(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(0,0,3,2));
+    __m128 c = _mm_shuffle_ps(rhs.simd[1],rhs.simd[1],_MM_SHUFFLE(0,0,3,2));
     ((f32*)&c)[2] = rhs.k;
     ((f32*)&c)[3] = ((f32*)&a)[0];
     
-    simd4f d = _shufflesimd4f(rhs.simd[0],rhs.simd[0],_MM_SHUFFLE(0,3,2,1));
+    __m128 d = _mm_shuffle_ps(rhs.simd[0],rhs.simd[0],_MM_SHUFFLE(0,3,2,1));
     ((f32*)&d)[3] = ((f32*)&rhs.simd[1])[0];
     
-    simd4f e = rhs.simd[1];
+    __m128 e = rhs.simd[1];
     
-    simd4f f = _shufflesimd4f(rhs.simd[1],rhs.simd[0],_MM_SHUFFLE(1,0,0,3));
+    __m128 f = _mm_shuffle_ps(rhs.simd[1],rhs.simd[0],_MM_SHUFFLE(1,0,0,3));
     ((f32*)&f)[1] = rhs.k;
     
-    simd4f g = {((f32*)&rhs.simd[0])[2],((f32*)&rhs.simd[1])[1],rhs.k};
+    __m128 g = {((f32*)&rhs.simd[0])[2],((f32*)&rhs.simd[1])[1],rhs.k};
     
     
     
-    auto h = _mulsimd4f(lhs.simd[0],a);
-    auto i = _mulsimd4f(lhs.simd[0],b);
-    auto j = _mulsimd4f(lhs.simd[0],c);
+    auto h = _mm_mul_ps(lhs.simd[0],a);
+    auto i = _mm_mul_ps(lhs.simd[0],b);
+    auto j = _mm_mul_ps(lhs.simd[0],c);
     
-    auto k = _mulsimd4f(lhs.simd[1],d);
-    auto l = _mulsimd4f(lhs.simd[1],e);
-    auto m = _mulsimd4f(lhs.simd[1],f);
+    auto k = _mm_mul_ps(lhs.simd[1],d);
+    auto l = _mm_mul_ps(lhs.simd[1],e);
+    auto m = _mm_mul_ps(lhs.simd[1],f);
     
-    auto n = _setksimd4f(lhs.k);
+    auto n = _mm_set1_ps(lhs.k);
     
-    auto o = _mulsimd4f(n,g);
+    auto o = _mm_mul_ps(n,g);
     
     //NOTE: god I hope the compiler reorders this
     
@@ -325,7 +325,7 @@ Matrix3b3 Inverse(Matrix3b3 matrix){
         matrix _ac3(0,0),matrix _ac3(1,0),matrix _ac3(2,0)
     };
     
-    Matrix3b3 adj_matrix = {};
+    Matrix3b3 adj__matrix = {};
     
     for(u32 y = 0; y < 3; y++){
         
@@ -340,28 +340,28 @@ Matrix3b3 Inverse(Matrix3b3 matrix){
             f32 c = minormatrix _rc2(0,1);
             f32 d = minormatrix _rc2(1,1);
             
-            adj_matrix _ac3(x,y) = ((a * d) - (b * c));
+            adj__matrix _ac3(x,y) = ((a * d) - (b * c));
         }
         
     }
     
-    Matrix3b3 checkerboard_matrix = {
+    Matrix3b3 checkerboard__matrix = {
         1,-1,1,
         -1,1,-1,
         1,-1,1,
     };
     
-    adj_matrix = CompMul(adj_matrix,checkerboard_matrix);
+    adj__matrix = CompMul(adj__matrix,checkerboard__matrix);
     
     f32 det = 0;
     
     for(u32 i = 0; i < 3; i++){
-        det += first_row[i] * adj_matrix _ac3(i,0);
+        det += first_row[i] * adj__matrix _ac3(i,0);
     }
     
-    adj_matrix = (1.0f/det) * Transpose(adj_matrix);
+    adj__matrix = (1.0f/det) * Transpose(adj__matrix);
     
-    return adj_matrix;
+    return adj__matrix;
 }
 
 Matrix3b3 operator/(Matrix3b3 lhs,Matrix3b3 rhs){
@@ -374,13 +374,13 @@ Matrix4b4 operator+(Matrix4b4 lhs,Matrix4b4 rhs){
     
     Matrix4b4 matrix;
     
-    _storesimd4f(&matrix _ac4(0,0),_addsimd4f(lhs.simd[0],rhs.simd[0]));
+    _mm_store_ps(&matrix _ac4(0,0),_mm_add_ps(lhs.simd[0],rhs.simd[0]));
     
-    _storesimd4f(&matrix _ac4(0,1),_addsimd4f(lhs.simd[1],rhs.simd[1]));
+    _mm_store_ps(&matrix _ac4(0,1),_mm_add_ps(lhs.simd[1],rhs.simd[1]));
     
-    _storesimd4f(&matrix _ac4(0,2),_addsimd4f(lhs.simd[2],rhs.simd[2]));
+    _mm_store_ps(&matrix _ac4(0,2),_mm_add_ps(lhs.simd[2],rhs.simd[2]));
     
-    _storesimd4f(&matrix _ac4(0,3),_addsimd4f(lhs.simd[3],rhs.simd[3]));
+    _mm_store_ps(&matrix _ac4(0,3),_mm_add_ps(lhs.simd[3],rhs.simd[3]));
     
     
     return matrix;
@@ -392,13 +392,13 @@ Matrix4b4 operator-(Matrix4b4 lhs,Matrix4b4 rhs){
     
     Matrix4b4 matrix;
     
-    _storesimd4f(&matrix _ac4(0,0),_subsimd4f(lhs.simd[0],rhs.simd[0]));
+    _mm_store_ps(&matrix _ac4(0,0),_mm_sub_ps(lhs.simd[0],rhs.simd[0]));
     
-    _storesimd4f(&matrix _ac4(0,1),_subsimd4f(lhs.simd[1],rhs.simd[1]));
+    _mm_store_ps(&matrix _ac4(0,1),_mm_sub_ps(lhs.simd[1],rhs.simd[1]));
     
-    _storesimd4f(&matrix _ac4(0,2),_subsimd4f(lhs.simd[2],rhs.simd[2]));
+    _mm_store_ps(&matrix _ac4(0,2),_mm_sub_ps(lhs.simd[2],rhs.simd[2]));
     
-    _storesimd4f(&matrix _ac4(0,3),_subsimd4f(lhs.simd[3],rhs.simd[3]));
+    _mm_store_ps(&matrix _ac4(0,3),_mm_sub_ps(lhs.simd[3],rhs.simd[3]));
     
     
     return matrix;
@@ -422,17 +422,17 @@ Matrix4b4 operator*(Matrix4b4 lhs,Matrix4b4 rhs){
         
 #if MATRIX_ROW_MAJOR
         
-        simd4f res1 = _mulsimd4f(lhs.simd[i],rhs.simd[0]);
-        simd4f res2 = _mulsimd4f(lhs.simd[i],rhs.simd[1]);
-        simd4f res3 = _mulsimd4f(lhs.simd[i],rhs.simd[2]);
-        simd4f res4 = _mulsimd4f(lhs.simd[i],rhs.simd[3]);
+        __m128 res1 = _mm_mul_ps(lhs.simd[i],rhs.simd[0]);
+        __m128 res2 = _mm_mul_ps(lhs.simd[i],rhs.simd[1]);
+        __m128 res3 = _mm_mul_ps(lhs.simd[i],rhs.simd[2]);
+        __m128 res4 = _mm_mul_ps(lhs.simd[i],rhs.simd[3]);
         
 #else
         
-        simd4f res1 = _mulsimd4f(rhs.simd[i],lhs.simd[0]);
-        simd4f res2 = _mulsimd4f(rhs.simd[i],lhs.simd[1]);
-        simd4f res3 = _mulsimd4f(rhs.simd[i],lhs.simd[2]);
-        simd4f res4 = _mulsimd4f(rhs.simd[i],lhs.simd[3]);
+        __m128 res1 = _mm_mul_ps(rhs.simd[i],lhs.simd[0]);
+        __m128 res2 = _mm_mul_ps(rhs.simd[i],lhs.simd[1]);
+        __m128 res3 = _mm_mul_ps(rhs.simd[i],lhs.simd[2]);
+        __m128 res4 = _mm_mul_ps(rhs.simd[i],lhs.simd[3]);
         
 #endif
         
@@ -462,9 +462,9 @@ Matrix4b4 operator*(Matrix4b4 lhs,Matrix4b4 rhs){
         
         auto res = l * r;
         
-        auto ref_matrix = matrix;
+        auto ref__matrix = matrix;
         
-        InternalCmpMatrix((f32*)&ref_matrix,(f32*)&res);
+        InternalCmpMatrix((f32*)&ref__matrix,(f32*)&res);
     }
     
 #endif
@@ -483,23 +483,23 @@ Matrix4b4 operator/(Matrix4b4 lhs,Matrix4b4 rhs){
 Matrix4b4 operator*(f32 lhs,Matrix4b4 rhs){
     
     Matrix4b4 matrix;
-    simd4f k = _setksimd4f(lhs);
+    __m128 k = _mm_set1_ps(lhs);
     
-    simd4f res = _mulsimd4f(rhs.simd[0],k);
+    __m128 res = _mm_mul_ps(rhs.simd[0],k);
     
-    _storesimd4f(&matrix _ac4(0,0),res);
+    _mm_store_ps(&matrix _ac4(0,0),res);
     
-    res = _mulsimd4f(rhs.simd[1],k);
+    res = _mm_mul_ps(rhs.simd[1],k);
     
-    _storesimd4f(&matrix _ac4(0,1),res);
+    _mm_store_ps(&matrix _ac4(0,1),res);
     
-    res = _mulsimd4f(rhs.simd[2],k);
+    res = _mm_mul_ps(rhs.simd[2],k);
     
-    _storesimd4f(&matrix _ac4(0,2),res);
+    _mm_store_ps(&matrix _ac4(0,2),res);
     
-    res = _mulsimd4f(rhs.simd[3],k);
+    res = _mm_mul_ps(rhs.simd[3],k);
     
-    _storesimd4f(&matrix _ac4(0,3),res);
+    _mm_store_ps(&matrix _ac4(0,3),res);
     
     return matrix;
 }
@@ -510,9 +510,9 @@ Matrix4b4 operator*(Matrix4b4 lhs,f32 rhs){
 
 Matrix4b4 Transpose(Matrix4b4 matrix){
     
-    Matrix4b4 store_matrix;
+    Matrix4b4 store__matrix;
     
-    simd4f tmp1 = {},
+    __m128 tmp1 = {},
     row0 = {},
     row1 = {},
     row2 = {},
@@ -521,38 +521,38 @@ Matrix4b4 Transpose(Matrix4b4 matrix){
     f32* src = matrix.container;
     
     tmp1 = 
-        _loadasymsimd4f(_loadstorehsimd4f(tmp1,(simd2f*)(src)),(simd2f*)(src+4));
+        _mm_loadh_pi(_mm_loadl_pi(tmp1,(__m64*)(src)),(__m64*)(src+4));
     
     row1 = 
-        _loadasymsimd4f(_loadstorehsimd4f(row1,(simd2f*)(src+8)),(simd2f*)(src+12));
+        _mm_loadh_pi(_mm_loadl_pi(row1,(__m64*)(src+8)),(__m64*)(src+12));
     
-    row0 = _shufflesimd4f(tmp1, row1, 0x88);
-    row1 = _shufflesimd4f(row1, tmp1, 0xDD);
+    row0 = _mm_shuffle_ps(tmp1, row1, 0x88);
+    row1 = _mm_shuffle_ps(row1, tmp1, 0xDD);
     tmp1 = 
-        _loadasymsimd4f(_loadstorehsimd4f(tmp1,(simd2f*)(src+2)),(simd2f*)(src+6));
+        _mm_loadh_pi(_mm_loadl_pi(tmp1,(__m64*)(src+2)),(__m64*)(src+6));
     row3 = 
-        _loadasymsimd4f(_loadstorehsimd4f(row3,(simd2f*)(src+10)),
-                        (simd2f*)(src+14));
+        _mm_loadh_pi(_mm_loadl_pi(row3,(__m64*)(src+10)),
+                     (__m64*)(src+14));
     
-    row2 = _shufflesimd4f(tmp1, row3, 0x88);
-    row3 = _shufflesimd4f(row3, tmp1, 0xDD);
+    row2 = _mm_shuffle_ps(tmp1, row3, 0x88);
+    row3 = _mm_shuffle_ps(row3, tmp1, 0xDD);
     
-    _storeusimd4f(&store_matrix _ac4(0,0),row0);
+    _mm_storeu_ps(&store__matrix _ac4(0,0),row0);
     
     
-    
-    //this is swapped
-    row1 = _shufflesimd4f(row1,row1,_MM_SHUFFLE(1,0,3,2));
-    _storeusimd4f(&store_matrix _ac4(0,1),row1);
-    
-    _storeusimd4f(&store_matrix _ac4(0,2),row2);
     
     //this is swapped
+    row1 = _mm_shuffle_ps(row1,row1,_MM_SHUFFLE(1,0,3,2));
+    _mm_storeu_ps(&store__matrix _ac4(0,1),row1);
     
-    row3 = _shufflesimd4f(row3,row3,_MM_SHUFFLE(1,0,3,2));
-    _storeusimd4f(&store_matrix _ac4(0,3),row3);
+    _mm_storeu_ps(&store__matrix _ac4(0,2),row2);
     
-    return store_matrix;
+    //this is swapped
+    
+    row3 = _mm_shuffle_ps(row3,row3,_MM_SHUFFLE(1,0,3,2));
+    _mm_storeu_ps(&store__matrix _ac4(0,3),row3);
+    
+    return store__matrix;
 }
 
 Matrix4b4 WorldMatrix(Matrix4b4 position,Matrix4b4 rotation,Matrix4b4 scale){
@@ -563,14 +563,14 @@ Matrix4b4 WorldMatrix(Vector3 position,Vector3 rotation,Vector3 scale){
     
     Matrix4b4 matrix;
     
-    Matrix4b4 position_matrix4b4 = PositionMatrix(position);
+    Matrix4b4 position__matrix4b4 = PositionMatrix(position);
     
-    Matrix4b4 scale_matrix4b4 = ScaleMatrix(scale);
+    Matrix4b4 scale__matrix4b4 = ScaleMatrix(scale);
     
-    Matrix4b4 rotation_matrix4b4 = ToMatrix4b4(RotationMatrix(rotation));
+    Matrix4b4 rotation__matrix4b4 = ToMatrix4b4(RotationMatrix(rotation));
     
     
-    matrix = WorldMatrix(position_matrix4b4,rotation_matrix4b4,scale_matrix4b4);
+    matrix = WorldMatrix(position__matrix4b4,rotation__matrix4b4,scale__matrix4b4);
     
     return matrix;
 }
@@ -579,14 +579,14 @@ Matrix4b4 WorldMatrix(Vector3 position,Quaternion rotation,Vector3 scale){
     
     Matrix4b4 matrix;
     
-    Matrix4b4 position_matrix4b4 = PositionMatrix(position);
+    Matrix4b4 position__matrix4b4 = PositionMatrix(position);
     
-    Matrix4b4 scale_matrix4b4 = ScaleMatrix(scale);
+    Matrix4b4 scale__matrix4b4 = ScaleMatrix(scale);
     
-    Matrix4b4 rotation_matrix4b4 = QuaternionToMatrix(rotation);
+    Matrix4b4 rotation__matrix4b4 = QuaternionToMatrix(rotation);
     
     
-    matrix = WorldMatrix(position_matrix4b4,rotation_matrix4b4,scale_matrix4b4);
+    matrix = WorldMatrix(position__matrix4b4,rotation__matrix4b4,scale__matrix4b4);
     
     return matrix;
 }
@@ -625,17 +625,17 @@ ViewMatrixRHS(Vector3 position,Vector3 lookpoint,Vector3 updir){
     
 #ifdef DEBUG
     
-#if _test_matrices
+#if _test__matrices
     
-    auto t_mat =
+    auto t__mat =
         glm::lookAt(glm::vec3(position.x,position.y,position.z),
                     glm::vec3(lookpoint.x,lookpoint.y,lookpoint.z),
                     glm::vec3(updir.x,updir.y,updir.z));
     
-    auto ref_matrix = matrix;
+    auto ref__matrix = matrix;
     
-    auto f1 = (f32*)&ref_matrix;
-    auto f2 = (f32*)&t_mat;
+    auto f1 = (f32*)&ref__matrix;
+    auto f2 = (f32*)&t__mat;
     
     InternalCmpMatrix(f1,f2);
     
@@ -691,15 +691,15 @@ Matrix4b4 ProjectionMatrix(f32 fov,f32 aspectratio,f32 nearz,f32 farz){
     
 #ifdef DEBUG
     
-#if _test_matrices
+#if _test__matrices
     
-    auto ref_matrix = matrix;
+    auto ref__matrix = matrix;
     
-    auto t_mat =
+    auto t__mat =
         glm::perspective(fov,aspectratio,nearz,farz);
     
-    auto f1 = (f32*)&ref_matrix;
-    auto f2 = (f32*)&t_mat;
+    auto f1 = (f32*)&ref__matrix;
+    auto f2 = (f32*)&t__mat;
     
     InternalCmpMatrix(f1,f2);
     
@@ -714,9 +714,9 @@ Vector4 operator+(Vector4 lhs,Vector4 rhs){
     
     Vector4 vec;
     
-    simd4f res = _addsimd4f(lhs.simd,rhs.simd);
+    __m128 res = _mm_add_ps(lhs.simd,rhs.simd);
     
-    _storeusimd4f(&vec.x,res);
+    _mm_storeu_ps(&vec.x,res);
     
     return vec;
 }
@@ -724,9 +724,9 @@ Vector4 operator+(Vector4 lhs,Vector4 rhs){
 Vector4 operator-(Vector4 lhs,Vector4 rhs){
     Vector4 vec;
     
-    simd4f res = _subsimd4f(lhs.simd,rhs.simd);
+    __m128 res = _mm_sub_ps(lhs.simd,rhs.simd);
     
-    _storeusimd4f(&vec.x,res);
+    _mm_storeu_ps(&vec.x,res);
     
     return vec;
 }
@@ -734,11 +734,11 @@ Vector4 operator-(Vector4 lhs,Vector4 rhs){
 Vector4 operator*(f32 lhs,Vector4 rhs){
     Vector4 vec;
     
-    simd4f k = _setksimd4f(lhs);
+    __m128 k = _mm_set1_ps(lhs);
     
-    simd4f res = _mulsimd4f(rhs.simd,k);
+    __m128 res = _mm_mul_ps(rhs.simd,k);
     
-    _storeusimd4f(&vec.x,res);
+    _mm_storeu_ps(&vec.x,res);
     
     return vec;
 }
@@ -751,11 +751,11 @@ Vector4 operator*(Vector4 lhs,f32 rhs){
 Vector4 operator/(Vector4 lhs,f32 rhs){
     
     Vector4 vec;
-    simd4f k = _setksimd4f(rhs);
+    __m128 k = _mm_set1_ps(rhs);
     
-    simd4f res = _divsimd4f(lhs.simd,k);
+    __m128 res = _mm_div_ps(lhs.simd,k);
     
-    _storeusimd4f(&vec.x,res);
+    _mm_storeu_ps(&vec.x,res);
     
     return vec;
 }
@@ -857,7 +857,7 @@ f32 Dot(Vector4 vec1,Vector4 vec2){
     //|a| * |b| * cos(angle between a and b)
     //or for a(1,2,3....n) and b(1,2,3....n). a.b = a1b1 + a2b2+ ...anbn
     
-    simd4f mul = _mulsimd4f(vec1.simd,vec2.simd);
+    __m128 mul = _mm_mul_ps(vec1.simd,vec2.simd);
     
     f32* _restrict r = (f32*)&mul;
     
@@ -885,13 +885,13 @@ Vector4 Normalize(Vector4 vec){
 
 Vector4 VectorComponentMul(Vector4 a,Vector4 b){
     
-    a.simd = _mulsimd4f(a.simd,b.simd);
+    a.simd = _mm_mul_ps(a.simd,b.simd);
     
     return a;
 }
 
 Vector4 InternalComponentDiv(Vector4 a,Vector4 b){
-    a.simd = _divsimd4f(a.simd,b.simd);
+    a.simd = _mm_div_ps(a.simd,b.simd);
     return a;
 }
 
@@ -960,19 +960,19 @@ Vector3 RotateVector(Vector3 vec,Vector3 rotation){
       rotated y}      sin0,cos0}       y}
     */
     
-    auto rot_matrix = RotationMatrix(rotation);
+    auto rot__matrix = RotationMatrix(rotation);
     
-    auto a = rot_matrix.simd[0];
-    auto b = rot_matrix.simd[1];
-    auto c = rot_matrix.k;
+    auto a = rot__matrix.simd[0];
+    auto b = rot__matrix.simd[1];
+    auto c = rot__matrix.k;
     
     auto k = ToVec4(vec).simd;
     
-    auto d = _shufflesimd4f(k,k,_MM_SHUFFLE(3,2,1,0));
-    auto e = _shufflesimd4f(k,k,_MM_SHUFFLE(1,0,2,1));
+    auto d = _mm_shuffle_ps(k,k,_MM_SHUFFLE(3,2,1,0));
+    auto e = _mm_shuffle_ps(k,k,_MM_SHUFFLE(1,0,2,1));
     
-    auto f = _mulsimd4f(a,d);
-    auto g = _mulsimd4f(b,e);
+    auto f = _mm_mul_ps(a,d);
+    auto g = _mm_mul_ps(b,e);
     auto h = c * vec.z;
     
     
@@ -1037,16 +1037,16 @@ void PrintQuaternion(Quaternion vec){
 }
 
 
-f32 inline GenericGetDeterminant(f32* in_matrix,u32 n){
+f32 inline GenericGetDeterminant(f32* in__matrix,u32 n){
     
     _kill("we do not support this case\n",n > 4);
     
     if(n == 2){
         
-        f32 a = in_matrix[0];
-        f32 b = in_matrix[1];
-        f32 c = in_matrix[2];
-        f32 d = in_matrix[3];
+        f32 a = in__matrix[0];
+        f32 b = in__matrix[1];
+        f32 c = in__matrix[2];
+        f32 d = in__matrix[3];
         
         return (a * d) - (b * c);
     }
@@ -1055,17 +1055,17 @@ f32 inline GenericGetDeterminant(f32* in_matrix,u32 n){
     
     for(u32 i = 0; i < n; i++){
         
-        auto entry = in_matrix[i];
+        auto entry = in__matrix[i];
         
         if(i & 1){
             entry *= -1.0f;
         }
         
-        f32 minor_mat[16] = {};
+        f32 minor__mat[16] = {};
         
-        GetMinorMatrix(in_matrix,n,i,0,&minor_mat[0]);
+        GetMinorMatrix(in__matrix,n,i,0,&minor__mat[0]);
         
-        auto det = GenericGetDeterminant(&minor_mat[0],n - 1);
+        auto det = GenericGetDeterminant(&minor__mat[0],n - 1);
         
         res += det * entry;
         
@@ -1083,8 +1083,8 @@ Matrix4b4 Inverse(Matrix4b4 matrix){
       
       where det is the determinant of the matrix and adj the adjoint matrix of A.
       where 1 <= i <= n and 1 <= j <= n of an n by n matrix and (i,j) corresponds to a value of matrix A
-      adjoint_matrix of elements = -(-1)^(i * j) * det(MinorMatrix(matrix,i,j))
-      adj(A) = Transpose(adjoint_matrix)
+      adjoint__matrix of elements = -(-1)^(i * j) * det(MinorMatrix(matrix,i,j))
+      adj(A) = Transpose(adjoint__matrix)
     */
     
     
@@ -1094,7 +1094,7 @@ Matrix4b4 Inverse(Matrix4b4 matrix){
     
     //get the adjoint matrix, create matrices of cofactors
     
-    Matrix4b4 adj_matrix = {};
+    Matrix4b4 adj__matrix = {};
     
     for(u32 y = 0; y < 4; y++){
         
@@ -1104,29 +1104,29 @@ Matrix4b4 Inverse(Matrix4b4 matrix){
             
             GetMinorMatrix((f32*)&matrix[0],4,x,y,(f32*)&minormatrix);
             
-            adj_matrix _ac4(x,y) = GenericGetDeterminant((f32*)&minormatrix,3);
+            adj__matrix _ac4(x,y) = GenericGetDeterminant((f32*)&minormatrix,3);
         }
         
     }
     
-    Matrix4b4 checkerboard_matrix = {
+    Matrix4b4 checkerboard__matrix = {
         1,-1,1,-1,
         -1,1,-1,1,
         1,-1,1,-1,
         -1,1,-1,1,
     };
     
-    adj_matrix = CompMul(adj_matrix,checkerboard_matrix);
+    adj__matrix = CompMul(adj__matrix,checkerboard__matrix);
     
     f32 det = 0;
     
     for(u32 i = 0; i < 4; i++){
-        det += first_row[i] * adj_matrix _ac4(i,0);
+        det += first_row[i] * adj__matrix _ac4(i,0);
     }
     
-    adj_matrix = (1.0f/det) * Transpose(adj_matrix);
+    adj__matrix = (1.0f/det) * Transpose(adj__matrix);
     
-    return adj_matrix;
+    return adj__matrix;
 }
 
 
@@ -1193,9 +1193,9 @@ Quaternion ConstructQuaternion(Vector3 vector,f32 angle){
 
 Quaternion ConjugateQuaternion(Quaternion quaternion){
     
-    simd4f k = _setksimd4f(-1.0f);
+    __m128 k = _mm_set1_ps(-1.0f);
     
-    quaternion.simd = _mulsimd4f(quaternion.simd,k);
+    quaternion.simd = _mm_mul_ps(quaternion.simd,k);
     
     quaternion.w *= -1.0f;
     
@@ -1246,7 +1246,7 @@ Matrix4b4 QuaternionToMatrix(Quaternion quaternion){
     
     Quaternion squared;
     
-    squared.simd = _mulsimd4f(quaternion.simd,quaternion.simd);
+    squared.simd = _mm_mul_ps(quaternion.simd,quaternion.simd);
     
     f32 a = 1 - (2 * (squared.y + squared.z));
     f32 b = ((quaternion.x * quaternion.y) - (quaternion.w * quaternion.z)) * 2;
@@ -1504,10 +1504,10 @@ Vector4 WorldSpaceToClipSpace(Vector4 pos,Matrix4b4 viewproj){
     
     auto vert = pos.simd;
     
-    auto a = _mulsimd4f(viewproj.simd[0],vert);
-    auto b = _mulsimd4f(viewproj.simd[1],vert);
-    auto c = _mulsimd4f(viewproj.simd[2],vert);
-    auto d = _mulsimd4f(viewproj.simd[3],vert);
+    auto a = _mm_mul_ps(viewproj.simd[0],vert);
+    auto b = _mm_mul_ps(viewproj.simd[1],vert);
+    auto c = _mm_mul_ps(viewproj.simd[2],vert);
+    auto d = _mm_mul_ps(viewproj.simd[3],vert);
     
     f32 x = ((f32*)&a)[0] + ((f32*)&a)[1] + ((f32*)&a)[2] + ((f32*)&a)[3];
     
@@ -1534,10 +1534,10 @@ Vector4 ClipSpaceToWorldSpace(Vector4 pos,Matrix4b4 viewproj){
     
     auto vert = pos.simd;
     
-    auto a = _mulsimd4f(inv_viewproj.simd[0],vert);
-    auto b = _mulsimd4f(inv_viewproj.simd[1],vert);
-    auto c = _mulsimd4f(inv_viewproj.simd[2],vert);
-    auto d = _mulsimd4f(inv_viewproj.simd[3],vert);
+    auto a = _mm_mul_ps(inv_viewproj.simd[0],vert);
+    auto b = _mm_mul_ps(inv_viewproj.simd[1],vert);
+    auto c = _mm_mul_ps(inv_viewproj.simd[2],vert);
+    auto d = _mm_mul_ps(inv_viewproj.simd[3],vert);
     
     f32 x = ((f32*)&a)[0] + ((f32*)&a)[1] + ((f32*)&a)[2] + ((f32*)&a)[3];
     
