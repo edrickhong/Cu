@@ -1276,11 +1276,6 @@ XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7 are used for certain floating 
 
 Integral return values up to 64 bits in size are stored in RAX while values up to 128 bit are stored in RAX and RDX. Floating-point return values are similarly stored in XMM0 and XMM1
 
-__asm__ volatile (
-"statement 1\n"
-"statement 2\n": output operands: input operands
-)
-
 */
 
 struct Registers{
@@ -1364,6 +1359,8 @@ for(u32 i = 0; i < function->args_count;i++){
 InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_value,&fret_value);
 
 #else   
+
+//TODO: we can condense this down if we want to
     __asm__ volatile (
         "movq %[a1],%%rdi\n"
         "movq %[a2],%%rsi\n"
@@ -1376,7 +1373,12 @@ InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_val
         
         "callq *%[c]\n"
         "movq %%rax,%[r1]\n"
-        "movss %%xmm0,%[r2]\n":[r1] "=g"(ret_value),[r2] "=g"(fret_value): [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),[a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), [a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), [c] "g" (function->function_call)
+        "movss %%xmm0,%[r2]\n"
+: [r1] "=g"(ret_value),[r2] "=g"(fret_value)
+: [a1] "g" (registers.RDI), [a2] "g" (registers.RSI),[a3] "g" (registers.RDX),
+   [a4] "g" (registers.RCX), [a7] "g" (registers.XMM0), [a8] "g" (registers.XMM1), 
+[a9] "g" (registers.XMM2), [a10] "g" (registers.XMM3), 
+[c] "g" (function->function_call)
         );
         
 #endif

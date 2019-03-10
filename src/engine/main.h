@@ -2339,84 +2339,13 @@ void InitAllSystems(){
 
 /// bench stuff
 
-#ifdef _WIN32
-
-void _ainline ByteCopy(void* _restrict d,void* _restrict s,u32 len){
-    
-    s8* dst = (s8*)d;
-    s8* src = (s8*)s;
-    
-    for(;len != 0; len--){
-        *dst = *src;
-        dst++;
-        src++;
-    }
-    
-}
-
-void _ainline WordCopy(void* _restrict d,void* _restrict s,u32 len){
-    
-    s16* dst = (s16*)d;
-    s16* src = (s16*)s;
-    
-    for(;len != 0; len--){
-        *dst = *src;
-        dst++;
-        src++;
-    }
-    
-}
-
-void _ainline DwordCopy(void* _restrict d,void* _restrict s,u32 len){
-    
-    s32* dst = (s32*)d;
-    s32* src = (s32*)s;
-    
-    for(;len != 0; len--){
-        *dst = *src;
-        dst++;
-        src++;
-    }
-    
-}
-
-#else
-
-#define ByteCopy(ds,sc,ln) __asm__ volatile( \
-"movl %[len],%%ebx\n" \
-"mov %%ebx,%%ecx\n" \
-"mov %[src],%%rsi\n" \
-"mov %[dst],%%rdi\n" \
-"cld\n" \
-"rep movsb\n" : [dst] "=g"  (ds): [src] "g" (sc),[len] "g" (ln) \
-)
-
-#define WordCopy(ds,sc,ln) __asm__ volatile( \
-"movl %[len],%%ebx\n" \
-"mov %%ebx,%%ecx\n" \
-"mov %[src],%%rsi\n" \
-"mov %[dst],%%rdi\n" \
-"cld\n" \
-"rep movsw\n" : [dst] "=g"  (ds): [src] "g" (sc),[len] "g" (ln) \
-)
-
-#define DwordCopy(ds,sc,ln) __asm__ volatile( \
-"movl %[len],%%ebx\n" \
-"mov %%ebx,%%ecx\n" \
-"mov %[src],%%rsi\n" \
-"mov %[dst],%%rdi\n" \
-"cld\n" \
-"rep movsd\n" : [dst] "=g"  (ds): [src] "g" (sc),[len] "g" (ln) \
-)
-
-#endif
-
 //our version of memcpy
 
 #define _testing_cpy 0
 
 //total 32 - 33 ms
-void _ainline TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
+//this is overwriting our stack in optimized mode (even -O1)
+void TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
     
 #define _use_avx 0
     
@@ -2428,15 +2357,13 @@ void _ainline TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
     
 #else
     
-#define loadps _loadusimd4f
-#define storeps _storeusimd4f
+#define loadps _mm_loadu_ps
+#define storeps _mm_storeu_ps
 #define bound_size 16
     
 #endif
     
-    
-    
-    for(; len < bound_size; len -= bound_size){
+    for(; len >= bound_size; len -= bound_size){
         
         auto a = loadps((f32*)src);
         storeps((f32*)dst,a);
@@ -2445,7 +2372,7 @@ void _ainline TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
         src += bound_size;
     }
     
-    ByteCopy(dst,src,len);
+    MOVSB(dst,src,len);
     
 }
 
@@ -2453,58 +2380,6 @@ void Bench(){
     
 #define _use_aligned_string 1
 #define _iteration_count 1000000
-    
-#if 0
-    {
-        
-        auto string = "hello world";
-        u32 len = 0;
-        
-        TimeSpec g_start,g_end;
-        TimeSpec m_start,m_end;
-        
-        GetTime(&g_start);
-        
-        for(u32 i = 0; i < _iteration_count; i++){
-            len = strlen(string);
-        }
-        
-        GetTime(&g_end);
-        
-        GetTime(&m_start);
-        
-        //asm stringlen
-        for(u32 i = 0; i < _iteration_count; i++){
-            
-            __asm__ volatile (
-            
-                "mov %[string],%%rdi\n"
-                
-                "xor %%rcx,%%rcx\n"
-                "xor %%al,%%al\n"
-                
-                "not %%rcx\n"
-                
-                "cld\n"
-                
-                "repne scasb\n"
-                
-                "not %%rcx\n"
-                "dec %%rcx\n"
-                "mov %%rcx,%[len]": : [string] "g" (string), [len] "g" (len)
-                );
-        }
-        
-        GetTime(&m_end);
-        
-        printf("strlen time :%f\n",GetTimeDifferenceMS(g_start,g_end));
-        
-        printf("asm :%f\n",GetTimeDifferenceMS(m_start,m_end));
-        
-        exit(0);
-    }
-    
-#endif
     
 #if _use_aligned_string
     
@@ -2547,10 +2422,11 @@ You shall not look through my eyes either, nor take things from me,
 You shall listen to all sides and filter them from your self.
 )FOO";
     
-    s8 a[256] = {};
+    u32 slen = strlen(string);
+    s8 a[1024 * 2] = {};
     
 #if _testing_cpy
-    TestMemcpy(&a[0],(s8*)string,strlen(string));
+    TestMemcpy(&a[0],(s8*)string,slen);
     printf(a);
     exit(0);
 #endif
@@ -2558,22 +2434,21 @@ You shall listen to all sides and filter them from your self.
     TimeSpec mem_start,mem_end;
     TimeSpec test_start,test_end;
     
-    GetTime(&mem_start);
-    
-    for(u32 i = 0; i < _iteration_count; i++){
-        memcpy((void*)&a[0],string,strlen(string));
-    }
-    
-    GetTime(&mem_end);
-    
-    
     GetTime(&test_start);
     
     for(u32 i = 0; i < _iteration_count; i++){
-        TestMemcpy(&a[0],(s8*)string,strlen(string));
+        TestMemcpy(&a[0],(s8*)string,slen);
     }
     
     GetTime(&test_end);
+    
+    GetTime(&mem_start);
+    
+    for(u32 i = 0; i < _iteration_count; i++){
+        memcpy((void*)&a[0],string,slen);
+    }
+    
+    GetTime(&mem_end);
     
     auto memcpy_total = GetTimeDifferenceMS(mem_start,mem_end);
     auto test_total = GetTimeDifferenceMS(test_start,test_end);

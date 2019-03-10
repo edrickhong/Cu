@@ -13,7 +13,7 @@ include(${CMAKE_BINARY_DIR}/../cmake/cu.cmake)
 if(UNIX)
 
 if(DEBUG)
-
+# -mavx
   set(OPT_FLAGS "-g -O0 -fno-omit-frame-pointer")
 
 endif()
