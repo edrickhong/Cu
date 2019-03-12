@@ -40,20 +40,10 @@ struct VTReadbackImageContext : VImageContext{
     u16 h;
 };
 
-struct FreepageList{
+struct EvictTextureList{
     
-    struct PixelPageFormat{
-        u8 x;
-        u8 y;
-        u8 validflag;
-        u8 pad;
-    };
-    
-    union{
-        u32 array[_fetch_list_count];
-        PixelPageFormat format_array[_fetch_list_count];
-    };
-    u32 count;
+    TextureAssetHandle* array[_texturehandle_max];
+    u32 count = 0;
 };
 
 //MARK:nvidia is ok with linear if it is not a storage image

@@ -5,7 +5,7 @@
 TODO:
 
 Fresh start, we should diff this against the working implementation and patch in eviction.
-
+TODO: use a ringbuffer for transferbuffers
 */
 
 struct InternalTransferBuffer{

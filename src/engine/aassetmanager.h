@@ -308,6 +308,3 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem);
 
 void VTStart(VkCommandBuffer cmdbuffer);
 void VTEnd(VkCommandBuffer cmdbuffer);
-
-
-void VTEvictTextureHandlePages(TextureAssetHandle* handle);
