@@ -5,10 +5,6 @@
 #include <assimp/cimport.h>
 #include "pparse.h"
 
-
-#define STB_DXT_IMPLEMENTATION
-#include "stb/stb_dxt.h"
-
 /*
   Formats store entire scenes. We should take this into account
 */
