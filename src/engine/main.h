@@ -2372,7 +2372,7 @@ void TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
         src += bound_size;
     }
     
-    MOVSB(dst,src,len);
+    MOVSB((u8*)dst,(u8*)src,len);
     
 }
 
