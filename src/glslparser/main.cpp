@@ -1,4 +1,5 @@
 #include "mode.h"
+#include "ttype.h"
 #include "ffileio.h"
 #include "pparse.h"
 #include "vulkan/vulkan.h"

@@ -1,11 +1,14 @@
-cmake_minimum_required(VERSION 2.8)
-project(copper)
-
 option(BUILD_STEP "" ON)
 option(DEBUG "" ON)
 
 #sets internal libs paths and flags
-include(${CMAKE_BINARY_DIR}/../cmake/cu.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/cu.cmake)
+
+InitSubmodules()
+
+
+cmake_minimum_required(VERSION 2.8)
+project(copper)
 
 
 
@@ -25,19 +28,16 @@ endif(UNIX)
   set(CMAKE_CXX_FLAGS ${FLAGS})
 
  #Output Directory Variables
-   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
-   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
-   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
+   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
  #Include Directories
   include_directories(
-  "${CMAKE_BINARY_DIR}/../src/cu_std/cu"
-  "${CMAKE_BINARY_DIR}/../src/cu_std/amd64"
-  "${CMAKE_BINARY_DIR}/../include"
-  "${CMAKE_BINARY_DIR}/../include/generated"
-  "${CMAKE_BINARY_DIR}/../src/engine"
-  ${PLATFORM_INCLUDES}
-  "${CMAKE_BINARY_DIR}/../src/game"
+  "${CMAKE_SOURCE_DIR}/include"
+  "${CMAKE_SOURCE_DIR}/include/generated"
+  "${CMAKE_SOURCE_DIR}/src/engine"
+  "${CMAKE_SOURCE_DIR}/src/game"
   )
 
 #source files. all unity builds
@@ -47,7 +47,6 @@ file(GLOB CPARSER src/cparser/main.cpp)
 file(GLOB ENGINE src/engine/main.cpp)
 file(GLOB ASSETPACKER src/assetpacker/main.cpp)
 file(GLOB GAME src/game/game.cpp)
-file(GLOB CU_STD src/cu_std/cu/gui_bin.cpp src/cu_std/cu/main.cpp)
 file(GLOB FILEARRAY src/filearray/main.cpp)
 file(GLOB FBMP src/fbmpgenerator/main.cpp)
 
@@ -68,9 +67,10 @@ CompileShaderCase(CJOBS USE_TEXTURE m_gui.frag m_gui_tex.frag)
 endif()
 
 
-
-
-add_library(cu_std STATIC ${CU_STD})
+option(IS_INDEPENDENT "" OFF)
+set(CU_STD_DIR "${CMAKE_SOURCE_DIR}/Cu_std")
+set(MODE_INCLUDE "${CMAKE_SOURCE_DIR}/")
+include(${CMAKE_SOURCE_DIR}/Cu_std/RefCMakeLists.txt)
 
 if(UNIX)
 target_compile_options(cu_std BEFORE PRIVATE -fPIC)
@@ -121,3 +121,7 @@ Gen_IncludeList(C_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 Add_Metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine)
 Add_MetaCompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game)
 
+get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+foreach(dir ${dirs})
+  message(STATUS "dir='${dir}'")
+endforeach()

@@ -1,11 +1,13 @@
 #pragma once
+#include "mode.h"
+#include "ttype.h"
+
+#include "ttimer.h"
+
 #include "aallocator.h"
 
 #include "stdio.h"
 #include "stdlib.h"
-
-#include "ttype.h"
-#include "mode.h"
 
 #include "ffileio.h"
 #include "pparse.h"

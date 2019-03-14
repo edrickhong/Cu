@@ -35,13 +35,7 @@ set(STRICT_FLAGS)
 
 endif()
 
-
-
-   set(PLATFORM_INCLUDES
-    "${CMAKE_BINARY_DIR}/../src/cu_std/linux"
-    )
-
-  set(ASSIMP_LIB "${CMAKE_BINARY_DIR}/../extlib/libassimp.so.4")
+  set(ASSIMP_LIB "${CMAKE_SOURCE_DIR}/extlib/libassimp.so.4")
   set(DL_LIB "dl")
   set(PTHREAD_LIB "pthread")
   
@@ -76,11 +70,6 @@ else()
     set(OPT_FLAGS "/O2")
 
 endif()
-
-
-    set(PLATFORM_INCLUDES
-    "${CMAKE_BINARY_DIR}/../src/cu_std/win32"
-    )
 
     set(ASSIMP_LIB "../extlib/assimp")
     set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib")
@@ -206,7 +195,7 @@ endfunction()
 
 function(GenAndInstallAdditionalDep)
 
-find_file(FOUND_ADDITIONAL assimp.dll PATHS ${CMAKE_BINARY_DIR}/../extlib/ NO_DEFAULT_PATH)
+find_file(FOUND_ADDITIONAL assimp.dll PATHS ${CMAKE_SOURCE_DIR}/extlib/ NO_DEFAULT_PATH)
 
 
 
@@ -227,52 +216,15 @@ COMMAND rm cu_additional.zip
 
 endif()
 
+endfunction()
 
+function(InitSubmodules)
 
-#generate wayland extension files if they exist
-if(UNIX)
-
-find_file(FOUND_WAYLAND_EXT_XML xdg-shell.xml PATHS /usr/share/wayland-protocols/stable/xdg-shell/ NO_DEFAULT_PATH)
-
-find_program(FOUND_WAYLAND_SCANNER wayland-scanner)
-
-if(FOUND_WAYLAND_EXT_XML AND FOUND_WAYLAND_SCANNER)
-
-
+find_file(FOUND_SUBMODULES RefCMakeLists.txt PATHS ${CMAKE_SOURCE_DIR}/Cu_std/ NO_DEFAULT_PATH)
 
 execute_process(
-
-COMMAND echo GENERATING WAYLAND EXTENSIONS
-
-#generate wayland files
-COMMAND bash -c "wayland-scanner code </usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml >${CMAKE_BINARY_DIR}/../include/generated/xdg-shell.c"
-
-COMMAND bash -c "wayland-scanner client-header </usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml >${CMAKE_BINARY_DIR}/../include/generated/xdg-shell.h"
-
+COMMAND git submodule init
+COMMAND git submodule update
 )
-
-
-
-else()
-
-if(NOT FOUND_WAYLAND_SCANNER)
-
-message(STATUS "WARNING: wayland-scanner not found!\n")
-
-endif()
-
-if(NOT FOUND_WAYLAND_EXT_XML)
-message(STATUS "WARNING: wayland extension xml not found!\n")
-endif()
-
-message(STATUS "WARNING: Building without wayland extensions\n")
-
-add_definitions(-DNO_WAYLAND_EXTENSIONS)
-
-
-endif()
-
-
-endif(UNIX)
 
 endfunction()

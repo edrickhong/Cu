@@ -1,6 +1,6 @@
 #include "stdio.h"
 #include "mode.h"
-
+#include "ttype.h"
 #include "wwindow.h"
 #include "game.h"
 #include "debugtimer.h"

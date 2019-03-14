@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mode.h"
-
+#include "ttype.h"
 
 #ifndef CPP_PASS
 
