@@ -224,7 +224,9 @@ find_file(FOUND_SUBMODULES RefCMakeLists.txt PATHS ${CMAKE_SOURCE_DIR}/Cu_std/ N
 
 execute_process(
 COMMAND git submodule init
-COMMAND git submodule update
 )
 
+execute_process(
+COMMAND git submodule update
+)
 endfunction()
