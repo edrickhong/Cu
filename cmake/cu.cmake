@@ -51,14 +51,6 @@ endif()
 else(UNIX)
 
 
-#enable masm
-enable_language(ASM_MASM)
-
-if (NOT CMAKE_CL_64)
-            message(FATAL_ERROR "Error: Masm64 not found")
-endif()
-
-
 if(DEBUG)
 
     set(STRICT_FLAGS "/W3 /WX")

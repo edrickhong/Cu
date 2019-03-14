@@ -108,6 +108,14 @@ target_link_libraries(game cu_std ${PLATFORM_LIBS})
 
 if(WIN32)
 
+#enable masm
+enable_language(ASM_MASM)
+
+if (NOT CMAKE_CL_64)
+            message(FATAL_ERROR "Error: Masm64 not found")
+endif()
+
+
   set_target_properties(game PROPERTIES
   PDB_NAME "game_${VERSION}"
 )
