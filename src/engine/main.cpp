@@ -87,7 +87,7 @@ s32 main(s32 argc,s8** argv){
                 
             }
             
-            GUIUpdate(&pdata->window,&pdata->keyboardstate,ascii_buffer,ascii_count,&pdata->mousestate,
+            GUIUpdate(&pdata->swapchain,&pdata->keyboardstate,ascii_buffer,ascii_count,&pdata->mousestate,
                       pdata->view,pdata->proj);
             
             GUIBegin();

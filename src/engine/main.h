@@ -1864,7 +1864,7 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
                       VkQueue queue){
     
     
-    f32 aspectratio = ((f32)pdata->window.width)/((f32)pdata->window.height);
+    f32 aspectratio = ((f32)pdata->swapchain.width)/((f32)pdata->swapchain.height);
     
     pdata->proj = ProjectionMatrix(_radians(90.0f),aspectratio,0.1f,256.0f);
     

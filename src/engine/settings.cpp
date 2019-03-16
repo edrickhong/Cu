@@ -4,7 +4,7 @@
 //TODO: seems like a perfect candidate for reflection tbh
 
 struct Settings{
-    u32 backend = W_CREATE_FORCE_XLIB;
+    u32 backend = W_CREATE_BACKEND_XLIB;
     u32 window_width = 1280;
     u32 window_height = 720;
     u32 window_x = 0;
@@ -34,8 +34,8 @@ enum REFL SETTING_VALUE{
     
     
     SETTING_VALUE_DIRECT = 0, //doesn't do anything now
-    SETTING_VALUE_XLIB = W_CREATE_FORCE_XLIB,
-    SETTING_VALUE_WAYLAND = W_CREATE_FORCE_WAYLAND,
+    SETTING_VALUE_XLIB = W_CREATE_BACKEND_XLIB,
+    SETTING_VALUE_WAYLAND = W_CREATE_BACKEND_WAYLAND,
     
     SETTING_VALUE_CENTER = (s32)-1,
     
@@ -159,12 +159,12 @@ void WindowBackendFlagToString(u32 flag,s8* dst_string){
     
     switch(flag){
         
-        case W_CREATE_FORCE_WAYLAND:{
+        case W_CREATE_BACKEND_WAYLAND:{
             auto string = "WAYLAND";
             memcpy(dst_string,string,strlen(string));
         }break;
         
-        case W_CREATE_FORCE_XLIB:{
+        case W_CREATE_BACKEND_XLIB:{
             auto string = "XLIB";
             memcpy(dst_string,string,strlen(string));
         }break;
@@ -276,12 +276,12 @@ u32 WindowBackendStringToFlag(s8* string){
     switch(hash){
         
         case PHashString("WAYLAND"):{
-            return W_CREATE_FORCE_WAYLAND;
+            return W_CREATE_BACKEND_WAYLAND;
         }break;
         
         
         case PHashString("XLIB"):{
-            return W_CREATE_FORCE_XLIB;
+            return W_CREATE_BACKEND_XLIB;
         }break;
         
         
