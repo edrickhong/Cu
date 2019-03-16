@@ -1520,7 +1520,6 @@ void SetupFrameBuffers(VDeviceContext* _restrict  device,
 
 
 
-#define _test(call) if(call < 0){_kill("",1);}
 #define _ms2frames(ms) (((f32)(ms) * 48.0f) + 0.5f)
 #define _frames2ms(frames) (((f32)frames)/48.0f)
 
@@ -2138,8 +2137,6 @@ u64 GenGPUHash(VkPhysicalDeviceProperties* prop){
 
 
 void InitAllSystems(){
-    
-    //Test();
     
     auto settings = ParseSettings();
     
