@@ -37,8 +37,54 @@ _compile_kill(sizeof(PushConst) > 128);
 _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
+void TestSW(){
+    //testing software render
+    
+    auto flags = (WCreateFlags)(W_CREATE_BACKEND_XLIB | W_CREATE_NORESIZE);
+    
+    WWindowContext window = WCreateWindow("Software Window",flags,0,0,1280,720);
+    
+    
+    auto backbuffer = WCreateBackBuffer(&window);
+    
+    
+    WWindowEvent event = {};
+    
+    logic run = true;
+    
+    while(run){
+        
+        memset(backbuffer.pixels,0,backbuffer.width * backbuffer.height * 4);
+        WPresentBackBuffer(&window,&backbuffer);
+        
+        while(WWaitForWindowEvent(&window,&event)){
+            
+            switch(event.type){
+                
+                case W_EVENT_CLOSE: {
+                    run = false;
+                } break;
+            }
+        }
+        
+    }
+    
+    
+    
+    
+    
+}
+
 
 s32 main(s32 argc,s8** argv){
+    
+#if 1
+    
+    TestSW();
+    
+    return 0;
+    
+#endif
     
     InitAllSystems();
     

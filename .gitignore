@@ -11,4 +11,5 @@ TODO.txt
 extlib/
 include/generated/*
 !include/generated/.gitkeep
-
+build_linux.sh
+build_win32.bat

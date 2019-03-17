@@ -1534,9 +1534,9 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
     memcpy(mousestate->prevstate,mousestate->curstate,
            sizeof(mousestate->prevstate));
     
-    WWindowEvent event;
+    WWindowEvent event = {};
     
-    while( WWaitForWindowEvent(windowcontext,&event)){
+    while(WWaitForWindowEvent(windowcontext,&event)){
         
         switch(event.type){
             
