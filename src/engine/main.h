@@ -2165,7 +2165,7 @@ void InitAllSystems(){
     
     VInitVulkan();
     
-    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE | settings.backend),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
+    pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
     
     auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
@@ -2460,3 +2460,58 @@ You shall listen to all sides and filter them from your self.
     
 }
 
+void TestSW(){
+    //testing software render
+    
+#ifdef _WIN32
+    
+#define _wbackend W_CREATE_BACKEND_WIN32
+    
+#else
+    
+#define _wbackend W_CREATE_BACKEND_X11
+    
+#endif
+    
+    auto flags = (WCreateFlags)(_wbackend | W_CREATE_NORESIZE);
+    
+    WWindowContext window = WCreateWindow("Software Window",flags,0,0,1280,720);
+    
+    
+    auto backbuffer = WCreateBackBuffer(&window);
+    
+    
+    WWindowEvent event = {};
+    
+    logic run = true;
+    
+    while(run){
+        
+        for(u32 i = 0; i < (u32)(backbuffer.width * backbuffer.height); i++){
+            backbuffer.pixels[i] = 0xFFFF0000;
+        }
+        
+        WPresentBackBuffer(&window,&backbuffer);
+        
+        while(WWaitForWindowEvent(&window,&event)){
+            
+            switch(event.type){
+                
+                case W_EVENT_CLOSE: {
+                    run = false;
+                } break;
+                
+                case W_EVENT_KBEVENT_KEYDOWN:{
+                    
+                    if(event.keyboard_event.keycode == KCODE_KEY_ESC){
+                        run = false;
+                    }
+                }
+                break;
+                
+            }
+        }
+        
+    }
+    
+}

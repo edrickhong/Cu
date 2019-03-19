@@ -3,6 +3,8 @@
 
 //TODO: seems like a perfect candidate for reflection tbh
 
+//TODO: On win32, X11 is still the default backend even if it doesn't make sense
+
 struct Settings{
     u32 backend = W_CREATE_BACKEND_XLIB;
     u32 window_width = 1280;

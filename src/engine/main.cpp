@@ -49,62 +49,8 @@ _compile_kill(sizeof(PushConst) > 128);
 _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
-void TestSW(){
-    //testing software render
-    
-    auto flags = (WCreateFlags)(W_CREATE_BACKEND_WIN32 | W_CREATE_NORESIZE);
-    
-    WWindowContext window = WCreateWindow("Software Window",flags,0,0,1280,720);
-    
-    
-    auto backbuffer = WCreateBackBuffer(&window);
-    
-    
-    WWindowEvent event = {};
-    
-    logic run = true;
-    
-    while(run){
-        
-        for(u32 i = 0; i < (u32)(backbuffer.width * backbuffer.height); i++){
-            backbuffer.pixels[i] = 0xFFFF0000;
-        }
-        
-        WPresentBackBuffer(&window,&backbuffer);
-        
-        while(WWaitForWindowEvent(&window,&event)){
-            
-            switch(event.type){
-                
-                case W_EVENT_CLOSE: {
-                    run = false;
-                } break;
-                
-                case W_EVENT_KBEVENT_KEYDOWN:{
-                    
-                    if(event.keyboard_event.keycode == KCODE_KEY_ESC){
-                        run = false;
-                    }
-                }
-                break;
-                
-            }
-        }
-        
-    }
-    
-}
-
 
 s32 main(s32 argc,s8** argv){
-    
-#if 1
-    
-    TestSW();
-    
-    return 0;
-    
-#endif
     
     InitAllSystems();
     
@@ -201,6 +147,8 @@ s32 main(s32 argc,s8** argv){
                 
                 
                 if(reload){
+
+					//FIXME(WIN32): we are reloading every frame. seems like a problem with FFileChanged
                     
                     auto context = &pdata->scenecontext;
                     
