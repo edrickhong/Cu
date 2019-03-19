@@ -52,7 +52,7 @@ _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 void TestSW(){
     //testing software render
     
-    auto flags = (WCreateFlags)(W_CREATE_BACKEND_WAYLAND | W_CREATE_NORESIZE);
+    auto flags = (WCreateFlags)(W_CREATE_BACKEND_WIN32 | W_CREATE_NORESIZE);
     
     WWindowContext window = WCreateWindow("Software Window",flags,0,0,1280,720);
     
@@ -66,7 +66,7 @@ void TestSW(){
     
     while(run){
         
-        for(u32 i = 0; i < backbuffer.width * backbuffer.height; i++){
+        for(u32 i = 0; i < (u32)(backbuffer.width * backbuffer.height); i++){
             backbuffer.pixels[i] = 0xFFFF0000;
         }
         
