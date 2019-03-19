@@ -214,6 +214,8 @@ function(InitSubmodules)
 
 find_file(FOUND_SUBMODULES RefCMakeLists.txt PATHS ${CMAKE_SOURCE_DIR}/Cu_std/ NO_DEFAULT_PATH)
 
+if(NOT FOUND_SUBMODULES)
+
 execute_process(
 COMMAND git submodule init
 )
@@ -221,4 +223,7 @@ COMMAND git submodule init
 execute_process(
 COMMAND git submodule update
 )
+
+endif()
+
 endfunction()

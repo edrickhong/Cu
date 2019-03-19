@@ -1,5 +1,17 @@
 #include "main.h"
 
+//sw breaks
+#if _WIN32
+
+#define _breakpoint() DebugBreak()
+
+#else
+
+#define _breakpoint() __asm__ volatile ("int $3\n")
+
+#endif
+
+
 struct REFL A{
     u32 a;
     u32 b;
@@ -40,7 +52,7 @@ _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 void TestSW(){
     //testing software render
     
-    auto flags = (WCreateFlags)(W_CREATE_BACKEND_XLIB | W_CREATE_NORESIZE);
+    auto flags = (WCreateFlags)(W_CREATE_BACKEND_WAYLAND | W_CREATE_NORESIZE);
     
     WWindowContext window = WCreateWindow("Software Window",flags,0,0,1280,720);
     
@@ -54,7 +66,10 @@ void TestSW(){
     
     while(run){
         
-        memset(backbuffer.pixels,0,backbuffer.width * backbuffer.height * 4);
+        for(u32 i = 0; i < backbuffer.width * backbuffer.height; i++){
+            backbuffer.pixels[i] = 0xFFFF0000;
+        }
+        
         WPresentBackBuffer(&window,&backbuffer);
         
         while(WWaitForWindowEvent(&window,&event)){
@@ -64,14 +79,19 @@ void TestSW(){
                 case W_EVENT_CLOSE: {
                     run = false;
                 } break;
+                
+                case W_EVENT_KBEVENT_KEYDOWN:{
+                    
+                    if(event.keyboard_event.keycode == KCODE_KEY_ESC){
+                        run = false;
+                    }
+                }
+                break;
+                
             }
         }
         
     }
-    
-    
-    
-    
     
 }
 

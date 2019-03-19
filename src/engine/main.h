@@ -2354,8 +2354,8 @@ void TestMemcpy(s8* _restrict dst,s8*  _restrict src,u32 len){
     
 #else
     
-#define loadps _mm_loadu_ps
-#define storeps _mm_storeu_ps
+#define loadps _mm_load_ps
+#define storeps _mm_store_ps
 #define bound_size 16
     
 #endif
