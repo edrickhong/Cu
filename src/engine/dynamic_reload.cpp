@@ -37,10 +37,10 @@ _persist void _ainline CopyLibToActiveLib(){
 }
 
 GameLib InitGameLibrary(void** initfuncptr){
+
+	GameLib lib = {};
     
     CopyLibToActiveLib();
-    
-    GameLib lib = {};
     
     lib.handle = LLoadLibrary(ACTIVE_GAMELIB_PATH);
     
@@ -69,7 +69,7 @@ GameLib InitGameLibrary(void** initfuncptr){
     return lib;
 }
 
-GameLib ReloadGameLibrary(GameLib lib,void** reload_funcptr,void* scenecontext){
+GameLib ReloadGameLibrary(GameLib lib,void** _restrict reload_funcptr,void* _restrict scenecontext){
     
     if(FFileChanged(GAMELIB_PATH,&lib.file_node)){
         
@@ -87,7 +87,8 @@ GameLib ReloadGameLibrary(GameLib lib,void** reload_funcptr,void* scenecontext){
         
         while(!lib.handle){
             CopyLibToActiveLib();
-            lib.handle = LLoadLibrary(ACTIVE_GAMELIB_PATH);  
+            lib.handle = LLoadLibrary(ACTIVE_GAMELIB_PATH);
+			lib.file_node = FGetFileNode(GAMELIB_PATH);
         }
         
         void* func = LGetLibFunction(lib.handle, "GameUpdateRender");
