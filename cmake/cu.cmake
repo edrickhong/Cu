@@ -68,7 +68,7 @@ endif()
 
 
     #allow debug info here cos windows doesn't embed it into the dll/exe
-    set(FLAGS "/EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
+    set(FLAGS "/FC EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
 
 
   set(META_CMD /DCPP_PASS /P)
