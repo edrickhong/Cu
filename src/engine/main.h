@@ -2469,7 +2469,7 @@ void TestSW(){
     
 #else
     
-#define _wbackend W_CREATE_BACKEND_X11
+#define _wbackend W_CREATE_BACKEND_XLIB
     
 #endif
     
