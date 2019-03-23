@@ -946,12 +946,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved){
 
 #ifdef DEBUG
 
-logic InspectorIgnoreFields(u32 hash){
+b32 InspectorIgnoreFields(u32 hash){
     return hash == PHashString("id") || hash == (u32)PHashString("animationcomponent_id")
         || hash == (u32)PHashString("animdata_id");
 }
 
-logic InspectorIsOpaqueType(u32 hash){
+b32 InspectorIsOpaqueType(u32 hash){
     return hash == PHashString("AnimationID") || hash == PHashString("ModelID")
         || hash == PHashString("TextureID") || hash == PHashString("RenderGroupIndex") ||
         hash == PHashString("MaterialID");
@@ -1131,7 +1131,7 @@ u32 InspectorHandleOpaqueTypes(u32 type_hash,u32 selected_id,u32 obj_id,
 }
 
 
-logic FindHash(u32 hash,u32* hash_array,u32 hash_count){
+b32 FindHash(u32 hash,u32* hash_array,u32 hash_count){
     
     for(u32 i = 0; i < hash_count; i++){
         if(hash == hash_array[i]){
@@ -1264,7 +1264,7 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     
 }
 
-logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
+b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
     
     //Mark out obj
     for(u32 i = 0; i < data->orientation.count; i++){
@@ -1282,7 +1282,7 @@ logic EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
         }
     }
     
-    logic to_update = false;
+    b32 to_update = false;
     
     if(obj_id == (u32)-1){
         return false;
@@ -1508,7 +1508,7 @@ void EditorGUI(SceneContext* context){
             auto color = &data->dir_light_color[data->dirlight_id];
             auto intensity = &data->dir_light_intensity[data->dirlight_id];
             
-            logic write_values = false;
+            b32 write_values = false;
             
             //dir light fields
             s8 buffer[128] = {};

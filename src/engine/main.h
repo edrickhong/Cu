@@ -325,8 +325,8 @@ ThreadRenderData CreateThreadRenderData(VDeviceContext* vdevice){
     return data;
 }
 
-logic _ainline InternalExecuteRenderBatch(RenderContext* context,
-                                          ThreadRenderData* render){
+b32 _ainline InternalExecuteRenderBatch(RenderContext* context,
+                                        ThreadRenderData* render){
     
     TIMEBLOCK(Wheat);
     
@@ -1556,7 +1556,7 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
             
             case W_EVENT_CLOSE:{
                 printf("window close\n");
-                *((logic*)args) = 0;
+                *((b32*)args) = 0;
             }
             break;
             
@@ -2483,7 +2483,7 @@ void TestSW(){
     
     WWindowEvent event = {};
     
-    logic run = true;
+    b32 run = true;
     
     while(run){
         

@@ -1,3 +1,5 @@
+#include "stdio.h"
+#include "stdlib.h"
 #include "mode.h"
 #include "ttype.h"
 #include "ffileio.h"

@@ -161,8 +161,8 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     auto member = &t->members_array[t->members_count];
     t->members_count++;
     
-    logic is_assign = false;
-    logic next_is_struct = false;
+    b32 is_assign = false;
+    b32 next_is_struct = false;
     
     for(u32 j = 0; j < membereval_count;j++){
         
@@ -249,7 +249,7 @@ void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_
     }
 }
 
-logic IsDuplicateStruct(GenericStruct* struct_array,u32 struct_count,const s8* name){
+b32 IsDuplicateStruct(GenericStruct* struct_array,u32 struct_count,const s8* name){
     
     auto name_hash = PHashString(name);
     
@@ -265,7 +265,7 @@ logic IsDuplicateStruct(GenericStruct* struct_array,u32 struct_count,const s8* n
     return false;
 }
 
-logic IsDuplicateEnum(GenericEnum* enum_array,u32 enum_count,const s8* name){
+b32 IsDuplicateEnum(GenericEnum* enum_array,u32 enum_count,const s8* name){
     
     auto name_hash = PHashString(name);
     
@@ -281,7 +281,7 @@ logic IsDuplicateEnum(GenericEnum* enum_array,u32 enum_count,const s8* name){
     return false;
 }
 
-logic IsDuplicateFunction(GenericFunction* function_array,u32 function_count,const s8* name){
+b32 IsDuplicateFunction(GenericFunction* function_array,u32 function_count,const s8* name){
     
     auto name_hash = PHashString(name);
     
@@ -564,7 +564,7 @@ void GenerateGenericEnum(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a,G
 
 GenericStruct* GetHParent(EvalChar* eval_buffer,u32 count,GenericStruct* struct_array,u32 struct_count){
     
-    logic has_parent = false;
+    b32 has_parent = false;
     
     for(u32 i = 0; i < count; i++){
         
@@ -713,7 +713,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
                 //Handle internal structs
                 if(terminator == '{'&& (membereval_array[0].tag == TAG_STRUCT || membereval_array[0].tag == TAG_ENUM)){
                     
-                    logic named_struct = false;
+                    b32 named_struct = false;
                     
                     for(u32 k = 0; k < membereval_count;k++){
                         

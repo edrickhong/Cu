@@ -269,7 +269,7 @@ VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevic
 }
 
 VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,logic isdevice_local,VMappedBufferProperties prop){
+                                         ptrsize data_size,b32 isdevice_local,VMappedBufferProperties prop){
     
     auto buffer = 
         VCreateStaticIndexBuffer(vdevice,data_size,isdevice_local,prop);

@@ -47,4 +47,4 @@ VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevic
                                          ptrsize data_size);
 
 VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,logic isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);
+                                         ptrsize data_size,b32 isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);

@@ -279,7 +279,7 @@ void _ainline Clear(ThreadTextureFetchQueue* queue){
     queue->fetch_count = 0;
 }
 
-logic _ainline IsThreadTextureFetchQueueDone(ThreadTextureFetchQueue* queue){
+b32 _ainline IsThreadTextureFetchQueueDone(ThreadTextureFetchQueue* queue){
     
     if((queue->index != queue->count) && queue->is_done){
         queue->is_done = false;  

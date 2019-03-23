@@ -554,7 +554,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
             
             settings->audio_frequency = atof(value_string);
             
-            logic is_valid = settings->audio_frequency == 48000 || settings->audio_frequency == 44100;
+            b32 is_valid = settings->audio_frequency == 48000 || settings->audio_frequency == 44100;
             
             if(!is_valid){
                 settings->audio_frequency = 48000;
@@ -649,7 +649,7 @@ Settings ParseSettings(){
                 s8 value_buffer[256] = {};
                 u32 value_count = 0;
                 
-                logic is_value = false;
+                b32 is_value = false;
                 
                 for(ptrsize i = 0; i < line_len; i++){
                     

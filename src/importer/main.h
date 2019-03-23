@@ -224,7 +224,7 @@ void WriteTDF(void* data,u32 w,u32 h,u32 size,u32 mips,TexFormat format,
 
 
 void CreateTextureAssetTDF(const s8* inputfile,const s8* outputfile,TexFormat format,
-                           logic gen_mips,logic is_vt = 1){
+                           b32 gen_mips,b32 is_vt = 1){
     
     /*
       writeData is always called to write 128 bytes at the start. Is this redundant?

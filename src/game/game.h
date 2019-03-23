@@ -69,7 +69,7 @@ struct GameData{
     Vector3 camera_pos;
     Vector3 camera_lookdir;
     f32 roty;
-    logic running = true;
+    b32 running = true;
     
     //These are entity registers
     SOAOrientationData orientation;
@@ -88,12 +88,12 @@ struct GameData{
     u32 obj_id = 0;
     u32 dirlight_id = 0;
     
-    logic draw_profiler;
-    logic show_object_list = false;
-    logic show_object_editor = false;
-    logic show_dir_light_editor = false;
-    logic show_ambient_light_editor = false;
-    logic write_orientation = true;
+    b32 draw_profiler;
+    b32 show_object_list = false;
+    b32 show_object_editor = false;
+    b32 show_dir_light_editor = false;
+    b32 show_ambient_light_editor = false;
+    b32 write_orientation = true;
     
     GUIVec2 pos_control = {-1.0f,1.0f};
     GUIDim2 dim_control = {GUIDEFAULT_W * 2.8f,GUIDEFAULT_H * 0.22f};

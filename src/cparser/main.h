@@ -38,7 +38,7 @@ enum CType{
     CType_S32 = PHashString("s32"),
     CType_S64 = PHashString("s64"),
     
-    CType_LOGIC = PHashString("logic"),
+    CType_LOGIC = PHashString("b32"),
     
     CType_F32 = PHashString("f32"),
     CType_F64 = PHashString("f64"),
@@ -52,7 +52,7 @@ enum CType{
     CType_UNION = PHashString("union"),//Do we support unions?
 };
 
-logic IsIntType(u32 type){
+b32 IsIntType(u32 type){
     
     return type == CType_U8 ||
         type == CType_U16 ||
@@ -64,12 +64,12 @@ logic IsIntType(u32 type){
         type == CType_S64;
 }
 
-logic IsFloatType(u32 type){
+b32 IsFloatType(u32 type){
     return type == CType_F32 ||
         type == CType_F64;
 }
 
-logic IsCType(u64 hash){
+b32 IsCType(u64 hash){
     
     CType array[] = {
         
@@ -162,7 +162,7 @@ struct GenericFunction{
 
 
 
-logic IsParserKeyword(u64 hash){
+b32 IsParserKeyword(u64 hash){
     
     ParserKeyWord array[] = {
         PARSERKEYWORD_REFL,
@@ -187,9 +187,9 @@ enum REFLSTRUCTTYPE{
 
 REFLSTRUCTTYPE IsReflStruct(EvalChar* eval_buffer,u32 count){
     
-    logic is_struct = false;
-    logic has_keyword = false;
-    logic is_typedef = false;
+    b32 is_struct = false;
+    b32 has_keyword = false;
+    b32 is_typedef = false;
     
     for(u32 i = 0; i < count; i++){
         
@@ -222,11 +222,11 @@ REFLSTRUCTTYPE IsReflStruct(EvalChar* eval_buffer,u32 count){
     return REFLSTRUCTTYPE_NONE;
 }
 
-logic IsReflEnum(EvalChar* eval_buffer,u32 count){
+b32 IsReflEnum(EvalChar* eval_buffer,u32 count){
     
-    logic is_enum = eval_buffer[0].tag == TAG_ENUM;
+    b32 is_enum = eval_buffer[0].tag == TAG_ENUM;
     
-    logic has_keyword = false;
+    b32 has_keyword = false;
     
     for(u32 i = 1; i < count; i++){
         
@@ -240,13 +240,13 @@ logic IsReflEnum(EvalChar* eval_buffer,u32 count){
     return is_enum && has_keyword;
 }
 
-logic IsReflFunc(EvalChar* eval_buffer,u32 count){
+b32 IsReflFunc(EvalChar* eval_buffer,u32 count){
     
-    logic has_return_type = eval_buffer[0].tag == TAG_CTYPE;
+    b32 has_return_type = eval_buffer[0].tag == TAG_CTYPE;
     
-    logic has_arg_brackets = false;
+    b32 has_arg_brackets = false;
     
-    logic has_key = false;
+    b32 has_key = false;
     
     for(u32 i = 1; i < count - 1; i++){
         
@@ -930,7 +930,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
         CType_S16 = PHashString("s16"),
         CType_S32 = PHashString("s32"),
         CType_S64 = PHashString("s64"),
-        CType_LOGIC = PHashString("logic"),
+        CType_LOGIC = PHashString("b32"),
         CType_F32 = PHashString("f32"),
         CType_F64 = PHashString("f64"),
         CType_PTRSIZE = PHashString("ptrsize"),
@@ -1002,27 +1002,27 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
         u32 MetaGetTypeByName(const s8* name,MetaStructEntry* array,
     u32 array_count);
     
-    logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaStructEntry* array,
+    b32 MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaStructEntry* array,
     u32 array_count);
     
-    logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaStructEntry* array,
+    b32 MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaStructEntry* array,
     u32 array_count);
     
-    logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaStructEntry* array,
+    b32 MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaStructEntry* array,
     u32 array_count);
     
-    logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaStructEntry* array,
+    b32 MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaStructEntry* array,
     u32 array_count);
     
-    logic MetaIsCType(u32 hash);
+    b32 MetaIsCType(u32 hash);
     
-    logic MetaIsCType(const s8* string);
+    b32 MetaIsCType(const s8* string);
     
     u32 MetaStringToType(const s8* string);
     
-    logic IsIntType(u32 type);
+    b32 IsIntType(u32 type);
     
-    logic IsFloatType(u32 type);
+    b32 IsFloatType(u32 type);
     
     MetaFunctionData* MetaGetFunctionByNameHash(u32 hash);
     
@@ -1144,7 +1144,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     }
     
     
-    logic MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaStructEntry* array,
+    b32 MetaGetValueByNameHash(void* obj,u32 index,void* outdata,u32 hash,MetaStructEntry* array,
     u32 array_count){
     
     for(u32 i = 0; i < array_count; i++){
@@ -1162,13 +1162,13 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     return false;
     }
     
-    logic MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaStructEntry* array,
+    b32 MetaGetValueByName(void* obj,u32 index,void* outdata,const s8* name,MetaStructEntry* array,
     u32 array_count){
     
     return MetaGetValueByNameHash(obj,index,outdata,PHashString(name),array,array_count);
     }
     
-    logic MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaStructEntry* array,
+    b32 MetaSetValueByNameHash(void* obj,u32 index,void* value,u32 hash,MetaStructEntry* array,
     u32 array_count){
     
     for(u32 i = 0; i < array_count; i++){
@@ -1189,20 +1189,20 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     return false;
     }
     
-    logic MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaStructEntry* array,
+    b32 MetaSetValueByName(void* obj,u32 index,void* value,const s8* name,MetaStructEntry* array,
     u32 array_count){
     
     return MetaSetValueByNameHash(obj,index,value,PHashString(name),array,array_count);
     }
     
-    logic MetaIsCType(u32 hash){
+    b32 MetaIsCType(u32 hash){
     return hash == CType_U8 || hash == CType_U16 || hash == CType_U32  || hash == CType_U64 ||
     hash == CType_S8 || hash == CType_S16 || hash == CType_S32 || hash == CType_S64 ||
     hash == CType_LOGIC || hash == CType_F32 || hash == CType_F64 || hash == CType_PTRSIZE ||
     hash == CType_VOID;
     }
     
-    logic MetaIsCType(const s8* string){
+    b32 MetaIsCType(const s8* string){
     return MetaIsCType(PHashString(string));
     }
     
@@ -1210,7 +1210,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     return PHashString(string);
     }
     
-    logic IsIntType(u32 type){
+    b32 IsIntType(u32 type){
     
     return type == CType_U8 ||
     type == CType_U16 ||
@@ -1222,7 +1222,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     type == CType_S64;
     }
     
-    logic IsFloatType(u32 type){
+    b32 IsFloatType(u32 type){
     return type == CType_F32 ||
     type == CType_F64;
     }
@@ -1735,7 +1735,7 @@ MetaDataCompEntry* MetaGetCompByName(const s8* name);
 #endif
 }
 
-logic IsValidName(s8* name_buffer){
+b32 IsValidName(s8* name_buffer){
     
     auto len = strlen(name_buffer);
     
@@ -1749,7 +1749,7 @@ logic IsValidName(s8* name_buffer){
     return true;
 }
 
-logic ValidateAndFillNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* parent_name,s8* name_buffer,ParserKeyWord* key = 0){
+b32 ValidateAndFillNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* parent_name,s8* name_buffer,ParserKeyWord* key = 0){
     
     for(u32 i = 0; i < count; i++){
         
@@ -1779,7 +1779,7 @@ logic ValidateAndFillNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* 
     return false;
 }
 
-logic ValidateNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* parent_name,s8* name_buffer,ParserKeyWord* key = 0){
+b32 ValidateNameBufferStruct(EvalChar* eval_buffer,u32 count,const s8* parent_name,s8* name_buffer,ParserKeyWord* key = 0){
     
     _kill("name buffer must be prefilled\n",!strlen(name_buffer));
     

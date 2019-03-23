@@ -303,7 +303,7 @@ VkShaderStageFlagBits GetInternalShaderType(ShaderType type){
 }
 
 
-logic IsAttrib(u64 hash){
+b32 IsAttrib(u64 hash){
     
     return
         hash == GLSLType_UNIFORM || hash == GLSLType_BOOL ||
@@ -340,7 +340,7 @@ logic IsAttrib(u64 hash){
         ;
 }
 
-logic IsAttribEx(u64 hash){
+b32 IsAttribEx(u64 hash){
     
     AttribEx array[] = {
         
@@ -536,7 +536,7 @@ void GetInternalFormatAndSize(GLSLType type,VkFormat* outformat,u32* size){
     
 }
 
-logic IsStruct(EvalChar* eval_buffer,u32 count){
+b32 IsStruct(EvalChar* eval_buffer,u32 count){
     
     if(PHashString(eval_buffer[0].string) == PHashString("struct")){
         
@@ -547,7 +547,7 @@ logic IsStruct(EvalChar* eval_buffer,u32 count){
 }
 
 
-logic IsLayout(EvalChar* eval_buffer,u32 count){
+b32 IsLayout(EvalChar* eval_buffer,u32 count){
     
     if(PHashString(eval_buffer[0].string) == PHashString("layout")){
         
@@ -557,7 +557,7 @@ logic IsLayout(EvalChar* eval_buffer,u32 count){
     return false;
 }
 
-logic IsGLSLType(u64 hash){
+b32 IsGLSLType(u64 hash){
     
     GLSLType array[] = {
         
@@ -862,7 +862,7 @@ enum ParsePath{
 
 ParsePath _ainline InternalGetParseType(EvalChar* eval_buffer,u32 eval_count){
     
-    logic in_args_scope = false;
+    b32 in_args_scope = false;
     
     for(u32 i = 0; i < eval_count; i++){
         
@@ -1430,7 +1430,7 @@ TODO: handle std430 std140
     u32 bind = 0;
     u32 total_count = 1;
     
-    logic in_args_scope = false;
+    b32 in_args_scope = false;
     
     for(u32 i = 0; i < eval_count; i++){
         

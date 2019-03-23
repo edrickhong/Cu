@@ -239,7 +239,7 @@ type* a,u32 size){ \
     return 0; \
 }
 
-#define _DIsInListFn(slot_type,block_type) logic IsInList##block_type(slot_type* list,u32 count, \
+#define _DIsInListFn(slot_type,block_type) b32 IsInList##block_type(slot_type* list,u32 count, \
 block_type* block){ \
     for(u32 i = 0; i < count; i++){ \
         if(block == list[i].block){ \
@@ -248,7 +248,7 @@ block_type* block){ \
     } \
     return 0; \
 } \
-logic IsInList##block_type(block_type** list,u32 count,block_type* block){ \
+b32 IsInList##block_type(block_type** list,u32 count,block_type* block){ \
     for(u32 i = 0; i < count; i++){ \
         if(block == list[i]){ \
             return 1; \
@@ -257,7 +257,7 @@ logic IsInList##block_type(block_type** list,u32 count,block_type* block){ \
     return 0; \
 }
 
-#define _DMergeBlockFn(type) logic MergeBlock##type(type* a,type* b){	\
+#define _DMergeBlockFn(type) b32 MergeBlock##type(type* a,type* b){	\
     if(b->lowerblock != a){						\
         return 0;					\
     }									\
@@ -271,7 +271,7 @@ logic IsInList##block_type(block_type** list,u32 count,block_type* block){ \
 }
 
 #define _DLinkAllocateBlockListFn(slot_type,block_type,state)		\
-logic LinkAllocateBlockList##block_type(slot_type* list,u32* count,u32 size,slot_type* slot){	\
+b32 LinkAllocateBlockList##block_type(slot_type* list,u32* count,u32 size,slot_type* slot){	\
     _allocprint("Link alloc%s\n","");					\
     slot_type sort_array[_defarray_size];				\
     u32 sort_count = *count;						\
