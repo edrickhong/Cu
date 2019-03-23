@@ -1,16 +1,5 @@
 #include "main.h"
 
-//sw breaks
-#if _WIN32
-
-#define _breakpoint() DebugBreak()
-
-#else
-
-#define _breakpoint() __asm__ volatile ("int $3\n")
-
-#endif
-
 
 struct REFL A{
     u32 a;
@@ -147,7 +136,7 @@ s32 main(s32 argc,s8** argv){
                 
                 
                 if(reload){
-
+                    
 					//FIXME(WIN32): we are reloading every frame. seems like a problem with FFileChanged
                     
                     auto context = &pdata->scenecontext;
