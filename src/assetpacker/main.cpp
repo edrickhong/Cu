@@ -6,94 +6,6 @@
 #include "aallocator.h"
 #include "pparse.h"
 
-/*
-NOTES:
-press ctrl+f5 to run console
-Program creates blank resource file if you try to add a nonexistent one
-resource files and shizz are taken from directory Jupiter\Make\
-
-************
-Flow:
-assetlist file
-
-Globals:
-AssetTable
-Buffer to hold the data
-
-
-on startup:
-filetolist
-
-list
-printlist
-
-add
-listtofile
-
-remove
-listtofile
-
-PROGRESS:
-
-AddToList (T)(note: assign FileNode)
-RemoveFromList (T)
-Parse (T)
-WriteTableToFile (T)
-FileToTable (T)
-SortByType (T)
-BakeToExecutable (P)
-
-
-TODO:
-VerifyData[by comparing each byte]
-
-
-Additional:
-Additional Console Commands
-Validate
-
-
-P=Inprogress
-D=written but not tested
-T=tested and working but not optimised
-O=optimised,working
-
-Pack File:
-TABLE
-DATA
-When adding additional data, append to the end.
-When removing data, recalculate all the data behind the removed data and shift it forward, recalculating offsets.
-Arrange data at bake time (by type, etc)
-
-TODO:
-Optimisation:
-Reorder table to back end
-Create a separate table for invalidating assets
-separate 2 files : bake to executable and storing data in asset file
-store data in asset file
-executable: order asset by type
-
-API:
-load up the table
-function: pull individual asset
-return buffer with data for half an item
-load whole item
-RetrievePartialData
-RetrieveFullData
-
-Function:
-Write file data to pack file when adding assets
-cmp function to validate data by checking file contents with data stored in pack file
-
-don't use new
-dont use malloc
-alloc and unalloc and ralloc(malloc ualloc realloc sub)
-strcpy or memcpy
-asset_table.h stores the data
-include 'asset_table.h'
-
-*/
-
 enum AssetType : u32 
 {
 	ASSET_AUDIO = 0,
@@ -185,46 +97,35 @@ void PackInit(FileHandle fh, AssetTable* outTable)
 ///Adds asset from file path to table
 void AddAssetToTable(const s8* assetFileName, AssetTable* outTable) 
 {
+	AssetTableEntry entry ={ ASSET_UNKNOWN };
+
 	//always adds asset behind the last offset
-	u32 last_offset = 0;
-	//check for duplicates and also store entry with largest offset
+	u32 lastOffset = 0;
+	//check for duplicates and also find the entry with largest offset
 	for (u32 i = 0; i < outTable->count; i++) 
 	{
 		auto entry = &outTable->container[i];
-		if (entry->offset >= last_offset) 
+		if (entry->offset >= lastOffset) 
 		{
-			last_offset = entry->offset + entry->size;
+			lastOffset = entry->offset + entry->size;
 		}
-		if (PHashString(assetFileName) == entry->file_location_hash) {
+		if (PHashString(assetFileName) == entry->file_location_hash) 
+		{
 			printf("Warning! %s file exists in the table! Resource %s was not added.\n", assetFileName, assetFileName);
 			return;
 			//file already exists
 		}
 	}
-
-	AssetTableEntry entry = {ASSET_UNKNOWN};
+	entry.offset = lastOffset;
 
 	auto file = FOpenFile(assetFileName, F_FLAG_READWRITE);
-
 	_kill("File not found!", file == F_FILE_INVALID);
-	
-	auto file_size = FGetFileSize(file);
+	auto fileSize = FGetFileSize(file);
 	FCloseFile(file);
-	entry.size = file_size;
 
-	//calculate offset
-	if (outTable->count > 0) 
-	{
-		//search for entry with largest offset(last item for baking) and put this behind it
-		entry.offset = last_offset;
-	}
-	else {
-		entry.offset = 0;
-	}
+	entry.size = fileSize;
 
 	u32 len = strlen(assetFileName);
-
-
 	//label file type
 	auto file_extension = assetFileName[len - 3] + assetFileName[len - 2] + assetFileName[len - 1];
 	if (file_extension == ('m' + 'd' + 'f')) 
@@ -262,7 +163,7 @@ void AddAssetToTable(const s8* assetFileName, AssetTable* outTable)
 
 }
 
-///Removes asset from table in memory
+///Removes asset from table in memory using file path
 void RemoveAssetFromTable(const s8* assetFileName, AssetTable* outTable) 
 {
 	for (u32 i = 0; i < outTable->count; i++) 
@@ -278,7 +179,7 @@ void RemoveAssetFromTable(const s8* assetFileName, AssetTable* outTable)
 	printf("WARNING: %s doesn't exist\n", assetFileName);
 }
 
-///Removes asset from table in memory
+///Removes asset from table in memory using index
 void RemoveAssetFromTable(u32 index, AssetTable* outTable) 
 {
 	if (index >= outTable->count) 
@@ -323,7 +224,7 @@ void SortTableByType(AssetTable* outTable)
 	}
 }
 
-///Write table to file
+///Write table to file using file path
 void WriteTableToFile(const s8* packFilePath, AssetTable* outTable) 
 {
 	auto file = FOpenFile(packFilePath, F_FLAG_WRITEONLY | F_FLAG_TRUNCATE);
@@ -333,7 +234,7 @@ void WriteTableToFile(const s8* packFilePath, AssetTable* outTable)
 	FCloseFile(file);
 }
 
-///Write table to file
+///Write table to file using opened file handle
 void WriteTableToFile(FileHandle fh, AssetTable* outTable) 
 {
 	FWrite(fh, outTable->container, outTable->count * sizeof(AssetTableEntry));
@@ -392,9 +293,10 @@ void PrintHelp()
         -list : prints the asset file list
         -add : adds asset(s) to the asset list
         -remove : removes asset(s) to the asset list
-        -bake : bakes asset data either into an executable or a file
-		-tbake : bakes by type
-        -cmp: byte compares the data in the list to that in the file
+        -bake : bakes asset data either into an executable
+		-tbake : bakes after sorting by type
+		  -bcmp: byte compares the data in the table to the baked data in the executable
+        -cmp:  compares the data size in the table to the size of bytes written in the executable
         -sort: sorts the table by type
         
         The syntax for bake is a little different:
@@ -412,6 +314,33 @@ void PrintHelp()
         )FOO"
 	);
 
+}
+
+///Byte compare the table and the data written
+void VerifyFileData(const s8* dataBuffer, const AssetTable* assetTable)
+{
+	for (u32 i = 0; i < assetTable->count; i++)
+	{
+		const AssetTableEntry* entry = &assetTable->container[i];
+		auto entry_file = FOpenFile(entry->file_location, F_FLAG_READWRITE);
+		ptrsize entry_size = 0;
+		auto entry_data = FReadFileToBuffer(entry_file, &entry_size);
+		FCloseFile(entry_file);
+
+		auto i_EntryData = entry_data;
+		_kill("data written and entry size does not match", (u32)entry_size != (u32)entry->size);
+		//byte compare
+		for (ptrsize i_EntrySize = 0; i_EntrySize < entry_size; ++i_EntrySize)
+		{
+			if (*dataBuffer++ != *i_EntryData++)
+			{
+				printf("%c does not match %c", *dataBuffer, *i_EntryData);
+				//_kill("data is wrong", 1);
+			}
+		}
+		unalloc(entry_data);
+	}
+	printf("File data matches table entries!");
 }
 
 ///Write one assetTableEntry to file
@@ -440,16 +369,16 @@ void WriteDataToFile(FileHandle fileToWrite, AssetTable* assetTable, const s8* f
 	}
 }
 
-///Write whole table to file with file name fileName
+///Write whole table to file
 void WriteDataToFile(FileHandle fileToWrite, AssetTable* assetTable)
 {
-	printf("\n\nBAKING DATA\n\n");
+	printf("\nBAKING DATA...\n");
 	for (u32 i = 0; i < assetTable->count; i++) 
 	{
 		const AssetTableEntry* entry = &assetTable->container[i];
 		WriteDataToFile(fileToWrite, entry);
 	}
-	printf("\n\nDONE BAKING DATA\n\n");
+	printf("\nDONE BAKING DATA!\n");
 }
 
 void WriteDataToBuffer(AssetTable* asset_table, s8* buffer)
@@ -489,13 +418,13 @@ s32 main(s32 argc, s8** argv)
 	AssetTable assetTable;
 	assetTable.Init();
 	//pack_file is the string name of the table file
-	s8* pack_file = argv[1];
-	s8* data_file = (s8*)alloc(sizeof(s8*));
-	strcpy(data_file, pack_file);
-	strcat(data_file, ".data");
+	s8* packFilePath = argv[1];
+	s8  dataFilePath[100];
+	strcpy(dataFilePath, packFilePath);
+	strcat(dataFilePath, ".data");
 
-	auto pFile = FOpenFile(pack_file, F_FLAG_READWRITE | F_FLAG_CREATE);
-	auto dFile = FOpenFile(data_file, F_FLAG_READWRITE | F_FLAG_CREATE);
+	auto pFile = FOpenFile(packFilePath, F_FLAG_READWRITE | F_FLAG_CREATE);
+	auto dFile = FOpenFile(dataFilePath, F_FLAG_READWRITE | F_FLAG_CREATE);
 
 	if (FGetFileSize(pFile) == 0)
 	{
@@ -507,86 +436,8 @@ s32 main(s32 argc, s8** argv)
 	FCloseFile(pFile);
 	FCloseFile(dFile);
 
-	WriteTableToFile(pack_file, &assetTable);
-	/*
-	if (PHashString(argv[2]) == PHashString("-up")) 
-	{
-		auto dFile = FOpenFile(data_file, F_FLAG_READWRITE|F_FLAG_CREATE);
-		u32 table_size = 0;
-		FSeekFile(dFile, 0, F_METHOD_START);
-		FRead(dFile, &table_size, sizeof(u32));
-		if (table_size > 0) 
-		{
-			auto fileTableBuffer = (AssetTableEntry*)alloc(table_size * sizeof(AssetTableEntry));
-			FSeekFile(dFile, sizeof(u32),F_METHOD_START);
-			FRead(dFile, fileTableBuffer, table_size * sizeof(AssetTableEntry));
-			//auto ftB = strdup((s8*)fileTableBuffer);
-			AssetTable assetsToRemove;// = (AssetTable*)alloc(sizeof(u32) * sizeof(AssetTableEntry*));
-			assetsToRemove.Init();
-			AssetTable toBeCreated;// = (AssetTable*)alloc(sizeof(asset_table));;
-			toBeCreated.Init();
+	WriteTableToFile(packFilePath, &assetTable);
 
-		//	for (u32 i = 0; i < table_size; i++) 
-		//	{
-		//		auto entry = fileTableBuffer[i];
-		//		assetsToRemove.PushBack(entry);
-		//	}
-
-			PrintTableToConsole(&assetsToRemove);
-			PrintTableToConsole(&assetTable);
-
-			//go through every element in localFile
-			//detect for changes in the datafile
-			for (u32 localTableIndex = 0; localTableIndex < assetTable.count; localTableIndex++)
-			{
-				bool assetExists = false;
-				//if we find a entry with same name, check if it remains the same. If it does, mark for nothing.
-				//																	else mark for deletion, mark for creation
-				//  if entry with same name does not exist, mark for creation
-				//  if there is excess unwanted data in fileTable, mark all for deletion
-				//
-
-				for (u32 fileTableIndex = 0; fileTableIndex < assetsToRemove.count; fileTableIndex++)
-				{
-					//check each element of the same name with one another
-					//printf("%llu %llu %llu", assetsToRemove[fileTableIndex].file_location_hash, asset_table[localTableIndex].file_location_hash, PHashString(assetsToRemove[fileTableIndex].file_location));
-					//printf("%llu %llu %d %d %d %s", assetsToRemove[0].file_location_hash, assetsToRemove[1].file_location_hash, assetsToRemove[0].offset, assetsToRemove[0].size, assetsToRemove[0].type, assetsToRemove[0].file_location);
-					if (assetsToRemove[fileTableIndex].file_location_hash == assetTable[localTableIndex].file_location_hash)
-					{
-						//check for changes in the file itself
-						if (assetsToRemove[fileTableIndex].size != assetTable[localTableIndex].size)
-						{
-							//if data has changed, update data/mark data for editing
-							auto assetToCreate = assetTable[localTableIndex];
-							toBeCreated.PushBack(assetToCreate);
-						}
-						else 
-						{
-							//if data is unchanged, mark data as safe
-							assetsToRemove.Remove(fileTableIndex);
-						}
-						assetExists = true;
-						//fileTableIndex -= 1;
-						break;
-					}
-
-				}
-				if (!assetExists)
-				{
-					toBeCreated.PushBack(assetTable[localTableIndex]);
-				}
-
-			}
-		unalloc(fileTableBuffer);
-		}
-		//dFile = FOpenFile(data_file, F_FLAG_WRITEONLY | F_FLAG_TRUNCATE);
-		FSeekFile(dFile, 0, F_METHOD_START);
-		FWrite(dFile,&assetTable.count,sizeof(u32));
-		WriteTableToFile(dFile,&assetTable);
-		FCloseFile(dFile);
-		//WriteDataToFile(dFile, &asset_table);
-	}*/
-	
 	//Read the -commands
 	//add to asset list
 	if (HashAndCompareString(argv[2],"-add")) 
@@ -625,6 +476,98 @@ s32 main(s32 argc, s8** argv)
 
 		WriteTableToFile(argv[1], &assetTable);
 	}
+	else if (HashAndCompareString(argv[2], "-bcmp"))
+	{
+		ptrsize execSize;
+
+		auto execString = argv[3];
+		_kill("no file entered", strlen(execString) == (u32)0);
+
+		auto fileExtension = execString + (strlen(execString) - 3);
+		_kill("not an exe", !HashAndCompareString(fileExtension, "exe"));
+
+		auto execFileHandle = FOpenFile(execString, F_FLAG_READWRITE);
+		s8* exeBuffer = FReadFileToBuffer(execFileHandle, &execSize);
+		FCloseFile(execFileHandle);
+
+		printf("exec size %d\n", (u32)execSize);
+
+		//Locate the 4 bytes that store the offset value
+		auto bufferOffset = PFindStringInBuffer("thisvalueinatassetpacktime",
+			exeBuffer, execSize);
+
+		bufferOffset -= 5;
+		char* exclaim = (char*)&exeBuffer[bufferOffset];
+		//Get the start of data buffer
+		++bufferOffset;
+
+		//ptrsize dataOffset = strtoull(&exeBuffer[bufferOffset], &(exeBuffer), 10);
+		u32* dataOffset = (u32*)&exeBuffer[bufferOffset];
+
+		VerifyFileData(&exeBuffer[*dataOffset], &assetTable);
+
+		////Locate the end of the data buffer
+		//ptrsize endOffset = PFindStringInBuffer("!dataend!", exeBuffer,
+		//	execSize);
+
+		//AssetTableEntry lastEntry = assetTable[assetTable.count - 1];
+		//ptrsize correctSize = lastEntry.offset + lastEntry.size;
+
+		//if (endOffset - *dataOffset == correctSize)
+		//{
+		//	printf("Size of written data matches table.");
+		//}
+		//else
+		//{
+		//	printf("Size of written data does not match table.");
+		//}
+
+	}
+	else if (HashAndCompareString(argv[2], "-cmp"))
+	{
+		ptrsize execSize;
+
+		auto execString = argv[3];
+		_kill("no file entered", strlen(execString) == (u32)0);
+
+		auto fileExtension = execString + (strlen(execString) - 3);
+		_kill("not an exe", !HashAndCompareString(fileExtension, "exe"));
+
+		auto execFileHandle = FOpenFile(execString, F_FLAG_READWRITE);
+		s8* exeBuffer = FReadFileToBuffer(execFileHandle, &execSize);
+		FCloseFile(execFileHandle);
+
+		printf("exec size %d\n", (u32)execSize);
+
+		//Locate the 4 bytes that store the offset value
+		auto bufferOffset = PFindStringInBuffer("thisvalueinatassetpacktime",
+			exeBuffer, execSize);
+		
+		bufferOffset -= 5;
+		char* exclaim = (char*)&exeBuffer[bufferOffset];
+		//Get the start of data buffer
+		++bufferOffset;
+
+		//ptrsize dataOffset = strtoull(&exeBuffer[bufferOffset], &(exeBuffer), 10);
+		u32* dataOffset = (u32*)&exeBuffer[bufferOffset];
+
+		//Locate the end of the data buffer
+		ptrsize endOffset = PFindStringInBuffer("!dataend!", exeBuffer,
+															 execSize);
+
+		AssetTableEntry lastEntry = assetTable[assetTable.count - 1];
+		ptrsize correctSize = lastEntry.offset + lastEntry.size;
+
+		if (endOffset - *dataOffset == correctSize)
+		{
+			printf("Size of written data matches table.");
+		}
+		else
+		{
+			printf("Size of written data does not match table.");
+		}
+
+	}
 	else if (HashAndCompareString(argv[2], "-list"))  
 	{
 		PrintTableToConsole(&assetTable);
@@ -636,50 +579,45 @@ s32 main(s32 argc, s8** argv)
 		PrintTableToConsole(&assetTable);
 		WriteTableToFile(argv[1], &assetTable);
 	}
-	//MARK: Where do we fetch the data?
-	else if (HashAndCompareString(argv[2],"-cmp"))
-	{
-
-	}
 	else if (PHashString(argv[2]) == PHashString("-bake") ||
-		      PHashString(argv[2]) == PHashString("-dbake")) 
+		      PHashString(argv[2]) == PHashString("-tbake")) 
 	{
 		u8 flag = 0;
-		if (PHashString(argv[2]) == PHashString("-dbake"))
+		if (PHashString(argv[2]) == PHashString("-tbake"))
 		{
 			flag = 1;
 		}
-		//TODO: we should check if file is an executable
 
-		//executable data
-
-		ptrsize exec_size;
+		ptrsize execSize;
 		s8* exec_buffer;
 
-		auto exec_string = argv[3];
+		auto execString = argv[3];
+		_kill("no file entered", strlen(execString) == (u32)0);
 
-		_kill("no file entered", strlen(exec_string) == (u32)0);
-		auto exec_file = FOpenFile(exec_string, F_FLAG_READWRITE);
+		auto file_extension = execString + (strlen(execString) - 3);
+		_kill("not an exe", !HashAndCompareString(file_extension, "exe"));
 
-		exec_buffer = FReadFileToBuffer(exec_file, &exec_size);
-		printf("exec size %d\n", (u32)exec_size);
+		auto execFileHandle = FOpenFile(execString, F_FLAG_READWRITE);
 
-		auto offset = PFindStringInString("patchthisvalueinatassetpacktime", exec_buffer);
+		exec_buffer = FReadFileToBuffer(execFileHandle, &execSize);
+		printf("exec size %d\n", (u32)execSize);
+		
+		auto offset = PFindStringInBuffer("patchthisvalueinatassetpacktime", 
+														exec_buffer, execSize);
+
 		_kill("couldn't find patch string", offset == (u32)-1);
-		exec_buffer[offset] = '!';
+		exec_buffer[offset ] = '!';
 
 		auto n_exec_file = FOpenFile("a.exe", F_FLAG_CREATE | F_FLAG_READWRITE);
 
 		auto size_ptr = (u32*)&exec_buffer[offset + 1];
 
-		*size_ptr = exec_size;
+		*size_ptr = execSize;
 
 		FSeekFile(n_exec_file, 0, F_METHOD_START);
 
-		FWrite(n_exec_file, &exec_buffer[0], exec_size);
+		FWrite(n_exec_file, &exec_buffer[0], execSize);
 
-		//sort by type before baking??
-		//SortListByType(&asset_table);
 		if (flag == 1) 
 		{
 			printf("Data sorting by type before baking.");
@@ -691,6 +629,8 @@ s32 main(s32 argc, s8** argv)
 		PrintTableToConsole(&assetTable);
 
 		WriteDataToFile(n_exec_file, &assetTable);
+		auto dataEnd = R"(!dataend!)";
+		FWrite(n_exec_file, (void*)dataEnd, strlen(dataEnd) + 1);
 
 		auto poem = R"FOO(
     I'm nobody! Who are you?
@@ -706,7 +646,7 @@ s32 main(s32 argc, s8** argv)
 
 		u32 len = strlen(poem) + 1;
 		FWrite(n_exec_file, &len, sizeof(len));
-		FWrite(n_exec_file, (void*)&poem[0], len);
+		FWrite(n_exec_file, (void*)poem, len);
 
 		FCloseFile(n_exec_file);
 		unalloc(exec_buffer);
@@ -719,3 +659,4 @@ s32 main(s32 argc, s8** argv)
 
 	return 0;
 }
+
