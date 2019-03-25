@@ -78,6 +78,10 @@
 #pragma GCC diagnostic error "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wc99-extensions"
 
+#pragma GCC diagnostic warning "-Wunused-function"
+#pragma GCC diagnostic error "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 #pragma GCC diagnostic warning "-Wunused-variable"
 #pragma GCC diagnostic error "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-variable"

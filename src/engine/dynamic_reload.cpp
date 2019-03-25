@@ -18,7 +18,7 @@ struct GameLib{
     void* updaterender;
 };
 
-_persist void _ainline CopyLibToActiveLib(){
+_intern void _ainline CopyLibToActiveLib(){
     
     auto lib = FOpenFile(GAMELIB_PATH,F_FLAG_READONLY);
     
@@ -37,7 +37,7 @@ _persist void _ainline CopyLibToActiveLib(){
 }
 
 GameLib InitGameLibrary(void** initfuncptr){
-
+    
 	GameLib lib = {};
     
     CopyLibToActiveLib();

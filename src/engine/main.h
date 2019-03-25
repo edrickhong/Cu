@@ -99,8 +99,8 @@ struct DebugRenderRefEntry{
 };
 
 
-_persist DebugRenderRefEntry global_debugentry_array[32];
-_persist u32 global_debugentry_count = 0;
+_global DebugRenderRefEntry global_debugentry_array[32];
+_global u32 global_debugentry_count = 0;
 
 void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
     
@@ -193,10 +193,10 @@ struct RenderContext{
     volatile Color clearcolor = {};
 };
 
-_persist RenderBatch* renderbatch_array[16];
-_persist u32 renderbatch_cur = 0;
-_persist u32 renderbatch_completed_count = 0;
-_persist u32 renderbatch_total_count = 0;
+_global RenderBatch* renderbatch_array[16];
+_global u32 renderbatch_cur = 0;
+_global u32 renderbatch_completed_count = 0;
+_global u32 renderbatch_total_count = 0;
 
 void DumpRenderBatches(s8* file,s8* function,u32 line){
     
@@ -250,7 +250,7 @@ void _ainline SetClearColor(RenderContext* context,Color color){
     SetClearColor(context,color.R,color.G,color.B,color.A);
 }
 
-void _ainline InternalPushRenderEntry(RenderContext* context,u32 group_index,
+_intern void _ainline PushRenderEntry(RenderContext* context,u32 group_index,
                                       ModelAssetHandle* handle,u32 dyn_offset,u32 instance_count = 1){
     
 #ifdef DEBUG
@@ -269,7 +269,7 @@ void _ainline InternalPushRenderEntry(RenderContext* context,u32 group_index,
 }
 
 
-void _ainline InternalDraw(VkCommandBuffer commandbuffer,
+_intern void _ainline Draw(VkCommandBuffer commandbuffer,
                            VBufferContext vertex_buffer,VBufferContext index_buffer,
                            VBufferContext instance_buffer = {},u32 instance_count = 1,
                            VkDeviceSize vb_offset = 0,VkDeviceSize ind_offset = 0,VkDeviceSize inst_offset = 0){
@@ -325,8 +325,8 @@ ThreadRenderData CreateThreadRenderData(VDeviceContext* vdevice){
     return data;
 }
 
-b32 _ainline InternalExecuteRenderBatch(RenderContext* context,
-                                        ThreadRenderData* render){
+_intern b32 _ainline DoExecuteRenderBatch(RenderContext* context,
+                                          ThreadRenderData* render){
     
     TIMEBLOCK(Wheat);
     
@@ -408,7 +408,7 @@ b32 _ainline InternalExecuteRenderBatch(RenderContext* context,
                                     batch->pipelinelayout,0,1,
                                     &batch->descriptorset_array[0],1,&offsets);
             
-            InternalDraw(cmdbuffer,vertexbuffer,indexbuffer,instancebuffer,obj.count);
+            Draw(cmdbuffer,vertexbuffer,indexbuffer,instancebuffer,obj.count);
             
 #ifdef DEBUG
             
@@ -432,7 +432,7 @@ void ExecuteRenderBatch(RenderContext* context,
     render->active_group ^=render->active_group;
     memset(render->group_submit_count,0,sizeof(render->group_submit_count));
     
-    while(InternalExecuteRenderBatch(context,render)){}
+    while(DoExecuteRenderBatch(context,render)){}
     
     if(!render->active_group){
         return;
@@ -487,7 +487,7 @@ void ThisThreadExecuteRenderBatch(RenderContext* context,
 #endif
 }
 
-void _ainline InternalDispatchRenderBatch(RenderBatch* batch,TSemaphore sem){
+_intern void _ainline DispatchRenderBatch(RenderBatch* batch,TSemaphore sem){
     
     _kill("too many batches\n",renderbatch_total_count >= _arraycount(renderbatch_array));
     
@@ -529,7 +529,7 @@ void _ainline DispatchRenderContext(RenderContext* context,TSemaphore sem){
             batch->pushconst_size = group->pushconst_size;
             
             
-            InternalDispatchRenderBatch(batch,sem);
+            DispatchRenderBatch(batch,sem);
         }
         
         if(count){
@@ -553,7 +553,7 @@ void _ainline DispatchRenderContext(RenderContext* context,TSemaphore sem){
             batch->viewport_count = group->viewport_count;
             batch->pushconst_size = group->pushconst_size;
             
-            InternalDispatchRenderBatch(batch,sem);
+            DispatchRenderBatch(batch,sem);
         }
         
     }
@@ -723,8 +723,8 @@ struct PlatformData{
     
 };
 
-_persist PlatformData* pdata;
-_persist GameData* gdata;
+_global PlatformData* pdata;
+_global GameData* gdata;
 
 
 void _ainline PushUpdateEntry(u32 id,u32 offset,u32 data_size,void* data){
@@ -744,7 +744,7 @@ void _ainline PushUpdateEntry(u32 id,u32 offset,u32 data_size,void* data){
     pdata->objupdate_count++;
 }
 
-_persist u32 gui_draw_is_locked = 0;
+_global EntryMutex gui_draw_is_locked = 0;
 
 struct GUIDrawArgs{
     RenderContext* context;
@@ -1090,7 +1090,7 @@ u32 _ainline GenRenderKey(u64 val1){
     return (u32)t;
 }
 
-_persist EntryMutex texturethread_lock = 0;
+_global EntryMutex texturethread_lock = 0;
 
 void TextureSingleEntryProc(void* args,void*){
     
@@ -2085,7 +2085,7 @@ void _ainline ProcessDrawList(){
         
         _kill("offset is not aligned\n",(offset % 256) != 0);
         
-        InternalPushRenderEntry(&pdata->rendercontext,group,model,offset);
+        PushRenderEntry(&pdata->rendercontext,group,model,offset);
         
         if(model->animation_id != (u32)-1){
             
@@ -2205,6 +2205,10 @@ void InitAllSystems(){
         pdata->vdevice = VCreateDeviceContext(&phys_array[0]);
         
     }
+    
+#if 1
+    VInitDeviceAllocator(&pdata->vdevice);
+#endif
     
     
     _kill("cannot exceed the max allocated swapchain\n",settings.swapchain_depth > _max_swapchain_count);

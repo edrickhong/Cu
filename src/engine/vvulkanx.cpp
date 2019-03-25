@@ -23,7 +23,7 @@ void VSetComputePipelineSpecShaderX(VComputePipelineSpec* spec,const s8* filepat
 //make functions that automate pipeline and descriptor specification
 
 
-void InternalHandleVertexBuilding(VShaderObj* obj,SPXData* spx,u32 vert_binding_no,u32 inst_binding_no){
+_intern void HandleVertexBuilding(VShaderObj* obj,SPXData* spx,u32 vert_binding_no,u32 inst_binding_no){
     
     if(spx->type != VK_SHADER_STAGE_VERTEX_BIT){
         return;
@@ -148,7 +148,7 @@ VShaderObj VMakeShaderObjSPX(SPXData* spx_array,
         
         auto spx = &spx_array[i];
         
-        InternalHandleVertexBuilding(&obj,spx,vert_binding_no,inst_binding_no);
+        HandleVertexBuilding(&obj,spx,vert_binding_no,inst_binding_no);
         
         ConstructDescSets(&obj,spx);
         ConstructPushConsts(&obj,spx);

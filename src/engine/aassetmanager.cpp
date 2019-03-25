@@ -14,8 +14,8 @@ struct InternalTransferBuffer{
     u32 size;
 };
 
-_persist InternalTransferBuffer main_transferbuffer = {};
-_persist InternalTransferBuffer async_transferbuffer = {};
+_global InternalTransferBuffer main_transferbuffer = {};
+_global InternalTransferBuffer async_transferbuffer = {};
 
 VkDeviceSize AllocateTransferBuffer(InternalTransferBuffer* _restrict transferbuffer,
                                     u32 size){
@@ -48,10 +48,10 @@ VkDeviceSize AllocateTransferBuffer(InternalTransferBuffer* _restrict transferbu
 }
 
 // This is for the fetch thread only
-_persist VBufferContext fetchthread_transferbuffer;
-_persist VkDeviceSize fetchthread_transferbuffer_offset = 0;
+_global VBufferContext fetchthread_transferbuffer;
+_global VkDeviceSize fetchthread_transferbuffer_offset = 0;
 
-_persist VDeviceContext* global_device = {};
+_global VDeviceContext* global_device = {};
 
 //2500
 #define _maxblocks 5000
@@ -137,10 +137,10 @@ struct GPUMemorySlot{
 };
 
 
-_persist MemoryState global_memstate = {};
-_persist GPUMemState global_gpumemstate = {};
+_global MemoryState global_memstate = {};
+_global GPUMemState global_gpumemstate = {};
 
-_persist TIMESTAMP global_timestamp = 0xFFFFFFFF;
+_global TIMESTAMP global_timestamp = 0xFFFFFFFF;
 
 #define _DAddBlocksFn(type,state) type* AddBlocks##type(){		\
     if(state.checkmemoryblock_count){					\
@@ -417,7 +417,7 @@ void SwapBlock_CopyDown(MemoryBlock* a, MemoryBlock* b){// a < b
 }
 
 //TODO: I don't trust this 
-void InternalDefrag(){
+_intern void Defrag(){
     
     /*If free blocks are always pushed up, we will get fragmented blocks again*/
     
@@ -522,7 +522,7 @@ void GPUSwapBlock_CopyDown(GPUBlock* a, GPUBlock* b,
 }
 
 //TODO: I don't trust this 
-void GPUInternalDefrag(const  VDeviceContext* _restrict vdevice,
+_intern void GPUDefrag(const  VDeviceContext* _restrict vdevice,
                        VkCommandBuffer cmdbuffer){
     
     MergeAllFreeGPUBlock();
@@ -580,7 +580,7 @@ void GPUInternalDefrag(const  VDeviceContext* _restrict vdevice,
     
 }
 
-void InternalAllocateAsset(AssetHandle* handle,u32 size){
+_intern void AllocateAsset(AssetHandle* handle,u32 size){
     
     TIMEBLOCK(LimeGreen);
     
@@ -628,7 +628,7 @@ void InternalAllocateAsset(AssetHandle* handle,u32 size){
             goto fin_allocation;
         }
         
-        InternalDefrag();//TODO: Step through this - We have to replace this too
+        Defrag();//TODO: Step through this - We have to replace this too
         
         slot.block = AllocateBlockMemoryBlock(allocsize);
         
@@ -671,7 +671,7 @@ void InternalAllocateAsset(AssetHandle* handle,u32 size){
     handle->ptr = global_memstate.asset_memory[handle->id]->ptr;
 }
 
-void GPUInternalAllocateAsset(ModelAssetHandle* handle,u32 size){
+_intern void GPUAllocateAsset(ModelAssetHandle* handle,u32 size){
     
     TIMEBLOCK(Silver);
     
@@ -832,7 +832,7 @@ AudioAssetHandle AllocateAssetAudio(const s8* filepath){
     
     u32 size = _fixed_audio;
     
-    InternalAllocateAsset((AssetHandle*)&handle,size);
+    AllocateAsset((AssetHandle*)&handle,size);
     
     ADFGetInfo(filepath,&handle.compression_type,&handle.file_size);
     handle.file_offset = 0;
@@ -859,7 +859,7 @@ void AllocateAssetAnimated(const s8* filepath,
     
     vertindex->ptr = TAlloc(s8,vertindex_size);
     
-    InternalAllocateAsset((AssetHandle*)animbone,animbone_size);
+    AllocateAsset((AssetHandle*)animbone,animbone_size);
     
     auto mdf = LoadMDF(filepath,vertindex->ptr,animbone->ptr,0,0);
     
@@ -882,7 +882,7 @@ void AllocateAssetAnimated(const s8* filepath,
     auto vertsize = _devicealign(mdf.vertex_size);
     auto indexsize = _devicealign(mdf.index_size);
     
-    GPUInternalAllocateAsset(vertindex,_devicealign(vertsize + indexsize));
+    GPUAllocateAsset(vertindex,_devicealign(vertsize + indexsize));
     
     auto transferbuffer = main_transferbuffer.buffer;
     auto transferbuffer_offset =
@@ -933,7 +933,7 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
     auto vertsize = _devicealign(mdf.vertex_size);
     auto indexsize = _devicealign(mdf.index_size);
     
-    GPUInternalAllocateAsset(&vertindex,_devicealign(vertsize + indexsize));
+    GPUAllocateAsset(&vertindex,_devicealign(vertsize + indexsize));
     
     auto transferbuffer = main_transferbuffer.buffer;
     auto transferbuffer_offset =
@@ -966,8 +966,8 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
         
         if(!CheckAsset((AssetHandle*)handle)){
             
-            InternalAllocateAsset((AssetHandle*)handle,
-                                  (handle->vertexbuffer.size + handle->indexbuffer.size));
+            AllocateAsset((AssetHandle*)handle,
+                          (handle->vertexbuffer.size + handle->indexbuffer.size));
         }
         
         //copy data to cpu memory
@@ -988,7 +988,7 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
         FCloseFile(file);
         
         
-        GPUInternalAllocateAsset(handle,(handle->vertexbuffer.size + handle->indexbuffer.size));
+        GPUAllocateAsset(handle,(handle->vertexbuffer.size + handle->indexbuffer.size));
         
         //bind and transfer vertex and index buffer
         
@@ -1045,7 +1045,7 @@ void CommitAnimated(AnimatedAssetHandle* handle){
     
     if(!CheckAsset((AssetHandle*)handle)){
         //TODO: Untested but should work
-        InternalAllocateAsset((AssetHandle*)handle,handle->animbonesize);
+        AllocateAsset((AssetHandle*)handle,handle->animbonesize);
         
         auto ptr = (s8*)handle->ptr;
         u32 offset = 0;
@@ -1075,7 +1075,7 @@ void CommitAudio(AudioAssetHandle* handle){
         
         u32 size = _fixed_audio;
         
-        InternalAllocateAsset((AssetHandle*)handle,size);
+        AllocateAsset((AssetHandle*)handle,size);
         
         handle->file_offset -= handle->avail_size;
         
@@ -1183,7 +1183,7 @@ void DebugRenderFeedbackBuffer(){
 }
 
 
-u32 InternalGetTotalNodes(u32 total_mips){
+_intern u32 GetTotalNodes(u32 total_mips){
     
     u32 total = 0;
     
@@ -1444,7 +1444,7 @@ TextureAssetHandle* AllocateAssetTexture(const s8* filepath,
     asset->h = header.h;
     
     //Allocate data for pagetree
-    auto total_nodes = InternalGetTotalNodes(header.mips) - 1;
+    auto total_nodes = GetTotalNodes(header.mips) - 1;
     
     auto treespace = (TPageQuadNode*)alloc((total_nodes) * sizeof(TPageQuadNode));
     

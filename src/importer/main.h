@@ -86,7 +86,7 @@ void GenerateMipMaps(u8* indata,u8* outdata,u32 w,u32 h,u32 maxmip){
 }
 
 
-void InternalExtractTile(void* indata,void* outdata,u32 w,u32 tx,u32 ty){
+_intern void ExtractTile(void* indata,void* outdata,u32 w,u32 tx,u32 ty){
     
     auto px = tx << 7;
     auto py = ty << 7;
@@ -107,7 +107,7 @@ void InternalExtractTile(void* indata,void* outdata,u32 w,u32 tx,u32 ty){
     
 }
 
-void InternalExtractBlock(void* indata,void* outdata,u32 w,u32 b_x,
+_intern void ExtractBlock(void* indata,void* outdata,u32 w,u32 b_x,
                           u32 b_y){
     auto px = b_x << 2;
     auto py = b_y << 2;
@@ -140,7 +140,7 @@ void CompressBlockBC1(void* indata,void* outdata,u32 w,u32 h){
             
             u32 tbuffer[16];
             
-            InternalExtractBlock(indata,tbuffer,w,b_x,b_y);
+            ExtractBlock(indata,tbuffer,w,b_x,b_y);
             
             stb_compress_dxt_block(cur,(u8*)tbuffer,0,STB_DXT_HIGHQUAL);
             
@@ -172,7 +172,7 @@ void* ArrangeImageToTiles(void* data,u32 w,u32 h,TexFormat format,
             u32 tbuffer[128 * 128];
             
             
-            InternalExtractTile(data,tbuffer,w,tx,ty);
+            ExtractTile(data,tbuffer,w,tx,ty);
             
             if(format == Format_RGBA){
                 memcpy(cur,tbuffer,sizeof(tbuffer));
@@ -707,7 +707,7 @@ void AssimpAddBoneData(VertexBoneData* bonedata,u32 index,f32 weight){
     // _kill("Vertice is influenced by more than 4 bones\n",1);
 }
 
-u32 InternalFindIndex(const s8* string,BonenodeList bonenodelist){
+_intern u32 FindIndex(const s8* string,BonenodeList bonenodelist){
     
     
     for(u32 i = 0; i < bonenodelist.count;i++){
@@ -732,7 +732,7 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
         
         aiBone* bone = mesh->mBones[i];
         
-        auto node_index = InternalFindIndex(bone->mName.data,*bonenodelist);
+        auto node_index = FindIndex(bone->mName.data,*bonenodelist);
         auto bonenode = &(*bonenodelist)[node_index];
         
         
@@ -759,7 +759,7 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
 
 
 
-void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
+_intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
     
 #if 0
     
@@ -809,14 +809,14 @@ void InternalAssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
     for(u32 i = 0; i < node->mNumChildren;i++){
         
-        InternalAssimpFillBoneNodeList(node->mChildren[i],bonenodelist,aibones_array,aibones_count);
+        AssimpFillBoneNodeList(node->mChildren[i],bonenodelist,aibones_array,aibones_count);
     }
     
 }
 
-void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
+_intern void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
     
-    u32 index = InternalFindIndex(node->mName.data,(*bonenodelist));
+    u32 index = FindIndex(node->mName.data,(*bonenodelist));
     
     if(index != (u32)-1){
         
@@ -826,7 +826,7 @@ void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
         
         for(u32 i = 0; i < bnode->children_count;i++){
             
-            bnode->childrenindex_array[i] = InternalFindIndex(node->mChildren[i]->mName.data,*bonenodelist);
+            bnode->childrenindex_array[i] = FindIndex(node->mChildren[i]->mName.data,*bonenodelist);
         }
         
     }
@@ -835,7 +835,7 @@ void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
     
     for(u32 i = 0; i < node->mNumChildren;i++){
         
-        InternalAssimpBuildSkeleton(node->mChildren[i],bonenodelist);
+        AssimpBuildSkeleton(node->mChildren[i],bonenodelist);
     }
     
     
@@ -843,9 +843,9 @@ void InternalAssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
 
 void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
     
-    InternalAssimpFillBoneNodeList(node,bonenodelist,aibones_array,aibones_count);
+    AssimpFillBoneNodeList(node,bonenodelist,aibones_array,aibones_count);
     
-    InternalAssimpBuildSkeleton(node,bonenodelist);
+    AssimpBuildSkeleton(node,bonenodelist);
 }
 
 

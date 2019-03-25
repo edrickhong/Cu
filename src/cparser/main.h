@@ -278,7 +278,7 @@ b32 IsReflFunc(EvalChar* eval_buffer,u32 count){
     return has_return_type && has_arg_brackets && has_key;
 }
 
-void InternalBufferGetString(s8* default_string,EvalChar* membereval_array,u32 membereval_count,u32* j){
+_intern void BufferGetString(s8* default_string,EvalChar* membereval_array,u32 membereval_count,u32* j){
     
     auto string = default_string;
     
@@ -396,7 +396,7 @@ void GetArgsData(s8** argv,u32 argc,s8*** source_array,u32* source_count,s8** co
     
 }
 
-const s8* InternalGetMainFile(const s8* string){
+const s8* GetMainFile(const s8* string){
     
     auto len = strlen(string);
     
@@ -411,7 +411,7 @@ const s8* InternalGetMainFile(const s8* string){
 }
 
 
-void InternalGetInheritancdTypeString(s8* dst_string,s8* src_string){
+_intern void GetInheritancdTypeString(s8* dst_string,s8* src_string){
     
     
     u32 len = strlen(src_string);
@@ -435,7 +435,7 @@ void InternalGetInheritancdTypeString(s8* dst_string,s8* src_string){
     
 }
 
-void InternalWriteStructs(FileHandle src_file,FileHandle header_file,GenericStruct* struct_array,u32 struct_count){
+_intern void WriteStructs(FileHandle src_file,FileHandle header_file,GenericStruct* struct_array,u32 struct_count){
     
     //structs
     
@@ -467,7 +467,7 @@ void InternalWriteStructs(FileHandle src_file,FileHandle header_file,GenericStru
         
         s8 struct_name_buffer[256] = {};
         
-        InternalGetInheritancdTypeString(struct_name_buffer,s->name_string);
+        GetInheritancdTypeString(struct_name_buffer,s->name_string);
         
         
         
@@ -541,7 +541,7 @@ void InternalWriteStructs(FileHandle src_file,FileHandle header_file,GenericStru
                 
                 s8 struct_name_buffer[256] = {};
                 
-                InternalGetInheritancdTypeString(struct_name_buffer,s->name_string);
+                GetInheritancdTypeString(struct_name_buffer,s->name_string);
                 
                 sprintf(outbuffer,
                         "{sizeof(%s),\"%s\",(u32)%d,&%s_META_STRUCT[0],_arraycount(%s_META_STRUCT)},\n",
@@ -567,7 +567,7 @@ void InternalWriteStructs(FileHandle src_file,FileHandle header_file,GenericStru
     
 }
 
-void InternalMakeParentString(s8* dst_name,const s8* src_name){
+_intern void MakeParentString(s8* dst_name,const s8* src_name){
     
     u32 len = strlen(src_name);
     
@@ -585,7 +585,7 @@ void InternalMakeParentString(s8* dst_name,const s8* src_name){
 }
 
 
-void InternalWriteEnums(FileHandle src_file,FileHandle header_file,GenericEnum* enum_array,u32 enum_count){
+_intern void WriteEnums(FileHandle src_file,FileHandle header_file,GenericEnum* enum_array,u32 enum_count){
     
     //enums
     
@@ -598,7 +598,7 @@ void InternalWriteEnums(FileHandle src_file,FileHandle header_file,GenericEnum* 
             
             s8 converted_buffer[256] = {};
             
-            InternalMakeParentString(converted_buffer,e->name_string);
+            MakeParentString(converted_buffer,e->name_string);
             
             
             if(header_file){
@@ -673,7 +673,7 @@ void InternalWriteEnums(FileHandle src_file,FileHandle header_file,GenericEnum* 
                     
                     s8 converted_buffer[256] = {};
                     
-                    InternalMakeParentString(converted_buffer,e->name_string);
+                    MakeParentString(converted_buffer,e->name_string);
                     
                     {
                         s8 buffer[256] = {};
@@ -727,7 +727,7 @@ void ConstructTypeStringSize(s8* dst_string,GenericTypeDef* type){
     
 }
 
-void InternalWriteFunctions(FileHandle src_file,FileHandle header_file,GenericFunction* function_array,u32 function_count){
+_intern void WriteFunctions(FileHandle src_file,FileHandle header_file,GenericFunction* function_array,u32 function_count){
     
     if(header_file){
         
@@ -970,11 +970,11 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     //header declarations
     
     
-    InternalWriteStructs(src_file,header_file,struct_array,struct_count);
+    WriteStructs(src_file,header_file,struct_array,struct_count);
     
-    InternalWriteEnums(src_file,header_file,enum_array,enum_count);
+    WriteEnums(src_file,header_file,enum_array,enum_count);
     
-    InternalWriteFunctions(src_file,header_file,function_array,function_count);
+    WriteFunctions(src_file,header_file,function_array,function_count);
     
     if(header_file){
         
@@ -1262,7 +1262,7 @@ Floating point return values are returned in XMM0
 
 */
 
-extern "C" void InternalFillArgsAndCall(void* call,u64* values,u64* iret,f64* fret);
+extern "C" void FillArgsAndCall(void* call,u64* values,u64* iret,f64* fret);
 
 #endif
 
@@ -1358,7 +1358,7 @@ for(u32 i = 0; i < function->args_count;i++){
     
 #ifdef _WIN32
 
-InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_value,&fret_value);
+FillArgsAndCall(function->function_call,registers.int_reg_array,&ret_value,&fret_value);
 
 #else   
 
@@ -1440,7 +1440,7 @@ void WriteComponentMetaData(const s8* src_file_string,const s8* header_file_stri
     
     {
         
-        inc_file = InternalGetMainFile(inc_file);
+        inc_file = GetMainFile(inc_file);
         
         s8 header[1024 * 4] = {};
         

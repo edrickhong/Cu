@@ -8,7 +8,7 @@
 #include "pparse.h"
 #include "aallocator.h"
 
-void InternalGetFileNameToStringArrayVar(s8* buffer,s8* filename){
+_intern void GetFileNameToStringArrayVar(s8* buffer,s8* filename){
     
     auto len = strlen(filename);
     
@@ -115,7 +115,7 @@ s32 main(s32 argc,s8** argv){
                 
                 s8 arrayname_string[256] = {};
                 
-                InternalGetFileNameToStringArrayVar(arrayname_string,source);
+                GetFileNameToStringArrayVar(arrayname_string,source);
                 
                 
                 ptrsize dst_size = 0;
@@ -180,7 +180,7 @@ s32 main(s32 argc,s8** argv){
                 
                 s8 arrayname_string[256] = {};
                 
-                InternalGetFileNameToStringArrayVar(arrayname_string,source);
+                GetFileNameToStringArrayVar(arrayname_string,source);
                 
                 
                 ptrsize dst_size = 0;

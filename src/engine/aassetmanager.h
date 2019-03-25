@@ -246,7 +246,7 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer);
 #ifdef DEBUG
 
 //TODO: Test this
-void InternalDefrag();
+void TestDefrag();
 #endif
 
 

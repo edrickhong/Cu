@@ -362,7 +362,7 @@ TDFHeader GetHeaderInfoTDF(const s8* filepath){
     return header;
 }
 
-void InternalGetTileData(FileHandle file,u32 offset,f32 bpp,void* data){
+_intern void GetTileData(FileHandle file,u32 offset,f32 bpp,void* data){
     
     u32 pos = offset + sizeof(TDFHeader);
     
@@ -389,7 +389,7 @@ void GetTileDataTDF(FileHandle file,u32 w,u32 h,u32 t_x,u32 t_y,u32 mip,f32 bpp,
     pos += (t_y * t_w) + t_x;
     pos *= 128 * 128 * bpp;
     
-    InternalGetTileData(file,pos,bpp,data);
+    GetTileData(file,pos,bpp,data);
 }
 
 /* MARK:These are from glslparser::main.cpp::GenerateShaderTable */

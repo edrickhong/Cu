@@ -10,23 +10,23 @@ Do not include functionality that does not involved writing and reading pages
 
 #ifdef DEBUG
 
-_persist VTReadbackPixelFormat* debug_pixels = 0;
+_global VTReadbackPixelFormat* debug_pixels = 0;
 
 #endif
 
 //UTIL
 
-_ainline void InternalPageToPhysCoord(u32 page,u8* x,u8* y){
+_intern _ainline void PageToPhysCoord(u32 page,u8* x,u8* y){
     //MARK: Hopefully the compiler is smart enough to fold this into a single div
     *y = page / (phys_w/_tpage_side);
     *x = page % (phys_w/_tpage_side);
 }
 
-_ainline u32 InternalPhysCoordToPage(u8 x,u8 y){
+_intern _ainline u32 PhysCoordToPage(u8 x,u8 y){
     return x + (y * (phys_w/_tpage_side));
 }
 
-TCoord InternalToCoordAtMipLevel(TCoord src_coord,u32 dst_mip){
+_intern TCoord ToCoordAtMipLevel(TCoord src_coord,u32 dst_mip){
     
     TCoord c = {};
     
@@ -47,7 +47,7 @@ TCoord InternalToCoordAtMipLevel(TCoord src_coord,u32 dst_mip){
     return c;
 }
 
-Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
+_intern Coord ToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
     
     Coord c = {
         (u8)(dst_coord.x - (prevdst_coord.x << 1)),
@@ -69,7 +69,7 @@ Coord InternalToQuadCoord(TCoord dst_coord,TCoord prevdst_coord){
 
 
 //MARK: maybe we shouldn't have a list and just directly write to the global freepages_array and return the number of pages freed
-void _ainline InternalEvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictTextureList* list){
+_intern void _ainline EvictAllTexturePages(TextureAssetHandle* _restrict handle,EvictTextureList* list){
     
 #if _print_page_alloc_and_evict
     
@@ -77,8 +77,8 @@ void _ainline InternalEvictAllTexturePages(TextureAssetHandle* _restrict handle,
     
 #endif
     
-    auto node_count = InternalGetTotalNodes(handle->max_miplevel +
-                                            1) - 1;
+    auto node_count = GetTotalNodes(handle->max_miplevel +
+                                    1) - 1;
     u32 count = 0;
     auto node_array = handle->pagetree.first;
     
@@ -105,7 +105,7 @@ void _ainline InternalEvictAllTexturePages(TextureAssetHandle* _restrict handle,
             
             PixelPageFormat format = {page_value};
             
-            auto page = InternalPhysCoordToPage(format.x,format.y);
+            auto page = PhysCoordToPage(format.x,format.y);
             
             vt_freepages_array[vt_freepages_count] = page;
             vt_freepages_count++;
@@ -128,7 +128,7 @@ void _ainline InternalEvictAllTexturePages(TextureAssetHandle* _restrict handle,
 
 //PAGE MANAGEMENT  (MAY CONTAIN EVICT)
 
-void InternalGetPageCoord(u8* x,u8* y,EvictTextureList* list){
+_intern void GetPageCoord(u8* x,u8* y,EvictTextureList* list){
     
     
     //MARK: lambda becasue I don't want this to be called anywhere
@@ -163,7 +163,7 @@ MARK: I think we depend on this not moving
                 
                 if(global_timestamp != t->timestamp){
                     //evict texture
-                    InternalEvictAllTexturePages(t,list);
+                    EvictAllTexturePages(t,list);
                 }
                 
                 //MARK: maybe we should evict more than one texture?
@@ -191,7 +191,7 @@ MARK: I think we depend on this not moving
     printf("ALLOC %d\n",page);
 #endif
     
-    InternalPageToPhysCoord(page,x,y);
+    PageToPhysCoord(page,x,y);
 }
 
 
@@ -204,7 +204,7 @@ MARK: I think we depend on this not moving
   
    a higher mip can generate coords for a lower mip,but not the other way around
 */
-void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
+_intern void TraverseMipTree(TPageQuadNode* node,TCoord src_coord,
                              TCoord dst_coord,FetchList* list,EvictTextureList* evict_list){
     
     if(node->page_value == (u32)-1){
@@ -223,7 +223,7 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         printf("incoord %d %d %d\n",src_coord.mip,src_coord.x,src_coord.y);
 #endif
         
-        InternalGetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,evict_list);
+        GetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,evict_list);
         list->count++;
         node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,0,255);
     }
@@ -245,10 +245,10 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
     }
     
     //computing the next dst_coord
-    auto next_dst_coord = InternalToCoordAtMipLevel(src_coord,dst_coord.mip - 1);
+    auto next_dst_coord = ToCoordAtMipLevel(src_coord,dst_coord.mip - 1);
     
     //computing the coord in quad space
-    auto q_coord = InternalToQuadCoord(next_dst_coord,dst_coord);
+    auto q_coord = ToQuadCoord(next_dst_coord,dst_coord);
     
     TPageQuadNode* nextnode = 0;
     
@@ -276,12 +276,12 @@ void InternalTraverseMipTree(TPageQuadNode* node,TCoord src_coord,
     
     
     if(nextnode){
-        InternalTraverseMipTree(nextnode,src_coord,next_dst_coord,list,evict_list);
+        TraverseMipTree(nextnode,src_coord,next_dst_coord,list,evict_list);
     }
     
 }
 
-void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
+_intern void GenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
                                      FetchList* list,EvictTextureList* evict_list){
     
     TCoord src = {};
@@ -290,11 +290,11 @@ void InternalGenerateDependentCoords(TextureAssetHandle* asset,u8 mip,u8 x,u8 y,
     src.y = y;
     src.mip = mip;
     
-    auto dst = InternalToCoordAtMipLevel(src,asset->max_miplevel);
+    auto dst = ToCoordAtMipLevel(src,asset->max_miplevel);
     
     auto node = &asset->pagetree;
     
-    InternalTraverseMipTree(node,src,dst,list,evict_list);
+    TraverseMipTree(node,src,dst,list,evict_list);
 }
 
 
@@ -310,7 +310,7 @@ u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coo
         
         auto a = &src_coords[i];
         
-        InternalGenerateDependentCoords(asset,a->mip,a->x,a->y,list,evict_list);
+        GenerateDependentCoords(asset,a->mip,a->x,a->y,list,evict_list);
     }
     
     return list->count;
@@ -500,7 +500,7 @@ void PushThreadTextureFetchQueue(ThreadTextureFetchQueue* queue,
     TSignalSemaphore(sem);
 }
 
-void InternalExecuteTextureEvictQueue(ThreadTextureFetchQueue* queue){
+_intern void ExecuteTextureEvictQueue(ThreadTextureFetchQueue* queue){
     //TODO: actual perform the clear
     
     for(u32 i = 0; i < queue->evict_count; i++){
@@ -567,7 +567,7 @@ void ThreadExecuteTextureFetchQueue(ThreadTextureFetchQueue* queue){
         return;
     }
     
-    InternalExecuteTextureEvictQueue(queue);
+    ExecuteTextureEvictQueue(queue);
     
     u32 tfetch_count = 0;
     

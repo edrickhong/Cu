@@ -29,8 +29,8 @@ struct VertexLayoutEx{
 
 
 
-_persist u32 macro_array[16];
-_persist u32 macro_count = 0;
+_global u32 macro_array[16] = {};
+_global u32 macro_count = 0;
 
 enum ShaderType{
     ShaderType_VERTEX = PHashString("vert"),
@@ -180,7 +180,7 @@ enum AttribEx{
     AttribEx_DEF_MATERIAL = PHashString("DEF_MATERIAL"),
 };
 
-VkDescriptorType GetInternalDescAttrib(GLSLType dominant_attrib,
+_intern VkDescriptorType GetDescAttrib(GLSLType dominant_attrib,
                                        GLSLType secondary_attrib,AttribEx ext_attrib){
     
     VkDescriptorType type = {};
@@ -259,7 +259,7 @@ VkDescriptorType GetInternalDescAttrib(GLSLType dominant_attrib,
 }
 
 
-ShaderType GetShaderType(const s8* file){
+ShaderType GetFileShaderType(const s8* file){
     
     s8 dst[5] = {};
     
@@ -269,7 +269,7 @@ ShaderType GetShaderType(const s8* file){
 }
 
 
-VkShaderStageFlagBits GetInternalShaderType(ShaderType type){
+VkShaderStageFlagBits GetVkShaderType(ShaderType type){
     
     switch(type){
         
@@ -373,7 +373,7 @@ b32 IsAttribEx(u64 hash){
   
 */
 
-void GetInternalFormatAndSize(GLSLType type,VkFormat* outformat,u32* size){
+void GetFormatAndSize(GLSLType type,VkFormat* outformat,u32* size){
     
     switch(type){
         
@@ -733,7 +733,7 @@ struct GenericStruct : GenericTypeDec{
     GenericTypeDef members_array[256];
 };
 
-void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
+_intern void _ainline HandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count,ptrsize* cur){
     
     
     auto i = *cur;
@@ -835,7 +835,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
             
             if(membereval_count){
                 
-                InternalHandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count,&i);
+                HandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count,&i);
                 
             }
             
@@ -860,7 +860,7 @@ enum ParsePath{
     PARSEPATH_PUSHCONSTLAYOUT,
 };
 
-ParsePath _ainline InternalGetParseType(EvalChar* eval_buffer,u32 eval_count){
+_intern ParsePath _ainline GetParseType(EvalChar* eval_buffer,u32 eval_count){
     
     b32 in_args_scope = false;
     
@@ -900,7 +900,7 @@ ParsePath _ainline InternalGetParseType(EvalChar* eval_buffer,u32 eval_count){
     
 }
 
-void InternalParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout){
+_intern void ParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout){
     
     auto layout = vertexlayout;
     u32 location = (u32)-1;
@@ -929,7 +929,7 @@ void InternalParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayout
             VkFormat format = {};
             u32 size = 0;
             
-            GetInternalFormatAndSize((GLSLType)PHashString(eval_buffer[i].string),&format,&size);
+            GetFormatAndSize((GLSLType)PHashString(eval_buffer[i].string),&format,&size);
             
             
             layout->entry_array[layout->entry_count] = {format,size,location};
@@ -1013,7 +1013,7 @@ void GenericStructToFormatSize(GenericStruct* basestruct,GenericStruct* struct_a
             VkFormat format = {};
             u32 size = 0;
             
-            GetInternalFormatAndSize(member->type,&format,&size);
+            GetFormatAndSize(member->type,&format,&size);
             
             array[count].format = format;
             array[count].size = size;
@@ -1036,7 +1036,7 @@ void GenericStructToFormatSize(GenericStruct* basestruct,GenericStruct* struct_a
 }
 
 
-void InternalHandlePushConst(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,PushConstLayout* pushconstlayout){
+_intern void HandlePushConst(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,PushConstLayout* pushconstlayout){
     
     GenericStruct genericstruct = {};
     u32 g_count = 0;
@@ -1116,7 +1116,7 @@ void InternalHandlePushConst(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 e
     }
 }
 
-void InternalDebugPrintPushConstLayout(PushConstLayout* pushconstlayout){
+_intern void DebugPrintPushConstLayout(PushConstLayout* pushconstlayout){
     
     
 #if _log_string
@@ -1140,7 +1140,7 @@ void InternalDebugPrintPushConstLayout(PushConstLayout* pushconstlayout){
     
 }
 
-void InternalVkDescriptorTypeToString(VkDescriptorType type,s8* buffer,u32 size){
+_intern void VkDescriptorTypeToString(VkDescriptorType type,s8* buffer,u32 size){
     
     
     switch(type){
@@ -1275,7 +1275,7 @@ void InternalVkDescriptorTypeToString(VkDescriptorType type,s8* buffer,u32 size)
     
 }
 
-void InternalDebugPrintDescLayout(DescLayout* desclayout){
+_intern void DebugPrintDescLayout(DescLayout* desclayout){
     
     if(desclayout->entry_count){
         
@@ -1289,7 +1289,7 @@ void InternalDebugPrintDescLayout(DescLayout* desclayout){
             s8 buffer[256] = {};
             
             
-            InternalVkDescriptorTypeToString(e->type,&buffer[0],_arraycount(buffer));
+            VkDescriptorTypeToString(e->type,&buffer[0],_arraycount(buffer));
             
             printf("SET %d BIND %d : %s [%d]\n",e->set,e->bind,&buffer[0],e->total_count);
             
@@ -1301,7 +1301,7 @@ void InternalDebugPrintDescLayout(DescLayout* desclayout){
     
 }
 
-void InternalDebugPrintVertexLayout(VertexLayoutEx* vertexlayout){
+_intern void DebugPrintVertexLayout(VertexLayoutEx* vertexlayout){
     
 #if _log_string
     
@@ -1331,7 +1331,7 @@ void InternalDebugPrintVertexLayout(VertexLayoutEx* vertexlayout){
 }
 
 
-void InternalDebugPrintInstanceLayout(VertexLayoutEx* vertexlayout){
+_intern void DebugPrintInstanceLayout(VertexLayoutEx* vertexlayout){
     
 #if _log_string
     
@@ -1359,7 +1359,7 @@ void InternalDebugPrintInstanceLayout(VertexLayoutEx* vertexlayout){
     
 }
 
-void InternalDebugPrintVertexLayout(DescLayout* desclayout){}
+_intern void DebugPrintVertexLayout(DescLayout* desclayout){}
 
 void GetAttribDominantAndSecondary(GLSLType* type_array,u32 type_count,GLSLType* dominant,GLSLType* secondary){
     
@@ -1394,7 +1394,7 @@ void GetAttribDominantAndSecondary(GLSLType* type_array,u32 type_count,GLSLType*
     _kill("no dominant attrib found\n",!(*dominant));
 }
 
-void InternalHandleDesclayout(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,DescLayout* desclayout){
+_intern void HandleDesclayout(s8* buffer,ptrsize* cur,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,DescLayout* desclayout){
     
     /*
     There are two kinds of descset patterns
@@ -1493,8 +1493,8 @@ TODO: handle std430 std140
     
     GetAttribDominantAndSecondary(type_array,type_count,&dominant_attrib,&secondary_attrib);
     
-    auto desctype = GetInternalDescAttrib(dominant_attrib,
-                                          secondary_attrib,attribex);
+    auto desctype = GetDescAttrib(dominant_attrib,
+                                  secondary_attrib,attribex);
     
     desclayout->entry_array[desclayout->entry_count] = {
         desctype,set,bind,total_count
@@ -1505,15 +1505,15 @@ TODO: handle std430 std140
 
 
 
-void InternalHandleLayout(s8* buffer,ptrsize* cur,ShaderType type,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout,PushConstLayout* pushconstlayout,DescLayout* desclayout){
+_intern void HandleLayout(s8* buffer,ptrsize* cur,ShaderType type,EvalChar* eval_buffer,u32 eval_count,GenericStruct* struct_array,u32 struct_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout,PushConstLayout* pushconstlayout,DescLayout* desclayout){
     
-    switch(InternalGetParseType(eval_buffer,eval_count)){
+    switch(GetParseType(eval_buffer,eval_count)){
         
         case PARSEPATH_VERTLAYOUT:{
             
             if(type == ShaderType_VERTEX){
                 
-                InternalParseVertexLayout(eval_buffer,eval_count,vertexlayout,instancelayout);
+                ParseVertexLayout(eval_buffer,eval_count,vertexlayout,instancelayout);
             }
             
             
@@ -1522,7 +1522,7 @@ void InternalHandleLayout(s8* buffer,ptrsize* cur,ShaderType type,EvalChar* eval
         
         case PARSEPATH_DESCLAYOUT:{
             
-            InternalHandleDesclayout(buffer,cur,eval_buffer,eval_count,struct_array,struct_count,desclayout);
+            HandleDesclayout(buffer,cur,eval_buffer,eval_count,struct_array,struct_count,desclayout);
             
             
         }break;
@@ -1531,14 +1531,14 @@ void InternalHandleLayout(s8* buffer,ptrsize* cur,ShaderType type,EvalChar* eval
             
             //TODO: check for specified layout (std140 or std430. default should be std430)
             
-            InternalHandlePushConst(buffer,cur,eval_buffer,eval_count,struct_array,struct_count,pushconstlayout);
+            HandlePushConst(buffer,cur,eval_buffer,eval_count,struct_array,struct_count,pushconstlayout);
             
         }break;
         
     }
 }
 
-void InternalParseSource(ShaderType type,s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout,PushConstLayout* pushconstlayout,DescLayout* desclayout){
+_intern void ParseSource(ShaderType type,s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,VertexLayoutEx* vertexlayout,VertexLayoutEx* instancelayout,PushConstLayout* pushconstlayout,DescLayout* desclayout){
     
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
@@ -1572,7 +1572,7 @@ void InternalParseSource(ShaderType type,s8* buffer,u32 size,GenericStruct* stru
             }
             
             if(IsLayout(&evaluation_buffer[0],evaluation_count)){
-                InternalHandleLayout(buffer,&cur,type,&evaluation_buffer[0],evaluation_count,struct_array,*struct_count,vertexlayout,instancelayout,pushconstlayout,desclayout);
+                HandleLayout(buffer,&cur,type,&evaluation_buffer[0],evaluation_count,struct_array,*struct_count,vertexlayout,instancelayout,pushconstlayout,desclayout);
                 
             }
             
@@ -1617,7 +1617,7 @@ void WriteSPXFile(ShaderType type,s8* outfile_string,PushConstLayout playout,
     FWrite(outfile,&headertag,sizeof(headertag));
     
     //write shadertype
-    auto internal_type = GetInternalShaderType(type);
+    auto internal_type = GetVkShaderType(type);
     
     FWrite(outfile,&internal_type,sizeof(internal_type));
     

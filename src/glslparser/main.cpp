@@ -101,7 +101,7 @@ s32 main(s32 argc,s8** argv){
     
     //TODO: add a way to query layouts
     
-    auto type = GetShaderType(infile);
+    auto type = GetFileShaderType(infile);
     
     auto struct_array = (GenericStruct*)alloc(sizeof(GenericStruct) * 1024);
     u32 struct_count = 0;
@@ -123,7 +123,7 @@ s32 main(s32 argc,s8** argv){
         ptrsize size;
         auto buffer = FReadFileToBuffer(file,&size);
         
-        InternalParseSource(type,buffer,size,struct_array,&struct_count,&vertexlayoutex,&instancelayoutex,&pushconstlayout,&desclayout);
+        ParseSource(type,buffer,size,struct_array,&struct_count,&vertexlayoutex,&instancelayoutex,&pushconstlayout,&desclayout);
         
         FCloseFile(file);
         
@@ -153,10 +153,10 @@ s32 main(s32 argc,s8** argv){
         
         
 #if _log_string
-        InternalDebugPrintVertexLayout(&vertexlayoutex);
-        InternalDebugPrintInstanceLayout(&instancelayoutex);
-        InternalDebugPrintDescLayout(&desclayout);
-        InternalDebugPrintPushConstLayout(&pushconstlayout);
+        DebugPrintVertexLayout(&vertexlayoutex);
+        DebugPrintInstanceLayout(&instancelayoutex);
+        DebugPrintDescLayout(&desclayout);
+        DebugPrintPushConstLayout(&pushconstlayout);
 #endif
         
         

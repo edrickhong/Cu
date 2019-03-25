@@ -156,7 +156,7 @@ void PrintEvalChar(EvalChar* eval_array,u32 eval_count){
 
 
 
-void _ainline InternalHandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count){
+_intern void _ainline HandleStructFields(GenericStruct* t,GenericStruct* struct_array,u32* struct_count,EvalChar* membereval_array,u32 membereval_count){
     
     auto member = &t->members_array[t->members_count];
     t->members_count++;
@@ -308,7 +308,7 @@ void DebugPrintGenericFunction(GenericFunction* f){
 }
 
 
-void InternalHandleArgs(GenericFunction* f,u32* function_count, EvalChar* eval_buffer,u32 cur,u32 dst){
+_intern void HandleArgs(GenericFunction* f,u32* function_count, EvalChar* eval_buffer,u32 cur,u32 dst){
     
     
     u32 int_count = 0;
@@ -485,7 +485,7 @@ void GenerateGenericFunction(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize*
             }
             
             
-            InternalHandleArgs(f,function_count,eval_buffer,cur,dst);
+            HandleArgs(f,function_count,eval_buffer,cur,dst);
             
             return;
             
@@ -742,7 +742,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
                 
                 else{
                     
-                    InternalHandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count);
+                    HandleStructFields(t,struct_array,struct_count,membereval_array,membereval_count);
                     
                 }
                 
@@ -760,7 +760,7 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
     
 }
 
-void InternalParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,GenericFunction* function_array,u32* function_count){
+_intern void ParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* struct_count,GenericEnum* enum_array,u32* enum_count,GenericFunction* function_array,u32* function_count){
     
     u32 evaluation_count = 0;
     EvalChar evaluation_buffer[256] = {};
@@ -915,7 +915,7 @@ s32 main(s32 argc,s8** argv){
         ptrsize size;
         auto buffer = FReadFileToBuffer(file,&size);
         
-        InternalParseSource(buffer,size,struct_array,&struct_count,enum_array,&enum_count,function_array,&function_count);
+        ParseSource(buffer,size,struct_array,&struct_count,enum_array,&enum_count,function_array,&function_count);
         
         FCloseFile(file);
         unalloc(buffer);
