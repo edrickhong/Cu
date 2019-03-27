@@ -17,10 +17,12 @@ struct PushConst{
     Vector4 camerapos;
 };
 
-struct SkelUBO{
+struct REFL SkelUBO{
     f32 world[16];
     f32 bone_array[_max_bones * 16];
     u32 texture_array[16];
+    
+    s8 padding[192];
     
 }_align(256);
 
