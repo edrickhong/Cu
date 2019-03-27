@@ -864,11 +864,12 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
         u32 name_hash;
         s8 type_string[128];
         s8 name_string[128];
-        u32 size;
+        u32 size; //of the whole thing, not a single element
         u32 offset;
         u32 arraycount;
-        // for referencing other components to access.
-        u32 ref_metadatacomp_index; 
+        
+        
+        u32 ref_metadatacomp_index; // for referencing other components to access.
         };
         
         struct MetaDataStructEntry{
@@ -1033,6 +1034,9 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
     u64 MetaCallFunction(u32 hash,u64* value_array);
     
     u64 MetaCallFunction(const s8* name,u64* value_array);
+    
+    void MetaPrintStruct(MetaDataStructEntry* _restrict entry);
+    void MetaPrintStruct(s8* string);
     
 )FOO";
         
@@ -1405,6 +1409,23 @@ return MetaCallFunction(MetaGetFunctionByNameHash(hash),value_array);
 
 u64 MetaCallFunction(const s8* name,u64* value_array){
 return MetaCallFunction(PHashString(name),value_array);
+}
+
+void MetaPrintStruct(MetaDataStructEntry* _restrict meta_struct){
+
+printf("struct %s (size %d bytes) has %d members\n\n",meta_struct->name_string,meta_struct->size,meta_struct->member_count);
+
+printf("OFFSET\t|\tTYPE\t|\tNAME\t|\tSIZE\t|\tCOUNT\n");
+
+for(u32 i = 0; i < meta_struct->member_count; i++){
+auto member = &meta_struct->member_array[i];
+printf("%d\t|\t%s\t|\t%s\t|\t%d\t|\t%d\n",member->offset,member->type_string,member->name_string,member->size,member->arraycount);
+}
+
+}
+
+void MetaPrintStruct(s8* string){
+MetaPrintStruct(MetaGetStructByName(string));
 }
 
 
