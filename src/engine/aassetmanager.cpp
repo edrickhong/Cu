@@ -8,49 +8,6 @@ Fresh start, we should diff this against the working implementation and patch in
 TODO: use a ringbuffer for transferbuffers
 */
 
-struct InternalTransferBuffer{
-    VBufferContext buffer;
-    VkDeviceSize offset;
-    u32 size;
-};
-
-_global InternalTransferBuffer main_transferbuffer = {};
-_global InternalTransferBuffer async_transferbuffer = {};
-
-VkDeviceSize AllocateTransferBuffer(InternalTransferBuffer* _restrict transferbuffer,
-                                    u32 size){
-    
-#if 0
-    
-    printf("TRANSFERBUFFER ALLOCATE\n");
-    
-#endif
-    
-    VkDeviceSize offset;
-    VkDeviceSize new_offset;
-    VkDeviceSize actual_offset;
-    
-    size = _mapalign(size);
-    
-    do{
-        
-        offset = transferbuffer->offset;
-        new_offset = _mapalign(offset + size);
-        
-        actual_offset = LockedCmpXchg(&transferbuffer->offset,offset,new_offset);
-        
-    }while(offset != actual_offset);
-    
-    _kill("transferbuffer ran out of memory\n",new_offset >= transferbuffer->size);
-    
-    
-    return offset;
-}
-
-// This is for the fetch thread only
-_global VBufferContext fetchthread_transferbuffer;
-_global VkDeviceSize fetchthread_transferbuffer_offset = 0;
-
 _global VDeviceContext* global_device = {};
 
 //2500
@@ -103,6 +60,7 @@ struct GPUBlock{
 
 struct GPUMemState{
     VkDeviceMemory global_ptr;
+    VkDeviceSize global_ptr_offset;
     
     GPUBlock memoryblock_array[_maxblocks] = {};
     u32 memoryblock_count = 0;
@@ -516,8 +474,8 @@ void GPUSwapBlock_CopyDown(GPUBlock* a, GPUBlock* b,
         b->lowerblock->higherblock = b;  
     }
     
-    vkBindBufferMemory(vdevice->device,a->buffer,global_gpumemstate.global_ptr,a->ptr);
-    vkBindBufferMemory(vdevice->device,b->buffer,global_gpumemstate.global_ptr,b->ptr);
+    vkBindBufferMemory(vdevice->device,a->buffer,global_gpumemstate.global_ptr,a->ptr + global_gpumemstate.global_ptr_offset);
+    vkBindBufferMemory(vdevice->device,b->buffer,global_gpumemstate.global_ptr,b->ptr + global_gpumemstate.global_ptr_offset);
     
 }
 
@@ -677,7 +635,7 @@ _intern void GPUAllocateAsset(ModelAssetHandle* handle,u32 size){
     
     GPUMemorySlot slot = {};
     
-    auto allocsize = _devicealign(size);
+    auto allocsize = size;
     
     slot.block = AllocateBlockGPUBlock(allocsize);
     slot.id = -1;
@@ -807,11 +765,11 @@ u32 _ainline GpuCheckAsset(ModelAssetHandle* handle){
     if(global_gpumemstate.memoryblock_array[handle->gpuid].buffer){
         
         vkBindBufferMemory(global_device->device,handle->vertexbuffer.buffer,
-                           global_gpumemstate.global_ptr,handle->gpuptr);
+                           global_gpumemstate.global_ptr,handle->gpuptr + global_gpumemstate.global_ptr_offset);
         
         vkBindBufferMemory(global_device->device,handle->indexbuffer.buffer,
                            global_gpumemstate.global_ptr,
-                           handle->gpuptr + handle->vertexbuffer.size);
+                           handle->gpuptr + handle->vertexbuffer.size + global_gpumemstate.global_ptr_offset);
         
         VDestroyBuffer(global_device,
                        global_gpumemstate.memoryblock_array[handle->gpuid].buffer);
@@ -879,29 +837,40 @@ void AllocateAssetAnimated(const s8* filepath,
     animbone->animationset_array =  mdf.animationset_array;
     animbone->animationset_count = mdf.animationset_count;
     
-    auto vertsize = _devicealign(mdf.vertex_size);
-    auto indexsize = _devicealign(mdf.index_size);
+    auto vertsize = mdf.vertex_size;
+    auto indexsize = mdf.index_size;
     
-    GPUAllocateAsset(vertindex,_devicealign(vertsize + indexsize));
-    
-    auto transferbuffer = main_transferbuffer.buffer;
-    auto transferbuffer_offset =
-        AllocateTransferBuffer(&main_transferbuffer,mdf.vertex_size + mdf.index_size);
+    GPUAllocateAsset(vertindex,vertsize + indexsize);
     
     vertindex->vertexbuffer =
-        VCreateStaticVertexBuffer(vdevice,commandbuffer,
-                                  global_gpumemstate.global_ptr,
-                                  vertindex->gpuptr,
-                                  transferbuffer,transferbuffer_offset,mdf.vertex_data,
-                                  mdf.vertex_size,vertexbinding_no);
+        VCreateStaticVertexBuffer(vdevice,mdf.vertex_size,global_gpumemstate.global_ptr,
+                                  vertindex->gpuptr + global_gpumemstate.global_ptr_offset,vertexbinding_no);
     
     vertindex->indexbuffer =
-        VCreateStaticIndexBufferX(vdevice,
-                                  commandbuffer,
-                                  global_gpumemstate.global_ptr,
-                                  _devicealign(vertindex->gpuptr + mdf.vertex_size),
-                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
-                                  mdf.index_data,mdf.index_size);
+        VCreateStaticIndexBufferX(vdevice,global_gpumemstate.global_ptr,
+                                  vertindex->gpuptr + mdf.vertex_size + global_gpumemstate.global_ptr_offset,
+                                  mdf.index_size);
+    
+    
+    auto ptr = VGetTransferBufferPtr(mdf.vertex_size + mdf.index_size);
+    
+    memcpy(ptr,mdf.vertex_data,mdf.vertex_size);
+    memcpy(ptr + mdf.vertex_size,mdf.index_data,mdf.index_size);
+    
+    {
+        VBufferCopy copy = {};
+        
+        VPushBackCopyBuffer(ptr,&copy,0,mdf.vertex_size);
+        VCmdCopyBuffer(commandbuffer,vertindex->vertexbuffer.buffer,&copy);
+    }
+    
+    {
+        VBufferCopy copy = {};
+        
+        VPushBackCopyBuffer(ptr + mdf.vertex_size,&copy,0,mdf.index_size);
+        VCmdCopyBuffer(commandbuffer,vertindex->indexbuffer.buffer,&copy);
+    }
+    
     
     vertindex->ptr = 0;
 }
@@ -930,29 +899,37 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
     vertindex.vert_fileoffset = mdf.vertexdata_offset;
     vertindex.index_fileoffset = mdf.indexdata_offset;
     
-    auto vertsize = _devicealign(mdf.vertex_size);
-    auto indexsize = _devicealign(mdf.index_size);
+    auto vertsize = mdf.vertex_size;
+    auto indexsize = mdf.index_size;
     
-    GPUAllocateAsset(&vertindex,_devicealign(vertsize + indexsize));
-    
-    auto transferbuffer = main_transferbuffer.buffer;
-    auto transferbuffer_offset =
-        AllocateTransferBuffer(&main_transferbuffer,mdf.vertex_size + mdf.index_size);
+    GPUAllocateAsset(&vertindex,vertsize + indexsize);
     
     vertindex.vertexbuffer =
-        VCreateStaticVertexBuffer(vdevice,commandbuffer,
-                                  global_gpumemstate.global_ptr,
-                                  vertindex.gpuptr,
-                                  transferbuffer,transferbuffer_offset,mdf.vertex_data,
-                                  mdf.vertex_size,vertexbinding_no);
+        VCreateStaticVertexBuffer(vdevice,mdf.vertex_size,global_gpumemstate.global_ptr,
+                                  vertindex.gpuptr + global_gpumemstate.global_ptr_offset,vertexbinding_no);
     
     vertindex.indexbuffer =
-        VCreateStaticIndexBufferX(vdevice,
-                                  commandbuffer,
-                                  global_gpumemstate.global_ptr,
-                                  _devicealign(vertindex.gpuptr + mdf.vertex_size),
-                                  transferbuffer,transferbuffer_offset + mdf.vertex_size,
-                                  mdf.index_data,mdf.index_size);
+        VCreateStaticIndexBufferX(vdevice,global_gpumemstate.global_ptr,vertindex.gpuptr + mdf.vertex_size + global_gpumemstate.global_ptr_offset,mdf.index_size);
+    
+    
+    auto ptr = VGetTransferBufferPtr(mdf.vertex_size + mdf.index_size);
+    
+    memcpy(ptr,mdf.vertex_data,mdf.vertex_size);
+    memcpy(ptr + mdf.vertex_size,mdf.index_data,mdf.index_size);
+    
+    {
+        VBufferCopy copy = {};
+        
+        VPushBackCopyBuffer(ptr,&copy,0,mdf.vertex_size);
+        VCmdCopyBuffer(commandbuffer,vertindex.vertexbuffer.buffer,&copy);
+    }
+    
+    {
+        VBufferCopy copy = {};
+        
+        VPushBackCopyBuffer(ptr + mdf.vertex_size,&copy,0,mdf.index_size);
+        VCmdCopyBuffer(commandbuffer,vertindex.indexbuffer.buffer,&copy);
+    }
     
     vertindex.ptr = 0;
     
@@ -969,6 +946,8 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
             AllocateAsset((AssetHandle*)handle,
                           (handle->vertexbuffer.size + handle->indexbuffer.size));
         }
+        
+        _breakpoint();
         
         //copy data to cpu memory
         auto vert = (s8*)handle->ptr;
@@ -993,48 +972,31 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
         //bind and transfer vertex and index buffer
         
         vkBindBufferMemory(global_device->device,handle->vertexbuffer.buffer,
-                           global_gpumemstate.global_ptr,handle->gpuptr);
+                           global_gpumemstate.global_ptr,handle->gpuptr +  + global_gpumemstate.global_ptr_offset);
         
         vkBindBufferMemory(global_device->device,handle->indexbuffer.buffer,
-                           global_gpumemstate.global_ptr,handle->gpuptr + handle->vertexbuffer.size);
+                           global_gpumemstate.global_ptr,handle->gpuptr + handle->vertexbuffer.size + global_gpumemstate.global_ptr_offset);
         
         //copy data to transfer buffer
         
-        s8* mappedmemory_ptr;
+        s8* ptr = VGetTransferBufferPtr(handle->vertexbuffer.size + handle->indexbuffer.size);
         
-        auto transferbuffer = main_transferbuffer.buffer;
-        auto transferbuffer_offset =
-            AllocateTransferBuffer(&main_transferbuffer,
-                                   handle->vertexbuffer.size + handle->indexbuffer.size);
+        memcpy(ptr,vert,handle->vertexbuffer.size);
+        memcpy(ptr + handle->vertexbuffer.size,ind,handle->indexbuffer.size);
         
-        VMapMemory(global_device,transferbuffer.memory,transferbuffer_offset,
-                   (handle->vertexbuffer.size + handle->indexbuffer.size),(void**)&mappedmemory_ptr);
+        {
+            VBufferCopy copy = {};
+            
+            VPushBackCopyBuffer(ptr,&copy,0,handle->vertexbuffer.size);
+            VCmdCopyBuffer(cmdbuffer,handle->vertexbuffer.buffer,&copy);
+        }
         
-        memcpy(mappedmemory_ptr,vert,handle->vertexbuffer.size);
-        
-        memcpy(mappedmemory_ptr + handle->vertexbuffer.size,ind,handle->indexbuffer.size);
-        
-        vkUnmapMemory(global_device->device,transferbuffer.memory);
-        
-        //this usually happens in the middle of a draw.
-        
-        //MARK: doing this on another queue is not a bad idea either.
-        
-        VkBufferCopy copyregion[2];
-        
-        copyregion[0].srcOffset = 0;
-        copyregion[0].dstOffset = transferbuffer_offset;
-        copyregion[0].size = handle->vertexbuffer.size;
-        
-        copyregion[1].srcOffset = 0;
-        copyregion[1].dstOffset = transferbuffer_offset + handle->vertexbuffer.size;
-        copyregion[1].size = handle->indexbuffer.size;
-        
-        vkCmdCopyBuffer(cmdbuffer,handle->vertexbuffer.buffer,transferbuffer.buffer,1,
-                        &copyregion[0]);
-        
-        vkCmdCopyBuffer(cmdbuffer,handle->indexbuffer.buffer,transferbuffer.buffer,1,
-                        &copyregion[1]);
+        {
+            VBufferCopy copy = {};
+            
+            VPushBackCopyBuffer(ptr + handle->vertexbuffer.size,&copy,0,handle->indexbuffer.size);
+            VCmdCopyBuffer(cmdbuffer,handle->indexbuffer.buffer,&copy);
+        }
         
         UnallocateAsset((AssetHandle*)handle);
     }
@@ -1088,14 +1050,6 @@ void UpdateAllocatorTimeStamp(){
     TIMEBLOCK(Purple);
     global_timestamp += 2;
     ResetTAlloc();
-}
-
-void ResetTransferBuffer(){
-    main_transferbuffer.offset = 0;
-}
-
-void ResetAsyncTransferBuffer(){
-    async_transferbuffer.offset = 0;
 }
 
 
@@ -1228,8 +1182,14 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     _allocprint("allocator typeindex %d\n",typeindex);
     
-    global_gpumemstate.global_ptr =
-        VRawDeviceAlloc(vdevice->device,device_size,typeindex);
+    
+    
+    
+    {
+        VDeviceMemoryBlockAlloc(device_size,&global_gpumemstate.global_ptr,&global_gpumemstate.global_ptr_offset);
+    }
+    
+    
     
     global_gpumemstate.memoryblock_array[global_gpumemstate.memoryblock_count] =
     {0,device_size,0};
@@ -1239,16 +1199,6 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     global_gpumemstate.free_count++;
     global_gpumemstate.memoryblock_count++;
-    
-    u32 transferbuffersize = _megabytes(16);
-    
-    main_transferbuffer = {VCreateTransferBuffer(vdevice,transferbuffersize),0,
-        transferbuffersize};
-    
-    async_transferbuffer = {VCreateTransferBuffer(vdevice,transferbuffersize),0,
-        transferbuffersize};
-    
-    
     
     global_device = vdevice;
     

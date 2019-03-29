@@ -244,22 +244,15 @@ void VDescPushBackPoolSpec(VDescriptorPoolSpec* spec,VShaderObj* obj,u32 descset
 }
 
 VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
-                                         VkCommandBuffer commandbuffer,
                                          VkDeviceMemory memory,
                                          VkDeviceSize offset,
-                                         VBufferContext src,VkDeviceSize src_offset,void* data,
                                          ptrsize data_size){
     
-    auto buffer = VCreateStaticIndexBuffer(vdevice,commandbuffer,
-                                           memory,offset,src,src_offset,data,data_size);
+    u32 ind_size = _either((data_size >> 1) > _unsigned_max16,sizeof(u32),sizeof(u16));
     
-    auto count = buffer.ind_count * sizeof(u16);
+    auto buffer = VCreateStaticIndexBuffer(vdevice,memory,offset,data_size,ind_size);
     
-    if(count <= 65535){
-        buffer.ind_count = count;
-    }
-    
-    else{
+    if(ind_size > _unsigned_max16){
         buffer.ind_count = _addsignedbit(buffer.ind_count);
     }
     
@@ -269,21 +262,15 @@ VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevic
 }
 
 VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,b32 isdevice_local,VMappedBufferProperties prop){
+                                         ptrsize data_size,VMemoryBlockHintFlag flag){
     
+    u32 ind_size = _either((data_size >> 1) > _unsigned_max16,sizeof(u32),sizeof(u16));
     auto buffer = 
-        VCreateStaticIndexBuffer(vdevice,data_size,isdevice_local,prop);
+        VCreateStaticIndexBuffer(vdevice,data_size,ind_size,flag);
     
-    auto count = buffer.ind_count * sizeof(u16);
-    
-    if(count <= 65535){
-        buffer.ind_count = count;
-    }
-    
-    else{
+    if(ind_size > _unsigned_max16){
         buffer.ind_count = _addsignedbit(buffer.ind_count);
     }
-    
     
     return buffer;
 }

@@ -21,7 +21,6 @@ layout (set = 0,binding = 0) uniform UBO DYNBUFFER{
 
 layout (set = 1,binding = 0) uniform sampler2D samplerColor;//we should separate this
 layout (set = 1,binding = 1) uniform sampler2D samplerLookup[16];//we should separate this
-
 layout (set = 1,binding = 2, rgba8) uniform restrict writeonly image2D vt_feedback;
 
 struct PointLight{

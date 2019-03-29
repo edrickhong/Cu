@@ -318,6 +318,9 @@ u32 GenTextureFetchList(TextureAssetHandle* asset,VTReadbackPixelFormat* src_coo
 
 
 //ACTUAL PAGE TRANSFER
+
+
+
 void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
     
     //MARK:printf
@@ -328,8 +331,11 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
         
         _kill("over possible fetch tiles array\n",batch->fetchlist.count >= 21845);
         
-        VkBufferImageCopy imagecopy_array[21845];
+#if DEBUG
+        printf("FETCHING %d tiles\n",batch->fetchlist.count);
+#endif
         
+        VkBufferImageCopy imagecopy_array[21845];
         VkBufferImageCopy pagecopy_array[21845];
         
         auto file = FOpenFile(batch->assetfile,F_FLAG_READONLY);
@@ -341,19 +347,15 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
             u32 tile_size = (u32)(batch->bpp * _tpage_side * _tpage_side);
             u32 total_size = batch->fetchlist.count * tile_size;
             
-            auto transferbuffer = async_transferbuffer.buffer;
+            s8* mappedmemory_ptr = VGetTransferBufferPtr(total_size + (sizeof(u32) * batch->fetchlist.count));
+            
+            auto transferbuffer = VGetTransferBuffer();
             auto transferbuffer_offset =
-                AllocateTransferBuffer(&async_transferbuffer,
-                                       total_size + (sizeof(u32) * batch->fetchlist.count));
+                VGetTransferBufferOffset(mappedmemory_ptr);
             
             {
                 
                 TIMEBLOCK(DarkBlue);
-                
-                s8* mappedmemory_ptr;
-                
-                VMapMemory(global_device->device,transferbuffer.memory,transferbuffer_offset,
-                           total_size + (sizeof(u32) * batch->fetchlist.count),(void**)&mappedmemory_ptr);
                 
                 //Copy image data here
                 for(u32 i = 0; i < batch->fetchlist.count; i++){
@@ -386,8 +388,6 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                     
                     *cur = _encode_rgba(x,y,0,255);
                 }
-                
-                vkUnmapMemory(global_device->device,transferbuffer.memory);
             }
             
             {
@@ -438,11 +438,11 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                 
             }
             
-            vkCmdCopyBufferToImage(fetch_cmdbuffer,transferbuffer.buffer,
+            vkCmdCopyBufferToImage(fetch_cmdbuffer,transferbuffer,
                                    global_texturecache.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                    batch->fetchlist.count,imagecopy_array);
             
-            vkCmdCopyBufferToImage(fetch_cmdbuffer,transferbuffer.buffer,
+            vkCmdCopyBufferToImage(fetch_cmdbuffer,transferbuffer,
                                    batch->pagetable.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                    batch->fetchlist.count,pagecopy_array);
             
@@ -453,10 +453,7 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
         FCloseFile(file);
     }
     
-}
-
-
-_ainline void PushThreadTextureEvictQueue(ThreadTextureFetchQueue* _restrict queue,EvictTextureList* _restrict list,TSemaphore sem){
+}_ainline void PushThreadTextureEvictQueue(ThreadTextureFetchQueue* _restrict queue,EvictTextureList* _restrict list,TSemaphore sem){
     
     _kill("too many entries\n",(queue->evict_count + list->count)>= _arraycount(queue->evict_array));
     
@@ -643,17 +640,6 @@ VkCommandBuffer GenerateTextureFetchRequests(
 ThreadTextureFetchQueue* fetchqueue,TSemaphore sem){
     
     TIMEBLOCK(Red);
-    
-    {
-        TIMEBLOCKTAGGED("Flushing readbackbuffer",Green);
-        
-        VMemoryRangesArray ranges = {};
-        
-        VPushBackMemoryRanges(&ranges,vt_targetreadbackbuffer.memory,
-                              0, VK_WHOLE_SIZE);
-        
-        VInvalidateMemoryRanges(global_device,&ranges);
-    }
     
 #if 0
     
@@ -1054,7 +1040,6 @@ void _ainline InitVTSubsystem(u32 phys_w_tiles,u32 phys_h_tiles,VDeviceContext* 
         
         vt_readbackbuffer.image = img.image;
         vt_readbackbuffer.view = img.view;
-        vt_readbackbuffer.memory = img.memory;
         vt_readbackbuffer.w = w;
         vt_readbackbuffer.h = h;
         
@@ -1063,80 +1048,14 @@ void _ainline InitVTSubsystem(u32 phys_w_tiles,u32 phys_h_tiles,VDeviceContext* 
         debug_pixels = (VTReadbackPixelFormat*)alloc(w * h * 4);
 #endif
         
-        //(FIXME:)MARK: do we really want to make this cached?
         vt_targetreadbackbuffer = VCreateColorImageMemory(vdevice,w,h,
-                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,false,VMAPPED_NONE,
-                                                          VK_IMAGE_TILING_LINEAR);
+                                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT,VK_FORMAT_R8G8B8A8_UNORM,VBLOCK_READWRITE);
         
-        VMapMemory(global_device,vt_targetreadbackbuffer.memory,
-                   0,w * h * sizeof(VTReadbackPixelFormat),(void**)&vt_readbackpixels);
+        vt_readbackpixels = (VTReadbackPixelFormat*)VGetReadWriteBlockPtr(&vt_targetreadbackbuffer);
         
         threadtexturefetch_array = (VTReadbackPixelFormat*)alloc(w * h *
                                                                  sizeof(VTReadbackPixelFormat));
         
-        
-        //clear the image
-#if 0
-        {
-            auto queue = VGetQueue(vdevice,VQUEUETYPE_ROOT);
-            
-            auto pool =
-                VCreateCommandPool(vdevice,
-                                   VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-                                   VGetQueueFamilyIndex(VQUEUETYPE_ROOT));
-            
-            auto cmdbuffer = VAllocateCommandBuffer(vdevice,pool,
-                                                    VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-            
-            VStartCommandBuffer(cmdbuffer,
-                                VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-            
-            VkImageMemoryBarrier transfer_membarrier = {
-                VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                0,
-                0,//srcAccessMask
-                VK_ACCESS_TRANSFER_WRITE_BIT,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_QUEUE_FAMILY_IGNORED,
-                VK_QUEUE_FAMILY_IGNORED,
-                vt_targetreadbackbuffer.image,
-                {
-                    VK_IMAGE_ASPECT_COLOR_BIT,
-                    0,
-                    1,
-                    0,
-                    1
-                },
-            };
-            
-            vkCmdPipelineBarrier(cmdbuffer,
-                                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                 0,
-                                 0,0,0,0,1,&transfer_membarrier);
-            
-            VkClearColorValue color = {};
-            
-            VkImageSubresourceRange range = {
-                VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1
-            };
-            
-            vkCmdClearColorImage(cmdbuffer,vt_targetreadbackbuffer.image,
-                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&color,1,&range);
-            
-            
-            VEndCommandBuffer(cmdbuffer);
-            
-            VSubmitCommandBuffer(queue,cmdbuffer);
-            
-            
-            vkQueueWaitIdle(queue);
-            
-            vkDestroyCommandPool(vdevice->device,pool,0);
-        }
-        
-#endif
     }
     
     

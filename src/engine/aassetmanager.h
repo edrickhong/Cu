@@ -1,5 +1,7 @@
 #pragma once
 
+//TODO: commits should happen when pushing to render list and recorded as a secondary command buffer
+
 #include "mode.h"
 #include "ttype.h"
 

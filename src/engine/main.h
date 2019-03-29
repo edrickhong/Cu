@@ -1296,70 +1296,6 @@ void FillAudioBuffers(void* args){
     
 }
 
-void ProcessObjUpdateList(){
-    
-    TIMEBLOCK(Purple);
-    
-    if(!pdata->objupdate_count){
-        return;
-    }
-    
-    
-    
-    //MARK: why do we have to sort?
-    qsort(pdata->objupdate_array,pdata->objupdate_count,
-          sizeof(ObjUpdateEntry),
-          [](const void * a, const void* b)->s32 {
-          
-          auto entry_a = (ObjUpdateEntry*)a;
-          auto entry_b = (ObjUpdateEntry*)b;
-          
-          return entry_a->offset - entry_b->offset;
-          });
-    
-    auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
-    
-    //write the light list
-    light_ubo->point_count = pdata->point_count;
-    light_ubo->spot_count = pdata->spot_count;
-    
-    VMemoryRangesPtr ranges = {TAlloc(VkMappedMemoryRange,pdata->objupdate_count + 1 + light_ubo->dir_count + pdata->point_count + pdata->spot_count),0};
-    
-    
-    for(u32 i = 0; i < pdata->objupdate_count; i++){
-        
-        auto entry = pdata->objupdate_array[i];
-        
-        VPushBackMemoryRanges(&ranges,pdata->skel_ubo.memory,
-                              entry.offset,entry.data_size);
-        
-    }
-    
-    VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
-                          0,sizeof(u32) * 4);
-    
-    //MARK: hardcoded for now
-    VPushBackMemoryRanges(&ranges,pdata->light_ubo.memory,
-                          offsetof(LightUBO,point_array),sizeof(LightUBO::PointLight) * pdata->point_count);
-    
-    pdata->objupdate_count++;
-    
-    
-    {
-        TIMEBLOCKTAGGED("vkFlush",Green);
-        VFlushMemoryRanges(&pdata->vdevice,&ranges);
-        
-    }
-    
-}
-
-void ThreadUpdateUniformBuffer(void*,void*){
-    
-    TIMEBLOCKTAGGED("UPDATEUBUFFER",Green);
-    
-    ProcessObjUpdateList();
-}
-
 void ThreadLinearBlend(void* args,void*){
     
     TIMEBLOCK(Violet);
@@ -1665,10 +1601,6 @@ void SetupPipelineCache(){
 }
 
 
-/*
-FIXME: 
-Run-Time Check Failure #2 - Stack around the variable 'write_cache_size' was corrupted
-*/
 void WritePipelineCache(){
     
     ptrsize write_cache_size = 0;
@@ -1817,6 +1749,7 @@ void AddPointLight(Vector3 pos,Color color,f32 radius){
     };
     
     pdata->point_count++;
+    light_ubo->point_count = pdata->point_count;
 }
 
 void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
@@ -1827,8 +1760,8 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
     
     light_ubo->spot_array[pdata->spot_count] = {ToVec4(pos),ToVec4(dir),color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
     
-    pdata->spot_count ++;
-    
+    pdata->spot_count++;
+    light_ubo->spot_count = pdata->spot_count;
 }
 
 
@@ -1966,7 +1899,7 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     
     VDescriptorWriteSpec writespec;
     
-    
+    //FIXME: this padding is off (size is supposed to be 8512)
     auto skel_binfo = VGetBufferInfo(&pdata->skel_ubo,0,sizeof(SkelUBO));
     
     VDescPushBackWriteSpecBuffer(&writespec,pdata->dynuniform_skel_descriptorset,0,0,1,
@@ -2019,7 +1952,6 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
     VDescPushBackWriteSpecImage(&writespec,pdata->vt_descriptorset,
                                 2,0,1,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                                 &vt_readbackbufferinfo);
-    
     
     VUpdateDescriptorSets(&pdata->vdevice,writespec);
     
@@ -2167,7 +2099,7 @@ void InitAllSystems(){
     
     pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
     
-    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     
@@ -2206,9 +2138,7 @@ void InitAllSystems(){
         
     }
     
-#if 1
-    VInitDeviceAllocator(&pdata->vdevice);
-#endif
+    VInitDeviceBlockAllocator(&pdata->vdevice);
     
     
     _kill("cannot exceed the max allocated swapchain\n",settings.swapchain_depth > _max_swapchain_count);
@@ -2257,18 +2187,16 @@ void InitAllSystems(){
         
         SetupPipelineCache();
         
-        pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[64]),VMAPPED_NONE);
         
-        pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO),VMAPPED_NONE);
         
-        //MARK: keep the obj buffer permanently mapped
+        pdata->skel_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(SkelUBO[8]));
         
-        VMapMemory(&pdata->vdevice,pdata->skel_ubo.memory,
-                   0,pdata->skel_ubo.size,(void**)&pdata->objupdate_ptr);
+        pdata->light_ubo = VCreateUniformBufferContext(&pdata->vdevice,sizeof(LightUBO));
         
-        VMapMemory(&pdata->vdevice,pdata->light_ubo.memory,
-                   0,pdata->light_ubo.size,(void**)&pdata->lightupdate_ptr);
+        pdata->objupdate_ptr = VGetWriteBlockPtr(&pdata->skel_ubo);
+        pdata->lightupdate_ptr = VGetWriteBlockPtr(&pdata->light_ubo);
         
+        memset(pdata->objupdate_ptr,0,pdata->skel_ubo.size);
         memset(pdata->lightupdate_ptr,0,pdata->light_ubo.size);
         
         InitSceneContext(pdata,transfercmdbuffer,pdata->transfer_queue);
@@ -2298,8 +2226,6 @@ void InitAllSystems(){
         gameinit_funptr(&initdata);
         
         pdata->deltatime = 0;
-        
-        ResetTransferBuffer();
     }
     
     

@@ -190,12 +190,6 @@ s32 main(s32 argc,s8** argv){
                 
                 MainThreadDoWorkQueue(&pdata->threadqueue,0);
                 
-                //FIXME: if there is corruption, it is either because: 1. Flush is too slow,
-                //2. MainThreadDoWorkQueue is not synced
-                //3. Someone is writing into another person's data
-                
-                ProcessObjUpdateList();
-                
                 
 #if _enable_gui
                 

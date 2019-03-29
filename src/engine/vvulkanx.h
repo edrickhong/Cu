@@ -40,11 +40,9 @@ If u32 , the top bit in ind_count will be set
 */
 
 VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
-                                         VkCommandBuffer commandbuffer,
-                                         VkDeviceMemory memory,
-                                         VkDeviceSize offset,
-                                         VBufferContext src,VkDeviceSize src_offset,void* data,
-                                         ptrsize data_size);
+                                         ptrsize data_size,VMemoryBlockHintFlag flag = VBLOCK_DEVICE);
 
 VBufferContext VCreateStaticIndexBufferX(const  VDeviceContext* _restrict vdevice,
-                                         ptrsize data_size,b32 isdevice_local = true,VMappedBufferProperties prop = VMAPPED_COHERENT);
+                                         VkDeviceMemory memory,
+                                         VkDeviceSize offset,
+                                         ptrsize data_size);
