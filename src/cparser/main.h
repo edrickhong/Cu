@@ -407,7 +407,7 @@ const s8* GetMainFile(const s8* string){
         }
     }
     
-    return 0;
+    return string;
 }
 
 
@@ -832,7 +832,6 @@ _intern void WriteFunctions(FileHandle src_file,FileHandle header_file,GenericFu
     
 }
 
-
 void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,GenericStruct* struct_array,u32 struct_count,GenericEnum* enum_array,u32 enum_count,GenericFunction* function_array,u32 function_count){
     
 #if !(_testing)
@@ -953,7 +952,7 @@ void WriteMetaFile(const s8* src_file_string,const s8* header_file_string,Generi
                     #include "%s"
                     
                     
-                    )FOO",header_file_string);
+                    )FOO",GetMainFile(header_file_string));
             
             FWrite(src_file,(void*)buffer,strlen(buffer));
         }
@@ -1266,7 +1265,7 @@ Floating point return values are returned in XMM0
 
 */
 
-extern "C" void FillArgsAndCall(void* call,u64* values,u64* iret,f64* fret);
+extern "C" void InternalFillArgsAndCall(void* call,u64* values,u64* iret,f64* fret);
 
 #endif
 
@@ -1362,7 +1361,7 @@ for(u32 i = 0; i < function->args_count;i++){
     
 #ifdef _WIN32
 
-FillArgsAndCall(function->function_call,registers.int_reg_array,&ret_value,&fret_value);
+InternalFillArgsAndCall(function->function_call,registers.int_reg_array,&ret_value,&fret_value);
 
 #else   
 
@@ -1496,7 +1495,6 @@ void WriteComponentMetaData(const s8* src_file_string,const s8* header_file_stri
                 )FOO",
                 inc_file);
         
-        
         if(header_file){
             
             FWrite(header_file,(void*)header,strlen(header));
@@ -1509,7 +1507,7 @@ void WriteComponentMetaData(const s8* src_file_string,const s8* header_file_stri
                     #include "%s"
                     
                     
-                    )FOO",header_file_string);
+                    )FOO",GetMainFile(header_file_string));
             
             FWrite(src_file,(void*)buffer,strlen(buffer));
         }
