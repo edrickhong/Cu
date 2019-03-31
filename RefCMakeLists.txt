@@ -128,8 +128,3 @@ Gen_IncludeList(C_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
 Add_Metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine)
 Add_MetaCompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game)
-
-get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-  message(STATUS "dir='${dir}'")
-endforeach()
