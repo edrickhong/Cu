@@ -636,8 +636,6 @@ void GenerateGenericStruct(EvalChar* eval_buffer,u32 count,s8* buffer,ptrsize* a
                     }
                     
                     
-                    
-                    
                 }
                 
                 break;

@@ -112,6 +112,14 @@ enum ParserKeyWord{
     PARSERKEYWORD_COMPONENT = PHashString("REFLCOMPONENT"),
 };
 
+enum ReflType{
+    RELFTYPE_META = PHashString("META"),
+    RELFTYPE_COMPONENT = PHashString("COMPONENT"),
+    RELFTYPE_STD140 = PHashString("STD140"),
+    RELFTYPE_STD430 = PHashString("STD430"),
+    RELFTYPE_GROUP,
+};
+
 struct GenericTypeDec{
     
     s8 type_string[128];
