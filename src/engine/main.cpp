@@ -141,7 +141,7 @@ s32 main(s32 argc,s8** argv){
                     ptr(context);
                 }
                 
-                auto frames = AAudioDeviceWriteAvailable(pdata->audio);
+                auto frames = AAudioDeviceWriteAvailable(&pdata->audio);
                 
                 if(frames >= pdata->submit_audiobuffer.size_frames){
                     
@@ -209,7 +209,12 @@ s32 main(s32 argc,s8** argv){
 
 /*
 
-FIXME: renderdoc does not work with our app anymore. it refuses to create a device
+libpapi-dev
+libdbus-1-dev
+wayland-protocols
+libvulkan-dev
+vulkan-validationlayers
+zenity
 
 TODO: 
 
@@ -353,7 +358,4 @@ dlsym
 fmodf
 dlerror
 stderr
-
-
-
 */

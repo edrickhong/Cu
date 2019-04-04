@@ -1,8 +1,19 @@
+
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 #include "aassettools.h"
 #include <assimp/Importer.hpp> 
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
+
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
+
 #include "pparse.h"
 
 /*

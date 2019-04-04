@@ -21,6 +21,14 @@
 #include "ffileio.h"
 #include "ccontainer.h"
 
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#pragma GCC diagnostic ignored "-Wpacked"
+#endif
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #define STB_DXT_IMPLEMENTATION
@@ -28,6 +36,15 @@
 #include "stb/stb_image.h"
 #include "stb/stb_image_resize.h"
 #include "stb/stb_dxt.h"
+
+#include <assimp/Importer.hpp> 
+#include <assimp/scene.h>     
+#include <assimp/postprocess.h>
+#include <assimp/cimport.h>
+
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
 #include "aassettools.h"
 
@@ -538,12 +555,6 @@ void WavWriteADF(const s8* filepath,const s8* writefilepath){
     
     unalloc(audio_data);
 }
-
-
-#include <assimp/Importer.hpp> 
-#include <assimp/scene.h>     
-#include <assimp/postprocess.h>
-#include <assimp/cimport.h>
 
 _declare_list(VertexBoneDataList,VertexBoneData);
 

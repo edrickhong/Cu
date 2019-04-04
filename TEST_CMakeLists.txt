@@ -1,32 +1,24 @@
-#set(CMAKE_C_COMPILER /usr/bin/clang)
-#set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+# set(CMAKE_C_COMPILER /usr/bin/clang) set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
 cmake_minimum_required(VERSION 2.8)
 
 project(tests)
 
+execute_process(COMMAND echo DOWNLOADING...
+                COMMAND curl -L https://edrickhong.github.io/Pages/testfiles.zip
+                        -o testfiles.zip)
 
-execute_process(
-COMMAND echo DOWNLOADING...
-COMMAND curl -L https://edrickhong.github.io/Pages/testfiles.zip -o testfiles.zip
-)
-
-execute_process(
-COMMAND unzip -x testfiles.zip
-)
-
+execute_process(COMMAND unzip -x testfiles.zip)
 
 option(DEBUG "" ON)
 
 if(DEBUG)
 
-add_definitions(-DDEBUG)
+  add_definitions(-DDEBUG)
 
 endif()
 
-
-
-#disable wayland extensions. don't need it for ci tests
+# disable wayland extensions. don't need it for ci tests
 
 add_definitions(-DNO_WAYLAND_EXTENSIONS)
 option(IS_INDEPENDENT "" OFF)
@@ -35,20 +27,21 @@ set(MODE_INCLUDE "${CMAKE_SOURCE_DIR}/")
 include(${CMAKE_SOURCE_DIR}/Cu_std/RefCMakeLists.txt)
 
 # Include Directory
-include_directories(
-  "${CMAKE_BINARY_DIR}/../include"
-  "${CMAKE_BINARY_DIR}/../tests/include"
-   "${CMAKE_BINARY_DIR}/../src/engine"
-  )
+include_directories("${CMAKE_BINARY_DIR}/../include"
+                    "${CMAKE_BINARY_DIR}/../tests/include"
+                    "${CMAKE_BINARY_DIR}/../src/engine")
 
-#-fno-omit-frame-pointer is for profiling
-set(OPT_FLAGS "-O0 -march=x86-64 -fno-omit-frame-pointer -fno-fast-math -fno-exceptions -fno-rtti")
+# -fno-omit-frame-pointer is for profiling
+set(
+  OPT_FLAGS
+  "-O0 -march=x86-64 -fno-omit-frame-pointer -fno-fast-math -fno-exceptions -fno-rtti"
+  )
 set(STRICT_FLAGS "")
 
 set(FLAGS "-g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
 
-#output with debug info
-set(CMAKE_CXX_FLAGS  ${FLAGS})
+# output with debug info
+set(CMAKE_CXX_FLAGS ${FLAGS})
 
 set(ASSIMP_LIB "${CMAKE_BINARY_DIR}/../extlib/libassimp.so.4")
 

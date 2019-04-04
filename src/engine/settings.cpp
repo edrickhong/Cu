@@ -18,7 +18,7 @@ struct Settings{
     u32 gpu_alloc_size = 22;
     u32 vt_width = 128;
     u32 vt_height = 64;
-    u32 audio_format = A_FORMAT_S16LE;
+    u32 audio_format = AAUDIOFORMAT_S16;
     u32 audio_channels = 2;
     u32 audio_frequency = 48000;
     u32 playbuffer_size_ms = 24;
@@ -47,20 +47,21 @@ enum REFL SETTING_VALUE{
     SETTING_VALUE_LAZY = VSYNC_LAZY,
     
     
-    SETTING_VALUE_S16 = A_FORMAT_S16LE,
-    SETTING_VALUE_S24 = (s32)-3,
-    SETTING_VALUE_S32 = (s32)-4,
+    SETTING_VALUE_S16 = AAUDIOFORMAT_S16,
+    SETTING_VALUE_S32 = AAUDIOFORMAT_S32,
     
-    SETTING_VALUE_F32 = (s32)-5,
-    SETTING_VALUE_F64 = (s32)-6,
+    SETTING_VALUE_F32 = AAUDIOFORMAT_F32,
+    SETTING_VALUE_F64 = AAUDIOFORMAT_F64,
     
     SETTING_VALUE_MONO = 1,
     SETTING_VALUE_STEREO = 2,
     SETTING_VALUE_5_1 = 6,
     SETTING_VALUE_7_1 = 8,
     
-    SETTING_VALUE_44100 = 44100,
-    SETTING_VALUE_48000 = 48000,
+    SETTING_VALUE_44100 = AAUDIOSAMPLERATE_44_1_KHZ,
+    SETTING_VALUE_48000 = AAUDIOSAMPLERATE_48_KHZ,
+    SETTING_VALUE_88200 = AAUDIOSAMPLERATE_88_2_KHZ,
+    SETTING_VALUE_96000 = AAUDIOSAMPLERATE_96_KHZ,
     
     SETTING_VALUE_ALL = (s32)-1,
     SETTING_VALUE_DEFAULT = (s32)-1,
@@ -124,7 +125,7 @@ void GenerateSettingsString2(Settings2* settings,s8* src_buffer){
             }
             
             else{
-                printf("%s : %f\n",member->name_string,value.f);
+                printf("%s : %f\n",member->name_string,(f64)value.f);
             }
             
             
@@ -234,7 +235,7 @@ void VsyncFlagToString(u32 flag,s8* dst_string){
 
 void AudioFormatFlagToString(u32 flag,u32 channels,s8* dst_string){
     
-    if(flag == A_FORMAT_S16LE && channels == 2){
+    if(flag == AAUDIOFORMAT_S16 && channels == 2){
         auto string = "S16_STEREO";
         memcpy(dst_string,string,strlen(string));
     }
@@ -340,7 +341,7 @@ void AudioFormatStringToFlag(s8* string,u32* format,u32* channels){
         
         case PHashString("S16_STEREO"):{
             
-            *format = A_FORMAT_S16LE;
+            *format = AAUDIOFORMAT_S16;
             *channels = 2;
             
             return;
@@ -437,7 +438,7 @@ void GenerateSettingsString(Settings* settings,s8* buffer){
             audioformat_string,
             settings->audio_frequency,
             settings->playbuffer_size_ms,
-            settings->master_volume,
+            (f64)settings->master_volume,
             threads_string,
             gpudevice_string
             );

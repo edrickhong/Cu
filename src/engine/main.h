@@ -1253,7 +1253,7 @@ void MixAudio(void* data,void*){
         memset(pdata->submit_audiobuffer.data,0,pdata->submit_audiobuffer.size_frames * sizeof(u32));
 #endif
         
-        APlayAudioDevice(pdata->audio,pdata->submit_audiobuffer.data,
+        APlayAudioDevice(&pdata->audio,pdata->submit_audiobuffer.data,
                          pdata->submit_audiobuffer.size_frames);  
     }
     
@@ -2091,8 +2091,16 @@ void InitAllSystems(){
         pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size); 
     }
     
-    pdata->audio =
-        ACreateAudioDevice(A_DEVICE_DEFAULT,settings.audio_frequency,settings.audio_channels,settings.audio_format);
+    {
+        AAudioDeviceNames array[32] = {};
+        u32 count = 0;
+        AGetAudioDevices(&array[0],&count);
+        
+        AReserveAudioDevice(array[0].logical_name);
+        
+        pdata->audio =
+            ACreateDevice(array[0].logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,(AAudioSampleRate)settings.audio_frequency);
+    }
     
     
     VInitVulkan();
@@ -2380,11 +2388,11 @@ You shall listen to all sides and filter them from your self.
     auto memcpy_total = GetTimeDifferenceMS(mem_start,mem_end);
     auto test_total = GetTimeDifferenceMS(test_start,test_end);
     
-    printf("memcpy time :%f\n",memcpy_total);
+    printf("memcpy time :%f\n",(f64)memcpy_total);
     
-    printf("Test time :%f\n",test_total);
+    printf("Test time :%f\n",(f64)test_total);
     
-    printf("ratio %f\n",test_total/memcpy_total);
+    printf("ratio %f\n",(f64)(test_total/memcpy_total));
     
     exit(0);
     

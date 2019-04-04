@@ -1159,11 +1159,11 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         
         Vector3 lookdir = data->camera_lookdir;
         
-        if(x_len != 0){
+        if(x_len != 0.0f){
             x_angle = atanf(x_len/1.0f);
         }
         
-        if(y_len != 0){
+        if(y_len != 0.0f){
             y_angle = atanf(y_len/1.0f);
         }
         
@@ -1409,7 +1409,7 @@ void EditorGUI(SceneContext* context){
         
         s8 buffer[128] = {};
         
-        sprintf(&buffer[0],"%f",color->R);
+        sprintf(&buffer[0],"%f",(f64)color->R);
         
         if(GUITextField("R",&buffer[0])){
             color->R = (f32)atof(&buffer[0]);
@@ -1418,7 +1418,7 @@ void EditorGUI(SceneContext* context){
         
         memset(&buffer[0],0,sizeof(buffer));
         
-        sprintf(&buffer[0],"%f",color->G);
+        sprintf(&buffer[0],"%f",(f64)color->G);
         
         if(GUITextField("G",&buffer[0])){
             color->G = (f32)atof(&buffer[0]);
@@ -1427,7 +1427,7 @@ void EditorGUI(SceneContext* context){
         
         memset(&buffer[0],0,sizeof(buffer));
         
-        sprintf(&buffer[0],"%f",color->B);
+        sprintf(&buffer[0],"%f",(f64)color->B);
         
         if(GUITextField("B",&buffer[0])){
             color->B = (f32)atof(&buffer[0]);
@@ -1436,7 +1436,7 @@ void EditorGUI(SceneContext* context){
         
         memset(&buffer[0],0,sizeof(buffer));
         
-        sprintf(&buffer[0],"%f",*intensity);
+        sprintf(&buffer[0],"%f",(f64)(*intensity));
         
         if(GUITextField("intensity",&buffer[0])){
             *intensity = (f32)atof(&buffer[0]);
@@ -1513,7 +1513,7 @@ void EditorGUI(SceneContext* context){
             //dir light fields
             s8 buffer[128] = {};
             
-            sprintf(&buffer[0],"%f",color->R);
+            sprintf(&buffer[0],"%f",(f64)color->R);
             
             if(GUITextField("R",&buffer[0])){
                 color->R = (f32)atof(&buffer[0]);
@@ -1522,7 +1522,7 @@ void EditorGUI(SceneContext* context){
             
             memset(&buffer[0],0,sizeof(buffer));
             
-            sprintf(&buffer[0],"%f",color->G);
+            sprintf(&buffer[0],"%f",(f64)color->G);
             
             if(GUITextField("G",&buffer[0])){
                 color->G = (f32)atof(&buffer[0]);
@@ -1532,7 +1532,7 @@ void EditorGUI(SceneContext* context){
             memset(&buffer[0],0,sizeof(buffer));
             
             
-            sprintf(&buffer[0],"%f",color->B);
+            sprintf(&buffer[0],"%f",(f64)color->B);
             
             if(GUITextField("B",&buffer[0])){
                 color->B = (f32)atof(&buffer[0]);
@@ -1542,7 +1542,7 @@ void EditorGUI(SceneContext* context){
             memset(&buffer[0],0,sizeof(buffer));
             
             
-            sprintf(&buffer[0],"%f",*intensity);
+            sprintf(&buffer[0],"%f",(f64)(*intensity));
             
             if(GUITextField("intensity",&buffer[0])){
                 *intensity = (f32)atof(&buffer[0]);
@@ -1648,13 +1648,13 @@ void EditorGUI(SceneContext* context){
         //orientation fields
         {
             
-            sprintf(&data->o_buffer[0][0],"%f",data->orientation.pos_x[data->obj_id]);
+            sprintf(&data->o_buffer[0][0],"%f",(f64)data->orientation.pos_x[data->obj_id]);
             
-            sprintf(&data->o_buffer[1][0],"%f",data->orientation.pos_y[data->obj_id]);
+            sprintf(&data->o_buffer[1][0],"%f",(f64)data->orientation.pos_y[data->obj_id]);
             
-            sprintf(&data->o_buffer[2][0],"%f",data->orientation.pos_z[data->obj_id]);
+            sprintf(&data->o_buffer[2][0],"%f",(f64)data->orientation.pos_z[data->obj_id]);
             
-            sprintf(&data->o_buffer[3][0],"%f",data->orientation.scale[data->obj_id]);
+            sprintf(&data->o_buffer[3][0],"%f",(f64)data->orientation.scale[data->obj_id]);
             
             if(GUITextField("x",&data->o_buffer[0][0],false,_pos_width)){
                 
@@ -1784,7 +1784,7 @@ void EditorGUI(SceneContext* context){
                         }
                         
                         else if(IsFloatType(comp_meta_entry.type_hash)){
-                            sprintf(&buffer[0],"%f",*((f32*)(&buffer[0])));
+                            sprintf(&buffer[0],"%f",(f64)(*((f32*)(&buffer[0]))));
                         }
                         
                         else if(InspectorIsOpaqueType(comp_meta_entry.type_hash)){

@@ -14,3 +14,5 @@ extlib/
 include/generated/*
 !include/generated/.gitkeep
 
+scan-build/
+build

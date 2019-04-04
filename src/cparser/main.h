@@ -1693,7 +1693,7 @@ void WriteComponentMetaData(const s8* src_file_string,const s8* header_file_stri
     
     else if(comp_meta_entry.type_hash == CType_F32 ||
     comp_meta_entry.type_hash == CType_F64){
-    printf("%f\n",*((f32*)(&buffer[0])));
+    printf("%f\n",(f64)(*((f32*)(&buffer[0]))));
     }
     
     else{

@@ -1,46 +1,61 @@
 option(BUILD_STEP "" ON)
 option(DEBUG "" ON)
 
-#sets internal libs paths and flags
-include(${CMAKE_SOURCE_DIR}/cmake/cu.cmake)
-
-InitSubmodules()
-
-
-cmake_minimum_required(VERSION 2.8)
-project(copper)
-
-
-
-#kept because we change these often (Linux compiler flags)
+# kept because we change these often (Linux compiler flags)
 if(UNIX)
 
-if(DEBUG)
-# -mavx
-  set(OPT_FLAGS "-g -O0 -fno-omit-frame-pointer")
+  # sets internal libs paths and flags
+  include(${CMAKE_SOURCE_DIR}/cmake/cu.cmake)
+  initsubmodules()
 
-endif()
+  cmake_minimum_required(VERSION 3.9)
+  project(copper)
 
-  set(FLAGS "-fdiagnostics-absolute-paths -fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
-  
+  if(DEBUG)
+    # -mavx
+    set(OPT_FLAGS "-g -O0 -fno-omit-frame-pointer -fstack-protector-strong")
+
+  endif()
+
+  set(
+    FLAGS
+    "-fdiagnostics-absolute-paths -fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}"
+    )
+
+else(UNIX)
+
+  cmake_minimum_required(VERSION 3.9)
+  project(copper)
+
+  # sets internal libs paths and flags
+  include(${CMAKE_SOURCE_DIR}/cmake/cu.cmake)
+  initsubmodules()
+
 endif(UNIX)
 
-  set(CMAKE_CXX_FLAGS ${FLAGS})
+set(CMAKE_CXX_FLAGS ${FLAGS})
 
- #Output Directory Variables
-   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+#this adds LTO support
+include(CheckIPOSupported)
+check_ipo_supported(RESULT LTO_SUPPORTED)
 
- #Include Directories
-  include_directories(
-  "${CMAKE_SOURCE_DIR}/include"
-  "${CMAKE_SOURCE_DIR}/include/generated"
-  "${CMAKE_SOURCE_DIR}/src/engine"
-  "${CMAKE_SOURCE_DIR}/src/game"
-  )
+if(LTO_SUPPORTED)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+  message(STATUS " LTO is enabled")
+endif()
 
-#source files. all unity builds
+# Output Directory Variables
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+
+# Include Directories
+include_directories("${CMAKE_SOURCE_DIR}/include"
+                    "${CMAKE_SOURCE_DIR}/include/generated"
+                    "${CMAKE_SOURCE_DIR}/src/engine"
+                    "${CMAKE_SOURCE_DIR}/src/game")
+
+# source files. all unity builds
 file(GLOB IMPORTER src/importer/main.cpp)
 file(GLOB GLSLPARSER src/glslparser/main.cpp)
 file(GLOB CPARSER src/cparser/main.cpp)
@@ -50,22 +65,18 @@ file(GLOB GAME src/game/game.cpp)
 file(GLOB FILEARRAY src/filearray/main.cpp)
 file(GLOB FBMP src/fbmpgenerator/main.cpp)
 
-GenAndInstallAdditionalDep()
+genandinstalladditionaldep()
 
-add_custom_target(CJOBS ALL  echo EXECUTING BUILD STEP
-
-)
-
+add_custom_target(CJOBS ALL echo EXECUTING BUILD STEP)
 
 if(BUILD_STEP)
 
-#SHADER COMPILING
-CompileAllShaders(CJOBS)
-CompileShaderCase(CJOBS USE_SKEL model.vert model_skel.vert)
-CompileShaderCase(CJOBS USE_TEXTURE m_gui.frag m_gui_tex.frag)
+  # SHADER COMPILING
+  compileallshaders(CJOBS)
+  compileshadercase(CJOBS USE_SKEL model.vert model_skel.vert)
+  compileshadercase(CJOBS USE_TEXTURE m_gui.frag m_gui_tex.frag)
 
 endif()
-
 
 option(IS_INDEPENDENT "" OFF)
 set(CU_STD_DIR "${CMAKE_SOURCE_DIR}/Cu_std")
@@ -73,7 +84,7 @@ set(MODE_INCLUDE "${CMAKE_SOURCE_DIR}/")
 include(${CMAKE_SOURCE_DIR}/Cu_std/RefCMakeLists.txt)
 
 if(UNIX)
-target_compile_options(cu_std BEFORE PRIVATE -fPIC)
+  target_compile_options(cu_std BEFORE PRIVATE -fPIC)
 endif(UNIX)
 
 add_executable(assetpacker ${ASSETPACKER})
@@ -83,7 +94,8 @@ add_executable(glslparser ${GLSLPARSER})
 add_executable(filearray ${FILEARRAY})
 add_executable(fbmp ${FBMP})
 
-#we shouldn't have to link platform libs (the only thing we shoud have to link to is libdl)
+# we shouldn't have to link platform libs (the only thing we shoud have to link
+# to is libdl)
 target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
 target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
 target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
@@ -91,15 +103,15 @@ target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
 target_link_libraries(filearray cu_std ${PLATFORM_LIBS})
 target_link_libraries(fbmp cu_std ${PLATFORM_LIBS})
 
-
-
-#for these we do not want to have stdc++
+# for these we do not want to have stdc++
+# disable linking to stdc++ (Only works on linux)
+set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
 
 add_executable(cu_engine ${ENGINE} ${METACALL_SRC})
 
 target_link_libraries(cu_engine cu_std ${PLATFORM_LIBS})
 set_target_properties(cu_engine PROPERTIES LINKER_LANGUAGE C)
-
 
 add_library(game ${PDLL} ${GAME} ${METACALL_SRC})
 set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
@@ -107,24 +119,11 @@ set_target_properties(game PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(game cu_std ${PLATFORM_LIBS})
 
 if(WIN32)
-
-#enable masm
-enable_language(ASM_MASM)
-
-if (NOT CMAKE_CL_64)
-            message(FATAL_ERROR "Error: Masm64 not found")
-endif()
-
-
-  set_target_properties(game PROPERTIES
-  PDB_NAME "game_${VERSION}"
-)
-  
+  set_target_properties(game PROPERTIES PDB_NAME "game_${VERSION}")
 endif(WIN32)
 
-
 set(C_INCLUDES "")
-Gen_IncludeList(C_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
+gen_includelist(C_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
-Add_Metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine)
-Add_MetaCompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game)
+add_metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine)
+add_metacompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game)

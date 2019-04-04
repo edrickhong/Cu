@@ -972,7 +972,7 @@ s32 main(s32 argc,s8** argv){
     
     auto diff = GetTimeDifferenceMS(start,end);
     
-    printf("TARGET %s PARSE TIME: %f(s)\n",meta_src,diff/1000.0f);
+    printf("TARGET %s PARSE TIME: %f(s)\n",meta_src,(f64)(diff/1000.0f));
     
 #endif
     

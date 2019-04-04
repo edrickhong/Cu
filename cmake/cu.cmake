@@ -1,75 +1,74 @@
-
-#disable linking to stdc++ (Only works on linux)
-set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
-set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
-
 if(DEBUG)
-add_definitions(-DDEBUG)
+  add_definitions(-DDEBUG)
 endif()
 
 if(UNIX)
 
-set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
-set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
+  set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+  set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
 
+  if(DEBUG)
 
+    if(BUILD_STEP)
 
-if(DEBUG)
+      set(CMAKE_C_COMPILER /usr/bin/clang)
+      set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
-if(BUILD_STEP)
+    endif()
 
-  set(CMAKE_C_COMPILER /usr/bin/clang)
-  set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+    # set(CLANG_DEBUG "-fsanitize=address,memory,undefined,safe-stack,thread")
+    set(CLANG_DEBUG "") # break here __asan::ReportGenericError
 
-endif()
+    set(
+      STRICT_FLAGS
+      "-Werror -Wall -Wextra -pedantic -Wcast-align  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self  -Wmissing-include-dirs   -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo  -Wstrict-overflow=5 -Wundef -Wno-unused -Wno-variadic-macros -Wno-parentheses -Wunused-function -Wunused-label -Wunused-value -Wunused-variable -fdiagnostics-show-option -Wno-missing-field-initializers -Wno-missing-braces -Wimplicit-fallthrough -Wdouble-promotion -Wnull-dereference -Wswitch -Wuninitialized -Wunknown-pragmas -Warray-bounds -Wtautological-compare -Wfloat-equal -Wabsolute-value -Wdangling-else -Waddress -Wpacked -Wvla -Wstack-protector"
+      )
 
-  #set(CLANG_DEBUG "-fsanitize=address,memory,undefined,safe-stack,thread")
-  set(CLANG_DEBUG "") #break here __asan::ReportGenericError
+  else()
 
-set(STRICT_FLAGS "-Werror -Wall -Wextra -pedantic -Wcast-align  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self  -Wmissing-include-dirs   -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo  -Wstrict-overflow=5 -Wundef -Wno-unused -Wno-variadic-macros -Wno-parentheses -Wunused-function -Wunused-label -Wunused-value -Wunused-variable -fdiagnostics-show-option -Wno-missing-field-initializers -Wno-missing-braces")
+    set(OPT_FLAGS "-O3")
+    set(STRICT_FLAGS)
 
-else()
-
-set(OPT_FLAGS "-O3")
-set(STRICT_FLAGS)
-
-endif()
+  endif()
 
   set(ASSIMP_LIB "${CMAKE_SOURCE_DIR}/extlib/libassimp.so.4")
   set(DL_LIB "dl")
   set(PTHREAD_LIB "pthread")
-  
+
   set(PLATFORM_LIBS ${DL_LIB} ${PTHREAD_LIB} m)
 
-
   set(META_CMD -DCPP_PASS -E)
-  set(META_OUT -o )
+  set(META_OUT -o)
 
   set(PDLL SHARED)
   set(METACALL_SRC "")
 
 else(UNIX)
 
+  # enable masm
+  enable_language(ASM_MASM)
 
-if(DEBUG)
+  if(NOT CMAKE_CL_64)
+    message(FATAL_ERROR "Error: Masm64 not found")
+  endif()
+
+  if(DEBUG)
 
     set(STRICT_FLAGS "/W3 /WX")
     set(OPT_FLAGS "/Od")
 
-else()
+  else()
 
     set(STRICT_FLAGS "/W3 /WX")
     set(OPT_FLAGS "/O2")
 
-endif()
+  endif()
 
-    set(ASSIMP_LIB "../extlib/assimp")
-    set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib")
+  set(ASSIMP_LIB "../extlib/assimp")
+  set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib")
 
-
-    #allow debug info here cos windows doesn't embed it into the dll/exe
-    set(FLAGS "/FC /EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
-
+  # allow debug info here cos windows doesn't embed it into the dll/exe
+  set(FLAGS "/FC /EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
 
   set(META_CMD /DCPP_PASS /P)
   set(META_OUT /Fi)
@@ -79,151 +78,133 @@ endif()
 
 endif(UNIX)
 
-
-
-
-
-
-
-
-
-
-
 function(Gen_IncludeList RET_LIST CMAKE_CUR_SRC_DIR)
 
-set(C_INCLUDES "")
+  set(C_INCLUDES "")
 
-get_property(RAW_C_INCLUDES DIRECTORY ${CMAKE_CUR_SRC_DIR} PROPERTY INCLUDE_DIRECTORIES)
+  get_property(RAW_C_INCLUDES
+               DIRECTORY ${CMAKE_CUR_SRC_DIR}
+               PROPERTY INCLUDE_DIRECTORIES)
 
-foreach(inc ${RAW_C_INCLUDES})
+  foreach(inc ${RAW_C_INCLUDES})
 
-list(APPEND C_INCLUDES "-I${inc}")
+    list(APPEND C_INCLUDES "-I${inc}")
 
-endforeach()
+  endforeach()
 
-set(${RET_LIST} ${C_INCLUDES} PARENT_SCOPE)
+  set(${RET_LIST} ${C_INCLUDES} PARENT_SCOPE)
 
 endfunction(Gen_IncludeList)
 
 function(Add_Metapass TARGET SRC INC OUT DEP)
 
-add_custom_command( TARGET ${TARGET} PRE_BUILD
+  add_custom_command(TARGET ${TARGET} PRE_BUILD
+                     # output pp files
+                     COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC}
+                             ${META_OUT}${OUT}.i
+                             # run generator on pp files
+                     COMMAND cparser ${OUT}.i -meta-source
+                             ../include/generated/${OUT}_meta.cpp -meta-header
+                             ../include/generated/${OUT}_meta.h)
 
-#output pp files
-COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC} ${META_OUT}${OUT}.i
-
-#run generator on pp files
-COMMAND cparser ${OUT}.i -meta-source ../include/generated/${OUT}_meta.cpp -meta-header ../include/generated/${OUT}_meta.h
-
-)
-
-add_dependencies(${DEP} ${TARGET})
+  add_dependencies(${DEP} ${TARGET})
 
 endfunction()
-
-
 
 function(Add_MetaCompass TARGET SRC INC OUT DEP)
 
-add_custom_command( TARGET ${TARGET} PRE_BUILD
+  add_custom_command(TARGET ${TARGET} PRE_BUILD
+                     # output pp files
+                     COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC}
+                             ${META_OUT}${OUT}.i
+                             # run generator on pp files
+                     COMMAND cparser ${OUT}.i -component-source
+                             ../include/generated/${OUT}comp_meta.cpp
+                             -meta-source ../include/generated/${OUT}_meta.cpp
+                             -component-header
+                             ../include/generated/${OUT}comp_meta.h -meta-header
+                             ../include/generated/${OUT}_meta.h)
 
-#output pp files
-COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC} ${META_OUT}${OUT}.i
-
-#run generator on pp files
-COMMAND cparser ${OUT}.i -component-source ../include/generated/${OUT}comp_meta.cpp -meta-source ../include/generated/${OUT}_meta.cpp -component-header ../include/generated/${OUT}comp_meta.h -meta-header ../include/generated/${OUT}_meta.h
-
-)
-
-add_dependencies(${DEP} ${TARGET})
+  add_dependencies(${DEP} ${TARGET})
 
 endfunction()
 
-
-
 function(CompileAllShaders TARGET)
 
-file(GLOB SHADERS src/shaders/*)
+  file(GLOB SHADERS src/shaders/*)
 
-foreach(shader ${SHADERS})
+  foreach(shader ${SHADERS})
 
-get_filename_component(SHADERNAME ${shader} NAME)
+    get_filename_component(SHADERNAME ${shader} NAME)
 
-add_custom_command(TARGET ${TARGET} PRE_BUILD
+    add_custom_command(
+      TARGET ${TARGET} PRE_BUILD
+      COMMAND echo Shader Compiling ${SHADERNAME} to ${SHADERNAME}.spv
+              # output preprocessed
+      COMMAND glslc -DPREPROCESS -E -I ../include/shader_include -std=450
+              --target-env=vulkan ../src/shaders/${SHADERNAME} -o
+                                  ../rsrc/shaders/pp_${SHADERNAME}
+                                  # compile
+      COMMAND glslc -I ../include/shader_include -std=450
+              --target-env=vulkan ../src/shaders/${SHADERNAME} -o
+                                  ../rsrc/shaders/${SHADERNAME}.spv
+                                  # reflect
+      COMMAND glslparser ../rsrc/shaders/pp_${SHADERNAME}
+              ../rsrc/shaders/${SHADERNAME}.spv)
 
-COMMAND echo Shader Compiling ${SHADERNAME} to ${SHADERNAME}.spv
-
-#output preprocessed
-COMMAND glslc -DPREPROCESS -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/pp_${SHADERNAME}
-
-#compile
-COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${SHADERNAME} -o ../rsrc/shaders/${SHADERNAME}.spv
-
-#reflect
-COMMAND glslparser ../rsrc/shaders/pp_${SHADERNAME} ../rsrc/shaders/${SHADERNAME}.spv
-
-)
-
-endforeach()
+  endforeach()
 
 endfunction()
 
 function(CompileShaderCase TARGET DEF IN OUT)
 
-add_custom_command(TARGET ${TARGET} PRE_BUILD
-
-COMMAND echo Shader Compiling ${IN} to ${OUT}
-
-#output preprocessed
-COMMAND glslc -D${DEF} -DPREPROCESS -E -I ../include/shader_include -std=450 --target-env=vulkan ../src/shaders/${IN} -o ../rsrc/shaders/pp_${OUT}
-
-COMMAND glslc -I ../include/shader_include -std=450 --target-env=vulkan -D${DEF} ../src/shaders/${IN} -o ../rsrc/shaders/${OUT}.spv
-
-COMMAND glslparser -D${DEF} ../rsrc/shaders/pp_${OUT} ../rsrc/shaders/${OUT}.spv
-
-)
+  add_custom_command(TARGET ${TARGET} PRE_BUILD
+                     COMMAND echo Shader Compiling ${IN} to ${OUT}
+                             # output preprocessed
+                     COMMAND glslc -D${DEF} -DPREPROCESS -E -I
+                             ../include/shader_include -std=450
+                             --target-env=vulkan ../src/shaders/${IN} -o
+                                                 ../rsrc/shaders/pp_${OUT}
+                     COMMAND glslc -I ../include/shader_include -std=450
+                             --target-env=vulkan -D${DEF} ../src/shaders/${IN}
+                                                 -o ../rsrc/shaders/${OUT}.spv
+                     COMMAND glslparser -D${DEF} ../rsrc/shaders/pp_${OUT}
+                             ../rsrc/shaders/${OUT}.spv)
 
 endfunction()
 
 function(GenAndInstallAdditionalDep)
 
-find_file(FOUND_ADDITIONAL assimp.dll PATHS ${CMAKE_SOURCE_DIR}/extlib/ NO_DEFAULT_PATH)
+  find_file(FOUND_ADDITIONAL assimp.dll
+            PATHS ${CMAKE_SOURCE_DIR}/extlib/
+            NO_DEFAULT_PATH)
 
+  if(NOT FOUND_ADDITIONAL)
 
+    execute_process(COMMAND echo DOWNLOADING...
+                    COMMAND curl -L
+                            https://edrickhong.github.io/Pages/cu_additional.zip
+                            -o cu_additional.zip)
 
-if(NOT FOUND_ADDITIONAL)
+    execute_process(COMMAND unzip -x cu_additional.zip -d ../)
 
-execute_process(
-COMMAND echo DOWNLOADING...
-COMMAND curl -L https://edrickhong.github.io/Pages/cu_additional.zip -o cu_additional.zip
-)
+    execute_process(COMMAND rm cu_additional.zip)
 
-execute_process(
-COMMAND unzip -x cu_additional.zip -d ../
-)
-
-execute_process(
-COMMAND rm cu_additional.zip
-)
-
-endif()
+  endif()
 
 endfunction()
 
 function(InitSubmodules)
 
-find_file(FOUND_SUBMODULES RefCMakeLists.txt PATHS ${CMAKE_SOURCE_DIR}/Cu_std/ NO_DEFAULT_PATH)
+  find_file(FOUND_SUBMODULES RefCMakeLists.txt
+            PATHS ${CMAKE_SOURCE_DIR}/Cu_std/
+            NO_DEFAULT_PATH)
 
-if(NOT FOUND_SUBMODULES)
+  if(NOT FOUND_SUBMODULES)
 
-execute_process(
-COMMAND git submodule init
-)
+    execute_process(COMMAND git submodule init)
+    execute_process(COMMAND git submodule update)
 
-execute_process(
-COMMAND git submodule update
-)
-
-endif()
+  endif()
 
 endfunction()
