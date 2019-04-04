@@ -1,37 +1,5 @@
 #include "main.h"
 
-
-struct REFL A{
-    u32 a;
-    u32 b;
-};
-
-struct REFL B : A{
-    
-    struct T{
-        u32 k;
-    };
-    
-    u32 c = 1;
-    u32 d;
-};
-
-struct REFL TEST{
-    struct A a;
-};
-
-enum REFL EN{
-    EN_1,
-    EN_2,
-    EN_3,
-};
-
-enum REFL AN{
-    AN_1,
-    AN_2,
-    AN_3,
-};
-
 _compile_kill(sizeof(SkelUBO) > _kilobytes(64));
 _compile_kill(sizeof(LightUBO) > _kilobytes(64));
 _compile_kill(sizeof(PushConst) > 128);

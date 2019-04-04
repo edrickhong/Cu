@@ -33,7 +33,7 @@
 #define _targetframerate 16.0f//33.33f
 #define _ms2s(ms)  ((f32)ms/1000.0f)
 
-#define _mute_sound 1
+#define _mute_sound 0
 
 #define _max_swapchain_count 4
 
