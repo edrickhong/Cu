@@ -2092,11 +2092,14 @@ void InitAllSystems(){
     }
     
     {
+        
+        
         AAudioDeviceNames array[32] = {};
         u32 count = 0;
         AGetAudioDevices(&array[0],&count);
-        
         AReserveAudioDevice(array[0].logical_name);
+        
+        auto prop = AGetAudioDeviceProperties(array[0].logical_name);
         
         pdata->audio =
             ACreateDevice(array[0].logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,(AAudioSampleRate)settings.audio_frequency);
