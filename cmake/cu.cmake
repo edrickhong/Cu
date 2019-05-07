@@ -65,7 +65,7 @@ else(UNIX)
   endif()
 
   set(ASSIMP_LIB "../extlib/assimp")
-  set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib")
+  set(PLATFORM_LIBS "kernel32.lib" "User32.lib" "Ole32.lib" "Avrt.lib")
 
   # allow debug info here cos windows doesn't embed it into the dll/exe
   set(FLAGS "/FC /EHsc /Zi ${OPT_FLAGS} ${STRICT_FLAGS}")
