@@ -96,24 +96,29 @@ function(Gen_IncludeList RET_LIST CMAKE_CUR_SRC_DIR)
 
 endfunction(Gen_IncludeList)
 
-function(Add_Metapass TARGET SRC INC OUT DEP)
+function(Add_Metapass TARGET SRC INC OUT DEP OUT_VAR)
 
-  add_custom_command(TARGET ${TARGET} PRE_BUILD
+  add_custom_command(
+                     OUTPUT ${OUT}.i
+                     DEPENDS ${SRC}
                      # output pp files
                      COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC}
                              ${META_OUT}${OUT}.i
                              # run generator on pp files
                      COMMAND cparser ${OUT}.i -meta-source
                              ../include/generated/${OUT}_meta.cpp -meta-header
-                             ../include/generated/${OUT}_meta.h)
+                             ../include/generated/${OUT}_meta.h
+                     )
 
-  add_dependencies(${DEP} ${TARGET})
+  set(${OUT_VAR} ${OUT}.i PARENT_SCOPE)
 
 endfunction()
 
-function(Add_MetaCompass TARGET SRC INC OUT DEP)
+function(Add_MetaCompass TARGET SRC INC OUT DEP OUT_VAR)
 
-  add_custom_command(TARGET ${TARGET} PRE_BUILD
+  add_custom_command(
+                     OUTPUT ${OUT}.i
+                     DEPENDS ${SRC}
                      # output pp files
                      COMMAND ${CMAKE_CXX_COMPILER} ${META_CMD} ${SRC} ${INC}
                              ${META_OUT}${OUT}.i
@@ -123,22 +128,28 @@ function(Add_MetaCompass TARGET SRC INC OUT DEP)
                              -meta-source ../include/generated/${OUT}_meta.cpp
                              -component-header
                              ../include/generated/${OUT}comp_meta.h -meta-header
-                             ../include/generated/${OUT}_meta.h)
+                             ../include/generated/${OUT}_meta.h
+                     )
 
-  add_dependencies(${DEP} ${TARGET})
+  set(${OUT_VAR} ${OUT}.i PARENT_SCOPE)
 
 endfunction()
 
-function(CompileAllShaders TARGET)
+function(compileallshaders OUT_LIST)
 
   file(GLOB SHADERS src/shaders/*)
 
   foreach(shader ${SHADERS})
 
     get_filename_component(SHADERNAME ${shader} NAME)
+    list(APPEND TLIST ${CMAKE_BINARY_DIR}/${SHADERNAME}.stamp)
+
+    file(GLOB ${SHADERNAME}_FILE ${CMAKE_SOURCE_DIR}/src/shaders/${SHADERNAME})
 
     add_custom_command(
-      TARGET ${TARGET} PRE_BUILD
+      OUTPUT ${CMAKE_BINARY_DIR}/${SHADERNAME}.stamp
+      DEPENDS ${${SHADERNAME}_FILE}
+      COMMAND cmake -E touch ${CMAKE_BINARY_DIR}/${SHADERNAME}.stamp
       COMMAND echo Shader Compiling ${SHADERNAME} to ${SHADERNAME}.spv
               # output preprocessed
       COMMAND glslc -DPREPROCESS -E -I ../include/shader_include -std=450
@@ -150,15 +161,27 @@ function(CompileAllShaders TARGET)
                                   ../rsrc/shaders/${SHADERNAME}.spv
                                   # reflect
       COMMAND glslparser ../rsrc/shaders/pp_${SHADERNAME}
-              ../rsrc/shaders/${SHADERNAME}.spv)
+              ../rsrc/shaders/${SHADERNAME}.spv
+      VERBATIM
+      )
 
   endforeach()
 
+  set(${OUT_LIST} ${TLIST} PARENT_SCOPE)
+
 endfunction()
 
-function(CompileShaderCase TARGET DEF IN OUT)
+function(compileshadercase DEF IN OUT OUT_VAR)
 
-  add_custom_command(TARGET ${TARGET} PRE_BUILD
+  get_filename_component(IN_SHADERNAME ${IN} NAME)
+  get_filename_component(OUT_SHADERNAME ${OUT} NAME)
+
+  file(GLOB ${IN_SHADERNAME}_FILE ${CMAKE_SOURCE_DIR}/src/shaders/${IN_SHADERNAME})
+
+  add_custom_command(
+                     OUTPUT ${CMAKE_BINARY_DIR}/${OUT_SHADERNAME}.stamp
+                     DEPENDS ${${IN_SHADERNAME}_FILE}
+                     COMMAND cmake -E touch ${CMAKE_BINARY_DIR}/${OUT_SHADERNAME}.stamp
                      COMMAND echo Shader Compiling ${IN} to ${OUT}
                              # output preprocessed
                      COMMAND glslc -D${DEF} -DPREPROCESS -E -I
@@ -170,6 +193,8 @@ function(CompileShaderCase TARGET DEF IN OUT)
                                                  -o ../rsrc/shaders/${OUT}.spv
                      COMMAND glslparser -D${DEF} ../rsrc/shaders/pp_${OUT}
                              ../rsrc/shaders/${OUT}.spv)
+
+  set(${OUT_VAR} ${CMAKE_BINARY_DIR}/${OUT_SHADERNAME}.stamp PARENT_SCOPE)
 
 endfunction()
 

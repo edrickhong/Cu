@@ -67,14 +67,19 @@ file(GLOB FBMP src/fbmpgenerator/main.cpp)
 
 genandinstalladditionaldep()
 
-add_custom_target(CJOBS ALL echo EXECUTING BUILD STEP)
-
 if(BUILD_STEP)
 
-  # SHADER COMPILING
-  compileallshaders(CJOBS)
-  compileshadercase(CJOBS USE_SKEL model.vert model_skel.vert)
-  compileshadercase(CJOBS USE_TEXTURE m_gui.frag m_gui_tex.frag)
+  compileallshaders(ALL_SHADERS)
+  compileshadercase(USE_SKEL model.vert model_skel.vert USE_SKEL_CASE)
+  compileshadercase(USE_TEXTURE m_gui.frag m_gui_tex.frag USE_TEXTURE_CASE)
+
+  list(APPEND ALL_SHADERS ${USE_SKEL_CASE})
+  list(APPEND ALL_SHADERS ${USE_TEXTURE_CASE})
+
+  add_custom_target(
+   SHADERS ALL 
+   DEPENDS "${ALL_SHADERS}"
+  )
 
 endif()
 
@@ -125,5 +130,13 @@ endif(WIN32)
 set(C_INCLUDES "")
 gen_includelist(C_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine)
-add_metacompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game)
+add_metapass(CJOBS "${ENGINE}" "${C_INCLUDES}" "engine" cu_engine ENGINE_META)
+add_metacompass(CJOBS "${GAME}" "${C_INCLUDES}" "game" game GAME_META)
+
+add_custom_target(
+  CJOBS ALL
+  DEPENDS ${ENGINE_META} ${GAME_META}
+)
+
+add_dependencies(cu_engine CJOBS)
+add_dependencies(game CJOBS)
