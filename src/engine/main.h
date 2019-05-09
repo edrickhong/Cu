@@ -29,6 +29,8 @@
 
 #include "settings.cpp"
 
+#include "audio_util.h"
+
 
 #define _targetframerate 16.0f//33.33f
 #define _ms2s(ms)  ((f32)ms/1000.0f)
@@ -36,6 +38,8 @@
 #define _mute_sound 0
 
 #define _max_swapchain_count 4
+
+#define _enable_convert 0
 
 /*
 FIXME: 
@@ -1167,6 +1171,11 @@ struct MixAudioLayout{
 
 void MixAudio(void* data,void*){
     
+    struct DeInterleavedSamples{
+        __m128 l_channel;
+        __m128 r_channel;
+    }_align(16);
+    
     auto layout = (MixAudioLayout*)data;
     
     auto submitbuffer = layout->submitbuffer;
@@ -1175,7 +1184,7 @@ void MixAudio(void* data,void*){
     
     TIMEBLOCK(BlueViolet);
     
-    memset(submitbuffer->data,0,submitbuffer->size);
+    memset(submitbuffer->data,0,submitbuffer->size * 2);
     
     for(u32 i = 0; i < audio_count; i++){
         
@@ -1225,36 +1234,104 @@ void MixAudio(void* data,void*){
         
         //TODO:Use simd
         
-        auto submitdata = (s16*)submitbuffer->data;
-        auto cpydata = (s16*)audio->audioasset.ptr;
         
-        u32 len = submitbuffer->size/2;
-        
-        for(u32 i = 0; i < len; i++){
-            submitdata[i] += cpydata[i];
+        auto dst = (f32*)submitbuffer->data;
+        auto src = (s16*)audio->audioasset.ptr;
+        u32 len = submitbuffer->size >> 1;
+        {
+            
+            for(u32 j = 0; j < len; j+=8){
+                
+                DeInterleavedSamples samples = {};
+                
+                Convert_S16_TO_F32((void*)&samples,src + j,8);
+                
+                Deinterleave_2((f32*)&samples.l_channel,(f32*)&samples.r_channel,(f32*)&samples);
+                
+                auto dst_samples_l = _mm_load_ps(dst + j);
+                auto dst_samples_r = _mm_load_ps(dst + j + 4);
+                
+                
+                _mm_store_ps(dst + j,_mm_add_ps(dst_samples_l,samples.l_channel));
+                _mm_store_ps(dst + j + 4,_mm_add_ps(dst_samples_r,samples.r_channel));
+            }
+            
         }
         
-        auto tcpy = (s8*)cpydata;
+        //move data in the asset to the front TODO: maybe we shouldn't do this??
+        {
+            auto tcpy = (s8*)src;
+            audio->audioasset.avail_size -= submitbuffer->size;
+            memmove(tcpy,(tcpy + submitbuffer->size),(audio->audioasset.avail_size));
+        }
         
-        audio->audioasset.avail_size -= submitbuffer->size;
-        
-        //To side step overlap in sanitizers
-#if 0
-        memcpy(tcpy,(tcpy + submitbuffer->size),(audio->audioasset.avail_size));
-#else
-        memmove(tcpy,(tcpy + submitbuffer->size),(audio->audioasset.avail_size));
-#endif
     }
     
     {
         TIMEBLOCKTAGGED("PlayAudio",Red);
         
+        //TODO: we have to reinterleave dst afterwards
+        {
+            auto data = (f32*)pdata->submit_audiobuffer.data;
+            auto dst = (s16*)pdata->submit_audiobuffer.data;
+            u32 sample_count = pdata->submit_audiobuffer.size_frames << 1;
+            
+            for(u32 i = 0; i < sample_count; i += 8){
+                
+                auto l = data + i;
+                auto r = data + i + 4;
+                f32 res[8] _align(16) = {};
+                
+                
+                
+                Interleave_2(res,(f32*)l,(f32*)r);
+                Convert_F32_TO_S16(dst + i,res,8);
+            }
+        }
+        
+        
+        
 #if _mute_sound
         memset(pdata->submit_audiobuffer.data,0,pdata->submit_audiobuffer.size_frames * sizeof(u32));
 #endif
         
+#if _enable_convert
+        
+        {
+            s8 data[(u32)(_48ms2frames(24))] = {};
+            
+            memcpy(data,pdata->submit_audiobuffer.data,pdata->submit_audiobuffer.size_frames * sizeof(u32));
+            
+            Convert_S16_48_To_96(pdata->submit_audiobuffer.data,data, pdata->submit_audiobuffer.size_frames);
+        }
+        
         APlayAudioDevice(&pdata->audio,pdata->submit_audiobuffer.data,
-                         pdata->submit_audiobuffer.size_frames);  
+                         pdata->submit_audiobuffer.size_frames * 2);
+        
+#else
+        
+#if 0
+        {
+            auto samples = (s16*)pdata->submit_audiobuffer.data;
+            for(u32 i = 0; i < pdata->submit_audiobuffer.size_frames; i++){
+                
+                printf(" %d",samples[i]);
+                
+                if(i % 16 == 0 && i != 0){
+                    printf("\n");
+                }
+                
+            }
+            _breakpoint();
+        }
+        
+#endif
+        
+        APlayAudioDevice(&pdata->audio,pdata->submit_audiobuffer.data,
+                         pdata->submit_audiobuffer.size_frames);
+        
+#endif
+        
     }
     
 }
@@ -1326,7 +1403,7 @@ void PresentBuffer(PlatformData* pdata){
     
     
     /*
-      tell queue to wait at the transfer stage until presentation engine has gotten us an image to render to. Signal the semaphore to start presenting when we are done
+    tell queue to wait at the transfer stage until presentation engine has gotten us an image to render to. Signal the semaphore to start presenting when we are done
     */
     
     {
@@ -2085,10 +2162,12 @@ void InitAllSystems(){
         pdata->submit_audiobuffer.size_frames =
             (u32)(_48ms2frames(settings.playbuffer_size_ms));
         
+        
         pdata->submit_audiobuffer.size =
             pdata->submit_audiobuffer.size_frames * sizeof(s16) * 2;
         
-        pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size); 
+        //* 2 cos we need to mix. we will convert to approriate format at the end
+        pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size * 2); 
     }
     
     {
@@ -2101,8 +2180,17 @@ void InitAllSystems(){
         
         auto prop = AGetAudioDeviceProperties(array[0].logical_name);
         
-        pdata->audio =
-            ACreateDevice(array[0].logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,(AAudioSampleRate)settings.audio_frequency);
+#if _enable_convert
+        
+        auto rate = AAUDIOSAMPLERATE_96_KHZ;
+        
+#else
+        
+        auto rate = (AAudioSampleRate)settings.audio_frequency;
+        
+#endif
+        
+        pdata->audio = ACreateDevice(array[0].logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,rate);
     }
     
     
