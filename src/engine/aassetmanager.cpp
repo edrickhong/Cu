@@ -1464,44 +1464,6 @@ VImageContext GetVTReadbackBuffer(){
     return vt_readbackbuffer;
 }
 
-void TConvert(){
-#if _enable_convert
-    //we will do left channel first
-    f32 pre_write_buffer[32] = {};
-    u32 pre_write_count = 0;
-    
-    {
-        auto src = l_dst;
-        
-        __m128 l1 = {};
-        __m128 l2 = {};
-        Convert_S16_48_To_96((f32*)&l1,(f32*)&l2,src);
-        
-        _mm_store_ps(src,l1);
-        
-        memcpy(pre_write_buffer,&l2,sizeof(l2));
-        pre_write_count+=4;
-    }
-    
-    for(u32 i = 4; i < len; i+=4){
-        
-        auto src = l_dst + i;
-        
-        __m128 l1 = {};
-        __m128 l2 = {};
-        Convert_S16_48_To_96((f32*)&l1,(f32*)&l2,src);
-        
-        if(pre_write_count){
-            //
-        }
-        
-        _breakpoint();
-        
-        //we can write the cur sample
-    }
-#endif
-}
-
 void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _restrict is_done,u32 submit_frames,f32 factor){
     
     CommitAudio(handle);
@@ -1510,13 +1472,15 @@ void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _r
     if(submit_frames > handle->avail_frames){
         
         auto cur_frames = handle->avail_frames;
+        auto inv_factor = (1.0f/factor);
+        auto required_bytes = 
+            (u32)((f32)(_fixed_audio_read_size - _frames2bytes_s16(handle->avail_frames)) * inv_factor + 0.5f);
         
-        s8 buffer[_fixed_audio_read_size] = {};
+        u32 buffer_size = _fixed_audio_read_size * 2;
+        auto buffer = TAlloc(s8,buffer_size * 4);
         u32 offset = 0;
         
-        u32 readsize = _fixed_audio_read_size - _frames2bytes_s16(handle->avail_frames);
-        
-        _kill("",readsize > sizeof(buffer));
+        u32 readsize = required_bytes;
         
         if((handle->file_offset + readsize) > handle->file_size){
             
@@ -1533,10 +1497,9 @@ void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _r
             }
             
             else{
-                u32 zerosize = _fixed_audio_read_size - _frames2bytes_s16(handle->avail_frames);
                 
+                u32 zerosize = required_bytes - _frames2bytes_s16(handle->avail_frames);
                 memset((buffer + offset),0,zerosize);
-                
                 readsize = 0;
                 (*is_done) = true;
             }
@@ -1547,34 +1510,153 @@ void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _r
         handle->avail_frames = _fixed_audio_frames;
         
         
-        //
-        auto src = (s16*)buffer;
-        auto dst = (s8*)handle->ptr;
-        
-        auto l = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1));
-        auto r = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1) + _fixed_audio_r_offset);
-        
-        u32 samples = (_fixed_audio_read_size - _frames2bytes_s16(cur_frames)) >> 1;
-        u32 count = 0;
-        
-        for(u32 i = 0; i < samples; i += 8){
+        auto tdst = (s8*)buffer;
+        u32 half_size = buffer_size >> 1;
+        auto l = (f32*)tdst;
+        auto r = (f32*)(tdst + half_size);
+        u32 samples = (required_bytes) >> 1;
+        {
+            auto src = (s16*)buffer;
+            u32 count = 0;
             
-            DeInterleavedSamples samples = {};
-            Convert_S16_TO_F32((void*)&samples,src + i,8);
-            
-#if 1
-            
-            Deinterleave_2((f32*)&samples.l_channel,(f32*)&samples.r_channel,(f32*)&samples);
-            
-#else
-            f32 test[8] = {0.0f,10.0f,1.0f,11.0f,2.0f,12.0f,3.0f,13.0f};
-            Deinterleave_2((f32*)&samples.l_channel,(f32*)&samples.r_channel,test);
-#endif
-            
-            _mm_store_ps(l + count,samples.l_channel);//FIXME: overwrite
-            _mm_store_ps(r + count,samples.r_channel);
-            count +=4;
+            for(u32 i = 0; i < samples; i += 8){
+                
+                DeInterleavedSamples samples = {};
+                Convert_S16_TO_F32((void*)&samples,src + i,8);
+                
+                Deinterleave_2((f32*)&samples.l_channel,(f32*)&samples.r_channel,(f32*)&samples);
+                
+                
+                
+                _mm_store_ps(l + count,samples.l_channel);
+                _mm_store_ps(r + count,samples.r_channel);
+                count +=4;
+            }
         }
+        
+#if 0
+        //TODO: make this generic
+        {
+            auto dst = (s8*)handle->ptr;
+            auto dst_l = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1));
+            auto dst_r = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1) + _fixed_audio_r_offset);
+            
+            u32 l_count = 0;
+            for(u32 i = 0; i < samples; i+=4){
+                
+                __m128 l1 = {};
+                __m128 l2 = {};
+                Convert_S16_48_To_96((f32*)&l1,(f32*)&l2,l + i);
+                
+                //TODO: handle the last frame
+                _mm_store_ps(dst_l + l_count,l1);
+                _mm_store_ps(dst_l + l_count + 4,l2);
+                l_count += 8;
+            }
+            dst_l[l_count - 1] = dst_l[l_count - 3] + (dst_l[l_count - 3] - dst_l[l_count - 2] * 1.5f);
+            
+            u32 r_count = 0;
+            for(u32 i = 0; i < samples; i+=4){
+                
+                __m128 r1 = {};
+                __m128 r2 = {};
+                Convert_S16_48_To_96((f32*)&r1,(f32*)&r2,r + i);
+                
+                //TODO: handle the last frame
+                _mm_store_ps(dst_r + r_count,r1);
+                _mm_store_ps(dst_r + r_count + 4,r2);
+                r_count += 8;
+            }
+            dst_r[r_count - 1] = dst_r[r_count - 3] + (dst_r[r_count - 3] - dst_r[r_count - 2] * 1.5f);
+        }
+        
+#else
+        {
+            auto dst = (s8*)handle->ptr;
+            auto dst_l = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1));
+            u32 l_count = 0;
+            for(f32 cur = 0.0f; cur < (f32)samples; cur += (inv_factor * 4)){
+                
+                __m128 a = {};
+                __m128 b = {};
+                
+                {
+                    u32 l0 = (u32)(cur);
+                    u32 l1 = (u32)(cur + inv_factor);
+                    u32 l2 = (u32)(cur + (inv_factor * 2));
+                    u32 l3 = (u32)(cur + (inv_factor * 3));
+                    a = _mm_set_ps(l[l3],l[l2],l[l1],l[l0]);
+                }
+                
+                {
+                    u32 l0 = (u32)(cur + 1.0f);
+                    u32 l1 = (u32)(cur + inv_factor + 1.0f);
+                    u32 l2 = (u32)(cur + (inv_factor * 2) + 1.0f);
+                    u32 l3 = (u32)(cur + (inv_factor * 3) + 1.0f);
+                    b = _mm_set_ps(l[l3],l[l2],l[l1],l[l0]);
+                }
+                
+                __m128 step = {};
+                {
+                    f32 l0 = (cur);
+                    f32 l1 = (cur + inv_factor);
+                    f32 l2 = (cur + (inv_factor * 2));
+                    f32 l3 = (cur + (inv_factor * 3));
+                    step = _mm_set_ps(l3,l2,l1,l0);
+                    
+                    //just get the fract part
+                    __m128 integer = _mm_cvtepi32_ps(_mm_cvttps_epi32(step));
+                    step = _mm_sub_ps(step,integer);
+                }
+                
+                auto res = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(b,a),step),a);
+                _mm_store_ps(dst_l + l_count,res);
+                l_count+=4;
+            }
+            
+            auto dst_r = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1) + _fixed_audio_r_offset);
+            u32 r_count = 0;
+            for(f32 cur = 0.0f; cur < (f32)samples; cur += (inv_factor * 4)){
+                
+                __m128 a = {};
+                __m128 b = {};
+                
+                {
+                    u32 l0 = (u32)(cur);
+                    u32 l1 = (u32)(cur + inv_factor);
+                    u32 l2 = (u32)(cur + (inv_factor * 2));
+                    u32 l3 = (u32)(cur + (inv_factor * 3));
+                    a = _mm_set_ps(r[l3],r[l2],r[l1],r[l0]);
+                }
+                
+                {
+                    u32 l0 = (u32)(cur + 1.0f);
+                    u32 l1 = (u32)(cur + inv_factor + 1.0f);
+                    u32 l2 = (u32)(cur + (inv_factor * 2) + 1.0f);
+                    u32 l3 = (u32)(cur + (inv_factor * 3) + 1.0f);
+                    b = _mm_set_ps(r[l3],r[l2],r[l1],r[l0]);
+                }
+                
+                __m128 step = {};
+                {
+                    f32 l0 = (cur);
+                    f32 l1 = (cur + inv_factor);
+                    f32 l2 = (cur + (inv_factor * 2));
+                    f32 l3 = (cur + (inv_factor * 3));
+                    step = _mm_set_ps(l3,l2,l1,l0);
+                    
+                    //just get the fract part
+                    __m128 integer = _mm_cvtepi32_ps(_mm_cvttps_epi32(step));
+                    step = _mm_sub_ps(step,integer);
+                }
+                
+                auto res = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(b,a),step),a);
+                _mm_store_ps(dst_r + r_count,res);
+                r_count+=4;
+            }
+        }
+#endif
+        
         
     }
 }

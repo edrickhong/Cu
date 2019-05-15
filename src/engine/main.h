@@ -2054,7 +2054,7 @@ void InitAllSystems(){
     {
         
         pdata->submit_audiobuffer.size_frames =
-            (u32)(_48ms2frames(settings.playbuffer_size_ms));
+            (u32)(_48ms2frames(settings.playbuffer_size_ms * 2));
         pdata->submit_audiobuffer.size =
             pdata->submit_audiobuffer.size_frames * sizeof(s16) * settings.audio_channels;
         
@@ -2074,11 +2074,10 @@ void InitAllSystems(){
         auto prop = AGetAudioDeviceProperties(array[_device_no].logical_name);
         auto perf = AMakeDefaultAudioPerformanceProperties();
         
-#if _enable_convert
+#if 1
         auto rate = AAUDIOSAMPLERATE_96_KHZ;
         perf.internal_buffer_size <<= 1;
         perf.internal_period_size <<= 1;
-        _kill("",1);
 #else
         auto rate = (AAudioSampleRate)settings.audio_frequency;
 #endif
