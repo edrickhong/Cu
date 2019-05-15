@@ -335,7 +335,6 @@ void ADFGetData(const s8* filepath,void* data,u32* offset,u32 size){
     }
     
     u32 offset_t = *offset;
-    
     offset_t += 8;
     
     {

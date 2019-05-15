@@ -20,8 +20,22 @@
 #define _FetchqueueSize 2048
 #define _texturehandle_max 16
 
-//160
-#define _fixed_audio (u32)(_48ms2frames(640)  * 4) //FIXME: For some reason 640ms  will not work
+//this is the fixed size of an audio asset
+#if 0
+#define _fixed_audio_size (u32)(_48ms2frames(640)  * 4)
+
+#else
+
+#define _frames2bytes_s16(frames) (frames * sizeof(s16) * 2)
+#define _frames2bytes_f32(frames) (frames * sizeof(f32) * 2)
+#define _bytes2frames_s16(bytes) (bytes >> 2)
+
+#define _fixed_audio_frames (u32)(_48ms2frames(640))
+#define _fixed_audio_size (_fixed_audio_frames  * sizeof(f32) * 2)
+#define _fixed_audio_read_size (_fixed_audio_frames * sizeof(s16) * 2)
+#define _fixed_audio_r_offset (_fixed_audio_size >> 1)
+
+#endif
 
 
 
@@ -91,7 +105,7 @@ struct AudioAssetHandle{
     void* ptr = 0;
     u32 file_size = 0;
     u32 file_offset = 0;
-    u32 avail_size;
+    u32 avail_frames; // the amount of valid data in the buffer
     u16 compression_type = 0;//change this to u32. might as well
 };
 
@@ -310,3 +324,7 @@ ThreadTextureFetchQueue* fetchqueue,TSemaphore sem);
 
 void VTStart(VkCommandBuffer cmdbuffer);
 void VTEnd(VkCommandBuffer cmdbuffer);
+
+void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _restrict is_done,u32 submit_frames,f32 factor);
+
+void GetAudioAssetDataPointers(AudioAssetHandle* _restrict handle,f32** _restrict left,f32** _restrict right);

@@ -1,5 +1,6 @@
 #include "aassetmanager.h"
 #include "ssys.h"
+#include "audio_util.h"
 
 /*
 TODO:
@@ -788,7 +789,7 @@ AudioAssetHandle AllocateAssetAudio(const s8* filepath){
     AudioAssetHandle handle = {};
     handle.assetfile = (s8*)filepath;
     
-    u32 size = _fixed_audio;
+    u32 size = _fixed_audio_size;
     
     AllocateAsset((AssetHandle*)&handle,size);
     
@@ -1035,13 +1036,12 @@ void CommitAudio(AudioAssetHandle* handle){
     
     if(!CheckAsset((AssetHandle*)handle)){
         
-        u32 size = _fixed_audio;
+        u32 size = _fixed_audio_size;
         
         AllocateAsset((AssetHandle*)handle,size);
         
-        handle->file_offset -= handle->avail_size;
-        
-        handle->avail_size = 0;
+        handle->file_offset -= _frames2bytes_s16(handle->avail_frames);
+        handle->avail_frames = 0;
     }
     
 }
@@ -1462,4 +1462,124 @@ TextureAssetHandle* AllocateAssetTexture(const s8* filepath,
 
 VImageContext GetVTReadbackBuffer(){
     return vt_readbackbuffer;
+}
+
+void TConvert(){
+#if _enable_convert
+    //we will do left channel first
+    f32 pre_write_buffer[32] = {};
+    u32 pre_write_count = 0;
+    
+    {
+        auto src = l_dst;
+        
+        __m128 l1 = {};
+        __m128 l2 = {};
+        Convert_S16_48_To_96((f32*)&l1,(f32*)&l2,src);
+        
+        _mm_store_ps(src,l1);
+        
+        memcpy(pre_write_buffer,&l2,sizeof(l2));
+        pre_write_count+=4;
+    }
+    
+    for(u32 i = 4; i < len; i+=4){
+        
+        auto src = l_dst + i;
+        
+        __m128 l1 = {};
+        __m128 l2 = {};
+        Convert_S16_48_To_96((f32*)&l1,(f32*)&l2,src);
+        
+        if(pre_write_count){
+            //
+        }
+        
+        _breakpoint();
+        
+        //we can write the cur sample
+    }
+#endif
+}
+
+void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _restrict is_done,u32 submit_frames,f32 factor){
+    
+    CommitAudio(handle);
+    
+    
+    if(submit_frames > handle->avail_frames){
+        
+        auto cur_frames = handle->avail_frames;
+        
+        s8 buffer[_fixed_audio_read_size] = {};
+        u32 offset = 0;
+        
+        u32 readsize = _fixed_audio_read_size - _frames2bytes_s16(handle->avail_frames);
+        
+        _kill("",readsize > sizeof(buffer));
+        
+        if((handle->file_offset + readsize) > handle->file_size){
+            
+            u32 remaining = handle->file_size - handle->file_offset;
+            offset = remaining;
+            
+            
+            ADFGetData(handle->assetfile,buffer,&handle->file_offset,remaining);
+            handle->avail_frames += _bytes2frames_s16(remaining);
+            
+            if(islooping){
+                readsize -= remaining;
+                handle->file_offset = 0;
+            }
+            
+            else{
+                u32 zerosize = _fixed_audio_read_size - _frames2bytes_s16(handle->avail_frames);
+                
+                memset((buffer + offset),0,zerosize);
+                
+                readsize = 0;
+                (*is_done) = true;
+            }
+            
+        }
+        
+        ADFGetData(handle->assetfile,buffer + offset,&handle->file_offset,readsize);
+        handle->avail_frames = _fixed_audio_frames;
+        
+        
+        //
+        auto src = (s16*)buffer;
+        auto dst = (s8*)handle->ptr;
+        
+        auto l = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1));
+        auto r = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1) + _fixed_audio_r_offset);
+        
+        u32 samples = (_fixed_audio_read_size - _frames2bytes_s16(cur_frames)) >> 1;
+        u32 count = 0;
+        
+        for(u32 i = 0; i < samples; i += 8){
+            
+            DeInterleavedSamples samples = {};
+            Convert_S16_TO_F32((void*)&samples,src + i,8);
+            
+#if 1
+            
+            Deinterleave_2((f32*)&samples.l_channel,(f32*)&samples.r_channel,(f32*)&samples);
+            
+#else
+            f32 test[8] = {0.0f,10.0f,1.0f,11.0f,2.0f,12.0f,3.0f,13.0f};
+            Deinterleave_2((f32*)&samples.l_channel,(f32*)&samples.r_channel,test);
+#endif
+            
+            _mm_store_ps(l + count,samples.l_channel);//FIXME: overwrite
+            _mm_store_ps(r + count,samples.r_channel);
+            count +=4;
+        }
+        
+    }
+}
+
+void GetAudioAssetDataPointers(AudioAssetHandle* _restrict handle,f32** _restrict left,f32** _restrict right){
+    (*left) = (f32*)handle->ptr;
+    (*right) = (f32*)(((s8*)handle->ptr) + _fixed_audio_r_offset);
 }
