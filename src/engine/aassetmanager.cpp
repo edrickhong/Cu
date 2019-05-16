@@ -1472,15 +1472,14 @@ void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _r
     
     
     if(submit_frames > handle->avail_frames){
-        //printf("AUDIO FETCH\n");
         
         auto cur_frames = handle->avail_frames;
         auto inv_factor = (1.0f/factor);
         auto required_bytes = 
             (u32)((f32)(_fixed_audio_read_size - _frames2bytes_s16(handle->avail_frames)) * inv_factor + 0.5f);
         
-        u32 buffer_size = _fixed_audio_read_size * 2;
-        auto buffer = TAlloc(s8,buffer_size * 4);
+        u32 buffer_size = required_bytes << 1;//cos we will expand to f32
+        auto buffer = TAlloc(s8,buffer_size);
         
         u32 offset = 0;
         
@@ -1546,8 +1545,10 @@ void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _r
             auto dst_l = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1));
             auto dst_r = (f32*)(dst + (_frames2bytes_f32(cur_frames) >> 1) + _fixed_audio_r_offset);
             
-            Convert_Factor(dst_l,l,samples,factor);
-            Convert_Factor(dst_r,r,samples,factor);
+            _kill("overwrite will happen\n",(samples * factor) > (dst_r - dst_l));
+            
+            Convert_Factor(dst_l,l,samples,inv_factor);
+            Convert_Factor(dst_r,r,samples,inv_factor);
         }
         
     }

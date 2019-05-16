@@ -147,7 +147,7 @@ s32 main(s32 argc,s8** argv){
                     
                     auto args = TAlloc(MixAudioLayout,1);
                     
-                    *args = {&pdata->submit_audiobuffer,audio_data,audio_count};
+                    *args = {&pdata->submit_audiobuffer,audio_data,audio_count,pdata->submit_audiobuffer_scale};
                     
                     PushThreadWorkQueue(&pdata->threadqueue,
                                         MixAudio,(void*)args,pdata->worker_sem);

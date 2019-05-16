@@ -31,15 +31,21 @@
 
 #include "audio_util.h"
 
+#define _PIPELINECACHE_FILE "pipelinecache_file.txt"
+
+#define _ms2frames(ms) (((f32)(ms) * 48.0f) + 0.5f)
+#define _frames2ms(frames) (((f32)frames)/48.0f)
 
 #define _targetframerate 16.0f//33.33f
 #define _ms2s(ms)  ((f32)ms/1000.0f)
 
 #define _mute_sound 0
 
+#define _use_exclusive_audio 1
+#define _audiodevice_no 0
+
 #define _max_swapchain_count 4
 
-#define _enable_convert 0
 
 /*
 FIXME: 
@@ -698,8 +704,8 @@ struct PlatformData{
     
     Vector4 camerapos;
     
-    AAudioBuffer mix_audiobuffer;
     AAudioBuffer submit_audiobuffer;
+    f32 submit_audiobuffer_scale;
     
     TSemaphore worker_sem;
     TSemaphore main_sem;
@@ -1158,17 +1164,11 @@ u32 DeployAllThreads(Threadinfo* info){
     return total_threads;
 }
 
-struct AudioArgsLayout{
-    u32 towrite;
-    AAudioBuffer* musicbuffer;
-    AAudioBuffer* submitbuffer;
-    
-};
-
 struct MixAudioLayout{
     AAudioBuffer* submitbuffer;
     EntityAudioData* audio_data;
     u32 audio_count;
+    f32 scale;
 };
 
 void MixAudio(void* data,void*){
@@ -1178,6 +1178,7 @@ void MixAudio(void* data,void*){
     auto submitbuffer = layout->submitbuffer;
     auto audio_data = layout->audio_data;
     auto audio_count = layout->audio_count;
+    auto scale =  layout->scale;
     
     TIMEBLOCK(BlueViolet);
     
@@ -1188,7 +1189,7 @@ void MixAudio(void* data,void*){
         auto audio = &audio_data[i];
         
         b32 is_done = 0;
-        ReadAudioAssetData(&audio->audioasset,audio->islooping,&is_done,submitbuffer->size_frames,2.0f);
+        ReadAudioAssetData(&audio->audioasset,audio->islooping,&is_done,submitbuffer->size_frames,scale);
         
         audio->toremove += is_done;
         
@@ -1209,14 +1210,6 @@ void MixAudio(void* data,void*){
                 
                 __m128 dst_l = _mm_load_ps(dst + j);
                 __m128 dst_r = _mm_load_ps(dst + j + 4);
-                
-#if 0
-                
-                printf("%f %f %f %f || %f %f %f %f\n",
-                       (f64)dst_r[0],(f64)dst_r[1],(f64)dst_r[2],(f64)dst_r[3],
-                       (f64)r[0],(f64)r[1],(f64)r[2],(f64)r[3]);
-                
-#endif
                 
                 _mm_store_ps(dst + j,_mm_add_ps(l,dst_l));
                 _mm_store_ps(dst + j + 4,_mm_add_ps(r,dst_r));
@@ -1431,10 +1424,6 @@ void SetupFrameBuffers(VDeviceContext* _restrict  device,
 }
 
 
-
-#define _ms2frames(ms) (((f32)(ms) * 48.0f) + 0.5f)
-#define _frames2ms(frames) (((f32)frames)/48.0f)
-
 void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboardstate,
                             MouseState* mousestate,void* args){
     
@@ -1553,8 +1542,6 @@ void SetObjectMaterial(u32 obj_id,u32 mat_id){
     PushUpdateEntry(obj_id,offsetof(SkelUBO,texture_array),
                     sizeof(u32) * mat->textureid_count,&mat->textureid_array);
 }
-
-#define _PIPELINECACHE_FILE "pipelinecache_file.txt"
 
 void SetupPipelineCache(){
     
@@ -2057,40 +2044,56 @@ void InitAllSystems(){
     SetupData((void**)&pdata,(void**)&gdata);
     
     
+    {
+        
+#if _use_exclusive_audio
+        
+        AAudioDeviceNames array[32] = {};
+        u32 count = 0;
+        
+        AGetAudioDevices(&array[0],&count);
+        AReserveAudioDevice(array[_audiodevice_no].logical_name);
+        
+        auto logical_name = array[_audiodevice_no].logical_name;
+        
+#else
+        s8* logical_name = DEFAULT_AUDIO_DEVICE;
+#endif
+        
+        //FIXME: we are stack smashing here
+        AAudioDeviceProperties prop = {};
+        //prop = AGetAudioDeviceProperties(logical_name);
+        auto perf = AMakeDefaultAudioPerformanceProperties();
+        
+        
+        auto rate = (AAudioSampleRate)settings.audio_frequency;
+        pdata->submit_audiobuffer_scale = 1.0f;
+        
+#if 0
+        
+        if(rate < prop.min_rate && rate > prop.max_rate){
+            pdata->submit_audiobuffer_scale = (f32)(prop.min_rate)/((f32)rate);
+            rate = prop.min_rate;
+        }
+#endif
+        
+        perf.internal_buffer_size *= pdata->submit_audiobuffer_scale;
+        perf.internal_period_size *= pdata->submit_audiobuffer_scale;
+        
+        pdata->audio = ACreateDevice(logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,rate,perf);
+    }
     
     //audiobuffer setting
     {
         
         pdata->submit_audiobuffer.size_frames =
-            (u32)(_48ms2frames(settings.playbuffer_size_ms))  * 2;
+            _align8((u32)(_48ms2frames(settings.playbuffer_size_ms) * pdata->submit_audiobuffer_scale + 0.5f));
+        
+        //We need to store that data as f32 before converting back to s16
         pdata->submit_audiobuffer.size =
             pdata->submit_audiobuffer.size_frames * sizeof(f32) * settings.audio_channels;
         
-        
-        //We need to store that data as f32 before converting back to s16
         pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size);
-    }
-    
-    {
-#define _device_no 0
-        
-        AAudioDeviceNames array[32] = {};
-        u32 count = 0;
-        AGetAudioDevices(&array[0],&count);
-        AReserveAudioDevice(array[_device_no].logical_name);
-        
-        auto prop = AGetAudioDeviceProperties(array[_device_no].logical_name);
-        auto perf = AMakeDefaultAudioPerformanceProperties();
-        
-#if 1
-        auto rate = AAUDIOSAMPLERATE_96_KHZ;
-        perf.internal_buffer_size <<= 1;
-        perf.internal_period_size <<= 1;
-#else
-        auto rate = (AAudioSampleRate)settings.audio_frequency;
-#endif
-        
-        pdata->audio = ACreateDevice(array[_device_no].logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,rate,perf);
     }
     
     
