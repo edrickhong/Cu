@@ -1210,6 +1210,14 @@ void MixAudio(void* data,void*){
                 __m128 dst_l = _mm_load_ps(dst + j);
                 __m128 dst_r = _mm_load_ps(dst + j + 4);
                 
+#if 0
+                
+                printf("%f %f %f %f || %f %f %f %f\n",
+                       (f64)dst_r[0],(f64)dst_r[1],(f64)dst_r[2],(f64)dst_r[3],
+                       (f64)r[0],(f64)r[1],(f64)r[2],(f64)r[3]);
+                
+#endif
+                
                 _mm_store_ps(dst + j,_mm_add_ps(l,dst_l));
                 _mm_store_ps(dst + j + 4,_mm_add_ps(r,dst_r));
             }
@@ -2054,13 +2062,13 @@ void InitAllSystems(){
     {
         
         pdata->submit_audiobuffer.size_frames =
-            (u32)(_48ms2frames(settings.playbuffer_size_ms * 2));
+            (u32)(_48ms2frames(settings.playbuffer_size_ms))  * 2;
         pdata->submit_audiobuffer.size =
-            pdata->submit_audiobuffer.size_frames * sizeof(s16) * settings.audio_channels;
+            pdata->submit_audiobuffer.size_frames * sizeof(f32) * settings.audio_channels;
         
         
         //We need to store that data as f32 before converting back to s16
-        pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size * 2);
+        pdata->submit_audiobuffer.data = alloc(pdata->submit_audiobuffer.size);
     }
     
     {
