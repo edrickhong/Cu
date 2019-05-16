@@ -41,7 +41,7 @@
 
 #define _mute_sound 0
 
-#define _use_exclusive_audio 1
+#define _use_exclusive_audio 0
 #define _audiodevice_no 0
 
 #define _max_swapchain_count 4
@@ -2060,22 +2060,18 @@ void InitAllSystems(){
         s8* logical_name = DEFAULT_AUDIO_DEVICE;
 #endif
         
-        //FIXME: we are stack smashing here
         AAudioDeviceProperties prop = {};
-        //prop = AGetAudioDeviceProperties(logical_name);
+        prop = AGetAudioDeviceProperties(logical_name);
         auto perf = AMakeDefaultAudioPerformanceProperties();
         
         
         auto rate = (AAudioSampleRate)settings.audio_frequency;
         pdata->submit_audiobuffer_scale = 1.0f;
         
-#if 0
-        
         if(rate < prop.min_rate && rate > prop.max_rate){
             pdata->submit_audiobuffer_scale = (f32)(prop.min_rate)/((f32)rate);
             rate = prop.min_rate;
         }
-#endif
         
         perf.internal_buffer_size *= pdata->submit_audiobuffer_scale;
         perf.internal_period_size *= pdata->submit_audiobuffer_scale;
