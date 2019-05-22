@@ -19,7 +19,7 @@ if(UNIX)
 
   set(
     FLAGS
-    "-fdiagnostics-absolute-paths -fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}"
+    "-mfma -fdiagnostics-absolute-paths -fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}"
     )
 
 else(UNIX)
