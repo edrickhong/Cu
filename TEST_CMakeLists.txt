@@ -1,6 +1,6 @@
 # set(CMAKE_C_COMPILER /usr/bin/clang) set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.9)
 
 project(tests)
 
@@ -17,6 +17,10 @@ if(DEBUG)
   add_definitions(-DDEBUG)
 
 endif()
+
+#this adds LTO support
+include(CheckIPOSupported)
+check_ipo_supported(RESULT LTO_SUPPORTED)
 
 # disable wayland extensions. don't need it for ci tests
 

@@ -294,7 +294,7 @@ void PrintTableToConsole(AssetTable* table)
 			t = entry->type;
 		}
         
-		printf("SN:%d TYPE:%d SIZE:%d OFFSET:%d LOC:%s HASH:%llu ORG:%s NODE:%llu\n", i, entry->type, entry->size, entry->offset, entry->file_location, entry->file_location_hash,entry->original_file_location,(u64)entry->original_file_node);
+		printf("SN:%d TYPE:%d SIZE:%d OFFSET:%d LOC:%s HASH:%llu ORG:%s\n", i, entry->type, entry->size, entry->offset, entry->file_location, entry->file_location_hash,entry->original_file_location);
         
 	}
 	printf("\n\nTABLEEND\n\n");
