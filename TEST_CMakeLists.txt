@@ -38,7 +38,7 @@ set(
   )
 set(STRICT_FLAGS "")
 
-set(FLAGS "-g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
+set(FLAGS "-msse4.1 -mfma -g -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}")
 
 # output with debug info
 set(CMAKE_CXX_FLAGS ${FLAGS})

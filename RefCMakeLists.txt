@@ -19,7 +19,7 @@ if(UNIX)
 
   set(
     FLAGS
-    "-mfma -fdiagnostics-absolute-paths -fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}"
+    "-msse4.1 -mfma -fdiagnostics-absolute-paths -fvisibility=hidden -march=x86-64 -fno-fast-math -fno-exceptions -fno-rtti -std=c++14 ${OPT_FLAGS} ${STRICT_FLAGS} ${CLANG_DEBUG}"
     )
 
 else(UNIX)
@@ -101,7 +101,7 @@ add_executable(fbmp ${FBMP})
 
 # we shouldn't have to link platform libs (the only thing we shoud have to link
 # to is libdl)
-target_link_libraries(assetpacker cu_std ${PLATFORM_LIBS})
+target_link_libraries(assetpacker ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
 target_link_libraries(cparser cu_std ${PLATFORM_LIBS})
 target_link_libraries(importer ${ASSIMP_LIB} cu_std ${PLATFORM_LIBS})
 target_link_libraries(glslparser cu_std ${PLATFORM_LIBS})
