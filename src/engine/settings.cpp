@@ -574,7 +574,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         }break;
         
         case PHashString("MASTER_VOLUME_FACTOR"):{
-            settings->master_volume = _clamp(atof(value_string),0.0f,1.0f);
+            settings->master_volume = _clampf(atof(value_string),0.0f,1.0f);
         }break;
         
         case PHashString("LAUNCH_THREADS"):{

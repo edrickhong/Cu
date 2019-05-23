@@ -928,7 +928,7 @@ extern "C" {
         ComponentRead((ComponentStruct*)data->components,reloaddata->context);
         
         QueueAudio(reloaddata->context,
-                   AUDIO_PATH(The_Entertainer_Scott_Joplin.adf),true,-1);
+                   AUDIO_PATH(The_Entertainer_Scott_Joplin.adf));
     }
     
 }

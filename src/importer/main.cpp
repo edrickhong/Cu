@@ -12,86 +12,15 @@ Spider.dae  file cannot load
 
 */
 
+
+
 s32 main(s32 argc,s8** argv){
     
     if(argc == 1){
         printf("please provide files\n");  
     }
     
-    printf("Only mdf and adf(WAV) files are supported now\n");
-    
-    AnimationBlendType blendtype = BLEND_LINEAR;
-    
-    for(s32 i = 1; i < argc; i++){
-        
-        s8* string = argv[i];
-        
-        u32 len = strlen(string);
-        
-        auto a = string[len - 3];
-        auto b = string[len - 2];
-        auto c = string[len - 1];
-        
-        
-        // if(string[0] == '-'){
-        //   blendtype = BLEND_DQ;
-        //   continue;
-        // }
-        
-        if(isAudio(a,b,c)){
-            
-            auto writepath = (s8*)alloc(len + 1);
-            
-            memcpy(writepath,string,len + 1);
-            
-            writepath[len - 3] = 'a';
-            writepath[len - 2] = 'd';
-            writepath[len - 1] = 'f';
-            
-            WavWriteADF(string,writepath);
-            
-            unalloc(writepath);
-        }
-        
-        if(isModel(a,b,c)){
-            
-#if MATRIX_ROW_MAJOR
-            
-            printf("operating in matrix ROW major!\n");
-            
-#else
-            
-            printf("operating in matrix COLUMN major!\n");
-            
-#endif
-            
-            auto assimp = AssimpLoad(string);
-            
-            string[len - 3] = 'm';
-            string[len - 2] = 'd';
-            string[len - 1] = 'f';
-            
-            AssimpWriteMDF(assimp,string,blendtype);
-            
-        }
-        
-        if(isImage(a,b,c)){
-            
-            s8 buffer[1024] = {};
-            
-            memcpy(buffer,string,len);
-            
-            buffer[len - 3] = 't';
-            buffer[len - 2] = 'd';
-            buffer[len - 1] = 'f';
-            
-            //Format_RGBA
-            CreateTextureAssetTDF(string,buffer,Format_BC1,true,true);
-        }
-        
-    }
-    
-    
+    Import(&argv[1],(u32)(argc - 1));
     
     return 0;
 }

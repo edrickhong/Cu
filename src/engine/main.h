@@ -31,6 +31,8 @@
 
 #include "audio_util.h"
 
+#include "../assetpacker/main.h"
+
 #define _PIPELINECACHE_FILE "pipelinecache_file.txt"
 
 #define _ms2frames(ms) (((f32)(ms) * 48.0f) + 0.5f)
@@ -705,7 +707,7 @@ struct PlatformData{
     Vector4 camerapos;
     
     AAudioBuffer submit_audiobuffer;
-    f32 submit_audiobuffer_scale;
+    f32 resample_scale;
     
     TSemaphore worker_sem;
     TSemaphore main_sem;
@@ -1168,7 +1170,7 @@ struct MixAudioLayout{
     AAudioBuffer* submitbuffer;
     EntityAudioData* audio_data;
     u32 audio_count;
-    f32 scale;
+    f32 resample_scale;
 };
 
 void MixAudio(void* data,void*){
@@ -1178,7 +1180,7 @@ void MixAudio(void* data,void*){
     auto submitbuffer = layout->submitbuffer;
     auto audio_data = layout->audio_data;
     auto audio_count = layout->audio_count;
-    auto scale =  layout->scale;
+    auto resample_scale =  layout->resample_scale;
     
     TIMEBLOCK(BlueViolet);
     
@@ -1189,7 +1191,7 @@ void MixAudio(void* data,void*){
         auto audio = &audio_data[i];
         
         b32 is_done = 0;
-        ReadAudioAssetData(&audio->audioasset,audio->islooping,&is_done,submitbuffer->size_frames,scale);
+        ReadAudioAssetData(&audio->audioasset,audio->islooping,&is_done,submitbuffer->size_frames,resample_scale);
         
         audio->toremove += is_done;
         
@@ -1759,6 +1761,21 @@ void AddAnimatedModel(const s8* filepath,VkQueue queue,VkCommandBuffer cmdbuffer
 void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
                       VkQueue queue){
     
+    //
+    {
+        
+        u32 asset_count = 0;
+        LoadAssetFile("pack.ast",0,&asset_count);
+        
+        auto asset_array = TAlloc(AssetTableEntry,asset_count);
+        LoadAssetFile("pack.ast",asset_array,&asset_count);
+        
+        for(u32 i = 0; i < asset_count; i++){
+            
+        }
+        
+    }
+    
     
     f32 aspectratio = ((f32)pdata->swapchain.width)/((f32)pdata->swapchain.height);
     
@@ -2033,6 +2050,7 @@ u64 GenGPUHash(VkPhysicalDeviceProperties* prop){
 
 void InitAllSystems(){
     
+    
     auto settings = ParseSettings();
     
     TInitTimer();
@@ -2066,15 +2084,15 @@ void InitAllSystems(){
         
         
         auto rate = (AAudioSampleRate)settings.audio_frequency;
-        pdata->submit_audiobuffer_scale = 1.0f;
+        pdata->resample_scale = 1.0f;
         
         if(rate < prop.min_rate && rate > prop.max_rate){
-            pdata->submit_audiobuffer_scale = (f32)(prop.min_rate)/((f32)rate);
+            pdata->resample_scale = (f32)(prop.min_rate)/((f32)rate);
             rate = prop.min_rate;
         }
         
-        perf.internal_buffer_size *= pdata->submit_audiobuffer_scale;
-        perf.internal_period_size *= pdata->submit_audiobuffer_scale;
+        perf.internal_buffer_size *= pdata->resample_scale;
+        perf.internal_period_size *= pdata->resample_scale;
         
         pdata->audio = ACreateDevice(logical_name,(AAudioFormat)settings.audio_format,(AAudioChannels)settings.audio_channels,rate,perf);
     }
@@ -2083,7 +2101,7 @@ void InitAllSystems(){
     {
         
         pdata->submit_audiobuffer.size_frames =
-            _align8((u32)(_48ms2frames(settings.playbuffer_size_ms) * pdata->submit_audiobuffer_scale + 0.5f));
+            _align8((u32)(_48ms2frames(settings.playbuffer_size_ms) * pdata->resample_scale + 0.5f));
         
         //We need to store that data as f32 before converting back to s16
         pdata->submit_audiobuffer.size =

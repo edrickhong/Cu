@@ -1,35 +1,7 @@
-#include "mode.h" // include first
-#include "ttype.h"
 #include "main.h"
-#include "ffileio.h"
-#include "ccontainer.h"
-#include "aallocator.h"
-#include "pparse.h"
+#include "../importer/main.h"
 
-enum AssetType : u32 
-{
-	ASSET_AUDIO = 0,
-	ASSET_TEXTURE = 1,
-	ASSET_MODEL = 2,
-	ASSET_SHADER = 3,
-	ASSET_UNKNOWN,
-};
 
-struct AssetTableEntry 
-{
-	AssetType type;
-	s8 file_location[256] = {};
-	u64 file_location_hash = 0;
-
-	union 
-	{
-		FileNode file_node;
-		s8 opaque_file_node_padding[32];
-	};
-
-	u32 size;
-	u32 offset;
-};
 
 //AssetTable Declaration
 _declare_list(AssetTable, AssetTableEntry);
@@ -38,28 +10,27 @@ bool HashAndCompareString(const s8* lhs, const s8* rhs);
 /// Read resource file and store it as an AssetTable
 void LoadFileToMemory(FileHandle file, AssetTable* outTable) 
 {
-
+    
 	if (FGetFileSize(file) <= 0)
 	{
 		return;
 	}
-
-	ptrsize list_count;
-
-	auto list = (AssetTableEntry*)FReadFileToBuffer(file, &list_count);
+    
+	ptrsize list_count = 0;
+    auto list = (AssetTableEntry*)FReadFileToBuffer(file, &list_count);
 	
 	//store the list count
 	list_count /= sizeof(AssetTableEntry);
-
+    
 	//printf("initial list count %d\n", (u32)list_count);
-
+    
 	//populate the table
 	for (u32 i = 0; i < list_count; i++)
 	{
 		auto entry = list[i];
 		outTable->PushBack(entry);
 	}
-
+    
 	unalloc(list);
 }
 
@@ -67,7 +38,7 @@ void LoadFileToMemory(FileHandle file, AssetTable* outTable)
 void PackInit(FileHandle fh, AssetTable* outTable) 
 {
 	u32 last_offset = 0;
-
+    
 	//find the offset
 	for (u32 i = 0; i < outTable->count; i++) 
 	{
@@ -77,14 +48,14 @@ void PackInit(FileHandle fh, AssetTable* outTable)
 			last_offset = entry->offset + entry->size;
 		}
 	}
-
+    
 	//strcat((s8*)last_offset,"\n");
 	//strcat(dt, "\n");
 	s8 o = 'o';
 	
 	FWrite(fh, &last_offset, sizeof(last_offset));
 	FWrite(fh, &o, sizeof("o"));
-
+    
 	return;
 }
 
@@ -98,7 +69,7 @@ void PackInit(FileHandle fh, AssetTable* outTable)
 void AddAssetToTable(const s8* assetFileName, AssetTable* outTable) 
 {
 	AssetTableEntry entry ={ ASSET_UNKNOWN };
-
+    
 	//always adds asset behind the last offset
 	u32 lastOffset = 0;
 	//check for duplicates and also find the entry with largest offset
@@ -117,50 +88,107 @@ void AddAssetToTable(const s8* assetFileName, AssetTable* outTable)
 		}
 	}
 	entry.offset = lastOffset;
-
+    
 	auto file = FOpenFile(assetFileName, F_FLAG_READWRITE);
 	_kill("File not found!", file == F_FILE_INVALID);
 	auto fileSize = FGetFileSize(file);
 	FCloseFile(file);
-
+    
 	entry.size = fileSize;
-
+    
 	u32 len = strlen(assetFileName);
 	//label file type
 	auto file_extension = assetFileName[len - 3] + assetFileName[len - 2] + assetFileName[len - 1];
-	if (file_extension == ('m' + 'd' + 'f')) 
-	{
+    
+    auto a = assetFileName[len - 3];
+    auto b = assetFileName[len - 2];
+    auto c = assetFileName[len - 1];
+    
+    b32 need_import = false;
+    
+	if (isModel(a,b,c) || _hash(a,b,c) == _hash('m','d','f')){
 		entry.type = ASSET_MODEL;
+        
+        if(_hash('m','d','f')){
+            need_import = true;
+        }
 	}
-	else if (file_extension == ('a' + 'd' + 'f')) 
-	{
+	else if (isAudio(a,b,c) || _hash(a,b,c) == _hash('a','d','f')){
 		entry.type = ASSET_AUDIO;
+        
+        if(_hash('a','d','f')){
+            need_import = true;
+        }
 	}
-	else if (file_extension == ('t' + 'd' + 'f'))
-	{
+	else if (isImage(a,b,c) || _hash(a,b,c) == _hash('t','d','f')){
 		entry.type = ASSET_TEXTURE;
+        
+        if(_hash('t','d','f')){
+            need_import = true;
+        }
 	}
-	else if (file_extension == ('s' + 'p' + 'x')) 
-	{
+	else if (_hash(a,b,c) == _hash('s','p','x')){
 		entry.type = ASSET_SHADER;
 	}
-	else 
-	{
+	else{
 		printf("unknown asset type. exiting.");
 		_kill("unknown asset type\n", 1);
 	}
-
-	// location
-	memcpy(&entry.file_location, &assetFileName[0], strlen(assetFileName));
-	// hash
-	entry.file_location_hash = PHashString(assetFileName);
-	memset(&entry.opaque_file_node_padding[0], 0, sizeof(entry.opaque_file_node_padding));
-
-
-	entry.file_node = FGetFileNode(assetFileName);
-
+    
+    // location
+    if(need_import){
+        Import((s8**)&assetFileName,1);
+        
+        auto len = strlen(assetFileName);
+        
+        entry.original_file_node = {};
+        
+        memcpy(entry.original_file_location,assetFileName,len);
+        entry.original_file_node = FGetFileNode(assetFileName);
+        
+        s8 buffer[256] = {};
+        memcpy(buffer,assetFileName,len);
+        
+        switch(entry.type){
+            
+            case ASSET_AUDIO:{
+                buffer[len - 3] = 'a';
+                buffer[len - 2] = 'd';
+                buffer[len - 1] = 'f';
+            }break;
+            
+            case ASSET_TEXTURE:{
+                buffer[len - 3] = 't';
+                buffer[len - 2] = 'd';
+                buffer[len - 1] = 'f';
+            }break;
+            
+            case ASSET_MODEL:{
+                buffer[len - 3] = 'm';
+                buffer[len - 2] = 'd';
+                buffer[len - 1] = 'f';
+            }break;
+        }
+        
+        memcpy(&entry.file_location,&buffer[0],len);
+        // hash
+        entry.file_location_hash = PHashString(buffer);
+        
+    }
+    
+    else{
+        memcpy(&entry.file_location, &assetFileName[0],strlen(assetFileName));
+        // hash
+        entry.file_location_hash = PHashString(assetFileName);
+        memset(&entry.opaque_file_node_padding[0],0,sizeof(entry.opaque_file_node_padding));
+        entry.original_file_node = {};
+        memset(entry.original_file_location,0,sizeof(entry.original_file_location));
+    }
+	
+	
+    
 	outTable->PushBack(entry);
-
+    
 }
 
 ///Removes asset from table in memory using file path
@@ -174,7 +202,7 @@ void RemoveAssetFromTable(const s8* assetFileName, AssetTable* outTable)
 			outTable->Remove(entry);
 			return;
 		}
-
+        
 	}
 	printf("WARNING: %s doesn't exist\n", assetFileName);
 }
@@ -195,30 +223,30 @@ void RemoveAssetFromTable(u32 index, AssetTable* outTable)
 void SortTableByType(AssetTable* outTable) 
 {
 	printf("Table Count: %d\n\n", (u32)outTable->count);
-
+    
 	//sort by type
 	qsort(outTable->container, outTable->count,
-		sizeof(AssetTableEntry),
-		[](const void * a, const void* b)->s32
-	{
-
-		auto block_a = (AssetTableEntry*)a;
-		auto block_b = (AssetTableEntry*)b;
-
-		if (block_a == block_b)
-		{
-			return strlen(block_a->file_location) > strlen(block_b->file_location);
-		}
-		return block_a->type > block_b->type;
-	}
-	);
-
+          sizeof(AssetTableEntry),
+          [](const void * a, const void* b)->s32
+          {
+          
+          auto block_a = (AssetTableEntry*)a;
+          auto block_b = (AssetTableEntry*)b;
+          
+          if (block_a == block_b)
+          {
+          return strlen(block_a->file_location) > strlen(block_b->file_location);
+          }
+          return block_a->type > block_b->type;
+          }
+          );
+    
 	//reset the offsets
 	u32 offset = (u32)0;
 	for (u32 i = 0; i < outTable->count; i++) 
 	{
 		auto entry = &outTable->container[i];
-
+        
 		entry->offset = offset;
 		offset += entry->size;
 	}
@@ -228,9 +256,9 @@ void SortTableByType(AssetTable* outTable)
 void WriteTableToFile(const s8* packFilePath, AssetTable* outTable) 
 {
 	auto file = FOpenFile(packFilePath, F_FLAG_WRITEONLY | F_FLAG_TRUNCATE);
-
+    
 	FWrite(file, outTable->container, outTable->count * sizeof(AssetTableEntry));
-
+    
 	FCloseFile(file);
 }
 
@@ -252,22 +280,22 @@ void WriteTableToFile(FileHandle fh, AssetTable* outTable)
 ///Prints Asset List to Console
 void PrintTableToConsole(AssetTable* table) 
 {
-
+    
 	u32 t = (u32)-1;
 	printf("\n\nTABLESTART\n\n");
 	for (u32 i = 0; i < table->count; i++) 
 	{
-
+        
 		auto entry = &table->container[i];
-
+        
 		if (t != entry->type) 
 		{
 			printf("-----------------------\n");
 			t = entry->type;
 		}
-
-		printf("SN%d TYPE%d SIZE%d OFFSET%d %s %llu\n", i, entry->type, entry->size, entry->offset, entry->file_location, entry->file_location_hash);
-
+        
+		printf("SN:%d TYPE:%d SIZE:%d OFFSET:%d LOC:%s HASH:%llu ORG:%s NODE:%llu\n", i, entry->type, entry->size, entry->offset, entry->file_location, entry->file_location_hash,entry->original_file_location,(u64)entry->original_file_node);
+        
 	}
 	printf("\n\nTABLEEND\n\n");
 }
@@ -278,7 +306,7 @@ TODO: in general engine work, we should output to a separate file. this is mainl
 
 void PrintHelp() 
 {
-
+    
 	printf(
 		R"FOO(
         Asset packer is a tool to keep manage assets. A list of all the asset files are kept in a file [assetlist] 
@@ -295,7 +323,7 @@ void PrintHelp()
         -remove : removes asset(s) to the asset list
         -bake : bakes asset data either into an executable
 		-tbake : bakes after sorting by type
-		  -bcmp: byte compares the data in the table to the baked data in the executable
+        -bcmp: byte compares the data in the table to the baked data in the executable
         -cmp:  compares the data size in the table to the size of bytes written in the executable
         -sort: sorts the table by type
         
@@ -312,8 +340,8 @@ void PrintHelp()
         the [patch string].
         
         )FOO"
-	);
-
+        );
+    
 }
 
 ///Byte compare the table and the data written
@@ -326,7 +354,7 @@ void VerifyFileData(const s8* dataBuffer, const AssetTable* assetTable)
 		ptrsize entry_size = 0;
 		auto entry_data = FReadFileToBuffer(entry_file, &entry_size);
 		FCloseFile(entry_file);
-
+        
 		auto i_EntryData = entry_data;
 		_kill("data written and entry size does not match", (u32)entry_size != (u32)entry->size);
 		//byte compare
@@ -406,15 +434,14 @@ s32 main(s32 argc, s8** argv)
 	{
 		printf("%s\n", argv[i]);
 	}
-
+    
 	if (argc < 3) 
 	{
 		printf("not enough arguments\n");
 		PrintHelp();
-		getchar();
 		return -1;
 	}
-
+    
 	AssetTable assetTable;
 	assetTable.Init();
 	//pack_file is the string name of the table file
@@ -422,22 +449,22 @@ s32 main(s32 argc, s8** argv)
 	s8  dataFilePath[100];
 	strcpy(dataFilePath, packFilePath);
 	strcat(dataFilePath, ".data");
-
+    
 	auto pFile = FOpenFile(packFilePath, F_FLAG_READWRITE | F_FLAG_CREATE);
 	auto dFile = FOpenFile(dataFilePath, F_FLAG_READWRITE | F_FLAG_CREATE);
-
+    
 	if (FGetFileSize(pFile) == 0)
 	{
 		PackInit(pFile, &assetTable);
 		//WriteDataToFile(&pfile, &asset_table);
 	}
 	LoadFileToMemory(pFile, &assetTable);
-
+    
 	FCloseFile(pFile);
 	FCloseFile(dFile);
-
+    
 	WriteTableToFile(packFilePath, &assetTable);
-
+    
 	//Read the -commands
 	//add to asset list
 	if (HashAndCompareString(argv[2],"-add")) 
@@ -473,46 +500,46 @@ s32 main(s32 argc, s8** argv)
 				}
 			}
 		}
-
+        
 		WriteTableToFile(argv[1], &assetTable);
 	}
 	else if (HashAndCompareString(argv[2], "-bcmp"))
 	{
 		ptrsize execSize;
-
+        
 		auto execString = argv[3];
 		_kill("no file entered", strlen(execString) == (u32)0);
-
+        
 		auto fileExtension = execString + (strlen(execString) - 3);
 		_kill("not an exe", !HashAndCompareString(fileExtension, "exe"));
-
+        
 		auto execFileHandle = FOpenFile(execString, F_FLAG_READWRITE);
 		s8* exeBuffer = FReadFileToBuffer(execFileHandle, &execSize);
 		FCloseFile(execFileHandle);
-
+        
 		printf("exec size %d\n", (u32)execSize);
-
+        
 		//Locate the 4 bytes that store the offset value
 		auto bufferOffset = PFindStringInBuffer("thisvalueinatassetpacktime",
-			exeBuffer, execSize);
-
+                                                exeBuffer, execSize);
+        
 		bufferOffset -= 5;
 		char* exclaim = (char*)&exeBuffer[bufferOffset];
 		//Get the start of data buffer
 		++bufferOffset;
-
+        
 		//ptrsize dataOffset = strtoull(&exeBuffer[bufferOffset], &(exeBuffer), 10);
 		u32* dataOffset = (u32*)&exeBuffer[bufferOffset];
-
+        
 		VerifyFileData(&exeBuffer[*dataOffset], &assetTable);
-
+        
 		////Locate the end of the data buffer
 		//ptrsize endOffset = PFindStringInBuffer("!dataend!", exeBuffer,
 		//	execSize);
-
+        
 		//AssetTableEntry lastEntry = assetTable[assetTable.count - 1];
 		//ptrsize correctSize = lastEntry.offset + lastEntry.size;
-
+        
 		//if (endOffset - *dataOffset == correctSize)
 		//{
 		//	printf("Size of written data matches table.");
@@ -521,43 +548,43 @@ s32 main(s32 argc, s8** argv)
 		//{
 		//	printf("Size of written data does not match table.");
 		//}
-
+        
 	}
 	else if (HashAndCompareString(argv[2], "-cmp"))
 	{
 		ptrsize execSize;
-
+        
 		auto execString = argv[3];
 		_kill("no file entered", strlen(execString) == (u32)0);
-
+        
 		auto fileExtension = execString + (strlen(execString) - 3);
 		_kill("not an exe", !HashAndCompareString(fileExtension, "exe"));
-
+        
 		auto execFileHandle = FOpenFile(execString, F_FLAG_READWRITE);
 		s8* exeBuffer = FReadFileToBuffer(execFileHandle, &execSize);
 		FCloseFile(execFileHandle);
-
+        
 		printf("exec size %d\n", (u32)execSize);
-
+        
 		//Locate the 4 bytes that store the offset value
 		auto bufferOffset = PFindStringInBuffer("thisvalueinatassetpacktime",
-			exeBuffer, execSize);
+                                                exeBuffer, execSize);
 		
 		bufferOffset -= 5;
 		char* exclaim = (char*)&exeBuffer[bufferOffset];
 		//Get the start of data buffer
 		++bufferOffset;
-
+        
 		//ptrsize dataOffset = strtoull(&exeBuffer[bufferOffset], &(exeBuffer), 10);
 		u32* dataOffset = (u32*)&exeBuffer[bufferOffset];
-
+        
 		//Locate the end of the data buffer
 		ptrsize endOffset = PFindStringInBuffer("!dataend!", exeBuffer,
-															 execSize);
-
+                                                execSize);
+        
 		AssetTableEntry lastEntry = assetTable[assetTable.count - 1];
 		ptrsize correctSize = lastEntry.offset + lastEntry.size;
-
+        
 		if (endOffset - *dataOffset == correctSize)
 		{
 			printf("Size of written data matches table.");
@@ -566,7 +593,7 @@ s32 main(s32 argc, s8** argv)
 		{
 			printf("Size of written data does not match table.");
 		}
-
+        
 	}
 	else if (HashAndCompareString(argv[2], "-list"))  
 	{
@@ -580,58 +607,58 @@ s32 main(s32 argc, s8** argv)
 		WriteTableToFile(argv[1], &assetTable);
 	}
 	else if (PHashString(argv[2]) == PHashString("-bake") ||
-		      PHashString(argv[2]) == PHashString("-tbake")) 
+             PHashString(argv[2]) == PHashString("-tbake")) 
 	{
 		u8 flag = 0;
 		if (PHashString(argv[2]) == PHashString("-tbake"))
 		{
 			flag = 1;
 		}
-
+        
 		ptrsize execSize;
 		s8* exec_buffer;
-
+        
 		auto execString = argv[3];
 		_kill("no file entered", strlen(execString) == (u32)0);
-
+        
 		auto file_extension = execString + (strlen(execString) - 3);
 		_kill("not an exe", !HashAndCompareString(file_extension, "exe"));
-
+        
 		auto execFileHandle = FOpenFile(execString, F_FLAG_READWRITE);
-
+        
 		exec_buffer = FReadFileToBuffer(execFileHandle, &execSize);
 		printf("exec size %d\n", (u32)execSize);
 		
 		auto offset = PFindStringInBuffer("patchthisvalueinatassetpacktime", 
-														exec_buffer, execSize);
-
+                                          exec_buffer, execSize);
+        
 		_kill("couldn't find patch string", offset == (u32)-1);
 		exec_buffer[offset ] = '!';
-
+        
 		auto n_exec_file = FOpenFile("a.exe", F_FLAG_CREATE | F_FLAG_READWRITE);
-
+        
 		auto size_ptr = (u32*)&exec_buffer[offset + 1];
-
+        
 		*size_ptr = execSize;
-
+        
 		FSeekFile(n_exec_file, 0, F_METHOD_START);
-
+        
 		FWrite(n_exec_file, &exec_buffer[0], execSize);
-
+        
 		if (flag == 1) 
 		{
 			printf("Data sorting by type before baking.");
 			SortTableByType(&assetTable);
 			WriteTableToFile(argv[1], &assetTable);
-
+            
 		}
 		printf("Baking according to table as shown: ");
 		PrintTableToConsole(&assetTable);
-
+        
 		WriteDataToFile(n_exec_file, &assetTable);
 		auto dataEnd = R"(!dataend!)";
 		FWrite(n_exec_file, (void*)dataEnd, strlen(dataEnd) + 1);
-
+        
 		auto poem = R"FOO(
     I'm nobody! Who are you?
     Are you nobody, too?
@@ -643,11 +670,11 @@ s32 main(s32 argc, s8** argv)
     To tell one's name the livelong day
     To an admiring bog!
     )FOO";
-
+        
 		u32 len = strlen(poem) + 1;
 		FWrite(n_exec_file, &len, sizeof(len));
 		FWrite(n_exec_file, (void*)poem, len);
-
+        
 		FCloseFile(n_exec_file);
 		unalloc(exec_buffer);
 	}
@@ -656,7 +683,7 @@ s32 main(s32 argc, s8** argv)
 		printf("unrecognized command %s\n", argv[2]);
 		PrintHelp();
 	}
-
+    
 	return 0;
 }
 
