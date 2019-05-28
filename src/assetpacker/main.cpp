@@ -130,6 +130,9 @@ void AddAssetToTable(const s8* assetFileName, AssetTable* outTable)
 	else if (_hash(a,b,c) == _hash('s','p','x')){
 		entry.type = ASSET_SHADER;
 	}
+    else if (_hash(a,b,c) == _hash('m','a','t')){
+		entry.type = ASSET_MAT;
+	}
 	else{
 		printf("unknown asset type. exiting.");
 		_kill("unknown asset type\n", 1);
@@ -137,6 +140,7 @@ void AddAssetToTable(const s8* assetFileName, AssetTable* outTable)
     
     // location
     if(need_import){
+        
         Import((s8**)&assetFileName,1);
         
         auto len = strlen(assetFileName);
@@ -177,15 +181,20 @@ void AddAssetToTable(const s8* assetFileName, AssetTable* outTable)
     }
     
     else{
-        memcpy(&entry.file_location, &assetFileName[0],strlen(assetFileName));
+        memcpy(&entry.file_location,&assetFileName[0],strlen(assetFileName));
         // hash
         entry.file_location_hash = PHashString(assetFileName);
         memset(&entry.opaque_file_node_padding[0],0,sizeof(entry.opaque_file_node_padding));
         entry.original_file_node = {};
         memset(entry.original_file_location,0,sizeof(entry.original_file_location));
     }
+    
+#if 1
 	
-	
+	printf("location:%s\n",entry.file_location);
+    printf("original:%s\n",entry.original_file_location);
+    
+#endif
     
 	outTable->PushBack(entry);
     

@@ -9,11 +9,17 @@
 
 enum AssetType : u32 
 {
-	ASSET_AUDIO = 0,
+	
+    //these are raw asset data
+    ASSET_AUDIO = 0,
 	ASSET_TEXTURE = 1,
 	ASSET_MODEL = 2,
 	ASSET_SHADER = 3,
-	ASSET_UNKNOWN,
+    
+    //these are meta assets that reference raw asset data
+    ASSET_MAT = 255,
+    
+	ASSET_UNKNOWN = (u32)-1,
 };
 
 struct AssetTableEntry 
@@ -46,6 +52,15 @@ void LoadAssetFile(const s8* filepath,AssetTableEntry* array,u32* count){
             auto entry = &array[i];
             FRead(file,entry,sizeof(AssetTableEntry));
         }
+        
+        qsort(array,c,sizeof(AssetTableEntry),
+              [](const void * a, const void* b)->s32 {
+              
+              auto ast_a = (AssetTableEntry*)a;
+              auto ast_b = (AssetTableEntry*)b;
+              
+              return ast_a->type - ast_b->type;
+              });
         
     }
     
