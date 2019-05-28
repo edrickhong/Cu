@@ -43,7 +43,7 @@
 #define AUDIO_PATH(name) "..\\..\\rsrc\\audio\\"#name
 #define TEXTURE_PATH(name) "..\\..\\rsrc\\textures\\"#name
 #define SHADER_PATH(name) "..\\..\\rsrc\\shaders\\"#name
-#define SHADER_PATH(name) "..\\..\\rsrc\\shaders\\"#name
+#define MAT_PATH(name) "..\\..\\rsrc\\materials\\"#name
 #define FONT_PATH(name) "C:\\Windows\\Fonts\\"#name
 #define _dllexport __declspec(dllexport)
 
@@ -56,6 +56,7 @@
 #define AUDIO_PATH(name) "../rsrc/audio/"#name
 #define TEXTURE_PATH(name) "../rsrc/textures/"#name
 #define SHADER_PATH(name) "../rsrc/shaders/"#name
+#define MAT_PATH(name) "../rsrc/materials/"#name
 #define FONT_PATH(name) "/usr/share/fonts/truetype/"#name
 
 #endif

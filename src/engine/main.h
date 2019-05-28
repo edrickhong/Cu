@@ -41,7 +41,7 @@
 #define _targetframerate 16.0f//33.33f
 #define _ms2s(ms)  ((f32)ms/1000.0f)
 
-#define _mute_sound 0
+#define _mute_sound 1
 
 #define _use_exclusive_audio 0
 #define _audiodevice_no 0
@@ -1732,9 +1732,9 @@ void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_an
 
 void AddModel(const s8* filepath,VkQueue queue,VkCommandBuffer cmdbuffer){
     
-    pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count] =
-        AllocateAssetModel(filepath,&pdata->vdevice,
-                           queue,cmdbuffer,_vertexbindingno);
+    AllocateAssetModel(filepath,&pdata->vdevice,
+                       queue,cmdbuffer,_vertexbindingno,
+                       &pdata->scenecontext.modelasset_array[pdata->scenecontext.modelasset_count]);
     
     pdata->scenecontext.modelasset_count++;
 }
@@ -1761,21 +1761,6 @@ void AddAnimatedModel(const s8* filepath,VkQueue queue,VkCommandBuffer cmdbuffer
 void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
                       VkQueue queue){
     
-    //
-    {
-        
-        u32 asset_count = 0;
-        LoadAssetFile("pack.ast",0,&asset_count);
-        
-        auto asset_array = TAlloc(AssetTableEntry,asset_count);
-        LoadAssetFile("pack.ast",asset_array,&asset_count);
-        
-        for(u32 i = 0; i < asset_count; i++){
-            
-        }
-        
-    }
-    
     
     f32 aspectratio = ((f32)pdata->swapchain.width)/((f32)pdata->swapchain.height);
     
@@ -1789,38 +1774,62 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
         pdata->scenecontext.animatedasset_count = 0;
         pdata->scenecontext.modelasset_count = 0;
         
-        pdata->scenecontext.textureasset_array[pdata->scenecontext.textureasset_count] =
-            AllocateAssetTexture(IMAGE_PATH(goblin.tdf),&pdata->vdevice,cmdbuffer);
-        
-        pdata->scenecontext.textureasset_count++;
-        
-        pdata->scenecontext.textureasset_array[pdata->scenecontext.textureasset_count] =
-            AllocateAssetTexture(IMAGE_PATH(jack_o_lantern.tdf),&pdata->vdevice,cmdbuffer);
-        
-        pdata->scenecontext.textureasset_count++;
-        
-        //MARK:Allocate Materials
+        //NOTE: read from file
         {
             
-            auto mat1 = &pdata->scenecontext.materialasset_array[0];
-            auto mat2 = &pdata->scenecontext.materialasset_array[1];
-            pdata->scenecontext.materialasset_count = 2;
+            u32 asset_count = 0;
+            LoadAssetFile("pack.ast",0,&asset_count);
             
-            *mat1 = AllocateAssetMaterial(&pdata->vdevice);
-            *mat2 = AllocateAssetMaterial(&pdata->vdevice);
+            auto asset_array = TAlloc(AssetTableEntry,asset_count);
+            LoadAssetFile("pack.ast",asset_array,&asset_count);
             
-            MaterialAddTexture(mat1,TextureType_Diffuse,0);
-            MaterialAddTexture(mat2,TextureType_Diffuse,1);
+            for(u32 i = 0; i < asset_count; i++){
+                
+                auto entry = &asset_array[i];
+                
+                switch(entry->type){
+                    
+                    case ASSET_TEXTURE:{
+                        
+                        pdata->scenecontext.textureasset_array[pdata->scenecontext.textureasset_count] =
+                            AllocateAssetTexture(entry->file_location,&pdata->vdevice,cmdbuffer);
+                        pdata->scenecontext.textureasset_count++;
+                        
+                    }break;
+                    
+                    case ASSET_MODEL:{
+                        
+                        u32 vertindex_size = 0;
+                        u32 animbone_size = 0;
+                        
+                        LoadMDF(entry->file_location,0,0,&vertindex_size,&animbone_size);
+                        
+                        if(animbone_size){
+                            AddAnimatedModel(entry->file_location,queue,cmdbuffer);
+                        }
+                        
+                        else{
+                            AddModel(entry->file_location,queue,cmdbuffer);
+                        }
+                        
+                    }break;
+                    
+                    case ASSET_MAT:{
+                        ReadMaterialFile(entry->file_location);
+                    }break;
+                    
+                    
+                    
+                    //TODO:
+                    case ASSET_SHADER:{}break;
+                    case ASSET_AUDIO:{}break;
+                }
+                
+            }
+            
         }
         
         
-        AddAnimatedModel(MODEL_PATH(goblin.mdf),queue,cmdbuffer);
-        //AddAnimatedModel(MODEL_PATH(knight.mdf),queue,cmdbuffer);
-        //AddAnimatedModel(MODEL_PATH(golem_clean.mdf),queue,cmdbuffer);
-        
-        
-        //AddModel(MODEL_PATH(teapot.mdf),queue,cmdbuffer);
-        //AddModel(MODEL_PATH(box.mdf),queue,cmdbuffer);
         
         
         VEndCommandBuffer(cmdbuffer);

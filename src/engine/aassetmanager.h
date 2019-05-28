@@ -52,13 +52,13 @@
 #endif
 
 struct AssetHandle{
-    s8* assetfile = 0;//we will be using this as a hash
+    s8 assetfile[256] = {};//we will be using this as a hash
     u32 id = 0;//index into the table
     void* ptr = 0;
 };
 
 struct ModelAssetHandle{
-    s8* assetfile = 0;//we will be using this as a hash
+    s8 assetfile[256] = {};//we will be using this as a hash
     u32 id = 0;//index into the table
     void* ptr = 0;
     
@@ -79,7 +79,7 @@ struct ModelAssetHandle{
 
 
 struct AnimatedAssetHandle{
-    s8* assetfile = 0;//we will be using this as a hash
+    s8 assetfile[256] = {};//we will be using this as a hash
     u32 id = 0;//index into the table
     void* ptr = 0;
     /*
@@ -100,7 +100,7 @@ struct AnimatedAssetHandle{
 };
 
 struct AudioAssetHandle{
-    s8* assetfile = 0;//we will be using this as a hash
+    s8 assetfile[256] = {};//we will be using this as a hash
     u32 id = 0;//index into the table
     void* ptr = 0;
     u32 file_size = 0;
@@ -173,7 +173,7 @@ struct TPageQuadNode{
 
 struct TextureAssetHandle{
     
-    s8* assetfile = 0;//we will be using this as a hash
+    s8 assetfile[256] = {};//we will be using this as a hash
     u16 w;
     u16 h;
     f32 bpp; //bytes per pixel
@@ -199,7 +199,7 @@ struct MaterialAssetHandle{
     u32 textureid_count;
 };
 
-MaterialAssetHandle AllocateAssetMaterial(VDeviceContext* _restrict vdevice);
+MaterialAssetHandle* AddAssetMaterial();
 
 void MaterialAddTexture(MaterialAssetHandle* handle,TextureType type,
                         u8 texture_index);
@@ -215,10 +215,9 @@ void AllocateAssetAnimated(const s8* filepath,
                            u32 vertexbinding_no,AnimatedAssetHandle* animbone,
                            ModelAssetHandle* vertindex);
 
-ModelAssetHandle AllocateAssetModel(const s8* filepath,
-                                    const VDeviceContext* _restrict vdevice,
-                                    VkQueue queue,VkCommandBuffer commandbuffer,
-                                    u32 vertexbinding_no);
+void AllocateAssetModel(const s8* filepath,
+                        const VDeviceContext* _restrict vdevice,VkQueue queue,
+                        VkCommandBuffer commandbuffer,u32 vertexbinding_no,ModelAssetHandle* vertindex);
 
 void CommitTexture(TextureAssetHandle* handle);
 
@@ -328,3 +327,9 @@ void VTEnd(VkCommandBuffer cmdbuffer);
 void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _restrict is_done,u32 submit_frames,f32 factor);
 
 void GetAudioAssetDataPointers(AudioAssetHandle* _restrict handle,f32** _restrict left,f32** _restrict right);
+
+
+
+//TODO: move this??
+void WriteMaterialFile(const s8* filepath,MaterialAssetHandle* handle);
+void ReadMaterialFile(const s8* filepath);

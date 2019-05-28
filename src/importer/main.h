@@ -987,10 +987,11 @@ AssimpData AssimpLoad(const s8* filepath){
     
     bonenodelist.Init(mesh->mNumBones + _max_bones);
     bonedatalist.Init(mesh->mNumVertices);
-    bonedatalist.count = mesh->mNumVertices;
     animationlist.Init();
     
     if(mesh->mNumBones){
+        
+        bonedatalist.count = mesh->mNumVertices;
         
         //build skeleton from the bones
         AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,mesh->mBones,mesh->mNumBones);
@@ -1141,6 +1142,10 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 bones = data.bone_array;
             }
             
+#if _print_log
+            printf("vertex component: %d\n",vertex_component);
+#endif
+            
             PtrCopy(&ptr,&vertex_component,sizeof(u16));
             
             u32 indversize = (data.vertex_count * sizeof(AVector3)) +
@@ -1151,7 +1156,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             
             u32 animbonesize = AnimBoneSize(data,bones);
             
-#if 0
+#if _print_log
             
             printf("animbone size %d\n",(animbonesize));//MARK:Not exact but will do
             printf("vertindex size %d\n",(indversize));//MARK:Not exact but will do
@@ -1416,8 +1421,10 @@ void Import(s8** files,u32 count){
     for(u32 i = 0; i < count; i++){
         
         s8* string = files[i];
-        
         u32 len = strlen(string);
+        
+        s8 buffer[2048] = {};
+        memcpy(buffer,string,len);
         
         auto a = string[len - 3];
         auto b = string[len - 2];
@@ -1431,17 +1438,11 @@ void Import(s8** files,u32 count){
         
         if(isAudio(a,b,c)){
             
-            auto writepath = (s8*)alloc(len + 1);
+            buffer[len - 3] = 'a';
+            buffer[len - 2] = 'd';
+            buffer[len - 1] = 'f';
             
-            memcpy(writepath,string,len + 1);
-            
-            writepath[len - 3] = 'a';
-            writepath[len - 2] = 'd';
-            writepath[len - 1] = 'f';
-            
-            WavWriteADF(string,writepath);
-            
-            unalloc(writepath);
+            WavWriteADF(string,buffer);
         }
         
         if(isModel(a,b,c)){
@@ -1458,19 +1459,15 @@ void Import(s8** files,u32 count){
             
             auto assimp = AssimpLoad(string);
             
-            string[len - 3] = 'm';
-            string[len - 2] = 'd';
-            string[len - 1] = 'f';
+            buffer[len - 3] = 'm';
+            buffer[len - 2] = 'd';
+            buffer[len - 1] = 'f';
             
-            AssimpWriteMDF(assimp,string,blendtype);
+            AssimpWriteMDF(assimp,buffer,blendtype);
             
         }
         
         if(isImage(a,b,c)){
-            
-            s8 buffer[1024] = {};
-            
-            memcpy(buffer,string,len);
             
             buffer[len - 3] = 't';
             buffer[len - 2] = 'd';

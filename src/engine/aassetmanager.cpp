@@ -765,6 +765,7 @@ u32 _ainline  CheckAsset(AssetHandle* handle){
 
 u32 _ainline GpuCheckAsset(ModelAssetHandle* handle){
     
+    
     if(global_gpumemstate.memoryblock_array[handle->gpuid].buffer){
         
         vkBindBufferMemory(global_device->device,handle->vertexbuffer.buffer,
@@ -789,7 +790,7 @@ u32 _ainline GpuCheckAsset(ModelAssetHandle* handle){
 AudioAssetHandle AllocateAssetAudio(const s8* filepath){
     
     AudioAssetHandle handle = {};
-    handle.assetfile = (s8*)filepath;
+    memcpy(handle.assetfile,filepath,strlen(filepath));
     
     u32 size = _fixed_audio_size;
     
@@ -810,11 +811,11 @@ void AllocateAssetAnimated(const s8* filepath,
     *animbone = {};
     *vertindex = {};//for vertex data that will be discarded once on gpu
     
-    animbone->assetfile = (s8*)filepath;
-    vertindex->assetfile = (s8*)filepath;
+    memcpy(animbone->assetfile,filepath,strlen(filepath));
+    memcpy(vertindex->assetfile,filepath,strlen(filepath));
     
-    u32 vertindex_size;
-    u32 animbone_size;
+    u32 vertindex_size = 0;
+    u32 animbone_size = 0;
     
     LoadMDF(filepath,0,0,&vertindex_size,&animbone_size);
     
@@ -879,40 +880,39 @@ void AllocateAssetAnimated(const s8* filepath,
 }
 
 
-ModelAssetHandle AllocateAssetModel(const s8* filepath,
-                                    const VDeviceContext* _restrict vdevice,VkQueue queue,
-                                    VkCommandBuffer commandbuffer,u32 vertexbinding_no){
+void AllocateAssetModel(const s8* filepath,
+                        const VDeviceContext* _restrict vdevice,VkQueue queue,
+                        VkCommandBuffer commandbuffer,u32 vertexbinding_no,ModelAssetHandle* vertindex){
     
-    ModelAssetHandle vertindex = {};
-    vertindex.animation_id = (u32)-1;
-    
-    vertindex.assetfile = (s8*)filepath;
-    u32 vertindex_size;
+    *vertindex = {};
+    vertindex->animation_id = (u32)-1;
+    memcpy(vertindex->assetfile,filepath,strlen(filepath));
+    u32 vertindex_size = 0;
     
     LoadMDF(filepath,0,0,&vertindex_size,0);
     
-    vertindex.ptr = TAlloc(s8,vertindex_size);
+    vertindex->ptr = TAlloc(s8,vertindex_size);
     
-    auto mdf = LoadMDF(filepath,vertindex.ptr,vertindex.ptr,0,0);
+    auto mdf = LoadMDF(filepath,vertindex->ptr,vertindex->ptr,0,0);
     
     _kill("model loaded is not static\n",mdf.vertex_component != 3);
     
-    vertindex.vert_component = mdf.vertex_component;
+    vertindex->vert_component = mdf.vertex_component;
     
-    vertindex.vert_fileoffset = mdf.vertexdata_offset;
-    vertindex.index_fileoffset = mdf.indexdata_offset;
+    vertindex->vert_fileoffset = mdf.vertexdata_offset;
+    vertindex->index_fileoffset = mdf.indexdata_offset;
     
     auto vertsize = mdf.vertex_size;
     auto indexsize = mdf.index_size;
     
-    GPUAllocateAsset(&vertindex,vertsize + indexsize);
+    GPUAllocateAsset(vertindex,vertsize + indexsize);
     
-    vertindex.vertexbuffer =
+    vertindex->vertexbuffer =
         VCreateStaticVertexBuffer(vdevice,mdf.vertex_size,global_gpumemstate.global_ptr,
-                                  vertindex.gpuptr + global_gpumemstate.global_ptr_offset,vertexbinding_no);
+                                  vertindex->gpuptr + global_gpumemstate.global_ptr_offset,vertexbinding_no);
     
-    vertindex.indexbuffer =
-        VCreateStaticIndexBufferX(vdevice,global_gpumemstate.global_ptr,vertindex.gpuptr + mdf.vertex_size + global_gpumemstate.global_ptr_offset,mdf.index_size);
+    vertindex->indexbuffer =
+        VCreateStaticIndexBufferX(vdevice,global_gpumemstate.global_ptr,vertindex->gpuptr + mdf.vertex_size + global_gpumemstate.global_ptr_offset,mdf.index_size);
     
     
     auto ptr = VGetTransferBufferPtr(mdf.vertex_size + mdf.index_size);
@@ -924,24 +924,24 @@ ModelAssetHandle AllocateAssetModel(const s8* filepath,
         VBufferCopy copy = {};
         
         VPushBackCopyBuffer(ptr,&copy,0,mdf.vertex_size);
-        VCmdCopyBuffer(commandbuffer,vertindex.vertexbuffer.buffer,&copy);
+        VCmdCopyBuffer(commandbuffer,vertindex->vertexbuffer.buffer,&copy);
     }
     
     {
         VBufferCopy copy = {};
         
         VPushBackCopyBuffer(ptr + mdf.vertex_size,&copy,0,mdf.index_size);
-        VCmdCopyBuffer(commandbuffer,vertindex.indexbuffer.buffer,&copy);
+        VCmdCopyBuffer(commandbuffer,vertindex->indexbuffer.buffer,&copy);
     }
     
-    vertindex.ptr = 0;
-    
-    return vertindex;
+    vertindex->ptr = 0;
 }
 
 void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
     
     if(!GpuCheckAsset(handle)){
+        
+        _breakpoint();
         
         
         if(!CheckAsset((AssetHandle*)handle)){
@@ -949,8 +949,6 @@ void CommitModel(ModelAssetHandle* handle,VkCommandBuffer cmdbuffer){
             AllocateAsset((AssetHandle*)handle,
                           (handle->vertexbuffer.size + handle->indexbuffer.size));
         }
-        
-        _breakpoint();
         
         //copy data to cpu memory
         auto vert = (s8*)handle->ptr;
@@ -1061,16 +1059,6 @@ void CommitTexture(TextureAssetHandle* handle){
 
 
 
-//TODO: rename this cos we don't allocate anything anymore
-MaterialAssetHandle AllocateAssetMaterial(VDeviceContext* _restrict vdevice){
-    
-    MaterialAssetHandle handle = {};
-    
-    return handle;
-}
-
-
-
 
 void UnallocateAssetTexture(TextureAssetHandle* handle){
     _kill("",1);
@@ -1080,7 +1068,11 @@ void UnallocateAssetTexture(TextureAssetHandle* handle){
 
 
 
-
+MaterialAssetHandle* AddAssetMaterial(){
+    auto mat = &pdata->scenecontext.materialasset_array[pdata->scenecontext.materialasset_count];
+    pdata->scenecontext.materialasset_count++;
+    return mat;
+}
 
 
 
@@ -1387,7 +1379,7 @@ TextureAssetHandle* AllocateAssetTexture(const s8* filepath,
     auto asset = &texturehandle_array[texturehandle_count];
     texturehandle_count++;
     
-    asset->assetfile = (s8*)filepath;
+    memcpy(asset->assetfile,filepath,strlen(filepath));
     
     auto header = GetHeaderInfoTDF(filepath);
     
@@ -1557,4 +1549,60 @@ void ReadAudioAssetData(AudioAssetHandle* _restrict handle,b32 islooping,u32* _r
 void GetAudioAssetDataPointers(AudioAssetHandle* _restrict handle,f32** _restrict left,f32** _restrict right){
     (*left) = (f32*)handle->ptr;
     (*right) = (f32*)(((s8*)handle->ptr) + _fixed_audio_r_offset);
+}
+
+void WriteMaterialFile(const s8* filepath,MaterialAssetHandle* handle){
+    
+    auto file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE | F_FLAG_TRUNCATE);
+    
+    u32 encode = _encode('M','A','T',' ');
+    
+    FWrite(file,&encode,sizeof(encode));
+    FWrite(file,&handle->textureid_count,sizeof(handle->textureid_count));
+    
+    for(u32 i = 0; i < handle->textureid_count; i++){
+        
+        auto id = handle->textureid_array[i];
+        
+        auto string = texturehandle_array[id].assetfile;
+        
+        FWrite(file,string,sizeof(TextureAssetHandle::assetfile));
+    }
+    
+    FCloseFile(file);
+}
+
+void ReadMaterialFile(const s8* filepath){
+    
+    auto mat = AddAssetMaterial();
+    
+    auto file = FOpenFile(filepath,F_FLAG_READONLY);
+    
+    u32 encode = 0;
+    u32 count = 0;
+    
+    FRead(file,&encode,sizeof(encode));
+    FRead(file,&count,sizeof(count));
+    
+    for(u32 i = 0; i < count; i++){
+        
+        s8 buffer[sizeof(TextureAssetHandle::assetfile)] = {};
+        
+        FRead(file,buffer,sizeof(TextureAssetHandle::assetfile));
+        
+        u8 texture_index = (u8)-1;
+        auto hash = PHashString(buffer);
+        
+        for(u32 j = 0; j < texturehandle_count; j++){
+            if(PHashString(texturehandle_array[j].assetfile) == hash){
+                texture_index = (u8)j;
+            }
+        }
+        
+        _kill("texture not file\n",texture_index == (u8)-1);
+        
+        MaterialAddTexture(mat,TextureType_Diffuse,texture_index);
+    }
+    
+    FCloseFile(file);
 }
