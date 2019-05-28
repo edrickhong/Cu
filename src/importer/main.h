@@ -915,11 +915,10 @@ AssimpData AssimpLoad(const s8* filepath){
         (aiScene*)importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals
                                     | aiProcess_OptimizeMeshes);
     
+    //TODO: add in support for this
     _kill("Failed to load file\n",!scene);
     
-    if(scene->mNumMeshes > 1){
-        printf("WARNING: Multiple meshes currently not supported\n");
-    }
+    _kill("ERROR: Multiple meshes currently not supported\n",scene->mNumMeshes > 1);
     
     aiMesh* mesh = scene->mMeshes[0];
     
@@ -927,7 +926,7 @@ AssimpData AssimpLoad(const s8* filepath){
         
         printf("camera count %d light count %d\n",scene->mNumCameras,scene->mNumLights);
         
-        _kill("Erro: No cameras or lights allowed. Only meshes\n",1);
+        printf("WARNING: No cameras or lights allowed. Only meshes\n");
         
     }
     
