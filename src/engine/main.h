@@ -1829,8 +1829,24 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
             
         }
         
-        
-        
+        //write default materials until we have a good way to do this
+#if 1
+        {
+            auto mat1 = AddAssetMaterial();
+            auto mat2 = AddAssetMaterial();
+            
+            MaterialAddTexture(mat1,TextureType_Diffuse,0);
+            
+            MaterialAddTexture(mat2,TextureType_Diffuse,1);
+            
+            WriteMaterialFile(MAT_PATH(goblin.mat),mat1);
+            
+            WriteMaterialFile(MAT_PATH(jack_o_lantern.mat),mat2);
+            
+            printf("Wrote materials\n");
+            exit(0);
+        }
+#endif
         
         VEndCommandBuffer(cmdbuffer);
         
@@ -2110,7 +2126,7 @@ void InitAllSystems(){
     {
         
         pdata->submit_audiobuffer.size_frames =
-            _align8((u32)(_48ms2frames(settings.playbuffer_size_ms) * pdata->resample_scale + 0.5f));
+            _align4((u32)(_48ms2frames(settings.playbuffer_size_ms) * pdata->resample_scale + 0.5f));
         
         //We need to store that data as f32 before converting back to s16
         pdata->submit_audiobuffer.size =
