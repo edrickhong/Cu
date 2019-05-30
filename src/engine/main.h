@@ -1804,6 +1804,27 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
                         
                         LoadMDF(entry->file_location,0,0,&vertindex_size,&animbone_size);
                         
+                        /*
+                        0x2 --        0
+                        
+                        //assetmanager block 
+                        0x2 -- 4170752 
+                        
+0x2 -- 27239424
+0x2 -- 94348288
+0x2 -- 94430208
+0x2 -- 94432256
+
+
+FIXME: this is the base offset and is the first ever allocation actually made throught the assetmanager
+0x2 --  4170752 
+
+https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html#resources-bufferimagegranularity
+Looks like it's cos of some alignment requirement between linear (buffer) and non-linear (image) resources
+
+we can get this value in VkPhysicalDeviceLimits.bufferImageGranularity
+*/
+                        
                         if(animbone_size){
                             AddAnimatedModel(entry->file_location,queue,cmdbuffer);
                         }

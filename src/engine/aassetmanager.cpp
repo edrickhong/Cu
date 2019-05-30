@@ -1185,6 +1185,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     
     
+    
     global_gpumemstate.memoryblock_array[global_gpumemstate.memoryblock_count] =
     {0,device_size,0};
     
