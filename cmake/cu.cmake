@@ -215,6 +215,10 @@ function(GenAndInstallAdditionalDep)
 
     execute_process(COMMAND rm cu_additional.zip)
 
+  else()
+
+  execute_process(COMMAND echo SKIP DOWNLOAD)
+
   endif()
 
 endfunction()
