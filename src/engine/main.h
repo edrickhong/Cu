@@ -800,7 +800,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
     
     auto context = &pdata->rendercontext;
     
-    SetClearColor(context,0.0f,0.0f,1.0f,0.0f);
+    SetClearColor(context,0.0f,0.0f,1.0f,1.0f);
     
     auto cmdbuffer = pdata->rendercmdbuffer_array[frameindex].buffer;
     
@@ -1851,7 +1851,7 @@ we can get this value in VkPhysicalDeviceLimits.bufferImageGranularity
         }
         
         //write default materials until we have a good way to do this
-#if 1
+#if 0
         {
             auto mat1 = AddAssetMaterial();
             auto mat2 = AddAssetMaterial();

@@ -1176,12 +1176,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     
     _allocprint("allocator typeindex %d\n",typeindex);
     
-    
-    
-    
-    {
-        VDeviceMemoryBlockAlloc(device_size,&global_gpumemstate.global_ptr,&global_gpumemstate.global_ptr_offset);
-    }
+    VLinearDeviceMemoryBlockAlloc(device_size,&global_gpumemstate.global_ptr,&global_gpumemstate.global_ptr_offset);
     
     
     
