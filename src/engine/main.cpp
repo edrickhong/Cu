@@ -6,8 +6,60 @@ _compile_kill(sizeof(PushConst) > 128);
 _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
+typedef u64 TestThreadContext;
+
+s64 TestThreadProc(void* args){
+    
+    return 0;
+}
+
+void TestThreadInitialProc(){
+    
+    //TODO: we should extract args and call_fptr from the stack
+    
+    printf("THREAD HELLO WORLD\n");
+    
+    _sys_exit(0);
+}
+
+TestThreadContext TestCreateThread(s64 (*call_fptr)(void*),u32 stack_size,void* args){
+    
+    void* stack = 0;
+    {
+        
+        _sys_mmap(0,stack_size,MEMPROT_READWRITE,MAP_ANONYMOUS | MAP_PRIVATE | MAP_GROWSDOWN,-1,0,stack);
+        
+        auto s = 
+            (u64*)(((s8*)stack) + stack_size - 8);
+        
+        *s = (u64)TestThreadInitialProc;
+        stack = s;
+    }
+    
+    u64 flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_PARENT | CLONE_THREAD | CLONE_IO;
+    u64 tid = 0;
+    
+    //FIXME: the stack frame is fucking is up
+    
+    _sys_clone(flags,stack,0,0,tid);
+    
+    return 0;
+}
+
+void TestThreads(){
+    
+    TestCreateThread(TestThreadProc,
+                     _megabytes(22),0);
+    
+    SleepMS(1000000.0f * 5);
+    
+    exit(0);
+}
+
 
 s32 main(s32 argc,s8** argv){
+    
+    TestThreads();
     
     InitAllSystems();
     
