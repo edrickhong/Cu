@@ -6,20 +6,97 @@ _compile_kill(sizeof(PushConst) > 128);
 _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
-typedef u64 TestThreadContext;
 
-s64 TestThreadProc(void* args){
-    
-    return 0;
+extern "C" void Linux_ThreadProc();
+
+typedef u32 TestThreadContext;
+typedef TestThreadContext TestThreadID;
+typedef volatile _cachealign u32* TestSemaphore;
+
+_global TestSemaphore tsem = 0;
+
+TestSemaphore TestCreateSemaphore(u32 value = 0){
+    auto t = (TestSemaphore)alloc(sizeof(u32));
+    *t = value;
+    return t;
 }
 
-void TestThreadInitialProc(){
+#include "linux/futex.h"
+
+#define _expected_sem_value 0
+
+void TestWaitSemaphore(TestSemaphore sem){
     
-    //TODO: we should extract args and call_fptr from the stack
+    b32 condition = true;
     
-    printf("THREAD HELLO WORLD\n");
+    do{
+        u32 err = 0;
+        _sys_futex(sem,FUTEX_WAIT,_expected_sem_value,0,0,0,err);
+        
+        //over here we are woken up
+        condition = true;
+        
+        auto expected = *sem;
+        
+        if(expected){
+            auto actual = LockedCmpXchg(sem,expected,expected - 1);
+            condition = actual != expected;
+        }
+        
+        
+    }
+    while(condition);
     
-    _sys_exit(0);
+    
+}
+
+void TestWaitSemaphore(TestSemaphore sem,f32 time_ms){
+    
+    b32 condition = true;
+    
+    do{
+        u32 err = 0;
+        auto time =  MsToTimespec(time_ms);
+        _sys_futex(sem,FUTEX_WAIT,_expected_sem_value,&time,0,0,err);
+        
+        //over here we are woken up
+        condition = true;
+        
+        auto expected = *sem;
+        
+        if(expected){
+            auto actual = LockedCmpXchg(sem,expected,expected - 1);
+            condition = actual != expected;
+        }
+        
+        
+    }
+    while(condition);
+}
+
+
+void TestSignalSemaphore(TestSemaphore sem){
+    
+    LockedIncrement(sem);
+    
+    u32 err = 0;
+    _sys_futex(sem,FUTEX_WAKE,1,0,0,0,err);
+}
+
+#if 0
+
+void TSetThreadAffinity(u32 cpu_mask);
+
+void TSetThreadPriority(TSchedulerPoicy policy,f32 priority,TLinuxSchedulerDeadline deadline = {});
+
+void TGetThreadPriority(TSchedulerPoicy* policy,f32* priority,TLinuxSchedulerDeadline* deadline = 0);
+
+#endif
+
+TestThreadID TestGetThisThreadID(){
+    TestThreadID id = 0;
+    _sys_gettid(id);
+    return id;
 }
 
 TestThreadContext TestCreateThread(s64 (*call_fptr)(void*),u32 stack_size,void* args){
@@ -30,28 +107,80 @@ TestThreadContext TestCreateThread(s64 (*call_fptr)(void*),u32 stack_size,void* 
         _sys_mmap(0,stack_size,MEMPROT_READWRITE,MAP_ANONYMOUS | MAP_PRIVATE | MAP_GROWSDOWN,-1,0,stack);
         
         auto s = 
-            (u64*)(((s8*)stack) + stack_size - 8);
+            (u64*)(((s8*)stack) + stack_size); //suppose to be 16 byte aligned
         
-        *s = (u64)TestThreadInitialProc;
+        s--;
+        *s = (u64)stack;
+        
+        s--;
+        *s = (u64)stack_size;
+        
+        s--;
+        *s = (u64)call_fptr;
+        
+        s--;
+        *s = (u64)args;
+        
+        s--;
+        *s = (u64)Linux_ThreadProc;
+        
         stack = s;
     }
     
     u64 flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_PARENT | CLONE_THREAD | CLONE_IO;
-    u64 tid = 0;
     
-    //FIXME: the stack frame is fucking is up
+    auto tid = _sys_clone(flags,stack,0,0);
     
-    _sys_clone(flags,stack,0,0,tid);
+    return tid;
+}
+
+_global _cachealign s8* msg_array[32] = {};
+_global volatile u32 msg_count = 0;
+
+s64 TestThreadProc(void* args){
+    
+    TestWaitSemaphore(tsem);
+    
+    auto index = TGetEntryIndex(&msg_count);
+    
+    msg_array[index] = (s8*)args;
     
     return 0;
 }
 
 void TestThreads(){
     
-    TestCreateThread(TestThreadProc,
-                     _megabytes(22),0);
+    tsem = TestCreateSemaphore();
     
-    SleepMS(1000000.0f * 5);
+#define _thread_count 4
+    
+    for(u32 i = 0; i < _thread_count; i++){
+        
+        auto string = (s8*)alloc(32);
+        memset(string,0,32);
+        
+        sprintf(string,"THREAD HELLO WORLD(%d)",i + 1);
+        
+        printf("[%p]DIS(%d):%s\n",(void*)string,i,string);
+        
+        TestCreateThread(TestThreadProc,_megabytes(22),(void*)string);
+    }
+    
+    SleepMS(2000.0f);
+    
+    for(u32 i = 0; i < _thread_count; i++){
+        TestSignalSemaphore(tsem);
+    }
+    
+    SleepMS(2000.0f); // * 10000.0f
+    
+    printf("\n");
+    
+    for(u32 i = 0; i < msg_count; i++){
+        printf("[%p]REC(%d):%s\n",(void*)msg_array[i],i,msg_array[i]);
+    }
+    
+    printf("\nMAIN EXIT SEM(%d)\n",*tsem);
     
     exit(0);
 }

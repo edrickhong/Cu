@@ -2124,6 +2124,10 @@ void InitAllSystems(){
         s8* logical_name = DEFAULT_AUDIO_DEVICE;
 #endif
         
+        /*
+        FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is broken on the exclusive path
+*/
+        
         AAudioDeviceProperties prop = {};
         prop = AGetAudioDeviceProperties(logical_name);
         auto perf = AMakeDefaultAudioPerformanceProperties();
