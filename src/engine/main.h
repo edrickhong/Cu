@@ -107,14 +107,14 @@ struct DebugRenderEntry{
 struct DebugRenderRefEntry{
     DebugRenderEntry* entry_array;
     u32 entry_count;
-    ThreadID thread;
+    TThreadID thread;
 };
 
 
 _global DebugRenderRefEntry global_debugentry_array[32];
 _global u32 global_debugentry_count = 0;
 
-void DebugSubmitDebugEntryRef(ThreadID tid,DebugRenderEntry* array,u32 count){
+void DebugSubmitDebugEntryRef(TThreadID tid,DebugRenderEntry* array,u32 count){
     
     u32 actual_count = TGetEntryIndexD(&global_debugentry_count,_arraycount(global_debugentry_array));
     
@@ -1144,8 +1144,6 @@ s64 ThreadProc(void* args){
 
 u32 DeployAllThreads(Threadinfo* info){
     
-    _breakpoint();
-    
     RECORDTHREAD();
     
 #ifdef DEBUG
@@ -2167,7 +2165,7 @@ void InitAllSystems(){
     
     pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
     
-    auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+    auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
     
     _kill("requested vulkan version not found\n",loaded_version == (u32)-1);
     

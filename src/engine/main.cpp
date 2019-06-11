@@ -7,222 +7,14 @@ _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 
-extern "C" void Linux_ThreadProc();
-
-typedef u32 TestThreadContext;
-typedef TestThreadContext TestThreadID;
-typedef volatile _cachealign u32* TestSemaphore;
-
-_global TestSemaphore tsem = 0;
-
-TestSemaphore TestCreateSemaphore(u32 value = 0){
-    auto t = (TestSemaphore)alloc(sizeof(u32));
-    *t = value;
-    return t;
-}
-
-#include "linux/futex.h"
-
-#define _expected_sem_value 0
-
-void TestWaitSemaphore(TestSemaphore sem){
-    
-    b32 condition = true;
-    
-    do{
-        u32 err = 0;
-        _sys_futex(sem,FUTEX_WAIT,_expected_sem_value,0,0,0,err);
-        
-        //over here we are woken up
-        condition = true;
-        
-        auto expected = *sem;
-        
-        if(expected){
-            auto actual = LockedCmpXchg(sem,expected,expected - 1);
-            condition = actual != expected;
-        }
-        
-        
-    }
-    while(condition);
-    
-    
-}
-
-void TestWaitSemaphore(TestSemaphore sem,f32 time_ms){
-    
-    b32 condition = true;
-    
-    do{
-        u32 err = 0;
-        auto time =  MsToTimespec(time_ms);
-        _sys_futex(sem,FUTEX_WAIT,_expected_sem_value,&time,0,0,err);
-        
-        //over here we are woken up
-        condition = true;
-        
-        auto expected = *sem;
-        
-        if(expected){
-            auto actual = LockedCmpXchg(sem,expected,expected - 1);
-            condition = actual != expected;
-        }
-        
-        
-    }
-    while(condition);
-}
-
-
-void TestSignalSemaphore(TestSemaphore sem){
-    
-    LockedIncrement(sem);
-    
-    u32 err = 0;
-    _sys_futex(sem,FUTEX_WAKE,1,0,0,0,err);
-}
-
-void TestSetThreadAffinity(u32 cpu_mask,ThreadID id = 0){
-    
-    u32 err = 0;
-    _sys_setaffinity(id,sizeof(cpu_mask),&cpu_mask,err);
-    
-    _kill("failed to set affinity\n",!err);
-}
-
-_intern u32 ConvertStringGroupToInt(s8* buffer,u32 size){
-    
-    s8 buffer1[64] = {};
-    s8 buffer2[64] = {};
-    
-    u32 offset = 0;
-    
-    for(u32 i = 0; i < size; i++){
-        
-        auto c = buffer[i];
-        
-        if(c == '-'){
-            memcpy(buffer1,&buffer[offset],i - offset);
-            i++;
-            offset = i;
-        }
-        
-        if(c == 0){
-            memcpy(buffer2,&buffer[offset],i - offset);
-        }
-        
-    }
-    
-    u32 len1 = strlen(buffer1);
-    u32 len2 = strlen(buffer2);
-    
-    u32 val1 = 0;
-    u32 val2 = 0;
-    
-    if(len1){
-        val1 = PStringToInt(buffer1);
-    }
-    
-    if(len2){
-        val2 = PStringToInt(buffer2);
-    }
-    
-    if(!len1 && len2){
-        return 1;
-    }
-    
-    return val2 - val1 + 1;
-}
-
-u32 TestSGetTotalThreads(){
-    
-    s8 buffer[512] = {};
-    
-    auto file = FOpenFile("/sys/devices/system/cpu/online",F_FLAG_READONLY);
-    auto size = FGetFileSize(file);
-    
-    size = size < sizeof(buffer) ? size : sizeof(buffer);
-    
-    FRead(file,buffer,size);
-    
-    
-    
-    FCloseFile(file);
-    
-    u32 count = 0;
-    u32 offset = 0;
-    
-    for(u32 i = 0;  i < size; i++){
-        
-        auto c = buffer[i];
-        
-        if(c == ',' || c == 0 || !PIsVisibleChar(c)){
-            
-            s8 convert_buffer[256] = {};
-            memcpy(convert_buffer,&buffer[offset],i - offset);
-            i++;
-            offset = i;
-            
-            count += ConvertStringGroupToInt(convert_buffer,strlen(convert_buffer) + 1);
-            
-            if(c == 0 || !PIsVisibleChar(c)){
-                break;
-            }
-        }
-        
-    }
-    
-    return count;
-}
-
-TestThreadID TestGetThisThreadID(){
-    TestThreadID id = 0;
-    _sys_gettid(id);
-    return id;
-}
-
-TestThreadContext TestCreateThread(s64 (*call_fptr)(void*),u32 stack_size,void* args){
-    
-    void* stack = 0;
-    {
-        
-        _sys_mmap(0,stack_size,MEMPROT_READWRITE,MAP_ANONYMOUS | MAP_PRIVATE | MAP_GROWSDOWN,-1,0,stack);
-        
-        auto s = 
-            (u64*)(((s8*)stack) + stack_size); //suppose to be 16 byte aligned
-        
-        s--;
-        *s = (u64)stack;
-        
-        s--;
-        *s = (u64)stack_size;
-        
-        s--;
-        *s = (u64)call_fptr;
-        
-        s--;
-        *s = (u64)args;
-        
-        s--;
-        *s = (u64)Linux_ThreadProc;
-        
-        stack = s;
-    }
-    
-    u64 flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_PARENT | CLONE_THREAD | CLONE_IO;
-    
-    auto tid = _sys_clone(flags,stack,0,0);
-    
-    return tid;
-}
+_global TSemaphore tsem = 0;
 
 _global _cachealign s8* msg_array[32] = {};
 _global volatile u32 msg_count = 0;
 
 s64 TestThreadProc(void* args){
     
-    TestWaitSemaphore(tsem);
+    TWaitSemaphore(tsem);
     
     auto index = TGetEntryIndex(&msg_count);
     
@@ -231,127 +23,11 @@ s64 TestThreadProc(void* args){
     return 0;
 }
 
-struct sched_attr{
-    __u32 size;
-    
-    __u32 sched_policy;
-    __u64 sched_flags;
-    
-    /* SCHED_NORMAL, SCHED_BATCH */
-    __s32 sched_nice;
-    
-    /* SCHED_FIFO, SCHED_RR */
-    __u32 sched_priority;
-    
-    /* SCHED_DEADLINE */
-    __u64 sched_runtime;
-    __u64 sched_deadline;
-    __u64 sched_period;
-};
-
-void TestGetThreadPriority(TSchedulerPoicy* pl,f32* pr,TLinuxSchedulerDeadline* dl,ThreadID id = 0){
-    
-    u32 err = 0;
-    s32 policy = 0;
-    sched_param sched = {};
-    
-    _sys_sched_getscheduler(id,policy);
-    _kill("failed to get policy",policy < 0);
-    
-    if(policy == SCHED_DEADLINE){
-        
-        sched_attr attr = {};
-        
-        _sys_sched_getattr(id,&attr,sizeof(sched_attr),0,err);
-        _kill("failed to get deadline",err);
-        
-        if(dl){
-            dl->runtime = attr.sched_runtime;
-            dl->deadline = attr.sched_deadline;
-            dl->period = attr.sched_period;
-            dl->flags = attr.sched_flags;
-        }
-        
-        
-        
-    }
-    else{
-        
-        _sys_sched_getparam(id,&sched,err);
-        _kill("failed to get param",err);
-        
-        if(pl){
-            *pl = (TSchedulerPoicy)policy;
-        }
-        
-        if(pr){
-            
-            auto min = _syscall_sched_get_priority_min(policy);
-            auto max = _syscall_sched_get_priority_max(policy);
-            
-            if(!max){
-                *pr = 0.0f;
-            }
-            
-            else{
-                
-                f32 len = (f32)(max - min);
-                *pr = (f32)(sched.sched_priority)/len;
-                
-                _kill("priority out of range\n",(*pr) > 1.0f || (*pr) < 0.0f);
-            }
-            
-        }
-        
-    }
-    
-}
-
-void TestSetThreadPriority(TSchedulerPoicy policy,f32 priority,TLinuxSchedulerDeadline deadline = {},ThreadID id = 0){
-    
-    _kill("priority out of range\n",policy > 1.0f || policy < 0.0f);
-    
-    if(policy == TSCHED_LINUX_POLICY_REALTIME_DEADLINE){
-        
-        sched_attr attr = {sizeof(sched_attr),policy,deadline.flags,0,0,deadline.runtime,deadline.deadline,deadline.period};
-        
-        u32 err = 0;
-        
-        _sys_sched_setattr(id,&attr,0,err);
-        
-        _kill("call failed\n",err);
-        
-    }
-    
-    else{
-        sched_param sched = {};
-        
-        auto min = _syscall_sched_get_priority_min(policy);
-        auto max = _syscall_sched_get_priority_max(policy);
-        
-        f32 len = (f32)(max - min);
-        
-        sched.sched_priority = (s32)(priority * len) + min;
-        
-        u32 err = 0;
-        
-        _sys_sched_setscheduler(id,policy,&sched,err);
-        
-        _kill("call failed\n",err);
-    }
-}
-
-#if 0
-
-void TGetThreadPriority(TSchedulerPoicy* policy,f32* priority,TLinuxSchedulerDeadline* deadline = 0);
-
-#endif
-
 void TestThreads(){
     
-    auto max_count = TestSGetTotalThreads();
+    auto max_count = SGetTotalThreads();
     
-    tsem = TestCreateSemaphore();
+    tsem = TCreateSemaphore();
     
 #define _thread_count 4
     
@@ -364,13 +40,13 @@ void TestThreads(){
         
         printf("[%p]DIS(%d):%s\n",(void*)string,i,string);
         
-        TestCreateThread(TestThreadProc,_megabytes(22),(void*)string);
+        TCreateThread(TestThreadProc,_megabytes(22),(void*)string);
     }
     
     SleepMS(2000.0f);
     
     for(u32 i = 0; i < _thread_count; i++){
-        TestSignalSemaphore(tsem);
+        TSignalSemaphore(tsem);
     }
     
     SleepMS(2000.0f); // * 10000.0f
@@ -389,7 +65,7 @@ void TestThreads(){
 
 s32 main(s32 argc,s8** argv){
     
-    TestThreads();
+    //TestThreads();
     
     InitAllSystems();
     
