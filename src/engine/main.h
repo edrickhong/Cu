@@ -1144,6 +1144,8 @@ s64 ThreadProc(void* args){
 
 u32 DeployAllThreads(Threadinfo* info){
     
+    _breakpoint();
+    
     RECORDTHREAD();
     
 #ifdef DEBUG

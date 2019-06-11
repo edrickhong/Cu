@@ -83,15 +83,98 @@ void TestSignalSemaphore(TestSemaphore sem){
     _sys_futex(sem,FUTEX_WAKE,1,0,0,0,err);
 }
 
-#if 0
+void TestSetThreadAffinity(u32 cpu_mask,ThreadID id = 0){
+    
+    u32 err = 0;
+    _sys_setaffinity(id,sizeof(cpu_mask),&cpu_mask,err);
+    
+    _kill("failed to set affinity\n",!err);
+}
 
-void TSetThreadAffinity(u32 cpu_mask);
+_intern u32 ConvertStringGroupToInt(s8* buffer,u32 size){
+    
+    s8 buffer1[64] = {};
+    s8 buffer2[64] = {};
+    
+    u32 offset = 0;
+    
+    for(u32 i = 0; i < size; i++){
+        
+        auto c = buffer[i];
+        
+        if(c == '-'){
+            memcpy(buffer1,&buffer[offset],i - offset);
+            i++;
+            offset = i;
+        }
+        
+        if(c == 0){
+            memcpy(buffer2,&buffer[offset],i - offset);
+        }
+        
+    }
+    
+    u32 len1 = strlen(buffer1);
+    u32 len2 = strlen(buffer2);
+    
+    u32 val1 = 0;
+    u32 val2 = 0;
+    
+    if(len1){
+        val1 = PStringToInt(buffer1);
+    }
+    
+    if(len2){
+        val2 = PStringToInt(buffer2);
+    }
+    
+    if(!len1 && len2){
+        return 1;
+    }
+    
+    return val2 - val1 + 1;
+}
 
-void TSetThreadPriority(TSchedulerPoicy policy,f32 priority,TLinuxSchedulerDeadline deadline = {});
-
-void TGetThreadPriority(TSchedulerPoicy* policy,f32* priority,TLinuxSchedulerDeadline* deadline = 0);
-
-#endif
+u32 TestSGetTotalThreads(){
+    
+    s8 buffer[512] = {};
+    
+    auto file = FOpenFile("/sys/devices/system/cpu/online",F_FLAG_READONLY);
+    auto size = FGetFileSize(file);
+    
+    size = size < sizeof(buffer) ? size : sizeof(buffer);
+    
+    FRead(file,buffer,size);
+    
+    
+    
+    FCloseFile(file);
+    
+    u32 count = 0;
+    u32 offset = 0;
+    
+    for(u32 i = 0;  i < size; i++){
+        
+        auto c = buffer[i];
+        
+        if(c == ',' || c == 0 || !PIsVisibleChar(c)){
+            
+            s8 convert_buffer[256] = {};
+            memcpy(convert_buffer,&buffer[offset],i - offset);
+            i++;
+            offset = i;
+            
+            count += ConvertStringGroupToInt(convert_buffer,strlen(convert_buffer) + 1);
+            
+            if(c == 0 || !PIsVisibleChar(c)){
+                break;
+            }
+        }
+        
+    }
+    
+    return count;
+}
 
 TestThreadID TestGetThisThreadID(){
     TestThreadID id = 0;
@@ -148,7 +231,125 @@ s64 TestThreadProc(void* args){
     return 0;
 }
 
+struct sched_attr{
+    __u32 size;
+    
+    __u32 sched_policy;
+    __u64 sched_flags;
+    
+    /* SCHED_NORMAL, SCHED_BATCH */
+    __s32 sched_nice;
+    
+    /* SCHED_FIFO, SCHED_RR */
+    __u32 sched_priority;
+    
+    /* SCHED_DEADLINE */
+    __u64 sched_runtime;
+    __u64 sched_deadline;
+    __u64 sched_period;
+};
+
+void TestGetThreadPriority(TSchedulerPoicy* pl,f32* pr,TLinuxSchedulerDeadline* dl,ThreadID id = 0){
+    
+    u32 err = 0;
+    s32 policy = 0;
+    sched_param sched = {};
+    
+    _sys_sched_getscheduler(id,policy);
+    _kill("failed to get policy",policy < 0);
+    
+    if(policy == SCHED_DEADLINE){
+        
+        sched_attr attr = {};
+        
+        _sys_sched_getattr(id,&attr,sizeof(sched_attr),0,err);
+        _kill("failed to get deadline",err);
+        
+        if(dl){
+            dl->runtime = attr.sched_runtime;
+            dl->deadline = attr.sched_deadline;
+            dl->period = attr.sched_period;
+            dl->flags = attr.sched_flags;
+        }
+        
+        
+        
+    }
+    else{
+        
+        _sys_sched_getparam(id,&sched,err);
+        _kill("failed to get param",err);
+        
+        if(pl){
+            *pl = (TSchedulerPoicy)policy;
+        }
+        
+        if(pr){
+            
+            auto min = _syscall_sched_get_priority_min(policy);
+            auto max = _syscall_sched_get_priority_max(policy);
+            
+            if(!max){
+                *pr = 0.0f;
+            }
+            
+            else{
+                
+                f32 len = (f32)(max - min);
+                *pr = (f32)(sched.sched_priority)/len;
+                
+                _kill("priority out of range\n",(*pr) > 1.0f || (*pr) < 0.0f);
+            }
+            
+        }
+        
+    }
+    
+}
+
+void TestSetThreadPriority(TSchedulerPoicy policy,f32 priority,TLinuxSchedulerDeadline deadline = {},ThreadID id = 0){
+    
+    _kill("priority out of range\n",policy > 1.0f || policy < 0.0f);
+    
+    if(policy == TSCHED_LINUX_POLICY_REALTIME_DEADLINE){
+        
+        sched_attr attr = {sizeof(sched_attr),policy,deadline.flags,0,0,deadline.runtime,deadline.deadline,deadline.period};
+        
+        u32 err = 0;
+        
+        _sys_sched_setattr(id,&attr,0,err);
+        
+        _kill("call failed\n",err);
+        
+    }
+    
+    else{
+        sched_param sched = {};
+        
+        auto min = _syscall_sched_get_priority_min(policy);
+        auto max = _syscall_sched_get_priority_max(policy);
+        
+        f32 len = (f32)(max - min);
+        
+        sched.sched_priority = (s32)(priority * len) + min;
+        
+        u32 err = 0;
+        
+        _sys_sched_setscheduler(id,policy,&sched,err);
+        
+        _kill("call failed\n",err);
+    }
+}
+
+#if 0
+
+void TGetThreadPriority(TSchedulerPoicy* policy,f32* priority,TLinuxSchedulerDeadline* deadline = 0);
+
+#endif
+
 void TestThreads(){
+    
+    auto max_count = TestSGetTotalThreads();
     
     tsem = TestCreateSemaphore();
     
