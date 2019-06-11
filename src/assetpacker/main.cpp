@@ -501,7 +501,7 @@ s32 main(s32 argc, s8** argv)
 			{
 				if (PIsStringInt(argv[i]))
 				{
-					RemoveAssetFromTable(atoi(argv[i]), &assetTable);
+					RemoveAssetFromTable(PStringToInt(argv[i]), &assetTable);
 				}
 				else
 				{

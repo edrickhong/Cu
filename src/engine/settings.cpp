@@ -265,7 +265,7 @@ u32 LaunchThreadStringToNo(s8* string){
         return (u32)-1;
     }
     
-    return atoi(string);
+    return PStringToInt(string);
     
 }
 
@@ -455,7 +455,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("WINDOW_WIDTH"):{
             
-            settings->window_width = atoi(value_string);
+            settings->window_width = PStringToInt(value_string);
             
             if(!settings->window_width){
                 settings->window_width = 1280;
@@ -465,7 +465,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("WINDOW_HEIGHT"):{
             
-            settings->window_height= atoi(value_string);
+            settings->window_height= PStringToInt(value_string);
             
             if(!settings->window_height){
                 settings->window_height = 720;
@@ -474,16 +474,16 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         }break;
         
         case PHashString("WINDOW_POSX"):{
-            settings->window_x = atoi(value_string);
+            settings->window_x = PStringToInt(value_string);
         }break;
         
         case PHashString("WINDOW_POSY"):{
-            settings->window_y = atoi(value_string);
+            settings->window_y = PStringToInt(value_string);
         }break;
         
         case PHashString("SWAPCHAIN_DEPTH"):{
             
-            settings->swapchain_depth = atoi(value_string);
+            settings->swapchain_depth = PStringToInt(value_string);
             
             if(!settings->swapchain_depth){
                 settings->swapchain_depth = 3;
@@ -497,7 +497,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("FRAME_ALLOC_SIZE"):{
             
-            settings->frame_alloc_size = atoi(value_string);
+            settings->frame_alloc_size = PStringToInt(value_string);
             
             if(!settings->frame_alloc_size){
                 settings->frame_alloc_size = 32;
@@ -507,7 +507,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("HOST_ALLOC_SIZE"):{
             
-            settings->host_alloc_size = atoi(value_string);
+            settings->host_alloc_size = PStringToInt(value_string);
             
             if(!settings->host_alloc_size){
                 settings->host_alloc_size = 1024;
@@ -517,7 +517,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("GPU_ALLOC_SIZE"):{
             
-            settings->gpu_alloc_size = atoi(value_string);
+            settings->gpu_alloc_size = PStringToInt(value_string);
             
             if(!settings->gpu_alloc_size){
                 settings->gpu_alloc_size = 22;
@@ -527,7 +527,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("VT_PHYS_WIDTH"):{
             
-            settings->vt_width = atoi(value_string);
+            settings->vt_width = PStringToInt(value_string);
             
             if(!settings->vt_width){
                 settings->vt_width = 16384;
@@ -537,7 +537,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("VT_PHYS_HEIGHT"):{
             
-            settings->vt_height = atoi(value_string);
+            settings->vt_height = PStringToInt(value_string);
             
             if(!settings->vt_height){
                 settings->vt_height = 8192;
@@ -565,7 +565,7 @@ void WriteSettingsValue(Settings* settings,u64 name_hash,s8* value_string){
         
         case PHashString("PLAYBUFFER_SIZE_MS"):{
             
-            settings->playbuffer_size_ms = atoi(value_string);
+            settings->playbuffer_size_ms = PStringToInt(value_string);
             
             if(!settings->playbuffer_size_ms){
                 settings->playbuffer_size_ms = 24;

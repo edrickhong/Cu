@@ -779,7 +779,7 @@ _intern void _ainline HandleStructFields(GenericStruct* t,GenericStruct* struct_
             
             _kill("too many dims\n",member->dim_array_count >= _arraycount(member->dim_array));
             
-            member->dim_array[member->dim_array_count] = atoi(&x->string[0]);
+            member->dim_array[member->dim_array_count] = PStringToInt(&x->string[0]);
             member->dim_array_count++;
             
             
@@ -913,7 +913,7 @@ _intern void ParseVertexLayout(EvalChar* eval_buffer,u32 eval_count,VertexLayout
         }
         
         if(eval_buffer[i].tag == TAG_VALUE){
-            location = atoi(eval_buffer[i].string);
+            location = PStringToInt(eval_buffer[i].string);
         }
     }
     
@@ -1471,11 +1471,11 @@ TODO: handle std430 std140
             if(c->tag == TAG_VALUE){
                 
                 if(mode == PARSE_BINDING){
-                    bind = atoi(c->string);
+                    bind = PStringToInt(c->string);
                 }
                 
                 else{
-                    set = atoi(c->string);
+                    set = PStringToInt(c->string);
                 }
             }
             
@@ -1483,7 +1483,7 @@ TODO: handle std430 std140
         }
         
         else if(c->tag == TAG_VALUE){
-            total_count *= atoi(c->string);
+            total_count *= PStringToInt(c->string);
         }
     }
     
