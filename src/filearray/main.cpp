@@ -26,7 +26,7 @@ _intern void GetFileNameToStringArrayVar(s8* buffer,s8* filename){
 
 void PrintHelp(){
     
-    printf("Format: filearray [-filedatastoarray/-filelisttoarray] src1 src2 src3 ... -header header -code code\n");
+    printf("Format: filearray [-filedatatoarray/-filelisttoarray] src1 src2 src3 ... -header header -code code\n");
 }
 
 s32 main(s32 argc,s8** argv){
@@ -94,7 +94,7 @@ s32 main(s32 argc,s8** argv){
     
     switch(PHashString(option)){
         
-        case PHashString("-filedatastoarray"):{
+        case PHashString("-filedatatoarray"):{
             
             u32 header_count = 0;
             
@@ -228,6 +228,11 @@ s32 main(s32 argc,s8** argv){
                 unalloc(buffer);
             }
             
+        }break;
+        
+        default:{
+            printf("Error: Invalid command %s\n",option);
+            exit(1);
         }break;
     }
     
