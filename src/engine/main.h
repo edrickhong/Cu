@@ -2284,7 +2284,6 @@ void InitAllSystems(){
             transfercmdbuffer,pdata->transfer_queue
         };
         
-        
         void (*gameinit_funptr)(GameInitData*);
         pdata->lib = InitGameLibrary((void**)(&gameinit_funptr));
         

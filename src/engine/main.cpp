@@ -7,65 +7,7 @@ _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
 
-_global TSemaphore tsem = 0;
-
-_global _cachealign s8* msg_array[32] = {};
-_global volatile u32 msg_count = 0;
-
-s64 TestThreadProc(void* args){
-    
-    TWaitSemaphore(tsem);
-    
-    auto index = TGetEntryIndex(&msg_count);
-    
-    msg_array[index] = (s8*)args;
-    
-    return 0;
-}
-
-void TestThreads(){
-    
-    auto max_count = SGetTotalThreads();
-    
-    tsem = TCreateSemaphore();
-    
-#define _thread_count 4
-    
-    for(u32 i = 0; i < _thread_count; i++){
-        
-        auto string = (s8*)alloc(32);
-        memset(string,0,32);
-        
-        sprintf(string,"THREAD HELLO WORLD(%d)",i + 1);
-        
-        printf("[%p]DIS(%d):%s\n",(void*)string,i,string);
-        
-        TCreateThread(TestThreadProc,_megabytes(22),(void*)string);
-    }
-    
-    SleepMS(2000.0f);
-    
-    for(u32 i = 0; i < _thread_count; i++){
-        TSignalSemaphore(tsem);
-    }
-    
-    SleepMS(2000.0f); // * 10000.0f
-    
-    printf("\n");
-    
-    for(u32 i = 0; i < msg_count; i++){
-        printf("[%p]REC(%d):%s\n",(void*)msg_array[i],i,msg_array[i]);
-    }
-    
-    printf("\nMAIN EXIT SEM(%d)\n",*tsem);
-    
-    exit(0);
-}
-
-
 s32 main(s32 argc,s8** argv){
-    
-    //TestThreads();
     
     InitAllSystems();
     
