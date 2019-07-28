@@ -6,10 +6,9 @@ _compile_kill(sizeof(PushConst) > 128);
 _compile_kill(VK_INDEX_TYPE_UINT16 != 0);
 _compile_kill(VK_INDEX_TYPE_UINT32 != 1);
 
-
 s32 main(s32 argc,s8** argv){
     
-    InitAllSystems();
+	InitAllSystems();
     
 #ifdef DEBUG
     
@@ -209,6 +208,14 @@ s32 main(s32 argc,s8** argv){
 
 /*
 
+**VK_KHR_16bit_storage                : extension revision  1
+ **VK_KHR_8bit_storage                 : extension revision  1
+ **VK_KHR_driver_properties            : extension revision  1
+ **VK_KHR_relaxed_block_layout         : extension revision  1
+ **VK_KHR_uniform_buffer_standard_layout: extension revision  1
+ **VK_KHR_variable_pointers            : extension revision  1
+ **VK_KHR_vulkan_memory_model          : extension revision  3
+ 
 libpapi-dev
 libdbus-1-dev
 wayland-protocols
