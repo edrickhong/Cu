@@ -140,6 +140,10 @@
 #pragma GCC diagnostic error "-Wconstant-logical-operand"
 #pragma GCC diagnostic ignored "-Wconstant-logical-operand"
 
+//NOTE: Cos of assimp. Should we just switch to gltf??
+#pragma GCC diagnostic warning "-Wdeprecated-copy"
+#pragma GCC diagnostic error "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 #endif
 
 #endif

@@ -773,10 +773,7 @@ _intern void ParseSource(s8* buffer,u32 size,GenericStruct* struct_array,u32* st
         if(PFillEvalBufferC(buffer,&cur,&evaluation_buffer[0],&evaluation_count,'{',TagEvalBuffer)){
             
             //start evaluating
-            
-            
-            
-            
+	   
             {
                 auto type = IsReflStruct(&evaluation_buffer[0],evaluation_count);
                 
@@ -840,6 +837,8 @@ s32 main(s32 argc,s8** argv){
     GetTime(&start);
     
 #endif
+
+    //TODO: add document mode
     
     for(s32 i = 0; i < argc; i++){
         

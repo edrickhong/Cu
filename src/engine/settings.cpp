@@ -606,7 +606,7 @@ Settings ParseSettings(){
     
     
     
-    Settings settings;
+    Settings settings = {};
     
     
     s8 default_settings_string[2048] = {};
