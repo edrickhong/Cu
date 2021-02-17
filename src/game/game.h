@@ -13,8 +13,8 @@
 #define _max_components 300
 
 struct PushConst{  
-    Matrix4b4 viewproj;
-    Vector4 camerapos;
+    Mat4 viewproj;
+    Vec4 camerapos;
 };
 
 struct REFL SkelUBO{
@@ -54,7 +54,7 @@ struct REFL SOAOrientationData{
     f32 pos_y[_max_objects];
     f32 pos_z[_max_objects];
     
-    Quaternion rot[_max_objects];
+    Quat rot[_max_objects];
     
     f32 scale[_max_objects];
     
@@ -68,8 +68,8 @@ struct REFL SOAOrientationData{
 struct GameData{
     
     //these are the things that is the game state
-    Vector3 camera_pos;
-    Vector3 camera_lookdir;
+    Vec3 camera_pos;
+    Vec3 camera_lookdir;
     f32 roty;
     b32 running = true;
     
@@ -85,7 +85,7 @@ struct GameData{
     //GUI state variables
     
     
-    Vector2 prev_mpos;
+    Vec2 prev_mpos;
     u32 widget_type = 0;
     u32 obj_id = 0;
     u32 dirlight_id = 0;
@@ -111,7 +111,7 @@ struct GameData{
     
     s8 o_buffer[4][128] = {};
     
-    Quaternion dir_light_rot[1024];
+    Quat dir_light_rot[1024];
     Color dir_light_color[1024];
     f32 dir_light_intensity[1024];
     
@@ -120,7 +120,7 @@ struct GameData{
 };
 
 struct DirLight{
-    Vector4 dir;
+    Vec4 dir;
     Color color;
 };
 
@@ -137,13 +137,13 @@ struct SceneContext{
     u32 animationdata_count;
     
     //state management
-    Vector3 (*TranslateWorldSpaceToClipSpace)(Vector3);
-    Vector3 (*TranslateClipSpaceToWorldSpace)(Vector3);
+    Vec3 (*TranslateWorldSpaceToClipSpace)(Vec3);
+    Vec3 (*TranslateClipSpaceToWorldSpace)(Vec3);
     void (*SetObjectMaterial)(u32,u32);
-    void (*SetActiveCameraOrientation)(Vector3,Vector3);
-    void (*SetObjectOrientation)(u32,Vector3,Quaternion,f32);
-    void (*AddPointLight)(Vector3,Color,f32);
-    void (*AddSpotLight)(Vector3,Vector3,Color,f32,f32,f32);
+    void (*SetActiveCameraOrientation)(Vec3,Vec3);
+    void (*SetObjectOrientation)(u32,Vec3,Quat,f32);
+    void (*AddPointLight)(Vec3,Color,f32);
+    void (*AddSpotLight)(Vec3,Vec3,Color,f32,f32,f32);
     
     void (*GetDirLightList)(DirLight**,u32**);
     void (*SetAmbientColor)(Color,f32);

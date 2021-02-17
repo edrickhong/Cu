@@ -98,9 +98,9 @@ s8* AddComponent(u32 compname_hash,u32 obj_id,SceneContext* context){
                 light->B = 1.0f;
                 
                 
-                Vector3 dir = {0.0f,0.0f,1.0f};
+                Vec3 dir = {0.0f,0.0f,1.0f};
                 
-                dir = RotateVector(dir,data->orientation.rot[obj_id]);
+                dir = QuatRotateVec3(dir,data->orientation.rot[obj_id]);
                 
                 light->dir_x = dir.x;
                 light->dir_y = dir.y;
@@ -197,7 +197,7 @@ u32 AddObject(SceneContext* context){
     data->orientation.pos_y[id] = pos.y;
     data->orientation.pos_z[id] = pos.z;
     
-    data->orientation.rot[id] = ConstructQuaternion(Vector3{1,0,0},_radians(0));
+    data->orientation.rot[id] = ConstructQuat(Vec3{1,0,0},_radians(0));
     
     data->orientation.scale[id] = 1.0f;
     
@@ -245,15 +245,15 @@ void KeyboardInput(SceneContext* context){
         
         data->roty += 0.0001f * 100;
         
-        Quaternion rot = ConstructQuaternion(Vector3{0,1,0},data->roty);
+        Quat rot = ConstructQuat(Vec3{0,1,0},data->roty);
         
-        Vector3 pos1 = {data->orientation.pos_x[0],data->orientation.pos_y[0],
+        Vec3 pos1 = {data->orientation.pos_x[0],data->orientation.pos_y[0],
             data->orientation.pos_z[0]};
         
-        Vector3 pos2 = {data->orientation.pos_x[1],data->orientation.pos_y[1],
+        Vec3 pos2 = {data->orientation.pos_x[1],data->orientation.pos_y[1],
             data->orientation.pos_z[1]};
         
-        Vector3 pos3 = {data->orientation.pos_x[2],data->orientation.pos_y[2],
+        Vec3 pos3 = {data->orientation.pos_x[2],data->orientation.pos_y[2],
             data->orientation.pos_z[2]};
         
         auto q1 = rot * data->orientation.rot[0];
@@ -455,7 +455,7 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         
         for(u32 i = 0; i < count; i++){
             
-            Vector3 pos = {data->orientation.pos_x[i],data->orientation.pos_y[i],
+            Vec3 pos = {data->orientation.pos_x[i],data->orientation.pos_y[i],
                 data->orientation.pos_z[i]};
             
             auto scale = data->orientation.scale[i];
@@ -518,9 +518,9 @@ void UpdateLightList(SceneContext* context){
         
         auto light = &comp->pointlight_array[i];
         
-        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id]};
+        auto pos = Vec3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id]};
         
-        Vector4 c = {light->R,light->G,light->B,1.0f};
+        Vec4 c = {light->R,light->G,light->B,1.0f};
         c =  c * light->intensity;
         
         context->AddPointLight(pos,Color{c.x,c.y,c.z,1.0f},light->radius);
@@ -538,11 +538,11 @@ void UpdateLightList(SceneContext* context){
         
         auto light = &comp->spotlight_array[i];
         
-        auto pos = Vector3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id]};
+        auto pos = Vec3{data->orientation.pos_x[light->id],data->orientation.pos_y[light->id],data->orientation.pos_z[light->id]};
         
-        auto dir = Vector3{light->dir_x,light->dir_y,light->dir_z};
+        auto dir = Vec3{light->dir_x,light->dir_y,light->dir_z};
         
-        Vector4 c = {light->R,light->G,light->B,1.0f};
+        Vec4 c = {light->R,light->G,light->B,1.0f};
         c =  c * light->intensity;
         
         context->AddSpotLight(pos,dir,Color{c.x,c.y,c.z,1.0f},light->full_angle,light->hard_angle,light->radius);
@@ -836,8 +836,8 @@ extern "C" {
         
         data->running = true;
         
-        data->camera_pos = Vector3{0.0f,0.0f,-4.0f};
-        data->camera_lookdir = Vector3{0.0f,0.0f,1.0f};
+        data->camera_pos = Vec3{0.0f,0.0f,-4.0f};
+        data->camera_lookdir = Vec3{0.0f,0.0f,1.0f};
         
         
 #ifdef DEBUG
@@ -1152,12 +1152,12 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     auto x_len = cur_mpos.x - data->prev_mpos.x;
     auto y_len = cur_mpos.y - data->prev_mpos.y;
     
-    if(IsKeyDown(mousestate,MOUSEBUTTON_RIGHT)){
+    if(IsMouseDown(mousestate,MOUSEBUTTON_RIGHT)){
         
         auto x_angle = 0.0f;
         auto y_angle = 0.0f;
         
-        Vector3 lookdir = data->camera_lookdir;
+        Vec3 lookdir = data->camera_lookdir;
         
         if(x_len != 0.0f){
             x_angle = atanf(x_len/1.0f);
@@ -1169,21 +1169,21 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
         
         if(fabsf(x_angle) > fabsf(y_angle)){
             
-            lookdir = RotateVector(lookdir,
-                                   Vector3{0,x_angle});  
+            lookdir = RotateVec3(lookdir,
+                                   Vec3{0,x_angle});  
         }
         
         else{
             
-            auto k = RotateVector(lookdir,
-                                  Vector3{y_angle});  
+            auto k = RotateVec3(lookdir,
+                                  Vec3{y_angle});  
             
-            if((1.0f - Dot(k,Vector3{0.0f,-1.0f,0.0f})) > 0.01f){
+            if((1.0f - DotVec3(k,Vec3{0.0f,-1.0f,0.0f})) > 0.01f){
                 lookdir = k;
             }
         }
         
-        lookdir = Normalize(lookdir);
+        lookdir = NormalizeVec3(lookdir);
         
         data->camera_lookdir = lookdir;
     }
@@ -1231,9 +1231,9 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
 #define _speed 0.004f
     
     auto f = data->camera_lookdir;
-    auto s = Cross(data->camera_lookdir,Vector3{0,-1});
+    auto s = CrossVec3(data->camera_lookdir,Vec3{0,-1});
     
-    Vector3 dir = {};
+    Vec3 dir = {};
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_W)){
         dir = dir + (f * _speed * delta_time);
@@ -1252,8 +1252,8 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     }
     
     
-    if(Magnitude(dir)){
-        dir = Normalize(dir);  
+    if(MagnitudeVec3(dir)){
+        dir = NormalizeVec3(dir);  
     }
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_ESC)){
@@ -1271,7 +1271,7 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
         
         if(i != obj_id && !data->orientation.skip_array[i]){
             
-            Vector3 pos = {
+            Vec3 pos = {
                 data->orientation.pos_x[i],
                 data->orientation.pos_y[i],
                 data->orientation.pos_z[i],
@@ -1289,7 +1289,7 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
     }
     
     
-    Vector3 pos = {
+    Vec3 pos = {
         data->orientation.pos_x[obj_id],
         data->orientation.pos_y[obj_id],
         data->orientation.pos_z[obj_id],
@@ -1336,9 +1336,9 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                     
                     if(obj_id == light->id){
                         
-                        Vector3 dir = {0.0f,0.0f,1.0f};
+                        Vec3 dir = {0.0f,0.0f,1.0f};
                         
-                        dir = RotateVector(dir,data->orientation.rot[obj_id]);
+                        dir = QuatRotateVec3(dir,data->orientation.rot[obj_id]);
                         
                         light->dir_x = dir.x;
                         light->dir_y = dir.y;
@@ -1480,8 +1480,8 @@ void EditorGUI(SceneContext* context){
         }
         
         if(GUIButton("Add Light")){
-            dir_array[*dir_count] = {Vector4{0.0f,0.0f,1.0f,1.0f},White};
-            data->dir_light_rot[*dir_count] = ConstructQuaternion(Vector3{0.0f,1.0f,0.0f},0.0f);
+            dir_array[*dir_count] = {Vec4{0.0f,0.0f,1.0f,1.0f},White};
+            data->dir_light_rot[*dir_count] = ConstructQuat(Vec3{0.0f,1.0f,0.0f},0.0f);
             
             data->dir_light_color[*dir_count] = White;
             data->dir_light_intensity[*dir_count] = 1.0f;
@@ -1503,7 +1503,7 @@ void EditorGUI(SceneContext* context){
             
             auto light = &dir_array[data->dirlight_id];
             auto rot = &data->dir_light_rot[data->dirlight_id];
-            Vector3 dir = Vector3{0.0f,0.0f,1.0f};
+            Vec3 dir = Vec3{0.0f,0.0f,1.0f};
             
             auto color = &data->dir_light_color[data->dirlight_id];
             auto intensity = &data->dir_light_intensity[data->dirlight_id];
@@ -1552,17 +1552,17 @@ void EditorGUI(SceneContext* context){
             memset(&buffer[0],0,sizeof(buffer));
             
             if(write_values){
-                auto c = Vector4{color->R,color->G,color->B,color->A} * (*intensity);
+                auto c = Vec4{color->R,color->G,color->B,color->A} * (*intensity);
                 light->color = Color{c.x,c.y,c.z,1.0f};
             }
             
             //rotation widget and maybe scale to control intensity
             
-            auto pos = data->camera_pos + (Normalize(data->camera_lookdir) * 2.0f);
+            auto pos = data->camera_pos + (NormalizeVec3(data->camera_lookdir) * 2.0f);
             
             if(GUIRotationGizmo(pos,rot)){
                 
-                light->dir = ToVec4(RotateVector(dir,*rot));
+                light->dir = Vec3ToVec4(QuatRotateVec3(dir,*rot));
             }
         }
         
@@ -1713,7 +1713,7 @@ void EditorGUI(SceneContext* context){
                 
                 data->write_orientation = false;
                 
-                Vector3 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
+                Vec3 pos = {data->orientation.pos_x[data->obj_id],data->orientation.pos_y[data->obj_id],
                     data->orientation.pos_z[data->obj_id]};
                 
                 auto scale = data->orientation.scale[data->obj_id];

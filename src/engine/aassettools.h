@@ -16,7 +16,7 @@
   framework. Loading will be implicitly handled by the asset memory allocator*/
 
 //actual vector3 (not vec4 acting as vec3)
-union AVector3{
+union AVec3{
     
     float ar[3];
     
@@ -31,7 +31,7 @@ union AVector3{
 struct AssimpBoneNode{
     s8* name;
     u32 bone_hash;
-    Matrix4b4 offset;
+    Mat4 offset;
     
     u32 children_count;
     u32 childrenindex_array[10];
@@ -56,7 +56,7 @@ struct AnimationKey{
     f32 time;
     
     //this is perfect to SOA
-    Vector4 key;
+    Vec4 key;
 };
 
 
@@ -87,11 +87,11 @@ struct AssimpAnimation{
 
 
 struct AssimpData{
-    Vector4* vertex_array;
+    Vec4* vertex_array;
     u32 vertex_count;
-    Vector2* texcoord_array;
+    Vec2* texcoord_array;
     u32 texcoord_count;
-    Vector4* normal_array;
+    Vec4* normal_array;
     u32 normal_count;
     
     void* index_array;
@@ -276,7 +276,7 @@ enum MDFTags{
 struct MDFLinearBoneData{
     u32 hash;
     u32 count;
-    Matrix4b4 matrix;
+    Mat4 matrix;
 };
 
 struct MDFKeyCount{
@@ -336,19 +336,19 @@ enum ADFTags{
    data of 'size' bytes
    
    
-   struct VectorTransform{
-   Vector4 translation;
+   struct VecTransform{
+   Vec4 translation;
    Quaternion rotation;
-   Vector4 scale;
+   Vec4 scale;
    };
    
    struct BoneTransform{
-   Vector4 translation;
+   Vec4 translation;
    Quaternion rotation;
    };
    
-   VectorTransform _ainline IdentityVectorTransform(){
-   VectorTransform transform;
+   VecTransform _ainline IdentityVecTransform(){
+   VecTransform transform;
    transform.translation = {};
    transform.rotation = MQuaternionIdentity();
    transform.scale = {1.0f,1.0f,1.0f,1.0f};
@@ -356,7 +356,7 @@ enum ADFTags{
    return transform;
    }
    
-   Vector4 InterpolateAnimation(AnimationKey* key_array,u32 key_count,f32 animationtime){
+   Vec4 InterpolateAnimation(AnimationKey* key_array,u32 key_count,f32 animationtime){
    
    if(key_count ==1){
    return key_array[0].key;
@@ -379,7 +379,7 @@ enum ADFTags{
    
    f32 step = (animationtime - current.time)/(next.time - current.time);
    
-   return InterpolateVector(current.key,next.key,step);
+   return InterpolateVec(current.key,next.key,step);
    }
    
    
@@ -425,7 +425,7 @@ enum ADFTags{
    
    Matrix4b4 matrix = IdentityMatrix4b4();
    
-   VectorTransform transform = IdentityVectorTransform();
+   VecTransform transform = IdentityVecTransform();
    
    AssimpAnimationData* animationdata = FindAnimationData(animation,*node);
    

@@ -162,12 +162,12 @@ void WindowBackendFlagToString(u32 flag,s8* dst_string){
     
     switch(flag){
         
-        case W_CREATE_BACKEND_WAYLAND:{
+        case (u32)W_CREATE_BACKEND_WAYLAND:{
             auto string = "WAYLAND";
             memcpy(dst_string,string,strlen(string));
         }break;
         
-        case W_CREATE_BACKEND_XLIB:{
+        case (u32)W_CREATE_BACKEND_XLIB:{
             auto string = "XLIB";
             memcpy(dst_string,string,strlen(string));
         }break;

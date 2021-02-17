@@ -628,7 +628,7 @@ struct ThreadLinearBlendRes{
 	u32 animation_index;
 	AAnimationSet* set_array;
 	ALinearBone* root;
-	DEBUGPTR(Matrix4b4) result;//filled by the platform
+	DEBUGPTR(Mat4) result;//filled by the platform
 };
 
 
@@ -636,7 +636,7 @@ struct ThreadLinearBlendRes{
 struct LightUBO{
 
 	struct PointLight{
-		Vector4 pos;
+		Vec4 pos;
 		Color color;
 
 		f32 radius;
@@ -644,8 +644,8 @@ struct LightUBO{
 
 	struct SpotLight{
 
-		Vector4 pos;
-		Vector4 dir;
+		Vec4 pos;
+		Vec4 dir;
 		Color color;
 
 		f32 cos_angle;
@@ -701,10 +701,10 @@ struct PlatformData{
 	VBufferContext skel_ubo;
 	VBufferContext light_ubo;
 
-	Matrix4b4 view;
-	Matrix4b4 proj;
+	Mat4 view;
+	Mat4 proj;
 
-	Vector4 camerapos;
+	Vec4 camerapos;
 
 	AAudioBuffer submit_audiobuffer;
 	f32 resample_scale;
@@ -817,7 +817,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
 #if _row_major
 
-		Transpose(pdata->proj * pdata->view),
+		TransposeMat4(pdata->proj * pdata->view),
 
 #else
 
@@ -1276,7 +1276,7 @@ void ThreadLinearBlend(void* args,void*){
 	ALinearBlend(data->time,data->animation_index,data->set_array,data->root,data->result);
 
 	PushUpdateEntry(data->id,offsetof(SkelUBO,bone_array),
-			data->bone_count * sizeof(Matrix4b4),data->result);
+			data->bone_count * sizeof(Mat4),data->result);
 }
 
 void PresentBuffer(PlatformData* pdata){
@@ -1495,42 +1495,42 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
 
 }
 
-Vector3 TranslateWorldSpaceToClipSpace(Vector3 pos){
+Vec3 TranslateWorldSpaceToClipSpace(Vec3 pos){
 
-	return WorldSpaceToClipSpace(pos,pdata->proj * pdata->view);
+	return WorldSpaceToClipSpaceVec3(pos,pdata->proj * pdata->view);
 }
 
 
 
-Vector3 TranslateClipSpaceToWorldSpace(Vector3 pos){
+Vec3 TranslateClipSpaceToWorldSpace(Vec3 pos){
 
-	return ClipSpaceToWorldSpace(pos,pdata->proj * pdata->view);
+	return ClipSpaceToWorldSpaceVec3(pos,pdata->proj * pdata->view);
 }
 
 
-void SetActiveCameraOrientation(Vector3 pos,Vector3 lookdir){  
+void SetActiveCameraOrientation(Vec3 pos,Vec3 lookdir){  
 
-	pdata->camerapos = ToVec4(pos);
+	pdata->camerapos = Vec3ToVec4(pos);
 
-	pdata->view = ViewMatrix(pos,pos + lookdir,Vector3{0.0f,-1.0f,0.0f});
+	pdata->view = ViewMat4(pos,pos + lookdir,Vec3{0.0f,-1.0f,0.0f});
 }
 
-void SetObjectOrientation(u32 obj_id,Vector3 pos,Quaternion rot,f32 scale){
+void SetObjectOrientation(u32 obj_id,Vec3 pos,Quat rot,f32 scale){
 
 	_kill("too many entries\n",
 			pdata->objupdate_count >= _arraycount(PlatformData::objupdate_array));
 
-	auto orientation = TAlloc(Matrix4b4,1);
+	auto orientation = TAlloc(Mat4,1);
 
 	*orientation =
 
 #if _row_major
 
-		Transpose(WorldMatrix(pos,rot,Vector3{scale,scale,scale}));
+		TransposeMat4(WorldMat4Q(pos,rot,Vec3{scale,scale,scale}));
 
 #else
 
-	WorldMatrix(pos,rot,Vector3{scale,scale,scale});
+	WorldMatrix(pos,rot,Vec3{scale,scale,scale});
 
 #endif
 
@@ -1690,7 +1690,7 @@ void SetAmbientColor(Color color ,f32 intensity){
 
 	auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
 
-	Vector4 c = Vector4{color.R,color.G,color.B,color.A} * intensity;
+	Vec4 c = Vec4{color.R,color.G,color.B,color.A} * intensity;
 
 	light_ubo->ambient_color = Color{c.x,c.y,c.z,1.0f};
 }
@@ -1703,27 +1703,27 @@ void GetDirLightList(DirLight** array,u32** count){
 	*array = &light_ubo->dir_array[0];
 }
 
-void AddPointLight(Vector3 pos,Color color,f32 radius){
+void AddPointLight(Vec3 pos,Color color,f32 radius){
 
 	auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
 
 	//TODO: make radius into a proper distance cut off
 
 	light_ubo->point_array[pdata->point_count] = {
-		ToVec4(pos),color,radius
+		Vec3ToVec4(pos),color,radius
 	};
 
 	pdata->point_count++;
 	light_ubo->point_count = pdata->point_count;
 }
 
-void AddSpotLight(Vector3 pos,Vector3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
+void AddSpotLight(Vec3 pos,Vec3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
 
 	_kill("hard must be less than full\n",hard_angle > full_angle);
 
 	auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
 
-	light_ubo->spot_array[pdata->spot_count] = {ToVec4(pos),ToVec4(dir),color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
+	light_ubo->spot_array[pdata->spot_count] = {Vec3ToVec4(pos),Vec3ToVec4(dir),color,cosf(_radians(full_angle * 0.5f)),cosf(_radians(hard_angle * 0.5f)),radius};
 
 	pdata->spot_count++;
 	light_ubo->spot_count = pdata->spot_count;
@@ -1764,7 +1764,7 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
 
 	f32 aspectratio = ((f32)pdata->swapchain.width)/((f32)pdata->swapchain.height);
 
-	pdata->proj = ProjectionMatrix(_radians(90.0f),aspectratio,0.1f,256.0f);
+	pdata->proj = ProjectionMat4(_radians(90.0f),aspectratio,0.1f,256.0f);
 
 	{
 
@@ -2022,7 +2022,7 @@ void _ainline DispatchSkelLinearBlend(EntityAnimationData* anim){
 	blend->set_array = anim_handle->animationset_array;
 	blend->root = anim_handle->rootbone;
 
-	blend->result = TAlloc(Matrix4b4,blend->bone_count);
+	blend->result = TAlloc(Mat4,blend->bone_count);
 
 	PushThreadWorkQueue(&pdata->threadqueue,
 			ThreadLinearBlend,(void*)blend,pdata->worker_sem);

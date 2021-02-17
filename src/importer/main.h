@@ -748,7 +748,7 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
         auto bonenode = &(*bonenodelist)[node_index];
         
         
-        memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Matrix4b4));
+        memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
         
 #if !MATRIX_ROW_MAJOR
         
@@ -806,7 +806,7 @@ _intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
     
     //default bone transform. some nodes aren't bound to vertices but are still needed for correct transform
-    memcpy(&bonenode.offset,&(node->mTransformation),sizeof(Matrix4b4));
+    memcpy(&bonenode.offset,&(node->mTransformation),sizeof(Mat4));
     
 #if !MATRIX_ROW_MAJOR
     
@@ -896,13 +896,13 @@ AssimpData AssimpLoad(const s8* filepath){
     
     AssimpData data = {};
     
-    _declare_list(Vector4List,Vector4);
-    _declare_list(Vector2List,Vector2);
+    _declare_list(Vec4List,Vec4);
+    _declare_list(Vec2List,Vec2);
     _declare_list(U32List,u32);
     
-    Vector4List pos_list;
-    Vector4List normal_list;
-    Vector2List texcoord_list;
+    Vec4List pos_list;
+    Vec4List normal_list;
+    Vec2List texcoord_list;
     U32List index_list;
     
     pos_list.Init();
@@ -961,9 +961,9 @@ AssimpData AssimpLoad(const s8* filepath){
             texcoord = mesh->mTextureCoords[0][i];
         }
         
-        pos_list.PushBack(Vector4{pos.x,pos.y,pos.z,1.0f});
-        normal_list.PushBack(Vector4{normal.x,normal.y,normal.z,1.0f});
-        texcoord_list.PushBack(Vector2{texcoord.x,texcoord.y});
+        pos_list.PushBack(Vec4{pos.x,pos.y,pos.z,1.0f});
+        normal_list.PushBack(Vec4{normal.x,normal.y,normal.z,1.0f});
+        texcoord_list.PushBack(Vec2{texcoord.x,texcoord.y});
         // printf("%f %f\n",texcoord.x,texcoord.y);
     }
     
@@ -1148,9 +1148,9 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             
             PtrCopy(&ptr,&vertex_component,sizeof(u16));
             
-            u32 indversize = (data.vertex_count * sizeof(AVector3)) +
-                (data.texcoord_count * sizeof(Vector2)) +
-                (data.normal_count * sizeof(AVector3)) +
+            u32 indversize = (data.vertex_count * sizeof(AVec3)) +
+                (data.texcoord_count * sizeof(Vec2)) +
+                (data.normal_count * sizeof(AVec3)) +
                 (data.vertexbonedata_count * sizeof(VertexBoneData)) +
                 data.index_count * sizeof(u32);
             
@@ -1169,9 +1169,9 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
         
         u32 header = TAG_VERTEX;
         u32 datasize =
-            (data.vertex_count * sizeof(AVector3)) + //positions
-            (data.texcoord_count * sizeof(Vector2)) + //texcoords
-            (data.normal_count * sizeof(AVector3)) + //normals
+            (data.vertex_count * sizeof(AVec3)) + //positions
+            (data.texcoord_count * sizeof(Vec2)) + //texcoords
+            (data.normal_count * sizeof(AVec3)) + //normals
             (data.vertexbonedata_count * sizeof(VertexBoneData)); //boneid and weight
         
         PtrCopy(&ptr,&header,sizeof(header));
@@ -1186,14 +1186,14 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
         //write vertex data
         for(u32 i = 0; i < data.vertex_count;i++){
             
-            PtrCopy(&ptr,&data.vertex_array[i],sizeof(AVector3));
+            PtrCopy(&ptr,&data.vertex_array[i],sizeof(AVec3));
             
             if(data.normal_count){
-                PtrCopy(&ptr,&data.normal_array[i],sizeof(AVector3));
+                PtrCopy(&ptr,&data.normal_array[i],sizeof(AVec3));
             }
             
             if(data.texcoord_count){
-                PtrCopy(&ptr,&data.texcoord_array[i],sizeof(Vector2));
+                PtrCopy(&ptr,&data.texcoord_array[i],sizeof(Vec2));
                 //MARK:
                 // printf("texcoord%f %f\n",data.texcoord_array[i].x,data.texcoord_array[i].y);
             }
