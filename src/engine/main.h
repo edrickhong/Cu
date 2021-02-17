@@ -202,7 +202,7 @@ struct RenderContext{
 	volatile VkFramebuffer framebuffer;
 	volatile u16 subpass_index;
 	volatile u16 swap_index;
-	volatile Color clearcolor = {};
+	volatile Color4 clearcolor = {};
 };
 
 _global RenderBatch* renderbatch_array[16];
@@ -249,7 +249,7 @@ void _ainline Clear(RenderContext* context){
 	renderbatch_total_count = 0;
 }
 
-void _ainline SetClearColor(RenderContext* context,f32 r,f32 g,f32 b,f32 a){
+void _ainline SetClearColor4(RenderContext* context,f32 r,f32 g,f32 b,f32 a){
 
 	context->clearcolor.R = r;
 	context->clearcolor.G = g;
@@ -258,8 +258,8 @@ void _ainline SetClearColor(RenderContext* context,f32 r,f32 g,f32 b,f32 a){
 
 }
 
-void _ainline SetClearColor(RenderContext* context,Color color){
-	SetClearColor(context,color.R,color.G,color.B,color.A);
+void _ainline SetClearColor4(RenderContext* context,Color4 color){
+	SetClearColor4(context,color.R,color.G,color.B,color.A);
 }
 
 _intern void _ainline PushRenderEntry(RenderContext* context,u32 group_index,
@@ -637,7 +637,7 @@ struct LightUBO{
 
 	struct PointLight{
 		Vec4 pos;
-		Color color;
+		Color4 color;
 
 		f32 radius;
 	};
@@ -646,7 +646,7 @@ struct LightUBO{
 
 		Vec4 pos;
 		Vec4 dir;
-		Color color;
+		Color4 color;
 
 		f32 cos_angle;
 		f32 hard_cos_angle;
@@ -663,7 +663,7 @@ struct LightUBO{
 	PointLight point_array[_lightcount];
 	SpotLight spot_array[_lightcount];
 
-	Color ambient_color;
+	Color4 ambient_color;
 
 }_align(128);
 
@@ -800,7 +800,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
 	auto context = &pdata->rendercontext;
 
-	SetClearColor(context,0.0f,0.0f,1.0f,1.0f);
+	SetClearColor4(context,0.0f,0.0f,1.0f,1.0f);
 
 	auto cmdbuffer = pdata->rendercmdbuffer_array[frameindex].buffer;
 
@@ -1439,7 +1439,7 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
 
 	WWindowEvent event = {};
 
-	while(WWaitForWindowEvent(windowcontext,&event)){
+	while(WWaitForWindowEvent(&event)){
 
 		switch(event.type){
 
@@ -1453,6 +1453,7 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
 					  break;
 
 			case W_EVENT_RESIZE:{
+						    WAckResizeEvent(&event);
 						    //recreate swapbuffer whenever this happens.
 					    }
 					    break;
@@ -1490,6 +1491,8 @@ void _ainline ProcessEvents(WWindowContext* windowcontext,KeyboardState* keyboar
 						}break;
 
 		}
+
+		WRetireEvent(&event);
 
 	}
 
@@ -1686,13 +1689,13 @@ void ClearLightList(){
 	pdata->spot_count = 0;
 }
 
-void SetAmbientColor(Color color ,f32 intensity){
+void SetAmbientColor4(Color4 color ,f32 intensity){
 
 	auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
 
 	Vec4 c = Vec4{color.R,color.G,color.B,color.A} * intensity;
 
-	light_ubo->ambient_color = Color{c.x,c.y,c.z,1.0f};
+	light_ubo->ambient_color = Color4{c.x,c.y,c.z,1.0f};
 }
 
 void GetDirLightList(DirLight** array,u32** count){
@@ -1703,7 +1706,7 @@ void GetDirLightList(DirLight** array,u32** count){
 	*array = &light_ubo->dir_array[0];
 }
 
-void AddPointLight(Vec3 pos,Color color,f32 radius){
+void AddPointLight(Vec3 pos,Color4 color,f32 radius){
 
 	auto light_ubo = (LightUBO*)pdata->lightupdate_ptr;
 
@@ -1717,7 +1720,7 @@ void AddPointLight(Vec3 pos,Color color,f32 radius){
 	light_ubo->point_count = pdata->point_count;
 }
 
-void AddSpotLight(Vec3 pos,Vec3 dir,Color color,f32 full_angle,f32 hard_angle,f32 radius){
+void AddSpotLight(Vec3 pos,Vec3 dir,Color4 color,f32 full_angle,f32 hard_angle,f32 radius){
 
 	_kill("hard must be less than full\n",hard_angle > full_angle);
 
@@ -1992,7 +1995,7 @@ we can get this value in VkPhysicalDeviceLimits.bufferImageGranularity
 	pdata->scenecontext.AddSpotLight = AddSpotLight;
 
 	pdata->scenecontext.GetDirLightList = GetDirLightList;
-	pdata->scenecontext.SetAmbientColor = SetAmbientColor;
+	pdata->scenecontext.SetAmbientColor4 = SetAmbientColor4;
 
 
 	//asset stuff
@@ -2163,7 +2166,30 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 
 	VInitVulkan();
 
-	pdata->window = WCreateVulkanWindow("Cu",(WCreateFlags)(W_CREATE_NORESIZE),settings.window_x,settings.window_y,settings.window_width,settings.window_height);
+	WPlatform array[2] = {};
+	u32 count = 0;
+
+	WGetPlatforms(array, &count, false);
+
+	WPlatform platform = WPLATFORM_NONE;
+
+	for (u32 i = 0; i < count; i++) {
+		WPlatform p = array[i];
+		if (p == (WPlatform)settings.backend) {
+			platform = p;
+			break;
+		}
+	}
+
+	if (platform == WPLATFORM_NONE) {
+		platform = array[0];
+	}
+
+	WCreateWindowConnection(platform);
+
+	WCreateFlags flags = W_CREATE_NORESIZE;
+
+	pdata->window = WCreateWindow("Cu",flags,settings.window_x,settings.window_y,settings.window_width,settings.window_height);
 
 	auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
 
@@ -2297,8 +2323,8 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 	//Kickoff worker threads
 	{
 
-		pdata->worker_sem = TCreateSemaphore();
-		pdata->main_sem = TCreateSemaphore();
+		pdata->worker_sem = TCreateSemaphore(0);
+		pdata->main_sem = TCreateSemaphore(0);
 
 		auto info = TAlloc(Threadinfo,1);
 
@@ -2455,6 +2481,8 @@ You shall listen to all sides and filter them from your self.
 
 }
 
+#if 0
+
 void TestSW(){
 	//testing software render
 
@@ -2488,7 +2516,7 @@ void TestSW(){
 
 		WPresentBackBuffer(&window,&backbuffer);
 
-		while(WWaitForWindowEvent(&window,&event)){
+		while(WWaitForWindowEvent(&event)){
 
 			switch(event.type){
 
@@ -2510,3 +2538,5 @@ void TestSW(){
 	}
 
 }
+
+#endif

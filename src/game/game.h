@@ -77,7 +77,7 @@ struct GameData{
     SOAOrientationData orientation;
     void* components;
     
-    Color ambient_color;
+    Color4 ambient_color;
     f32 ambient_intensity;
     
 #ifdef DEBUG
@@ -112,7 +112,7 @@ struct GameData{
     s8 o_buffer[4][128] = {};
     
     Quat dir_light_rot[1024];
-    Color dir_light_color[1024];
+    Color4 dir_light_color[1024];
     f32 dir_light_intensity[1024];
     
 #endif
@@ -121,7 +121,7 @@ struct GameData{
 
 struct DirLight{
     Vec4 dir;
-    Color color;
+    Color4 color;
 };
 
 
@@ -142,11 +142,11 @@ struct SceneContext{
     void (*SetObjectMaterial)(u32,u32);
     void (*SetActiveCameraOrientation)(Vec3,Vec3);
     void (*SetObjectOrientation)(u32,Vec3,Quat,f32);
-    void (*AddPointLight)(Vec3,Color,f32);
-    void (*AddSpotLight)(Vec3,Vec3,Color,f32,f32,f32);
+    void (*AddPointLight)(Vec3,Color4,f32);
+    void (*AddSpotLight)(Vec3,Vec3,Color4,f32,f32,f32);
     
     void (*GetDirLightList)(DirLight**,u32**);
-    void (*SetAmbientColor)(Color,f32);
+    void (*SetAmbientColor4)(Color4,f32);
     
     //MARK: temp until we assets work
     AudioAssetHandle (*AllocateAssetAudio)(const s8*);

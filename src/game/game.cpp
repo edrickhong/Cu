@@ -467,10 +467,10 @@ void ComponentRead(ComponentStruct* components,SceneContext* context){
         }
         
         //ambient light
-        FRead(file,&data->ambient_color,sizeof(Color));
+        FRead(file,&data->ambient_color,sizeof(Color4));
         FRead(file,&data->ambient_intensity,sizeof(data->ambient_intensity));
         
-        context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
+        context->SetAmbientColor4(data->ambient_color,data->ambient_intensity);
         
         u32* dir_count = 0;
         DirLight* dir_array = 0;
@@ -523,7 +523,7 @@ void UpdateLightList(SceneContext* context){
         Vec4 c = {light->R,light->G,light->B,1.0f};
         c =  c * light->intensity;
         
-        context->AddPointLight(pos,Color{c.x,c.y,c.z,1.0f},light->radius);
+        context->AddPointLight(pos,Color4{c.x,c.y,c.z,1.0f},light->radius);
         
 #ifdef DEBUG
         
@@ -545,7 +545,7 @@ void UpdateLightList(SceneContext* context){
         Vec4 c = {light->R,light->G,light->B,1.0f};
         c =  c * light->intensity;
         
-        context->AddSpotLight(pos,dir,Color{c.x,c.y,c.z,1.0f},light->full_angle,light->hard_angle,light->radius);
+        context->AddSpotLight(pos,dir,Color4{c.x,c.y,c.z,1.0f},light->full_angle,light->hard_angle,light->radius);
         
     }
 }
@@ -804,7 +804,7 @@ extern "C" {
             }
             
             //ambient light
-            FWrite(outfile,&data->ambient_color,sizeof(Color));
+            FWrite(outfile,&data->ambient_color,sizeof(Color4));
             FWrite(outfile,&data->ambient_intensity,sizeof(data->ambient_intensity));
             
             //dir light
@@ -873,7 +873,7 @@ extern "C" {
         data->ambient_color = White;
         data->ambient_intensity = 0.4f;
         
-        initdata->context->SetAmbientColor(data->ambient_color,data->ambient_intensity);
+        initdata->context->SetAmbientColor4(data->ambient_color,data->ambient_intensity);
         
         
     }
@@ -1447,7 +1447,7 @@ void EditorGUI(SceneContext* context){
         
         if(write_values){
             
-            context->SetAmbientColor(*color,*intensity);
+            context->SetAmbientColor4(*color,*intensity);
         }
     }
     
@@ -1553,7 +1553,7 @@ void EditorGUI(SceneContext* context){
             
             if(write_values){
                 auto c = Vec4{color->R,color->G,color->B,color->A} * (*intensity);
-                light->color = Color{c.x,c.y,c.z,1.0f};
+                light->color = Color4{c.x,c.y,c.z,1.0f};
             }
             
             //rotation widget and maybe scale to control intensity
