@@ -38,6 +38,11 @@
 #include "stb/stb_image_resize.h"
 #include "stb/stb_dxt.h"
 
+
+
+
+//TODO: PENDING REMOVAL
+
 #include <assimp/Importer.hpp> 
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
@@ -395,9 +400,15 @@ void CreateTextureAssetTDF(const s8* inputfile,const s8* outputfile,TexFormat fo
     region.Destroy();
 }
 
+
+//we only support gltf from now on
 u32 isModel(s8 a,s8 b,s8 c){
+#if 0
     return (_hash(a,b,c) == _hash('d','a','e')) || (_hash(a,b,c) == _hash('o','b','j')) ||
         (_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x'));
+#else
+    return (_hash(a,b,c) == _hash('g','l','t'));
+#endif
 }
 
 u32 isAudio(s8 a,s8 b,s8 c){
@@ -1456,6 +1467,10 @@ void Import(s8** files,u32 count){
             printf("operating in matrix COLUMN major!\n");
             
 #endif
+
+
+
+	    //TODO: PENDING REMOVAL
             
             auto assimp = AssimpLoad(string);
             
