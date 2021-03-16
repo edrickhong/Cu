@@ -12,6 +12,19 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 
 
+#pragma GCC diagnostic warning "-Wcast-align"
+#pragma GCC diagnostic error "-Wcast-align"
+#pragma GCC diagnostic ignored "-Wcast-align"
+
+#endif
+
+
+
+#ifndef _ASSETPACKER_
+
+#define CGLTF_IMPLEMENTATION
+#include "cgltf/cgltf.h"
+
 #endif
 
 
@@ -55,6 +68,7 @@
 #include "aassettools.h"
 
 #include "pparse.h"
+
 
 
 #define _hash(a,b,c) (a * 1) + (b * 2) + (c * 3)
@@ -407,7 +421,10 @@ u32 isModel(s8 a,s8 b,s8 c){
     return (_hash(a,b,c) == _hash('d','a','e')) || (_hash(a,b,c) == _hash('o','b','j')) ||
         (_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x'));
 #else
-    return (_hash(a,b,c) == _hash('g','l','t'));
+//MARK:
+    return true;
+    return (_hash(a,b,c) == _hash('l','t','f'));
+    
 #endif
 }
 
@@ -902,9 +919,182 @@ void AssimpRemapBones(AssimpBoneNode* dst,AssimpBoneNode* src,
     
 }
 
+AssimpData GLTFLoad(const s8* filepath){
+
+	AssimpData data = {};
+
+	_declare_list(Vec4List,Vec4);
+	_declare_list(Vec2List,Vec2);
+	_declare_list(U32List,u32);
+
+	Vec4List pos_list;
+	Vec4List normal_list;
+	Vec2List texcoord_list;
+	U32List index_list;
+	VertexBoneDataList bonedatalist;
+	BonenodeList bonenodelist;
+	AssimpAnimationList animationlist;
+
+
+	pos_list.Init();
+	normal_list.Init();
+	texcoord_list.Init();
+	index_list.Init();
+	bonenodelist.Init();
+	bonedatalist.Init();
+	animationlist.Init();
+
+	auto file = FOpenFile(filepath,F_FLAG_READONLY);
+
+	ptrsize file_size = 0;
+	const void* file_data = FReadFileToBuffer(file,&file_size);
+
+	
+
+
+#ifndef _ASSETPACKER_
+
+
+
+	cgltf_options options = {};
+	cgltf_data* gdata = 0;
+	auto result = cgltf_parse(&options,file_data,file_size,&gdata);
+
+	cgltf_load_buffers(&options,gdata,filepath);
+
+
+	//NOTE: We are doing 1 mesh for now
+	// test with the teapot model
+	auto mesh = &gdata->meshes[0];
+
+	struct BufferData{
+		s8* data;
+		u32 size;
+		u32 count;
+	};
+
+	auto getbufferdata = [](cgltf_accessor* acc)->BufferData{
+		auto data = (s8*)acc->buffer_view->buffer->data;
+		auto offset = acc->offset + acc->buffer_view->offset;
+
+		return {data + offset,(u32)(acc->count * acc->stride),(u32)(acc->count)};
+	};
+
+	for(u32 p = 0; p < mesh->primitives_count; p++){
+
+		auto primitive = &mesh->primitives[p];
+
+		auto ind_buff = getbufferdata(primitive->indices);
+
+
+		for(u32 i = 0; i < ind_buff.count; i++){
+
+
+			if(primitive->indices->component_type == cgltf_component_type_r_16u){
+
+				index_list.PushBack(((u16*)ind_buff.data)[i]);
+			}
+
+			else{
+				index_list.PushBack(((u32*)ind_buff.data)[i]);
+			}
+		}
+
+
+		//MARK: we only support one primitive rn
+		//The atrribu counts are correct. assimp lib is a weasely little liar
+		//still lying
+
+
+		for(u32 a = 0; a < primitive->attributes_count; a++){
+			auto attribute = &primitive->attributes[a];
+
+			auto attrib_data = getbufferdata(attribute->data);
+
+			switch(attribute->type){
+
+				case cgltf_attribute_type_position: {
+									    for(u32 i = 0; i < attrib_data.count; i++){
+										    pos_list.PushBack(Vec3ToVec4(((Vec3*)attrib_data.data)[i]));
+									    }
+								    }break;
+				case cgltf_attribute_type_normal: {
+									  for(u32 i = 0; i < attrib_data.count; i++){
+										  normal_list.PushBack(Vec3ToVec4(((Vec3*)attrib_data.data)[i]));
+									  }
+								  }break;
+				case cgltf_attribute_type_texcoord: {
+									    for(u32 i = 0; i < attrib_data.count; i++){
+										    texcoord_list.PushBack(((Vec2*)attrib_data.data)[i]);
+									    }
+								    }break;
+
+								    //
+
+				case cgltf_attribute_type_weights: {
+									   for(u32 i = 0; i < attrib_data.count; i++){
+										   pos_list.PushBack(Vec3ToVec4(((Vec3*)attrib_data.data)[i]));
+									   }
+								   }break;
+
+				case cgltf_attribute_type_joints: {
+									  for(u32 i = 0; i < attrib_data.count; i++){
+										  pos_list.PushBack(Vec3ToVec4(((Vec3*)attrib_data.data)[i]));
+									  }
+								  }break;
+			}
+
+		}
+
+	}
+
+
+	cgltf_free(gdata);
+
+	FCloseFile(file);
+	free((void*)file_data);
+
+    {
+
+	    //currently we always assumme that we have texcoords
+	    if(!texcoord_list.count){
+		    for(u32 i = 0; i < pos_list.count;i++){
+			    texcoord_list.PushBack({});
+		    }
+	    }
+
+	    data.vertex_array = pos_list.container;
+	    data.vertex_count = pos_list.count;
+
+	    data.texcoord_array = texcoord_list.container;
+	    data.texcoord_count = texcoord_list.count;
+	    data.normal_array = normal_list.container;
+	    data.normal_count = normal_list.count;
+
+	    data.index_array = index_list.container;
+	    data.index_count = index_list.count;
+
+	    data.vertexbonedata_array = bonedatalist.container;
+	    data.vertexbonedata_count = bonedatalist.count;
+	    data.bone_array = bonenodelist.container;
+	    data.bone_count = bonenodelist.count;
+
+	    data.animation_array = animationlist.container;
+	    data.animation_count = animationlist.count;
+    }
+
+#endif
+
+
+    
+    return data;
+}
+
 
 AssimpData AssimpLoad(const s8* filepath){
-    
+
+
+
     AssimpData data = {};
     
     _declare_list(Vec4List,Vec4);
@@ -920,7 +1110,8 @@ AssimpData AssimpLoad(const s8* filepath){
     normal_list.Init();
     texcoord_list.Init();
     index_list.Init();
-    
+
+
     Assimp::Importer importer;
     
     aiScene* scene =
@@ -1028,6 +1219,11 @@ AssimpData AssimpLoad(const s8* filepath){
         //get animation data
         AssimpLoadAnimations(scene,&animationlist);
     }
+
+
+
+
+
     
     {
         data.vertex_array = pos_list.container;
@@ -1049,6 +1245,8 @@ AssimpData AssimpLoad(const s8* filepath){
         data.animation_array = animationlist.container;
         data.animation_count = animationlist.count;
     }
+
+
     
     return data;
 }
@@ -1163,7 +1361,9 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 (data.texcoord_count * sizeof(Vec2)) +
                 (data.normal_count * sizeof(AVec3)) +
                 (data.vertexbonedata_count * sizeof(VertexBoneData)) +
-                data.index_count * sizeof(u32);
+
+
+                data.index_count * sizeof(u32); //FIXME: this changes depending on u16 or not
             
             u32 animbonesize = AnimBoneSize(data,bones);
             
@@ -1471,8 +1671,11 @@ void Import(s8** files,u32 count){
 
 
 	    //TODO: PENDING REMOVAL
-            
+#if 0 
             auto assimp = AssimpLoad(string);
+#else
+            auto assimp = GLTFLoad(string);
+#endif
             
             buffer[len - 3] = 'm';
             buffer[len - 2] = 'd';

@@ -1,18 +1,3 @@
-
-
-#ifndef _WIN32
-
-#pragma GCC diagnostic warning "-Wcast-align"
-#pragma GCC diagnostic error "-Wcast-align"
-#pragma GCC diagnostic ignored "-Wcast-align"
-
-#endif
-
-
-#define CGLTF_IMPLEMENTATION
-#include "cgltf/cgltf.h"
-
-
 #include "main.h"
 
 /*
@@ -29,31 +14,17 @@ Spider.dae  file cannot load
 
 
 s32 main(s32 argc,s8** argv){
-    
-    if(argc == 1){
-        printf("please provide files\n");  
-    }
-    
-    {
 
-	    auto string = argv[1];
-	    struct cgltf_options options = {};
-	    struct cgltf_data* data = 0;
-	    auto result = cgltf_parse_file(&options,string,&data);
-
-	    //mesh data can be found here data->meshes[0].primitives.attributes
-
-	    _breakpoint();
-
-	    cgltf_free(data);
-
-    }
-
-    Import(&argv[1],(u32)(argc - 1));
+	if(argc == 1){
+		printf("please provide files\n");  
+	}
 
 
-    
-    return 0;
+	Import(&argv[1],(u32)(argc - 1));
+
+
+
+	return 0;
 }
 
 

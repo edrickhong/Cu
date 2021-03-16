@@ -1,3 +1,7 @@
+
+
+#define _ASSETPACKER_
+
 #include "main.h"
 #include "../importer/main.h"
 
