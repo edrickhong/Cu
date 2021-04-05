@@ -41,6 +41,11 @@ struct AssimpBoneNode{
 struct VertexBoneData{
     u32 bone_index[4];
     f32 bone_weight[4];
+
+
+    //NOTE: use these to match a vertex to a bone
+    u32 hash_ref[4];
+    s8* string_ref[4];
 };
 
 //We might not even use these
@@ -62,15 +67,18 @@ struct AnimationKey{
 
 //we will only support skeletal animation
 struct AssimpAnimationData{
-    u32 bone_hash;
-    u32 positionkey_count;
-    u32 rotationkey_count;
-    u32 scalekey_count;
-    AnimationKey* positionkey_array;
-    AnimationKey* rotationkey_array;
-    AnimationKey* scalekey_array;
-    AnimationBehaviour prestate;
-    AnimationBehaviour poststate;
+	void* id;
+	s8* bone_name;
+	u32 bone_hash;
+
+	u32 positionkey_count;
+	u32 rotationkey_count;
+	u32 scalekey_count;
+	AnimationKey* positionkey_array;
+	AnimationKey* rotationkey_array;
+	AnimationKey* scalekey_array;
+	AnimationBehaviour prestate;
+	AnimationBehaviour poststate;
 };
 
 struct AssimpAnimation{

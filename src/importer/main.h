@@ -79,510 +79,510 @@
 
 //TODO: handle non pow2, non uniform sizes
 void NextMipDim(u32* w,u32* h){
-    (*w) >>= 1;
-    (*h) >>= 1;
+	(*w) >>= 1;
+	(*h) >>= 1;
 }
 
 void GenerateMipMaps(u8* indata,u8* outdata,u32 w,u32 h,u32 maxmip){
-    
-    u32 offset = w * h * 4;
-    
-    memcpy(outdata,indata,offset);
-    
-    u32 nw = w;
-    u32 nh = h;
-    
-    for(u32 i = 0; i < (maxmip - 1); i++){
-        
-        NextMipDim(&nw,&nh);
-        
-        stbir_resize_uint8(indata,w,h ,0,(outdata + offset),nw,nh, 0, 4);
-        
-        offset += nw * nh * 4;
-    }
-    
-    nw = w;
-    nh = h;
-    offset = 0;
-    
+
+	u32 offset = w * h * 4;
+
+	memcpy(outdata,indata,offset);
+
+	u32 nw = w;
+	u32 nh = h;
+
+	for(u32 i = 0; i < (maxmip - 1); i++){
+
+		NextMipDim(&nw,&nh);
+
+		stbir_resize_uint8(indata,w,h ,0,(outdata + offset),nw,nh, 0, 4);
+
+		offset += nw * nh * 4;
+	}
+
+	nw = w;
+	nh = h;
+	offset = 0;
+
 #if 0
-    
-    for(u32 i = 0; i < (maxmip); i++){
-        
-        s8 string[100] = {};
-        sprintf(string,"test_%d.bmp",i);
-        WriteBMP((outdata + offset),nw,nh,string);
-        
-        offset += nw * nh * 4;
-        
-        NextMipDim(&nw,&nh);
-    }
-    
+
+	for(u32 i = 0; i < (maxmip); i++){
+
+		s8 string[100] = {};
+		sprintf(string,"test_%d.bmp",i);
+		WriteBMP((outdata + offset),nw,nh,string);
+
+		offset += nw * nh * 4;
+
+		NextMipDim(&nw,&nh);
+	}
+
 #endif
-    
+
 }
 
 
 _intern void ExtractTile(void* indata,void* outdata,u32 w,u32 tx,u32 ty){
-    
-    auto px = tx << 7;
-    auto py = ty << 7;
-    
-    auto src = (u32*)indata;
-    
-    auto dst = (u32*)outdata;
-    auto cur = dst;
-    
-    for(u32 y = py; y < (py + 128); y++){
-        
-        for(u32 x = px; x < (px + 128); x++){
-            *cur = src[(y * w) + x];
-            cur++;
-        }
-        
-    }
-    
+
+	auto px = tx << 7;
+	auto py = ty << 7;
+
+	auto src = (u32*)indata;
+
+	auto dst = (u32*)outdata;
+	auto cur = dst;
+
+	for(u32 y = py; y < (py + 128); y++){
+
+		for(u32 x = px; x < (px + 128); x++){
+			*cur = src[(y * w) + x];
+			cur++;
+		}
+
+	}
+
 }
 
 _intern void ExtractBlock(void* indata,void* outdata,u32 w,u32 b_x,
-                          u32 b_y){
-    auto px = b_x << 2;
-    auto py = b_y << 2;
-    
-    auto src = (u32*)indata;
-    
-    auto dst = (u32*)outdata;
-    auto cur = dst;
-    
-    for(u32 y = py; y < (py + 4); y++){
-        
-        for(u32 x = px; x < (px + 4); x++){
-            *cur = src[(y * w) + x];
-            cur++;
-        }
-        
-    }
+		u32 b_y){
+	auto px = b_x << 2;
+	auto py = b_y << 2;
+
+	auto src = (u32*)indata;
+
+	auto dst = (u32*)outdata;
+	auto cur = dst;
+
+	for(u32 y = py; y < (py + 4); y++){
+
+		for(u32 x = px; x < (px + 4); x++){
+			*cur = src[(y * w) + x];
+			cur++;
+		}
+
+	}
 }
 
 void CompressBlockBC1(void* indata,void* outdata,u32 w,u32 h){
-    
-    auto cur = (u8*)outdata;
-    
-    u32 b_w = w >> 2;
-    u32 b_h = h >> 2;
-    
-    for(u32 b_y = 0; b_y < b_h;b_y++){
-        
-        for(u32 b_x = 0; b_x < b_w;b_x++){
-            
-            u32 tbuffer[16];
-            
-            ExtractBlock(indata,tbuffer,w,b_x,b_y);
-            
-            stb_compress_dxt_block(cur,(u8*)tbuffer,0,STB_DXT_HIGHQUAL);
-            
-            cur += 8;
-        }
-    }
-    
+
+	auto cur = (u8*)outdata;
+
+	u32 b_w = w >> 2;
+	u32 b_h = h >> 2;
+
+	for(u32 b_y = 0; b_y < b_h;b_y++){
+
+		for(u32 b_x = 0; b_x < b_w;b_x++){
+
+			u32 tbuffer[16];
+
+			ExtractBlock(indata,tbuffer,w,b_x,b_y);
+
+			stb_compress_dxt_block(cur,(u8*)tbuffer,0,STB_DXT_HIGHQUAL);
+
+			cur += 8;
+		}
+	}
+
 }
 
 
 void* ArrangeImageToTiles(void* data,u32 w,u32 h,TexFormat format,
-                          u32* size){
-    
-    auto bpp = GetBPP(format);
-    
-    u32 tile_size = (u32)(128 * 128 * bpp);
-    *size = (u32)(w * h * bpp);
-    
-    auto ret_data = (s8*)alloc(*size);
-    auto cur = ret_data;
-    
-    auto tw = w >> 7;
-    auto th = h >> 7;
-    
-    for(u32 ty = 0; ty < th;ty++){
-        
-        for(u32 tx = 0; tx < tw;tx++){
-            
-            u32 tbuffer[128 * 128];
-            
-            
-            ExtractTile(data,tbuffer,w,tx,ty);
-            
-            if(format == Format_RGBA){
-                memcpy(cur,tbuffer,sizeof(tbuffer));
-            }
-            
-            if(format == Format_BC1){
-                CompressBlockBC1(tbuffer,cur,128,128);
-            }
-            
-            cur += tile_size;
-        }
-        
-    }
-    
-    return ret_data;
+		u32* size){
+
+	auto bpp = GetBPP(format);
+
+	u32 tile_size = (u32)(128 * 128 * bpp);
+	*size = (u32)(w * h * bpp);
+
+	auto ret_data = (s8*)alloc(*size);
+	auto cur = ret_data;
+
+	auto tw = w >> 7;
+	auto th = h >> 7;
+
+	for(u32 ty = 0; ty < th;ty++){
+
+		for(u32 tx = 0; tx < tw;tx++){
+
+			u32 tbuffer[128 * 128];
+
+
+			ExtractTile(data,tbuffer,w,tx,ty);
+
+			if(format == Format_RGBA){
+				memcpy(cur,tbuffer,sizeof(tbuffer));
+			}
+
+			if(format == Format_BC1){
+				CompressBlockBC1(tbuffer,cur,128,128);
+			}
+
+			cur += tile_size;
+		}
+
+	}
+
+	return ret_data;
 }
 
 void WriteTDF(void* data,u32 w,u32 h,u32 size,u32 mips,TexFormat format,
-              const s8* writefilepath){
-    
-    u32 tsize = size + sizeof(TDFHeader);
-    
-    auto buffer = (s8*)alloc(tsize);
-    
-    auto header = (TDFHeader*)buffer;
-    auto tdata = (buffer + sizeof(TDFHeader));
-    
-    f32 bpp = GetBPP(format);
-    
-    header->tag = _encode('T','D','F',' ');
-    header->w = w;
-    header->h = h;
-    header->bpp = bpp;
-    header->mips = mips;
-    header->format = format;
-    
-    memcpy(tdata,data,size);
-    
-    auto writefile = FOpenFile(writefilepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
-                               F_FLAG_TRUNCATE);
-    
-    FWrite(writefile,buffer,tsize);
-    
-    FCloseFile(writefile);
-    
-    unalloc(buffer);
+		const s8* writefilepath){
+
+	u32 tsize = size + sizeof(TDFHeader);
+
+	auto buffer = (s8*)alloc(tsize);
+
+	auto header = (TDFHeader*)buffer;
+	auto tdata = (buffer + sizeof(TDFHeader));
+
+	f32 bpp = GetBPP(format);
+
+	header->tag = _encode('T','D','F',' ');
+	header->w = w;
+	header->h = h;
+	header->bpp = bpp;
+	header->mips = mips;
+	header->format = format;
+
+	memcpy(tdata,data,size);
+
+	auto writefile = FOpenFile(writefilepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			F_FLAG_TRUNCATE);
+
+	FWrite(writefile,buffer,tsize);
+
+	FCloseFile(writefile);
+
+	unalloc(buffer);
 }
 
 
 
 void CreateTextureAssetTDF(const s8* inputfile,const s8* outputfile,TexFormat format,
-                           b32 gen_mips,b32 is_vt = 1){
-    
-    /*
-      writeData is always called to write 128 bytes at the start. Is this redundant?
-    */
-    
-    s32 w,h,comp;
-    
-    auto imagedata = stbi_load(inputfile,&w,&h,&comp,4);
-    
-    u32 maxmip = (u32)-1;
-    
-    struct Dimensions{
-        u32 w;
-        u32 h;
-    };
-    
-    if(is_vt){
-        
-        _kill("we do not support non square images for now\n", w != h);
-        
-        _kill("not in units of 128 pixels\n", (w % 128));
-        
-        gen_mips = is_vt;
-        
-        maxmip = 0;
-        
-        for(u32 dim = w; dim >= 128; dim >>= 1 ){
-            maxmip++;
-        }
-    }
-    
-    u32 tsize = 0;
-    
-    {
-        u32 tw = w;
-        u32 th = h;
-        
-        for(u32 i = 0; i < maxmip; i++){
-            tsize += tw * th * 4;
-            NextMipDim(&tw,&th);
-        }    
-    }
-    
-    
-    
-    printf("w %d h %d mips %d\n",w,h,maxmip);
-    
-    auto mipdata = (u8*)alloc(tsize);
-    
-    if(gen_mips){
-        GenerateMipMaps(imagedata,mipdata,w,h,maxmip);
-    }
-    
-    BufferRegion region;
-    
-    region.Init();
-    
-    if(is_vt){
-        
-        u32 tw = w;
-        u32 th = h;
-        
-        u32 offset = 0;//offset to the next mip map
-        
-        for(u32 i = 0; i < maxmip; i++){
-            
-            u32 size;
-            
-            auto  tdata = 
-                ArrangeImageToTiles((mipdata + offset),tw,th,format,&size);
-            
-            offset += tw * th * 4;
-            
-            region.Write(tdata,size);
-            
-            NextMipDim(&tw,&th);
-            
-            free(tdata);
-        }
-        
-    }
-    
-    WriteTDF(region.container,w,h,region.count,maxmip,format,outputfile);
-    
+		b32 gen_mips,b32 is_vt = 1){
+
+	/*
+	   writeData is always called to write 128 bytes at the start. Is this redundant?
+	   */
+
+	s32 w,h,comp;
+
+	auto imagedata = stbi_load(inputfile,&w,&h,&comp,4);
+
+	u32 maxmip = (u32)-1;
+
+	struct Dimensions{
+		u32 w;
+		u32 h;
+	};
+
+	if(is_vt){
+
+		_kill("we do not support non square images for now\n", w != h);
+
+		_kill("not in units of 128 pixels\n", (w % 128));
+
+		gen_mips = is_vt;
+
+		maxmip = 0;
+
+		for(u32 dim = w; dim >= 128; dim >>= 1 ){
+			maxmip++;
+		}
+	}
+
+	u32 tsize = 0;
+
+	{
+		u32 tw = w;
+		u32 th = h;
+
+		for(u32 i = 0; i < maxmip; i++){
+			tsize += tw * th * 4;
+			NextMipDim(&tw,&th);
+		}    
+	}
+
+
+
+	printf("w %d h %d mips %d\n",w,h,maxmip);
+
+	auto mipdata = (u8*)alloc(tsize);
+
+	if(gen_mips){
+		GenerateMipMaps(imagedata,mipdata,w,h,maxmip);
+	}
+
+	BufferRegion region;
+
+	region.Init();
+
+	if(is_vt){
+
+		u32 tw = w;
+		u32 th = h;
+
+		u32 offset = 0;//offset to the next mip map
+
+		for(u32 i = 0; i < maxmip; i++){
+
+			u32 size;
+
+			auto  tdata = 
+				ArrangeImageToTiles((mipdata + offset),tw,th,format,&size);
+
+			offset += tw * th * 4;
+
+			region.Write(tdata,size);
+
+			NextMipDim(&tw,&th);
+
+			free(tdata);
+		}
+
+	}
+
+	WriteTDF(region.container,w,h,region.count,maxmip,format,outputfile);
+
 #if 0
-    
-    {
-        
-        u32 ty = w >> 7;
-        u32 tx = h >> 7;
-        
-        auto file = FOpenFile(outputfile,F_FLAG_READONLY);
-        
-        for(u32 y = 0; y < ty; y++){
-            
-            for(u32 x = 0; x < tx; x++){
-                
-                u32 data[128 * 128] = {};
-                
-                // GetTileDataTDF(file,w,h,x,y,0,4.0f,data);
-                TestGetTileData(file,w,h,x,y,0,4.0f,data);
-                
-                s8 string[100] = {};
-                
-                sprintf(string,"dst/test_y%d_x%d_%d.bmp",y,x,0);
-                WriteBMP(data,128,128,string);
-            }
-            
-        }
-        
-        FCloseFile(file);
-        
-        exit(0); 
-    }
-    
+
+	{
+
+		u32 ty = w >> 7;
+		u32 tx = h >> 7;
+
+		auto file = FOpenFile(outputfile,F_FLAG_READONLY);
+
+		for(u32 y = 0; y < ty; y++){
+
+			for(u32 x = 0; x < tx; x++){
+
+				u32 data[128 * 128] = {};
+
+				// GetTileDataTDF(file,w,h,x,y,0,4.0f,data);
+				TestGetTileData(file,w,h,x,y,0,4.0f,data);
+
+				s8 string[100] = {};
+
+				sprintf(string,"dst/test_y%d_x%d_%d.bmp",y,x,0);
+				WriteBMP(data,128,128,string);
+			}
+
+		}
+
+		FCloseFile(file);
+
+		exit(0); 
+	}
+
 #endif
-    
+
 #if 0
-    {
-        printf("total write %d\n",region.count);
-        
-        u32 offset = 84 * 128 * 128;
-        auto ptr = ((u32*)region.container) + offset;
-        
-        WriteBMP(ptr,128,128,"tile.bmp");
-    }
-    
+	{
+		printf("total write %d\n",region.count);
+
+		u32 offset = 84 * 128 * 128;
+		auto ptr = ((u32*)region.container) + offset;
+
+		WriteBMP(ptr,128,128,"tile.bmp");
+	}
+
 #if 0
-    {
-        
-        u32 buffer[128 * 128];
-        
-        auto file = FOpenFile(outputfile,F_FLAG_READONLY);
-        
-        // TestGetTileData(file,128 * 128 * 4,buffer);
-        
-        TestGetTileData(file,1024,1024,2,5,5,4.0f,buffer);
-        
-        FCloseFile(file);
-        
-        WriteBMP(buffer,128,128,"fetch.bmp");
-    }
+	{
+
+		u32 buffer[128 * 128];
+
+		auto file = FOpenFile(outputfile,F_FLAG_READONLY);
+
+		// TestGetTileData(file,128 * 128 * 4,buffer);
+
+		TestGetTileData(file,1024,1024,2,5,5,4.0f,buffer);
+
+		FCloseFile(file);
+
+		WriteBMP(buffer,128,128,"fetch.bmp");
+	}
 #endif
-    
-    
+
+
 #endif
-    
-    stbi_image_free(imagedata);
-    free(mipdata);
-    region.Destroy();
+
+	stbi_image_free(imagedata);
+	free(mipdata);
+	region.Destroy();
 }
 
 
 //we only support gltf from now on
 u32 isModel(s8 a,s8 b,s8 c){
 #if 0
-    return (_hash(a,b,c) == _hash('d','a','e')) || (_hash(a,b,c) == _hash('o','b','j')) ||
-        (_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x'));
+	return (_hash(a,b,c) == _hash('d','a','e')) || (_hash(a,b,c) == _hash('o','b','j')) ||
+		(_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x'));
 #else
-//MARK:
-    return true;
-    return (_hash(a,b,c) == _hash('l','t','f'));
-    
+	//MARK:
+	return true;
+	return (_hash(a,b,c) == _hash('l','t','f'));
+
 #endif
 }
 
 u32 isAudio(s8 a,s8 b,s8 c){
-    return (_hash(a,b,c) == _hash('w','a','v'));
+	return (_hash(a,b,c) == _hash('w','a','v'));
 }
 
 u32 isImage(s8 a,s8 b,s8 c){
-    return (_hash(a,b,c) == _hash('j','p','g')) || (_hash(a,b,c) == _hash('p','n','g')) ||
-        (_hash(a,b,c) == _hash('b','m','p')) || (_hash(a,b,c) == _hash('t','g','a'));
+	return (_hash(a,b,c) == _hash('j','p','g')) || (_hash(a,b,c) == _hash('p','n','g')) ||
+		(_hash(a,b,c) == _hash('b','m','p')) || (_hash(a,b,c) == _hash('t','g','a'));
 }
 
 
 #define _riffcode(a,b,c,d)  (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
 
 enum WavChunkID{
-    CHUNK_FMT = _riffcode('f','m','t',' '),
-    CHUNK_RIFF = _riffcode('R','I','F','F'),
-    CHUNK_WAVE = _riffcode('W','A','V','E'),
-    CHUNK_DATA = _riffcode('d','a','t','a'),
+	CHUNK_FMT = _riffcode('f','m','t',' '),
+	CHUNK_RIFF = _riffcode('R','I','F','F'),
+	CHUNK_WAVE = _riffcode('W','A','V','E'),
+	CHUNK_DATA = _riffcode('d','a','t','a'),
 };
 
 struct WavHeader{
-    u32 riff_id;
-    u32 size;
-    u32 wave_id;
+	u32 riff_id;
+	u32 size;
+	u32 wave_id;
 };
 
 struct WavChunk{
-    u32 id;
-    u32 size;
+	u32 id;
+	u32 size;
 };
 
 
 struct WavFormat{
-    u16 format_tag;
-    u16 channels;
-    u32 samplespersecond;
-    u32 avgbytespersample;
-    u16 blockalign;
-    u16 bitspersample;
-    u16 size;
-    u16 validbitspersample;
-    u32 channelmask;
-    u8 subformat[16];
+	u16 format_tag;
+	u16 channels;
+	u32 samplespersecond;
+	u32 avgbytespersample;
+	u16 blockalign;
+	u16 bitspersample;
+	u16 size;
+	u16 validbitspersample;
+	u32 channelmask;
+	u8 subformat[16];
 };
 
 struct WavIterator{
-    u8* at;
-    u8* stop;
+	u8* at;
+	u8* stop;
 };
 
 
 
 u32 WavGetType(WavIterator iter){
-    
-    WavChunk* chunk = (WavChunk*)iter.at;
-    
-    return chunk->id;
+
+	WavChunk* chunk = (WavChunk*)iter.at;
+
+	return chunk->id;
 }
 
 
 WavIterator WavNextChunk(WavIterator iter){
-    
-    WavChunk* chunk = (WavChunk*)iter.at;
-    
-    u32 size = (chunk->size + 1) & ~1;
-    
-    iter.at += sizeof(WavChunk) + size;
-    
-    return iter;
+
+	WavChunk* chunk = (WavChunk*)iter.at;
+
+	u32 size = (chunk->size + 1) & ~1;
+
+	iter.at += sizeof(WavChunk) + size;
+
+	return iter;
 }
 
 void* WavGetChunkData(WavIterator iter){
-    
-    return (iter.at + sizeof(WavChunk));
+
+	return (iter.at + sizeof(WavChunk));
 }
 
 u32 WavGetChunkDataSize(WavIterator iter){
-    
-    WavChunk* chunk = (WavChunk*)iter.at;
-    
-    return (chunk->size);
+
+	WavChunk* chunk = (WavChunk*)iter.at;
+
+	return (chunk->size);
 }
 
 void WavLoadSound(void* filedata,void** data,u32* size){
-    
-    WavHeader* header = (WavHeader*)filedata;
-    
-    _kill("",header->riff_id != CHUNK_RIFF);
-    _kill("",header->wave_id != CHUNK_WAVE);
-    
-    for(WavIterator iter = {(u8*)(header + 1),(((u8*)(header + 1)) + (header->size - 4))};
-        iter.at < iter.stop; iter = WavNextChunk(iter)){
-        
-        
-        switch(WavGetType(iter)){
-            
-            case CHUNK_FMT:{
-                WavFormat* fmt = (WavFormat*)WavGetChunkData(iter);
-                
-                
-                _kill("",fmt->channels > 2);
-                _kill("",fmt->bitspersample != 16);
-                _kill("",fmt->samplespersecond != 48000);
-                
-                //MARK:we should resample this to the appropriate format. Should we though?
-            }break;
-            
-            case CHUNK_DATA:{
-                
-                *size = WavGetChunkDataSize(iter);
-                *data = alloc(*size);
-                
-                memcpy(*data,WavGetChunkData(iter),*size);
-            }break;
-            
-        }
-        
-        
-    }
-    
+
+	WavHeader* header = (WavHeader*)filedata;
+
+	_kill("",header->riff_id != CHUNK_RIFF);
+	_kill("",header->wave_id != CHUNK_WAVE);
+
+	for(WavIterator iter = {(u8*)(header + 1),(((u8*)(header + 1)) + (header->size - 4))};
+			iter.at < iter.stop; iter = WavNextChunk(iter)){
+
+
+		switch(WavGetType(iter)){
+
+			case CHUNK_FMT:{
+					       WavFormat* fmt = (WavFormat*)WavGetChunkData(iter);
+
+
+					       _kill("",fmt->channels > 2);
+					       _kill("",fmt->bitspersample != 16);
+					       _kill("",fmt->samplespersecond != 48000);
+
+					       //MARK:we should resample this to the appropriate format. Should we though?
+				       }break;
+
+			case CHUNK_DATA:{
+
+						*size = WavGetChunkDataSize(iter);
+						*data = alloc(*size);
+
+						memcpy(*data,WavGetChunkData(iter),*size);
+					}break;
+
+		}
+
+
+	}
+
 }
 
 
 void WavWriteADF(const s8* filepath,const s8* writefilepath){
-    
-    FileHandle file = FOpenFile(filepath,F_FLAG_READONLY);
-    
-    void* filedata = FReadFileToBuffer(file,0);
-    
-    FCloseFile(file);
-    
-    void* audio_data;
-    u32 size;
-    
-    WavLoadSound(filedata,&audio_data,&size);
-    
-    FileHandle writefile = FOpenFile(writefilepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
-                                     F_FLAG_TRUNCATE);
-    
-    /*ADF format. u32 (ADF'') u32(Compression type) (DATA)*/
-    
-    u32 write_int = TAG_ADF;
-    
-    FWrite(writefile,&write_int,sizeof(write_int));
-    
-    write_int = TAG_UNCOMPRESSED;
-    
-    FWrite(writefile,&write_int,sizeof(write_int));
-    
-    FWrite(writefile,audio_data,size);
-    
-    FCloseFile(writefile);
-    
-    unalloc(filedata);
-    
-    unalloc(audio_data);
+
+	FileHandle file = FOpenFile(filepath,F_FLAG_READONLY);
+
+	void* filedata = FReadFileToBuffer(file,0);
+
+	FCloseFile(file);
+
+	void* audio_data;
+	u32 size;
+
+	WavLoadSound(filedata,&audio_data,&size);
+
+	FileHandle writefile = FOpenFile(writefilepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			F_FLAG_TRUNCATE);
+
+	/*ADF format. u32 (ADF'') u32(Compression type) (DATA)*/
+
+	u32 write_int = TAG_ADF;
+
+	FWrite(writefile,&write_int,sizeof(write_int));
+
+	write_int = TAG_UNCOMPRESSED;
+
+	FWrite(writefile,&write_int,sizeof(write_int));
+
+	FWrite(writefile,audio_data,size);
+
+	FCloseFile(writefile);
+
+	unalloc(filedata);
+
+	unalloc(audio_data);
 }
 
 _declare_list(VertexBoneDataList,VertexBoneData);
@@ -591,335 +591,672 @@ _declare_list(BonenodeList,AssimpBoneNode);
 _declare_list(AssimpAnimationList,AssimpAnimation);
 
 void PrintNodeHeirarchy(aiNode* node,aiNode* root){
-    
-    printf("%s %d\n",node->mName.data,node->mNumChildren);
-    
-    for(u32 i = 0; i < node->mNumChildren;i++){
-        
-        PrintNodeHeirarchy(node->mChildren[i],root);
-    }
-    
+
+	printf("%s %d\n",node->mName.data,node->mNumChildren);
+
+	for(u32 i = 0; i < node->mNumChildren;i++){
+
+		PrintNodeHeirarchy(node->mChildren[i],root);
+	}
+
 }
 
 void PrintNodeHeirarchy(AssimpBoneNode bonenode,BonenodeList bonenodelist){
-    
-    printf("%s %d\n",bonenode.name,bonenode.children_count);
-    
-    for(u32 i = 0; i < bonenode.children_count;i++){
-        
-        u32 index = bonenode.childrenindex_array[i];
-        
-        AssimpBoneNode next = bonenodelist[index];
-        
-        PrintNodeHeirarchy(next,bonenodelist);
-    }
-    
+
+	printf("%s %d\n",bonenode.name,bonenode.children_count);
+
+	for(u32 i = 0; i < bonenode.children_count;i++){
+
+		u32 index = bonenode.childrenindex_array[i];
+
+		AssimpBoneNode next = bonenodelist[index];
+
+		PrintNodeHeirarchy(next,bonenodelist);
+	}
+
 }
 
 void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
-    
-    for(u32 i = 0; i < scene->mNumAnimations;i++){
-        
-        AssimpAnimation animation = {};
-        aiAnimation* anim = scene->mAnimations[i];
-        
-        animation.data_count = anim->mNumChannels;
-        animation.duration = anim->mDuration;
-        animation.tps = anim->mTicksPerSecond;
-        
-        // printf("Total animation channels %d\n",anim->mNumChannels);
-        
-        u32 len = strlen(anim->mName.data);
-        
-        if(len){
-            
-            animation.name = (s8*)alloc(len);
-            memcpy(animation.name,anim->mName.data,len);
-        }
-        
-        animation.data =
-            (AssimpAnimationData*)alloc(anim->mNumChannels * sizeof(AssimpAnimationData));
-        
-        for(u32 j = 0; j < anim->mNumChannels;j++){
-            
-            aiNodeAnim* node = anim->mChannels[j];
-            
-            AssimpAnimationData data;
-            data.bone_hash = PHashString(node->mNodeName.data);
-            
-            _kill("too large\n",node->mNumPositionKeys >
-                  _unsigned_max(AAnimationData::positionkey_count));
-            
-            _kill("too large\n",node->mNumRotationKeys >
-                  _unsigned_max(AAnimationData::rotationkey_count));
-            
-            _kill("too large\n",node->mNumScalingKeys >
-                  _unsigned_max(AAnimationData::scalekey_count));
-            
-            data.positionkey_count = node->mNumPositionKeys;
-            data.rotationkey_count = node->mNumRotationKeys;
-            data.scalekey_count = node->mNumScalingKeys;
-            
-            data. positionkey_array =
-                (AnimationKey*)alloc(sizeof(AnimationKey) *
-                                     (node->mNumPositionKeys + node->mNumRotationKeys +
-                                      node->mNumScalingKeys));
-            
-            data. rotationkey_array = data. positionkey_array + node->mNumPositionKeys;
-            data. scalekey_array = data. rotationkey_array + node->mNumRotationKeys;
-            
-            data.prestate = (AnimationBehaviour)node->mPreState;
-            data.poststate = (AnimationBehaviour)node->mPostState;
-            
-            for(u32 k = 0; k < node->mNumPositionKeys;k++){
-                
-                aiVectorKey vec = node->mPositionKeys[k];
-                AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
-                
-                memcpy(data.positionkey_array + k,&key,sizeof(AnimationKey));
-            }
-            
-            for(u32 k = 0; k < node->mNumRotationKeys;k++){
-                
-                aiQuatKey q = node->mRotationKeys[k];
-                AnimationKey key =
-                {(f32)q.mTime,{q.mValue.w,q.mValue.x,q.mValue.y,q.mValue.z}};
-                
-                memcpy(data.rotationkey_array + k,&key,sizeof(AnimationKey));
-            }
-            
-            for(u32 k = 0; k < node->mNumScalingKeys;k++){
-                aiVectorKey vec = node->mScalingKeys[k];
-                AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
-                
-                memcpy(data.scalekey_array + k,&key,sizeof(AnimationKey));
-            }
-            
-            memcpy(animation.data + j,&data,sizeof(AssimpAnimationData));
-        }
-        
-        list->PushBack(animation);
-        
-    }
-    
+
+	for(u32 i = 0; i < scene->mNumAnimations;i++){
+
+		AssimpAnimation animation = {};
+		aiAnimation* anim = scene->mAnimations[i];
+
+		animation.data_count = anim->mNumChannels;
+		animation.duration = anim->mDuration;
+		animation.tps = anim->mTicksPerSecond;
+
+		// printf("Total animation channels %d\n",anim->mNumChannels);
+
+		u32 len = strlen(anim->mName.data);
+
+		if(len){
+
+			animation.name = (s8*)alloc(len);
+			memcpy(animation.name,anim->mName.data,len);
+		}
+
+		animation.data =
+			(AssimpAnimationData*)alloc(anim->mNumChannels * sizeof(AssimpAnimationData));
+
+		for(u32 j = 0; j < anim->mNumChannels;j++){
+
+			aiNodeAnim* node = anim->mChannels[j];
+
+			AssimpAnimationData data;
+			data.bone_hash = PHashString(node->mNodeName.data);
+
+			_kill("too large\n",node->mNumPositionKeys >
+					_unsigned_max(AAnimationData::positionkey_count));
+
+			_kill("too large\n",node->mNumRotationKeys >
+					_unsigned_max(AAnimationData::rotationkey_count));
+
+			_kill("too large\n",node->mNumScalingKeys >
+					_unsigned_max(AAnimationData::scalekey_count));
+
+			data.positionkey_count = node->mNumPositionKeys;
+			data.rotationkey_count = node->mNumRotationKeys;
+			data.scalekey_count = node->mNumScalingKeys;
+
+			data. positionkey_array =
+				(AnimationKey*)alloc(sizeof(AnimationKey) *
+						(node->mNumPositionKeys + node->mNumRotationKeys +
+						 node->mNumScalingKeys));
+
+			data. rotationkey_array = data. positionkey_array + node->mNumPositionKeys;
+			data. scalekey_array = data. rotationkey_array + node->mNumRotationKeys;
+
+			data.prestate = (AnimationBehaviour)node->mPreState;
+			data.poststate = (AnimationBehaviour)node->mPostState;
+
+			for(u32 k = 0; k < node->mNumPositionKeys;k++){
+
+				aiVectorKey vec = node->mPositionKeys[k];
+				AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+
+				memcpy(data.positionkey_array + k,&key,sizeof(AnimationKey));
+			}
+
+			for(u32 k = 0; k < node->mNumRotationKeys;k++){
+
+				aiQuatKey q = node->mRotationKeys[k];
+				AnimationKey key =
+				{(f32)q.mTime,{q.mValue.w,q.mValue.x,q.mValue.y,q.mValue.z}};
+
+				memcpy(data.rotationkey_array + k,&key,sizeof(AnimationKey));
+			}
+
+			for(u32 k = 0; k < node->mNumScalingKeys;k++){
+				aiVectorKey vec = node->mScalingKeys[k];
+				AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+
+				memcpy(data.scalekey_array + k,&key,sizeof(AnimationKey));
+			}
+
+			memcpy(animation.data + j,&data,sizeof(AssimpAnimationData));
+		}
+
+		list->PushBack(animation);
+
+	}
+
 }
 
 void DestroyAssimpData(AssimpData data){
-    
-    unalloc(data.vertex_array);
-    unalloc(data.texcoord_array);
-    unalloc(data.normal_array);
-    unalloc(data.index_array);
-    unalloc(data.vertexbonedata_array);
-    unalloc(data.bone_array);
-    
-    for(u32 i = 0; i < data.animation_count;i++){
-        
-        for(u32 j = 0; j < data.animation_array[i].data_count;j++){
-            unalloc(data.animation_array[i].data[j].positionkey_array);
-        }
-        
-        unalloc(data.animation_array[i].data);
-        
-    }
-    
-    unalloc(data.animation_array);
-    
+
+	unalloc(data.vertex_array);
+	unalloc(data.texcoord_array);
+	unalloc(data.normal_array);
+	unalloc(data.index_array);
+	unalloc(data.vertexbonedata_array);
+	unalloc(data.bone_array);
+
+	for(u32 i = 0; i < data.animation_count;i++){
+
+		for(u32 j = 0; j < data.animation_array[i].data_count;j++){
+			unalloc(data.animation_array[i].data[j].positionkey_array);
+		}
+
+		unalloc(data.animation_array[i].data);
+
+	}
+
+	unalloc(data.animation_array);
+
 }
 
 void AssimpAddBoneData(VertexBoneData* bonedata,u32 index,f32 weight){
-    
-    
-    for(u32 i = 0; i < 4;i++){
-        
-        if(bonedata->bone_weight[i] == 0.0f){
-            bonedata->bone_weight[i] = weight;
-            bonedata->bone_index[i] = index;
-            /* printf("bindex:%d\n",index); */
-            return;
-        }
-        
-    }
+
+
+	for(u32 i = 0; i < 4;i++){
+
+		if(bonedata->bone_weight[i] == 0.0f){
+			bonedata->bone_weight[i] = weight;
+			bonedata->bone_index[i] = index;
+			/* printf("bindex:%d\n",index); */
+			return;
+		}
+
+	}
 #if 0
-    printf("Vertice is influenced by more than 4 bones\n");
+	printf("Vertice is influenced by more than 4 bones\n");
 #endif
-    
-    // _kill("Vertice is influenced by more than 4 bones\n",1);
+
+	// _kill("Vertice is influenced by more than 4 bones\n",1);
 }
 
 _intern u32 FindIndex(const s8* string,BonenodeList bonenodelist){
-    
-    
-    for(u32 i = 0; i < bonenodelist.count;i++){
-        
-        if(PStringCmp(bonenodelist[i].name,string)){
-            return i;
-        }
-    }
-    
-    //_kill("bone not found\n",1);
-    
-    return -1;
-    
+
+
+	for(u32 i = 0; i < bonenodelist.count;i++){
+
+		if(PStringCmp(bonenodelist[i].name,string)){
+			return i;
+		}
+	}
+
+	//_kill("bone not found\n",1);
+
+	return -1;
+
 }
 
 void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
-                              BonenodeList* bonenodelist){
-    
-    memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
-    
-    for(u32 i = 0; i < mesh->mNumBones;i++){
-        
-        aiBone* bone = mesh->mBones[i];
-        
-        auto node_index = FindIndex(bone->mName.data,*bonenodelist);
-        auto bonenode = &(*bonenodelist)[node_index];
-        
-        
-        memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
-        
+		BonenodeList* bonenodelist){
+
+	memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
+
+	for(u32 i = 0; i < mesh->mNumBones;i++){
+
+		aiBone* bone = mesh->mBones[i];
+
+		auto node_index = FindIndex(bone->mName.data,*bonenodelist);
+		auto bonenode = &(*bonenodelist)[node_index];
+
+
+		memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
+
 #if !MATRIX_ROW_MAJOR
-        
-        bonenode->offset = Transpose(bonenode->offset);
-        
+
+		bonenode->offset = Transpose(bonenode->offset);
+
 #endif
-        
-        for(u32 j = 0; j < bone->mNumWeights;j++){
-            
-            //which vertex it influences
-            u32 vertexid = bone->mWeights[j].mVertexId;
-            
-            
-            //MARK:
-            AssimpAddBoneData(&((*bonedatalist)[vertexid]),
-                              node_index,bone->mWeights[j].mWeight);
-        }
-    }
+
+		for(u32 j = 0; j < bone->mNumWeights;j++){
+
+			//which vertex it influences
+			u32 vertexid = bone->mWeights[j].mVertexId;
+
+
+			//MARK:
+			AssimpAddBoneData(&((*bonedatalist)[vertexid]),
+					node_index,bone->mWeights[j].mWeight);
+		}
+	}
 }
 
 
 
 _intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
-    
+
 #if 0
-    
-    printf("%s %d\n",node->mName.data,node->mNumChildren);
-    
-    
-    
+
+	printf("%s %d\n",node->mName.data,node->mNumChildren);
+
+
+
 #else
-    
+
 #if 1
-    
-    
-    
-    for(u32 i = 0; i < bonenodelist->count; i++){
-        
-        if(PHashString((*bonenodelist)[i].name) == PHashString(node->mName.data)){
-            
-            printf("%s vs %s\n",(*bonenodelist)[i].name,node->mName.data);
-            
-            break;
-        }
-        
-    }
-    
+
+
+
+	for(u32 i = 0; i < bonenodelist->count; i++){
+
+		if(PHashString((*bonenodelist)[i].name) == PHashString(node->mName.data)){
+
+			printf("%s vs %s\n",(*bonenodelist)[i].name,node->mName.data);
+
+			break;
+		}
+
+	}
+
 #endif
-    
-    AssimpBoneNode bonenode = {};
-    
-    bonenode.name = node->mName.data;
-    bonenode.bone_hash = PHashString(node->mName.data);
-    bonenode.children_count = node->mNumChildren;
-    
-    
-    //default bone transform. some nodes aren't bound to vertices but are still needed for correct transform
-    memcpy(&bonenode.offset,&(node->mTransformation),sizeof(Mat4));
-    
+
+	AssimpBoneNode bonenode = {};
+
+	bonenode.name = node->mName.data;
+	bonenode.bone_hash = PHashString(node->mName.data);
+	bonenode.children_count = node->mNumChildren;
+
+
+	//default bone transform. some nodes aren't bound to vertices but are still needed for correct transform
+	memcpy(&bonenode.offset,&(node->mTransformation),sizeof(Mat4));
+
 #if !MATRIX_ROW_MAJOR
-    
-    bonenode.offset = Transpose(bonenode.offset);
-    
+
+	bonenode.offset = Transpose(bonenode.offset);
+
 #endif
-    
-    bonenodelist->PushBack(bonenode);
-    
+
+	bonenodelist->PushBack(bonenode);
+
 #endif
-    
-    
-    for(u32 i = 0; i < node->mNumChildren;i++){
-        
-        AssimpFillBoneNodeList(node->mChildren[i],bonenodelist,aibones_array,aibones_count);
-    }
-    
+
+
+	for(u32 i = 0; i < node->mNumChildren;i++){
+
+		AssimpFillBoneNodeList(node->mChildren[i],bonenodelist,aibones_array,aibones_count);
+	}
+
 }
 
 _intern void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
-    
-    u32 index = FindIndex(node->mName.data,(*bonenodelist));
-    
-    if(index != (u32)-1){
-        
-        auto bnode = 
-            &(*bonenodelist)[index];
-        
-        
-        for(u32 i = 0; i < bnode->children_count;i++){
-            
-            bnode->childrenindex_array[i] = FindIndex(node->mChildren[i]->mName.data,*bonenodelist);
-        }
-        
-    }
-    
-    
-    
-    for(u32 i = 0; i < node->mNumChildren;i++){
-        
-        AssimpBuildSkeleton(node->mChildren[i],bonenodelist);
-    }
-    
-    
+
+	u32 index = FindIndex(node->mName.data,(*bonenodelist));
+
+	if(index != (u32)-1){
+
+		auto bnode = 
+			&(*bonenodelist)[index];
+
+
+		for(u32 i = 0; i < bnode->children_count;i++){
+
+			bnode->childrenindex_array[i] = FindIndex(node->mChildren[i]->mName.data,*bonenodelist);
+		}
+
+	}
+
+
+
+	for(u32 i = 0; i < node->mNumChildren;i++){
+
+		AssimpBuildSkeleton(node->mChildren[i],bonenodelist);
+	}
+
+
 }
 
 void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
-    
-    AssimpFillBoneNodeList(node,bonenodelist,aibones_array,aibones_count);
-    
-    AssimpBuildSkeleton(node,bonenodelist);
+
+	AssimpFillBoneNodeList(node,bonenodelist,aibones_array,aibones_count);
+
+	AssimpBuildSkeleton(node,bonenodelist);
 }
 
 
 
 void AssimpRemapBones(AssimpBoneNode* dst,AssimpBoneNode* src,
-                      AssimpBoneNode node,u32* skinindexmap,u32* curindex){
-    
-    /* printf("read index %d\n",*curindex); */
-    
-    dst[*curindex] = node;
-    u32 oldindex;
-    
-    for(u32 i = 0;;i++){
-        if(node.bone_hash == src[i].bone_hash){
-            oldindex = i;
-            break;
-        }
-    }
-    
-    skinindexmap[oldindex] = *curindex;
-    *curindex = (*curindex) + 1;
-    
-    /* printf("added index %d\n",skinindexmap[oldindex]); */
-    
-    for(u32 i = 0; i < node.children_count;i++){
-        
-        AssimpBoneNode child = src[node.childrenindex_array[i]];
-        AssimpRemapBones(dst,src,child,skinindexmap,curindex);
-        
-    }
-    
+		AssimpBoneNode node,u32* skinindexmap,u32* curindex){
+
+	/* printf("read index %d\n",*curindex); */
+
+	dst[*curindex] = node;
+	u32 oldindex;
+
+	for(u32 i = 0;;i++){
+		if(node.bone_hash == src[i].bone_hash){
+			oldindex = i;
+			break;
+		}
+	}
+
+	skinindexmap[oldindex] = *curindex;
+	*curindex = (*curindex) + 1;
+
+	/* printf("added index %d\n",skinindexmap[oldindex]); */
+
+	for(u32 i = 0; i < node.children_count;i++){
+
+		AssimpBoneNode child = src[node.childrenindex_array[i]];
+		AssimpRemapBones(dst,src,child,skinindexmap,curindex);
+
+	}
+
 }
 
+
+#ifndef _ASSETPACKER_
+
+struct GLTFBufferData{
+	cgltf_component_type comp_type;
+	cgltf_type type;
+	f32 min[16] = {};
+	f32 max[16] = {};
+	s8* data;
+	u32 size;
+	u32 count;
+};
+
+_intern GLTFBufferData GLTFGetBufferData(cgltf_accessor* acc){
+
+	GLTFBufferData data = {};
+
+	data.comp_type = acc->component_type;
+	data.type = acc->type;
+
+	memcpy(data.min,acc->min,sizeof(data.min));
+	memcpy(data.max,acc->max,sizeof(data.max));
+
+	auto offset = acc->offset + acc->buffer_view->offset;
+
+	data.data = ((s8*)acc->buffer_view->buffer->data) + offset;
+	data.size = (u32)(acc->count * acc->stride);
+	data.count = (u32)acc->count;
+
+	return data;
+};
+
+
+void PrintNodeHeirarchy(cgltf_node* node){
+	printf("%s %d\n",node->name,(u32)node->children_count);
+
+	for(u32 i = 0; i < node->children_count; i++){
+		PrintNodeHeirarchy(node->children[i]);
+	}
+}
+
+struct GenericGraphVizNode{
+	void* node;
+
+
+	//GenericGraphVizNode* (*get_child)(u32);
+	//u32 (*get_count)(void);
+};
+
+
+_intern void InternalAddGraphizHeader(cgltf_node* node,s8* cur_c,u32* c_count,s8** out){
+
+	sprintf(*out,"\t%c%d[label = \"%s\"];\n",*cur_c,*c_count,node->name);
+
+	(*out) += PStrLen(*out);
+	(*cur_c)++;
+
+	if(*cur_c > 'z'){
+		*cur_c = 'a';
+		(*c_count) ++;
+	}
+
+	for(u32 i = 0; i < node->children_count; i++){
+		InternalAddGraphizHeader(node->children[i],cur_c,c_count,out);
+	}
+}
+
+_intern void InternalAddGraphizGraph(cgltf_node* node,s8* cur_c,u32* c_count,s8** out){}
+
+_intern void InternalCreateGraphViz(cgltf_node* node){
+	const u32 string_size = _kilobytes(16);
+
+	s8* output_string = (s8*)alloc(string_size);
+	s8* header_string = (s8*)alloc(string_size);
+	s8* graph_string = (s8*)alloc(string_size);
+
+	{
+		s8 c = 'a';
+		u32 count = 0;
+		auto s = header_string;
+		InternalAddGraphizHeader(node,&c,&count,&s);
+	}
+
+
+	{
+		s8 c = 'a';
+		u32 count = 0;
+		auto s = graph_string;
+		InternalAddGraphizGraph(node,&c,&count,&s);
+	}
+
+	printf(header_string);
+	printf(graph_string);
+
+	exit(0);
+
+	sprintf(output_string,
+			R"FOO(
+
+digraph g{
+%s
+}
+
+%s
+
+)FOO",
+			header_string,graph_string);
+
+	unalloc(output_string);
+	unalloc(header_string);
+	unalloc(header_string);
+
+
+	FileHandle file = FOpenFile("tree.gv",F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			F_FLAG_TRUNCATE);
+
+	FWrite(file,output_string,PStrLen(output_string));
+
+
+	FCloseFile(file);
+
+}
+
+_intern void GLTFMatchIndex(cgltf_node* node,BonenodeList* list){
+
+	u32 index = FindIndex(node->name,(*list));
+
+	if(index != (u32)-1){
+		auto bnode = &(*list)[index];
+
+		for(u32 i = 0; i < bnode->children_count; i++){
+			bnode->childrenindex_array[i] = FindIndex(node->children[i]->name,(*list));
+		}
+	}
+
+	for(u32 i = 0; i < node->children_count; i++){
+		GLTFMatchIndex(node->children[i],list);
+	}
+}
+
+
+
+_intern s8* NewCopyString(s8* string){
+	u32 len = PStrLen(string) + 1;
+	s8* n_string = (s8*)alloc(len);
+
+	memcpy(n_string,string,len);
+
+	return n_string;
+}
+
+_intern void GLTFFillBoneNodeList(cgltf_node* node,BonenodeList* list){
+
+#if 0
+
+
+
+	for(u32 i = 0; i < list->count; i++){
+
+		if(PHashString((*list)[i].name) == PHashString(node->name)){
+
+			printf("%s vs %s\n",(*list)[i].name,node->name);
+
+			break;
+		}
+
+	}
+
+#endif
+
+	AssimpBoneNode bonenode = {};
+
+	bonenode.name = NewCopyString(node->name);
+	bonenode.bone_hash = PHashString(node->name);
+	bonenode.children_count = node->children_count;
+
+
+	//FIXME: this is NOT the inverse bind/ offset matrix
+	// gdata->skins[0]->inverse_bind_matrices
+	Vec3 translation = Vec3{node->translation[0],node->translation[1],node->translation[2]};
+	Quat rotation = Quat{node->rotation[0],node->rotation[1],node->rotation[2],node->rotation[3]};
+	Vec3 scale = Vec3{node->scale[0],node->scale[1],node->scale[2]};
+
+	bonenode.offset = WorldMat4Q(translation,rotation,scale);
+
+
+#if !MATRIX_ROW_MAJOR
+
+	bonenode.offset = Transpose(bonenode.offset);
+
+#endif
+
+	list->PushBack(bonenode);
+
+
+	for(u32 i = 0; i < node->children_count;i++){
+
+		GLTFFillBoneNodeList(node->children[i],list);
+	}
+
+}
+
+
+
+_intern void GLTFBuildSkeleton(cgltf_node* node,BonenodeList* list,cgltf_node** bones_array,u32 bones_count){
+	GLTFFillBoneNodeList(node,list);
+	GLTFMatchIndex(node,list);
+}
+
+//NOTE: joints are not in linear access, so we need to remap them
+
+_intern void GLTFMapStringRef(VertexBoneDataList* v_list,cgltf_node** j_array){
+	for(u32 i = 0; i < v_list->count;i++){
+		auto v = &(*v_list)[i];
+
+		for(u32 n = 0; n < 4; n++){
+			v->string_ref[n] = NewCopyString(j_array[v->bone_index[n]]->name);
+			v->hash_ref[n] = PHashString(v->string_ref[n]);
+		}
+	}
+}
+
+_intern void GLTFPerformRemap(VertexBoneDataList* v_list,BonenodeList* n_list){
+
+	for(u32 i = 0; i < v_list->count; i++){
+
+		auto v = &(*v_list)[i];
+
+		for(u32 n = 0; n < 4; n++){
+			u32 index = FindIndex(v->string_ref[n],*n_list);
+
+			_kill("", index == (u32)-1);
+
+			v->bone_index[n] = index;
+		}
+	}
+}
+
+_intern void GLTFRemapBones(VertexBoneDataList* v_list,BonenodeList* n_list,cgltf_node** j_array,u32 j_count){
+
+	GLTFMapStringRef(v_list,j_array);
+	GLTFPerformRemap(v_list,n_list);
+
+}
+
+
+
+void GLTFLoadAnimations(cgltf_animation* array,u32 count,AssimpAnimationList* list){
+
+
+	auto endtime = [](GLTFBufferData data)-> f64{
+
+		auto array = (f32*)data.data;
+
+		return (f64)array[data.count - 1];
+	};
+
+	auto starttime = [](GLTFBufferData data)-> f64 {
+		auto array = (f32*)data.data;
+		return (f64)array[0];
+	};
+
+	auto totaltime = [starttime,endtime](GLTFBufferData data)-> f64{
+		return (f64)(endtime(data) - starttime(data));
+	};
+
+
+	for(u32 i = 0; i < count; i++){
+ 		auto a = array[i];
+
+
+#if 1
+
+		AssimpAnimation anim = {};
+
+		//animation.data_count = anim->mNumChannels;
+
+		//TODO: maybe we should just do everything in ms??
+		//animation.duration = anim->mDuration; this is in ticks (ms)
+		//animation.tps = anim->mTicksPerSecond; (1000ms in a s)
+
+		list->PushBack(anim);
+#endif
+
+#if 0
+		{
+
+			u32 c_count = 0;
+
+
+			for(u32 j = 0; j < a.channels_count; j+=3){
+
+				printf("--------------\n");
+
+				auto c1 = a.channels[j];
+				auto c2 = a.channels[j + 1];
+				auto c3 = a.channels[j + 2];
+
+				auto d1 = GLTFGetBufferData(c1.sampler->input);
+				auto d2 = GLTFGetBufferData(c2.sampler->input);
+				auto d3 = GLTFGetBufferData(c3.sampler->input);
+
+
+				f64 s1 = starttime(d1);
+				f64 s2 = starttime(d2);
+				f64 s3 = starttime(d3);
+
+				f64 t1 = totaltime(d1);
+				f64 t2 = totaltime(d2);
+				f64 t3 = totaltime(d3);
+
+				printf("%d: t(%f,%f) r(%f,%f) s(%f,%f)\n",c_count,
+						s1,t1,s2,t2,s3,t3);
+
+				c_count++;
+
+			}
+
+			exit(0);
+		}
+#endif
+
+
+
+
+	}
+}
+
+#endif
+
+
 AssimpData GLTFLoad(const s8* filepath){
+
+#ifndef _ASSETPACKER_
+
+	struct UVec4{
+		u32 u[4];
+	};
 
 	AssimpData data = {};
 
@@ -927,33 +1264,36 @@ AssimpData GLTFLoad(const s8* filepath){
 	_declare_list(Vec2List,Vec2);
 	_declare_list(U32List,u32);
 
+	_declare_list(UVec4List,UVec4);
+
 	Vec4List pos_list;
 	Vec4List normal_list;
 	Vec2List texcoord_list;
 	U32List index_list;
-	VertexBoneDataList bonedatalist;
-	BonenodeList bonenodelist;
-	AssimpAnimationList animationlist;
+
+
+	UVec4List boneid_list;
+	Vec4List boneweight_list;
+	VertexBoneDataList bonedata_list;
+
+	BonenodeList bonenode_list;
+	AssimpAnimationList animation_list;
 
 
 	pos_list.Init();
 	normal_list.Init();
 	texcoord_list.Init();
 	index_list.Init();
-	bonenodelist.Init();
-	bonedatalist.Init();
-	animationlist.Init();
+	boneid_list.Init();
+	boneweight_list.Init();
+	bonenode_list.Init();
+	bonedata_list.Init();
+	animation_list.Init();
 
 	auto file = FOpenFile(filepath,F_FLAG_READONLY);
 
 	ptrsize file_size = 0;
 	const void* file_data = FReadFileToBuffer(file,&file_size);
-
-	
-
-
-#ifndef _ASSETPACKER_
-
 
 
 	cgltf_options options = {};
@@ -962,29 +1302,16 @@ AssimpData GLTFLoad(const s8* filepath){
 
 	cgltf_load_buffers(&options,gdata,filepath);
 
-
 	//NOTE: We are doing 1 mesh for now
 	// test with the teapot model
 	auto mesh = &gdata->meshes[0];
 
-	struct BufferData{
-		s8* data;
-		u32 size;
-		u32 count;
-	};
-
-	auto getbufferdata = [](cgltf_accessor* acc)->BufferData{
-		auto data = (s8*)acc->buffer_view->buffer->data;
-		auto offset = acc->offset + acc->buffer_view->offset;
-
-		return {data + offset,(u32)(acc->count * acc->stride),(u32)(acc->count)};
-	};
 
 	for(u32 p = 0; p < mesh->primitives_count; p++){
 
 		auto primitive = &mesh->primitives[p];
 
-		auto ind_buff = getbufferdata(primitive->indices);
+		auto ind_buff = GLTFGetBufferData(primitive->indices);
 
 
 		for(u32 i = 0; i < ind_buff.count; i++){
@@ -1009,7 +1336,7 @@ AssimpData GLTFLoad(const s8* filepath){
 		for(u32 a = 0; a < primitive->attributes_count; a++){
 			auto attribute = &primitive->attributes[a];
 
-			auto attrib_data = getbufferdata(attribute->data);
+			auto attrib_data = GLTFGetBufferData(attribute->data);
 
 			switch(attribute->type){
 
@@ -1028,18 +1355,34 @@ AssimpData GLTFLoad(const s8* filepath){
 										    texcoord_list.PushBack(((Vec2*)attrib_data.data)[i]);
 									    }
 								    }break;
-
-								    //
-
 				case cgltf_attribute_type_weights: {
+									   //bone weights
 									   for(u32 i = 0; i < attrib_data.count; i++){
-										   pos_list.PushBack(Vec3ToVec4(((Vec3*)attrib_data.data)[i]));
+										   boneweight_list.PushBack(((Vec4*)attrib_data.data)[i]);
 									   }
 								   }break;
 
 				case cgltf_attribute_type_joints: {
+									  //bone id
 									  for(u32 i = 0; i < attrib_data.count; i++){
-										  pos_list.PushBack(Vec3ToVec4(((Vec3*)attrib_data.data)[i]));
+
+										  UVec4 u = {};
+										  
+										  if(attribute->data->component_type == cgltf_component_type_r_32u){
+											  u = ((UVec4*)attrib_data.data)[i];
+										  }
+
+										  //we assume u16 otherwise
+										  else{
+											  u32 index = i * 4;
+											  u32 a = ((u16*)attrib_data.data)[i];
+											  u32 b = ((u16*)attrib_data.data)[i + 1];
+											  u32 c = ((u16*)attrib_data.data)[i + 2];
+											  u32 d = ((u16*)attrib_data.data)[i + 3];
+
+											  u = {a,b,c,d};
+										  }
+											  boneid_list.PushBack(u);
 									  }
 								  }break;
 			}
@@ -1048,46 +1391,132 @@ AssimpData GLTFLoad(const s8* filepath){
 
 	}
 
+#if 0
+
+	for(u32 i = 0; i < boneid_list.count;i++){
+		printf("%d: %d %d %d %d\n",i,boneid_list[i].u[0],boneid_list[i].u[1],boneid_list[i].u[2],
+				boneid_list[i].u[3]);
+	}
+#endif
+
+
+
+
+
+
+
+#if 1
+
+
+
+	if(gdata->skins){
+
+
+		//TODO:This assumes one skeleton only (we should be getting the node from skins array)
+		
+		//JOINTS_0 refers to ->skins[0].joints
+
+		auto root = gdata->skins[0].skeleton; // assuming one skin
+		auto bone_array = gdata->skins[0].joints;
+		auto bone_count = gdata->skins[0].joints_count;
+
+		GLTFBuildSkeleton(root,&bonenode_list,bone_array,bone_count);
+
+
+		_kill("Erorr: exceeds max bone limit\n",bonenode_list.count > _max_bones);
+
+#if 0
+
+#if 0
+		printf("START PRINT SKEL\n");
+		PrintNodeHeirarchy(bonenode_list[0],bonenode_list);
+		printf("END PRINT SKEL\n");
+
+#else
+
+		printf("START PRINT SKEL\n");
+		PrintNodeHeirarchy(root);
+		printf("END PRINT SKEL\n");
+#endif
+
+		exit(0);
+#endif
+
+
+		for(u32 i = 0; i < boneid_list.count;i++){
+			VertexBoneData b = {};
+
+			b.bone_index[0] = boneid_list[i].u[0];
+			b.bone_index[1] = boneid_list[i].u[1];
+			b.bone_index[2] = boneid_list[i].u[2];
+			b.bone_index[3] = boneid_list[i].u[3];
+
+			b.bone_weight[0] = boneweight_list[i].container[0];
+			b.bone_weight[1] = boneweight_list[i].container[1];
+			b.bone_weight[2] = boneweight_list[i].container[2];
+			b.bone_weight[3] = boneweight_list[i].container[3];
+
+			bonedata_list.PushBack(b);
+		}
+
+		//Remap vertices
+		GLTFRemapBones(&bonedata_list,&bonenode_list,bone_array,bone_count);
+
+
+		//load animations
+		GLTFLoadAnimations(gdata->animations,gdata->animations_count,&animation_list);
+
+	}
+	
+
+#else
+	InternalCreateGraphViz(gdata->nodes);
+	exit(0);
+#endif
+
 
 	cgltf_free(gdata);
 
 	FCloseFile(file);
 	free((void*)file_data);
 
-    {
+	{
 
-	    //currently we always assumme that we have texcoords
-	    if(!texcoord_list.count){
-		    for(u32 i = 0; i < pos_list.count;i++){
-			    texcoord_list.PushBack({});
-		    }
-	    }
+		//currently we always assumme that we have texcoords
+		if(!texcoord_list.count){
+			for(u32 i = 0; i < pos_list.count;i++){
+				texcoord_list.PushBack({});
+			}
+		}
 
-	    data.vertex_array = pos_list.container;
-	    data.vertex_count = pos_list.count;
+		data.vertex_array = pos_list.container;
+		data.vertex_count = pos_list.count;
 
-	    data.texcoord_array = texcoord_list.container;
-	    data.texcoord_count = texcoord_list.count;
-	    data.normal_array = normal_list.container;
-	    data.normal_count = normal_list.count;
+		data.texcoord_array = texcoord_list.container;
+		data.texcoord_count = texcoord_list.count;
+		data.normal_array = normal_list.container;
+		data.normal_count = normal_list.count;
 
-	    data.index_array = index_list.container;
-	    data.index_count = index_list.count;
+		data.index_array = index_list.container;
+		data.index_count = index_list.count;
 
-	    data.vertexbonedata_array = bonedatalist.container;
-	    data.vertexbonedata_count = bonedatalist.count;
-	    data.bone_array = bonenodelist.container;
-	    data.bone_count = bonenodelist.count;
+		data.vertexbonedata_array = bonedata_list.container;
+		data.vertexbonedata_count = bonedata_list.count;
+		data.bone_array = bonenode_list.container;
+		data.bone_count = bonenode_list.count;
 
-	    data.animation_array = animationlist.container;
-	    data.animation_count = animationlist.count;
-    }
+		data.animation_array = animation_list.container;
+		data.animation_count = animation_list.count;
+	}
 
+
+
+	exit(0);
+
+	return data;
+#else
+	return {};
 #endif
-
-
-    
-    return data;
 }
 
 
@@ -1095,211 +1524,225 @@ AssimpData AssimpLoad(const s8* filepath){
 
 
 
-    AssimpData data = {};
-    
-    _declare_list(Vec4List,Vec4);
-    _declare_list(Vec2List,Vec2);
-    _declare_list(U32List,u32);
-    
-    Vec4List pos_list;
-    Vec4List normal_list;
-    Vec2List texcoord_list;
-    U32List index_list;
-    
-    pos_list.Init();
-    normal_list.Init();
-    texcoord_list.Init();
-    index_list.Init();
+	AssimpData data = {};
+
+	_declare_list(Vec4List,Vec4);
+	_declare_list(Vec2List,Vec2);
+	_declare_list(U32List,u32);
+
+	Vec4List pos_list;
+	Vec4List normal_list;
+	Vec2List texcoord_list;
+	U32List index_list;
+
+	pos_list.Init();
+	normal_list.Init();
+	texcoord_list.Init();
+	index_list.Init();
 
 
-    Assimp::Importer importer;
-    
-    aiScene* scene =
-        (aiScene*)importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals
-                                    | aiProcess_OptimizeMeshes);
-    
-    //TODO: add in support for this
-    _kill("Failed to load file\n",!scene);
-    
-    _kill("ERROR: Multiple meshes currently not supported\n",scene->mNumMeshes > 1);
-    
-    aiMesh* mesh = scene->mMeshes[0];
-    
-    if(scene->mNumCameras || scene->mNumLights){
-        
-        printf("camera count %d light count %d\n",scene->mNumCameras,scene->mNumLights);
-        
-        printf("WARNING: No cameras or lights allowed. Only meshes\n");
-        
-    }
-    
+	Assimp::Importer importer;
+
+	aiScene* scene =
+		(aiScene*)importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals
+				| aiProcess_OptimizeMeshes);
+
+	//TODO: add in support for this
+	_kill("Failed to load file\n",!scene);
+
+	_kill("ERROR: Multiple meshes currently not supported\n",scene->mNumMeshes > 1);
+
+	aiMesh* mesh = scene->mMeshes[0];
+
+	if(scene->mNumCameras || scene->mNumLights){
+
+		printf("camera count %d light count %d\n",scene->mNumCameras,scene->mNumLights);
+
+		printf("WARNING: No cameras or lights allowed. Only meshes\n");
+
+	}
+
 #if 1
-    
-    printf("num meshes %d\n",scene->mNumMeshes);
-    
-    printf("Total vertices %d\n",mesh->mNumVertices);
-    printf("Total indices %d\n",mesh->mNumFaces * 3);
-    
-    printf("Total actual bones %d\n",mesh->mNumBones);
-    printf("Total animations %d\n",scene->mNumAnimations);
-    
+
+	printf("num meshes %d\n",scene->mNumMeshes);
+
+	printf("Total vertices %d\n",mesh->mNumVertices);
+	printf("Total indices %d\n",mesh->mNumFaces * 3);
+
+	printf("Total actual bones %d\n",mesh->mNumBones);
+	printf("Total animations %d\n",scene->mNumAnimations);
+
 #endif
-    
-    
-    
-    if((mesh->mNumBones && !scene->mNumAnimations) || (!mesh->mNumBones && scene->mNumAnimations)){
-        
-        printf("WARNING: Skeleton doesn't have corresponding animation - vice versa\n");
-    }
-    
-    for(u32 i = 0; i < mesh->mNumVertices;i++){
-        
-        aiVector3D pos = mesh->mVertices[i];
-        aiVector3D normal = mesh->mNormals[i];
-        
-        aiVector3D texcoord = {};
-        
-        if(mesh->HasTextureCoords(0)){
-            texcoord = mesh->mTextureCoords[0][i];
-        }
-        
-        pos_list.PushBack(Vec4{pos.x,pos.y,pos.z,1.0f});
-        normal_list.PushBack(Vec4{normal.x,normal.y,normal.z,1.0f});
-        texcoord_list.PushBack(Vec2{texcoord.x,texcoord.y});
-        // printf("%f %f\n",texcoord.x,texcoord.y);
-    }
-    
-    for(u32 i = 0; i < mesh->mNumFaces;i++){
-        
-        aiFace face = mesh->mFaces[i];
-        
-        _kill("face is not triangle\n",face.mNumIndices != 3);
-        
-        index_list.PushBack(face.mIndices[0]);
-        index_list.PushBack(face.mIndices[1]);
-        index_list.PushBack(face.mIndices[2]);
-        
-    }
-    
-    _kill("top bit in index count is reserved\n",index_list.count & (1 << 31));
-    
-    VertexBoneDataList bonedatalist;
-    BonenodeList bonenodelist;
-    AssimpAnimationList animationlist;
-    
-    bonenodelist.Init(mesh->mNumBones + _max_bones);
-    bonedatalist.Init(mesh->mNumVertices);
-    animationlist.Init();
-    
-    if(mesh->mNumBones){
-        
-        bonedatalist.count = mesh->mNumVertices;
-        
-        //build skeleton from the bones
-        AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,mesh->mBones,mesh->mNumBones);
-        
-        
+
+
+
+	if((mesh->mNumBones && !scene->mNumAnimations) || (!mesh->mNumBones && scene->mNumAnimations)){
+
+		printf("WARNING: Skeleton doesn't have corresponding animation - vice versa\n");
+	}
+
+	for(u32 i = 0; i < mesh->mNumVertices;i++){
+
+		aiVector3D pos = mesh->mVertices[i];
+		aiVector3D normal = mesh->mNormals[i];
+
+		aiVector3D texcoord = {};
+
+		if(mesh->HasTextureCoords(0)){
+			texcoord = mesh->mTextureCoords[0][i];
+		}
+
+		pos_list.PushBack(Vec4{pos.x,pos.y,pos.z,1.0f});
+		normal_list.PushBack(Vec4{normal.x,normal.y,normal.z,1.0f});
+		texcoord_list.PushBack(Vec2{texcoord.x,texcoord.y});
+		// printf("%f %f\n",texcoord.x,texcoord.y);
+	}
+
+	for(u32 i = 0; i < mesh->mNumFaces;i++){
+
+		aiFace face = mesh->mFaces[i];
+
+		_kill("face is not triangle\n",face.mNumIndices != 3);
+
+		index_list.PushBack(face.mIndices[0]);
+		index_list.PushBack(face.mIndices[1]);
+		index_list.PushBack(face.mIndices[2]);
+
+	}
+
+	_kill("top bit in index count is reserved\n",index_list.count & (1 << 31));
+
+	VertexBoneDataList bonedatalist;
+	BonenodeList bonenodelist;
+	AssimpAnimationList animationlist;
+
+	bonenodelist.Init(mesh->mNumBones + _max_bones);
+	bonedatalist.Init(mesh->mNumVertices);
+	animationlist.Init();
+
+	if(mesh->mNumBones){
+
+		bonedatalist.count = mesh->mNumVertices;
+
+		//build skeleton from the bones
+		AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,mesh->mBones,mesh->mNumBones);
+
+
 #if 0
-        
-        PrintNodeHeirarchy(scene->mRootNode,scene->mRootNode);
-        
-        printf("-------------------\n");
-        
-        PrintNodeHeirarchy(bonenodelist[0],bonenodelist);
-        
+
+		//PrintNodeHeirarchy(scene->mRootNode,scene->mRootNode);
+
+		//printf("-------------------\n");
+
+		printf("START PRINT SKEL\n");
+
+		PrintNodeHeirarchy(bonenodelist[0],bonenodelist);
+
+		printf("END PRINT SKEL\n");
+		exit(0);
+
 #endif
-        
-        
-        //MARK: max bones check
-        //this is the effective bone count
-        _kill("Erorr: exceeds max bone limit\n",bonenodelist.count > _max_bones);
-        
-        AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist);
-        
-        //get animation data
-        AssimpLoadAnimations(scene,&animationlist);
-    }
+
+
+		//MARK: max bones check
+		//this is the effective bone count
+		_kill("Erorr: exceeds max bone limit\n",bonenodelist.count > _max_bones);
+
+		AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist);
+
+		//get animation data
+		AssimpLoadAnimations(scene,&animationlist);
+	}
 
 
 
 
-
-    
-    {
-        data.vertex_array = pos_list.container;
-        data.vertex_count = pos_list.count;
-        
-        data.texcoord_array = texcoord_list.container;
-        data.texcoord_count = texcoord_list.count;
-        data.normal_array = normal_list.container;
-        data.normal_count = normal_list.count;
-        
-        data.index_array = index_list.container;
-        data.index_count = index_list.count;
-        
-        data.vertexbonedata_array = bonedatalist.container;
-        data.vertexbonedata_count = bonedatalist.count;
-        data.bone_array = bonenodelist.container;
-        data.bone_count = bonenodelist.count;
-        
-        data.animation_array = animationlist.container;
-        data.animation_count = animationlist.count;
-    }
+	for(u32 i = 0; i < bonedatalist.count;i++){
+		printf("%d: %d %d %d %d\n",i,bonedatalist[i].bone_index[0],bonedatalist[i].bone_index[1],bonedatalist[i].bone_index[2],
+				bonedatalist[i].bone_index[3]);
+	}
 
 
-    
-    return data;
+
+
+	{
+		data.vertex_array = pos_list.container;
+		data.vertex_count = pos_list.count;
+
+		data.texcoord_array = texcoord_list.container;
+		data.texcoord_count = texcoord_list.count;
+		data.normal_array = normal_list.container;
+		data.normal_count = normal_list.count;
+
+		data.index_array = index_list.container;
+		data.index_count = index_list.count;
+
+		data.vertexbonedata_array = bonedatalist.container;
+		data.vertexbonedata_count = bonedatalist.count;
+		data.bone_array = bonenodelist.container;
+		data.bone_count = bonenodelist.count;
+
+		data.animation_array = animationlist.container;
+		data.animation_count = animationlist.count;
+	}
+
+
+	_breakpoint();
+
+
+
+	return data;
 }
 
 void _ainline PtrCopy(s8** ptr,void* data,u32 size){
-    memcpy(*ptr,data,size);
-    *ptr += size;
+	memcpy(*ptr,data,size);
+	*ptr += size;
 }
 
 u32 AnimBoneSize(AssimpData data,AssimpBoneNode* bones){
-    
-    u32 size = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
-    
-    for(u32 i = 0; i < data.bone_count;i++){
-        
-        size = _align16(size);
-        
-        auto bone = bones[i];
-        
-        size += sizeof(ALinearBone);
-        size += bone.children_count * sizeof(u32);
-        size += sizeof(AAnimationData);
-        
-        AssimpAnimationData array[100];
-        u32 array_count = 0;
-        
-        for(u32 j = 0; j < data.animation_count; j++){
-            AssimpAnimation set = data.animation_array[j];
-            
-            for(u32 k = 0; k < set.data_count; k++){
-                AssimpAnimationData keydata = set.data[k];
-                
-                if(keydata.bone_hash == bone.bone_hash){
-                    array[array_count] = keydata;
-                    array_count++;
-                    _kill("",array_count > 100);
-                    break;
-                }
-            }
-        }
-        
-        size += sizeof(MDFKeyCount) * data.animation_count;
-        
-        for(u32 b = 0; b < array_count;b++){
-            auto anim = array[b];
-            
-            size += sizeof(AAnimationKey) * anim.positionkey_count;
-            size += sizeof(AAnimationKey) * anim.rotationkey_count;
-            size += sizeof(AAnimationKey) * anim.scalekey_count;
-        }
-    }
-    
-    return _align16(size);
+
+	u32 size = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
+
+	for(u32 i = 0; i < data.bone_count;i++){
+
+		size = _align16(size);
+
+		auto bone = bones[i];
+
+		size += sizeof(ALinearBone);
+		size += bone.children_count * sizeof(u32);
+		size += sizeof(AAnimationData);
+
+		AssimpAnimationData array[100];
+		u32 array_count = 0;
+
+		for(u32 j = 0; j < data.animation_count; j++){
+			AssimpAnimation set = data.animation_array[j];
+
+			for(u32 k = 0; k < set.data_count; k++){
+				AssimpAnimationData keydata = set.data[k];
+
+				if(keydata.bone_hash == bone.bone_hash){
+					array[array_count] = keydata;
+					array_count++;
+					_kill("",array_count > 100);
+					break;
+				}
+			}
+		}
+
+		size += sizeof(MDFKeyCount) * data.animation_count;
+
+		for(u32 b = 0; b < array_count;b++){
+			auto anim = array[b];
+
+			size += sizeof(AAnimationKey) * anim.positionkey_count;
+			size += sizeof(AAnimationKey) * anim.rotationkey_count;
+			size += sizeof(AAnimationKey) * anim.scalekey_count;
+		}
+	}
+
+	return _align16(size);
 }
 
 
@@ -1310,391 +1753,394 @@ u32 AnimBoneSize(AssimpData data,AssimpBoneNode* bones){
 
 //smaller footprint
 void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
-                       AnimationBlendType blendtype = BLEND_LINEAR){
-    
-    
-    s8* buffer = (s8*)alloc(_megabytes(30));
-    
-    s8* ptr = buffer;
-    
-    AssimpBoneNode* bones = 0;
-    
-    //write the header and vertex component
-    {
-        u32 header = TAG_MDF;
-        PtrCopy(&ptr,&header,sizeof(header));
-        
-        //Vertex Model Version
-        header = 0;
-        PtrCopy(&ptr,&header,sizeof(header));
-    }
-    
-    //write vertex data
-    {
-        
-        _kill("Model has no vertex positions\n",data.vertex_count == 0);
-        
-        //figure out the vertex components
-        {
-            u16 vertex_component = 0;
-            
-            if(data.normal_count){
-                vertex_component |= VERTEX_NORMAL;
-            }
-            
-            if(data.texcoord_count){
-                vertex_component |= VERTEX_TEXCOORD;
-            }
-            
-            if(data.vertexbonedata_count){
-                vertex_component |= VERTEX_BONEID_WEIGHT;
-                bones = data.bone_array;
-            }
-            
-#if _print_log
-            printf("vertex component: %d\n",vertex_component);
-#endif
-            
-            PtrCopy(&ptr,&vertex_component,sizeof(u16));
-            
-            u32 indversize = (data.vertex_count * sizeof(AVec3)) +
-                (data.texcoord_count * sizeof(Vec2)) +
-                (data.normal_count * sizeof(AVec3)) +
-                (data.vertexbonedata_count * sizeof(VertexBoneData)) +
+		AnimationBlendType blendtype = BLEND_LINEAR){
 
 
-                data.index_count * sizeof(u32); //FIXME: this changes depending on u16 or not
-            
-            u32 animbonesize = AnimBoneSize(data,bones);
-            
+	s8* buffer = (s8*)alloc(_megabytes(30));
+
+	s8* ptr = buffer;
+
+	AssimpBoneNode* bones = 0;
+
+
+	u32 index_size = sizeof(u32);
+
+	if(data.index_count <= 65535){
 #if _print_log
-            
-            printf("animbone size %d\n",(animbonesize));//MARK:Not exact but will do
-            printf("vertindex size %d\n",(indversize));//MARK:Not exact but will do
-            
+
+		printf("using 16 bit indices\n");
+
 #endif
-            
-            PtrCopy(&ptr,&indversize,sizeof(indversize));
-            PtrCopy(&ptr,&animbonesize,sizeof(animbonesize));
-        }
-        
-        u32 header = TAG_VERTEX;
-        u32 datasize =
-            (data.vertex_count * sizeof(AVec3)) + //positions
-            (data.texcoord_count * sizeof(Vec2)) + //texcoords
-            (data.normal_count * sizeof(AVec3)) + //normals
-            (data.vertexbonedata_count * sizeof(VertexBoneData)); //boneid and weight
-        
-        PtrCopy(&ptr,&header,sizeof(header));
-        PtrCopy(&ptr,&datasize,sizeof(u32));
-        
+		index_size = sizeof(u16);
+	}
+
+	else{
 #if _print_log
-        
-        printf("Vertices size %d\n",datasize);
-        
+
+		printf("using 32 bit indices\n");
+
 #endif
-        
-        //write vertex data
-        for(u32 i = 0; i < data.vertex_count;i++){
-            
-            PtrCopy(&ptr,&data.vertex_array[i],sizeof(AVec3));
-            
-            if(data.normal_count){
-                PtrCopy(&ptr,&data.normal_array[i],sizeof(AVec3));
-            }
-            
-            if(data.texcoord_count){
-                PtrCopy(&ptr,&data.texcoord_array[i],sizeof(Vec2));
-                //MARK:
-                // printf("texcoord%f %f\n",data.texcoord_array[i].x,data.texcoord_array[i].y);
-            }
-            
-            if(data.vertexbonedata_count){
-                PtrCopy(&ptr,&data.vertexbonedata_array[i],sizeof(VertexBoneData));
-            }
-            
-        }
-    }
-    
-    //write indices
-    {
-        u32 header = TAG_INDEX;
-        u32 datasize = data.index_count;
-        
-        
-        //optimization - save as u16 if allowed
-        
-        if(data.index_count <= 65535){
-            
+	}
+
+	//write the header and vertex component
+	{
+		u32 header = TAG_MDF;
+		PtrCopy(&ptr,&header,sizeof(header));
+
+		//Vertex Model Version
+		header = 0;
+		PtrCopy(&ptr,&header,sizeof(header));
+	}
+
+	//write vertex data
+	{
+
+		_kill("Model has no vertex positions\n",data.vertex_count == 0);
+
+		//figure out the vertex components
+		{
+			u16 vertex_component = 0;
+
+			if(data.normal_count){
+				vertex_component |= VERTEX_NORMAL;
+			}
+
+			if(data.texcoord_count){
+				vertex_component |= VERTEX_TEXCOORD;
+			}
+
+			if(data.vertexbonedata_count){
+				vertex_component |= VERTEX_BONEID_WEIGHT;
+				bones = data.bone_array;
+			}
+
 #if _print_log
-            
-            printf("using 16 bit indices\n");
-            
+			printf("vertex component: %d\n",vertex_component);
 #endif
-            
-            datasize *= sizeof(u16);
-            
-            auto u16_ptr = (u16*)data.index_array;
-            auto u32_ptr = (u32*)data.index_array;
-            
-            //collapse indices
-            for(u32 i = 0; i < data.index_count; i++){
-                
-                u16_ptr[i] = (u16)u32_ptr[i];
-            }
-        }
-        
-        else{
-            
+
+			PtrCopy(&ptr,&vertex_component,sizeof(u16));
+
+
+			u32 indversize = (data.vertex_count * sizeof(AVec3)) +
+				(data.texcoord_count * sizeof(Vec2)) +
+				(data.normal_count * sizeof(AVec3)) +
+				(data.vertexbonedata_count * sizeof(VertexBoneData)) +
+				data.index_count * index_size; 
+
+			u32 animbonesize = AnimBoneSize(data,bones);
+
 #if _print_log
-            
-            printf("using 32 bit indices\n");
-            
+
+			printf("animbone size %d\n",(animbonesize));//MARK:Not exact but will do
+			printf("vertindex size %d\n",(indversize));//MARK:Not exact but will do
+
 #endif
-            
-            datasize *= sizeof(u32);
-        }
-        
-        PtrCopy(&ptr,&header,sizeof(header));
-        PtrCopy(&ptr,&datasize,sizeof(u32));
-        PtrCopy(&ptr,data.index_array,datasize);
-        
+
+			PtrCopy(&ptr,&indversize,sizeof(indversize));
+			PtrCopy(&ptr,&animbonesize,sizeof(animbonesize));
+		}
+
+		u32 header = TAG_VERTEX;
+		u32 datasize =
+			(data.vertex_count * sizeof(AVec3)) + //positions
+			(data.texcoord_count * sizeof(Vec2)) + //texcoords
+			(data.normal_count * sizeof(AVec3)) + //normals
+			(data.vertexbonedata_count * sizeof(VertexBoneData)); //boneid and weight
+
+		PtrCopy(&ptr,&header,sizeof(header));
+		PtrCopy(&ptr,&datasize,sizeof(u32));
+
 #if _print_log
-        
-        printf("Index size %d\n",datasize);
-        
+
+		printf("Vertices size %d\n",datasize);
+
 #endif
-        
-    }
-    
-    //write skeleton and animation data if any
-    {
-        
-        if(bones){
-            
-            u32 header;
-            u32 datasize;
-            
-            //animations
-            {
-                header = TAG_ANIM;
-                datasize = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
-                
+
+		//write vertex data
+		for(u32 i = 0; i < data.vertex_count;i++){
+
+			PtrCopy(&ptr,&data.vertex_array[i],sizeof(AVec3));
+
+			if(data.normal_count){
+				PtrCopy(&ptr,&data.normal_array[i],sizeof(AVec3));
+			}
+
+			if(data.texcoord_count){
+				PtrCopy(&ptr,&data.texcoord_array[i],sizeof(Vec2));
+				//MARK:
+				// printf("texcoord%f %f\n",data.texcoord_array[i].x,data.texcoord_array[i].y);
+			}
+
+			if(data.vertexbonedata_count){
+				PtrCopy(&ptr,&data.vertexbonedata_array[i],sizeof(VertexBoneData));
+			}
+
+		}
+	}
+
+	//write indices
+	{
+		u32 header = TAG_INDEX;
+		u32 datasize = data.index_count * index_size;
+
+
+		//optimization - save as u16 if allowed
+		if(data.index_count <= 65535){
+
+
+			auto u16_ptr = (u16*)data.index_array;
+			auto u32_ptr = (u32*)data.index_array;
+
+			//collapse indices
+			for(u32 i = 0; i < data.index_count; i++){
+
+				u16_ptr[i] = (u16)u32_ptr[i];
+			}
+		}
+
+		PtrCopy(&ptr,&header,sizeof(header));
+		PtrCopy(&ptr,&datasize,sizeof(u32));
+		PtrCopy(&ptr,data.index_array,datasize);
+
 #if _print_log
-                
-                printf("animation size %d\n",datasize);
-                
+
+		printf("Index size %d\n",datasize);
+
 #endif
-                
-                PtrCopy(&ptr,&header,sizeof(header));
-                PtrCopy(&ptr,&datasize,sizeof(u32));
-                
-                for(u32 i = 0; i < data.animation_count;i++){
-                    AssimpAnimation set = data.animation_array[i];
-                    
-                    PtrCopy(&ptr,&set.data_count,sizeof(u32));
-                    PtrCopy(&ptr,&set.duration,sizeof(f32));
-                    PtrCopy(&ptr,&set.tps,sizeof(f32));
-                }
-                
-            }
-            
-            
-            //skeleton
-            if(blendtype == BLEND_LINEAR){
-                
-                header = _encode('B','L','I','N');
-                datasize = data.bone_count;
-                
-                _kill("too many bones (signed bit is reserved)\n",
-                      (datasize & (1 << 31)));
-                
-                //we top bit indicates column major if it is set
+
+	}
+
+	//write skeleton and animation data if any
+	{
+
+		if(bones){
+
+			u32 header;
+			u32 datasize;
+
+			//animations
+			{
+				header = TAG_ANIM;
+				datasize = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
+
+#if _print_log
+
+				printf("animation size %d\n",datasize);
+
+#endif
+
+				PtrCopy(&ptr,&header,sizeof(header));
+				PtrCopy(&ptr,&datasize,sizeof(u32));
+
+				for(u32 i = 0; i < data.animation_count;i++){
+					AssimpAnimation set = data.animation_array[i];
+
+					PtrCopy(&ptr,&set.data_count,sizeof(u32));
+					PtrCopy(&ptr,&set.duration,sizeof(f32));
+					PtrCopy(&ptr,&set.tps,sizeof(f32));
+				}
+
+			}
+
+
+			//skeleton
+			if(blendtype == BLEND_LINEAR){
+
+				header = _encode('B','L','I','N');
+				datasize = data.bone_count;
+
+				_kill("too many bones (signed bit is reserved)\n",
+						(datasize & (1 << 31)));
+
+				//we top bit indicates column major if it is set
 #if !MATRIX_ROW_MAJOR
-                
-                datasize = _addsignedbit(datasize);
-                
+
+				datasize = _addsignedbit(datasize);
+
 #endif
-                
+
 #if _print_log
-                
-                printf("bone count %d\n",datasize);
-                
+
+				printf("bone count %d\n",datasize);
+
 #endif
-                
-                PtrCopy(&ptr,&header,sizeof(header));
-                PtrCopy(&ptr,&datasize,sizeof(datasize));
-                
-                for(u32 i = 0; i < data.bone_count;i++){
-                    
-                    AssimpBoneNode bone = bones[i];
-                    
-                    MDFLinearBoneData lbd = {bone.bone_hash,bone.children_count,bone.offset};
-                    PtrCopy(&ptr,&lbd,sizeof(MDFLinearBoneData));
-                    
-                    PtrCopy(&ptr,bone.childrenindex_array,sizeof(u32) * bone.children_count);
-                    
-                    AssimpAnimationData array[100] = {};
-                    u32 array_count = 0;
-                    
-                    //write keys
-                    for(u32 j = 0; j < data.animation_count; j++){
-                        AssimpAnimation set = data.animation_array[j];
-                        
-                        for(u32 k = 0; k < set.data_count; k++){
-                            AssimpAnimationData keydata = set.data[k];
-                            
-                            if(keydata.bone_hash == bone.bone_hash){
-                                array[array_count] = keydata;
-                                array_count++;
-                                _kill("",array_count > 100);
-                                break;
-                            }
-                            
-                        }
-                        
-                    }
-                    
-                    if(!array_count){
-                        for(u32 b = 0; b < data.animation_count;b++){
-                            MDFKeyCount keycount = {};
-                            PtrCopy(&ptr,&keycount,sizeof(MDFKeyCount));    
-                        }
-                        
-                    }
-                    
-                    else{
-                        for(u32 b = 0; b < data.animation_count;b++){
-                            auto anim = array[b];
-                            MDFKeyCount keycount = {anim.positionkey_count,anim.rotationkey_count,
-                                anim.scalekey_count};
-                            PtrCopy(&ptr,&keycount,sizeof(MDFKeyCount));    
-                        }
-                        
-                        for(u32 b = 0; b < data.animation_count;b++){
-                            auto anim = array[b];
-                            
-                            PtrCopy(&ptr,anim.positionkey_array,sizeof(AAnimationKey) * anim.positionkey_count);
-                            PtrCopy(&ptr,anim.rotationkey_array,sizeof(AAnimationKey) * anim.rotationkey_count);
-                            PtrCopy(&ptr,anim.scalekey_array,sizeof(AAnimationKey) * anim.scalekey_count);    
-                        }
-                        
-                    }
-                    
-                }
-                
-            }
-            
-            else{
-                _kill("not supported yet\n",1)
-            }
-            
-        }
-    }
-    
-    
-    
-    //write material data if any
-    
-    //write texture data if any
-    
-    *out_buffer = buffer;
-    *out_buffer_size = (((s8*)ptr) - ((s8*)buffer));
+
+				PtrCopy(&ptr,&header,sizeof(header));
+				PtrCopy(&ptr,&datasize,sizeof(datasize));
+
+				for(u32 i = 0; i < data.bone_count;i++){
+
+					AssimpBoneNode bone = bones[i];
+
+					MDFLinearBoneData lbd = {bone.bone_hash,bone.children_count,bone.offset};
+					PtrCopy(&ptr,&lbd,sizeof(MDFLinearBoneData));
+
+					PtrCopy(&ptr,bone.childrenindex_array,sizeof(u32) * bone.children_count);
+
+					AssimpAnimationData array[100] = {};
+					u32 array_count = 0;
+
+					//write keys
+					for(u32 j = 0; j < data.animation_count; j++){
+						AssimpAnimation set = data.animation_array[j];
+
+						for(u32 k = 0; k < set.data_count; k++){
+							AssimpAnimationData keydata = set.data[k];
+
+							if(keydata.bone_hash == bone.bone_hash){
+								array[array_count] = keydata;
+								array_count++;
+								_kill("",array_count > 100);
+								break;
+							}
+
+						}
+
+					}
+
+					if(!array_count){
+						for(u32 b = 0; b < data.animation_count;b++){
+							MDFKeyCount keycount = {};
+							PtrCopy(&ptr,&keycount,sizeof(MDFKeyCount));    
+						}
+
+					}
+
+					else{
+						for(u32 b = 0; b < data.animation_count;b++){
+							auto anim = array[b];
+							MDFKeyCount keycount = {anim.positionkey_count,anim.rotationkey_count,
+								anim.scalekey_count};
+							PtrCopy(&ptr,&keycount,sizeof(MDFKeyCount));    
+						}
+
+						for(u32 b = 0; b < data.animation_count;b++){
+							auto anim = array[b];
+
+							PtrCopy(&ptr,anim.positionkey_array,sizeof(AAnimationKey) * anim.positionkey_count);
+							PtrCopy(&ptr,anim.rotationkey_array,sizeof(AAnimationKey) * anim.rotationkey_count);
+							PtrCopy(&ptr,anim.scalekey_array,sizeof(AAnimationKey) * anim.scalekey_count);    
+						}
+
+					}
+
+				}
+
+			}
+
+			else{
+				_kill("not supported yet\n",1)
+			}
+
+		}
+	}
+
+
+
+	//write material data if any
+
+	//write texture data if any
+
+	*out_buffer = buffer;
+	*out_buffer_size = (((s8*)ptr) - ((s8*)buffer));
 }
 
 
 
 //smaller footprint
 void AssimpWriteMDF(AssimpData data,const s8* filepath,
-                    AnimationBlendType blendtype){
-    
-    s8* buffer;
-    u32 buffer_size;
-    
-    CreateAssimpToMDF((void**)&buffer,&buffer_size,data,blendtype);
-    
-    
-    FileHandle file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
-                                F_FLAG_TRUNCATE);
-    
-    FWrite(file,buffer,buffer_size);
-    
-    unalloc(buffer);
+		AnimationBlendType blendtype){
+
+	s8* buffer;
+	u32 buffer_size;
+
+	CreateAssimpToMDF((void**)&buffer,&buffer_size,data,blendtype);
+
+
+	FileHandle file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
+			F_FLAG_TRUNCATE);
+
+	FWrite(file,buffer,buffer_size);
+
+	unalloc(buffer);
+
+	FCloseFile(file);
 }
 
 
 void Import(s8** files,u32 count){
-    
-    printf("Only mdf and adf(WAV) files are supported now\n");
-    
-    AnimationBlendType blendtype = BLEND_LINEAR;
-    
-    for(u32 i = 0; i < count; i++){
-        
-        s8* string = files[i];
-        u32 len = strlen(string);
-        
-        s8 buffer[2048] = {};
-        memcpy(buffer,string,len);
-        
-        auto a = string[len - 3];
-        auto b = string[len - 2];
-        auto c = string[len - 1];
-        
-        
-        // if(string[0] == '-'){
-        //   blendtype = BLEND_DQ;
-        //   continue;
-        // }
-        
-        if(isAudio(a,b,c)){
-            
-            buffer[len - 3] = 'a';
-            buffer[len - 2] = 'd';
-            buffer[len - 1] = 'f';
-            
-            WavWriteADF(string,buffer);
-        }
-        
-        if(isModel(a,b,c)){
-            
+
+	printf("Only mdf and adf(WAV) files are supported now\n");
+
+	AnimationBlendType blendtype = BLEND_LINEAR;
+
+	for(u32 i = 0; i < count; i++){
+
+		s8* string = files[i];
+		u32 len = strlen(string);
+
+		s8 buffer[2048] = {};
+		memcpy(buffer,string,len);
+
+		auto a = string[len - 3];
+		auto b = string[len - 2];
+		auto c = string[len - 1];
+
+
+		// if(string[0] == '-'){
+		//   blendtype = BLEND_DQ;
+		//   continue;
+		// }
+
+		if(isAudio(a,b,c)){
+
+			buffer[len - 3] = 'a';
+			buffer[len - 2] = 'd';
+			buffer[len - 1] = 'f';
+
+			WavWriteADF(string,buffer);
+		}
+
+		if(isModel(a,b,c)){
+
 #if MATRIX_ROW_MAJOR
-            
-            printf("operating in matrix ROW major!\n");
-            
+
+			printf("operating in matrix ROW major!\n");
+
 #else
-            
-            printf("operating in matrix COLUMN major!\n");
-            
+
+			printf("operating in matrix COLUMN major!\n");
+
 #endif
 
 
 
-	    //TODO: PENDING REMOVAL
-#if 0 
-            auto assimp = AssimpLoad(string);
+			//TODO: PENDING REMOVAL
+#if 1 
+			auto assimp = AssimpLoad(string);
 #else
-            auto assimp = GLTFLoad(string);
+			auto assimp = GLTFLoad(string);
 #endif
-            
-            buffer[len - 3] = 'm';
-            buffer[len - 2] = 'd';
-            buffer[len - 1] = 'f';
-            
-            AssimpWriteMDF(assimp,buffer,blendtype);
-            
-        }
-        
-        if(isImage(a,b,c)){
-            
-            buffer[len - 3] = 't';
-            buffer[len - 2] = 'd';
-            buffer[len - 1] = 'f';
-            
-            //Format_RGBA
-            CreateTextureAssetTDF(string,buffer,Format_BC1,true,true);
-        }
-        
-    }
-    
+
+			buffer[len - 4] = 'm';
+			buffer[len - 3] = 'd';
+			buffer[len - 2] = 'f';
+			buffer[len - 1] = 0;
+
+			AssimpWriteMDF(assimp,buffer,blendtype);
+
+		}
+
+		if(isImage(a,b,c)){
+
+			buffer[len - 3] = 't';
+			buffer[len - 2] = 'd';
+			buffer[len - 1] = 'f';
+
+			//Format_RGBA
+			CreateTextureAssetTDF(string,buffer,Format_BC1,true,true);
+		}
+
+	}
+
 }
