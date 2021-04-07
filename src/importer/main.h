@@ -51,7 +51,12 @@
 #include "stb/stb_image_resize.h"
 #include "stb/stb_dxt.h"
 
-
+/*
+ * LOG:
+ * skeleton is not using the right offsets
+ * vertices are remapped. need to test if this is right tho
+ * animations are wip. we need to translate the gltf format to our own workable format
+ * */
 
 
 //TODO: PENDING REMOVAL
@@ -1062,6 +1067,11 @@ _intern void GLTFMatchIndex(cgltf_node* node,BonenodeList* list){
 
 
 _intern s8* NewCopyString(s8* string){
+
+	if(!string){
+		return 0;
+	}
+
 	u32 len = PStrLen(string) + 1;
 	s8* n_string = (s8*)alloc(len);
 
@@ -1168,6 +1178,20 @@ _intern void GLTFRemapBones(VertexBoneDataList* v_list,BonenodeList* n_list,cglt
 
 void GLTFLoadAnimations(cgltf_animation* array,u32 count,AssimpAnimationList* list){
 
+	auto getanim = [](AssimpAnimation* anim,u32 bone_hash)-> AssimpAnimationData* {
+
+		for(u32 i = 0; i < anim->data_count; i++){
+			auto t = &anim->data[i];
+			if(t->bone_hash == bone_hash){
+				return t;
+			}
+		}
+
+		anim->data_count++;
+
+		return &anim->data[anim->data_count - 1];
+	};
+
 
 	auto endtime = [](GLTFBufferData data)-> f64{
 
@@ -1192,15 +1216,111 @@ void GLTFLoadAnimations(cgltf_animation* array,u32 count,AssimpAnimationList* li
 
 #if 1
 
-		AssimpAnimation anim = {};
+		AssimpAnimation anim_base = {};
 
-		//animation.data_count = anim->mNumChannels;
+
+		anim_base.name = NewCopyString(a.name);
+
+		{
+			const u32 BONE_COUNT = 64;
+			u32 size = sizeof(AssimpAnimationData) *  BONE_COUNT;
+			anim_base.data = (AssimpAnimationData*)alloc(size);
+
+			memset(anim_base.data,0,size);
+
+			for(u32 i = 0; i < BONE_COUNT; i++){
+				const u32 KEY_COUNT = 1024;
+				anim_base.data[i].positionkey_array = (AnimationKey*)alloc(sizeof(AnimationKey) * KEY_COUNT);
+				anim_base.data[i].rotationkey_array = (AnimationKey*)alloc(sizeof(AnimationKey) * KEY_COUNT);
+				anim_base.data[i].scalekey_array = (AnimationKey*)alloc(sizeof(AnimationKey) * KEY_COUNT);
+			}
+		}
+
+
+		f32 max_time = 0.0f;
+
+		for(u32 j = 0; j < a.channels_count; j++){
+			auto c = a.channels[j];
+			auto s = c.sampler;
+
+			_kill("",s->interpolation != cgltf_interpolation_type_linear);
+
+			auto time = GLTFGetBufferData(s->input);
+			auto transform = GLTFGetBufferData(s->output);
+
+			if(time.max[0] - time.min[0] > max_time){
+				max_time = time.max[0] - time.min[0];
+			}
+
+			auto name = c.target_node->name;
+			auto hash = PHashString(name);
+
+			auto anim = getanim(&anim_base,hash);
+
+			if(!anim->bone_name){
+				anim->bone_name = NewCopyString(name);
+				anim->bone_hash = hash;
+			}
+
+
+			auto transform_type = c.target_path;
+
+			switch(transform_type){
+				case cgltf_animation_path_type_translation:{
+										   auto key_pos = (Vec3*)transform.data;
+										   auto key_time = (f32*)time.data;
+										   anim->positionkey_count = time.count;
+
+										   for(u32 k = 0; k < time.count; k++){
+											   anim->positionkey_array[k].time = key_time[k];
+											   anim->positionkey_array[k].key = Vec3ToVec4(key_pos[k]);
+
+										   }
+									   }break;
+				case cgltf_animation_path_type_rotation:{
+										   auto key_rot = (Vec4*)transform.data;
+										   auto key_time = (f32*)time.data;
+										   anim->rotationkey_count = time.count;
+
+										   for(u32 k = 0; k < time.count; k++){
+											   anim->rotationkey_array[k].time = key_time[k];
+											   anim->rotationkey_array[k].key = key_rot[k];
+
+										   }
+									}break;
+				case cgltf_animation_path_type_scale:{
+										   auto key_scale = (Vec3*)transform.data;
+										   auto key_time = (f32*)time.data;
+										   anim->scalekey_count = time.count;
+
+										   for(u32 k = 0; k < time.count; k++){
+											   anim->scalekey_array[k].time = key_time[k];
+											   anim->scalekey_array[k].key = Vec3ToVec4(key_scale[k]);
+
+										   }
+								     }break;
+				case cgltf_animation_path_type_weights:{
+									       _kill("Not supported\n",1);
+								       }break;
+				default:{
+						_kill("Invalid type\n",1);
+					}
+			}
+		}
+
 
 		//TODO: maybe we should just do everything in ms??
-		//animation.duration = anim->mDuration; this is in ticks (ms)
-		//animation.tps = anim->mTicksPerSecond; (1000ms in a s)
+		//NOTE: gltf records anim time in seconds
+		anim_base.duration = max_time * 1000.0f; //this is in ticks (ms)
+		anim_base.tps = 1000.0f; //(1000ms in a s)
 
-		list->PushBack(anim);
+		_breakpoint();
+		list->PushBack(anim_base);
+
+#if 1
+		//TODO: print out node and keys and compare
+#endif
+
 #endif
 
 #if 0
@@ -2116,7 +2236,7 @@ void Import(s8** files,u32 count){
 
 
 			//TODO: PENDING REMOVAL
-#if 1 
+#if 0 
 			auto assimp = AssimpLoad(string);
 #else
 			auto assimp = GLTFLoad(string);

@@ -57,6 +57,7 @@ enum AnimationBehaviour{
     ANIMATION_FORCE32BIT = 0x8fffffff,
 };
 
+//TODO: this should be flipped. Do it after checking that everything works
 struct AnimationKey{
     f32 time;
     
@@ -67,7 +68,6 @@ struct AnimationKey{
 
 //we will only support skeletal animation
 struct AssimpAnimationData{
-	void* id;
 	s8* bone_name;
 	u32 bone_hash;
 
@@ -77,12 +77,14 @@ struct AssimpAnimationData{
 	AnimationKey* positionkey_array;
 	AnimationKey* rotationkey_array;
 	AnimationKey* scalekey_array;
+
+	//TODO: remove these. we don't even use these
 	AnimationBehaviour prestate;
 	AnimationBehaviour poststate;
 };
 
 struct AssimpAnimation{
-    //main data
+    //main data -- each correspond to a bone
     AssimpAnimationData* data;//this should be contiguous
     
     //header data
