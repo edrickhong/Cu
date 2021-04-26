@@ -53,9 +53,12 @@
 
 /*
  * LOG:
- * skeleton is not using the right offsets
+ * offsets are correct
  * vertices are remapped. need to test if this is right tho
- * animations are wip. we need to translate the gltf format to our own workable format
+ * gltf rescaled the vertices so the translations are rescaled too
+ * gltf does the rotations about different axis
+ * check if the translation uses diff axis too
+ * the boneids look very off
  * */
 
 
@@ -650,6 +653,7 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
 			aiNodeAnim* node = anim->mChannels[j];
 
 			AssimpAnimationData data;
+			data.bone_name = node->mNodeName.data;
 			data.bone_hash = PHashString(node->mNodeName.data);
 
 			_kill("too large\n",node->mNumPositionKeys >
@@ -752,20 +756,33 @@ void AssimpAddBoneData(VertexBoneData* bonedata,u32 index,f32 weight){
 	// _kill("Vertice is influenced by more than 4 bones\n",1);
 }
 
-_intern u32 FindIndex(const s8* string,BonenodeList bonenodelist){
 
+template<class T> T* ToPtr(T* t){
+	return t;
+}
 
-	for(u32 i = 0; i < bonenodelist.count;i++){
+template<class T> T* ToPtr(T& t){
+	return &t;
+}
 
-		if(PStringCmp(bonenodelist[i].name,string)){
+template<class T>u32 FindIndex(const s8* string, T array,u32 count){
+
+	for(u32 i = 0; i < count;i++){
+
+		auto t = ToPtr(array[i]);
+
+		if(PStringCmp(t->name,string)){
 			return i;
 		}
 	}
 
-	//_kill("bone not found\n",1);
 
 	return -1;
+}
 
+_intern u32 FindIndex(const s8* string,BonenodeList bonenodelist){
+
+	return FindIndex(string,bonenodelist.container,bonenodelist.count);
 }
 
 void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
@@ -1106,7 +1123,11 @@ _intern void GLTFFillBoneNodeList(cgltf_node* node,BonenodeList* list){
 	bonenode.children_count = node->children_count;
 
 
+#if 0
+
+
 	//FIXME: this is NOT the inverse bind/ offset matrix
+	//JOINTS_0 refers to ->skins[0].joints
 	// gdata->skins[0]->inverse_bind_matrices
 	Vec3 translation = Vec3{node->translation[0],node->translation[1],node->translation[2]};
 	Quat rotation = Quat{node->rotation[0],node->rotation[1],node->rotation[2],node->rotation[3]};
@@ -1114,12 +1135,15 @@ _intern void GLTFFillBoneNodeList(cgltf_node* node,BonenodeList* list){
 
 	bonenode.offset = WorldMat4Q(translation,rotation,scale);
 
-
 #if !MATRIX_ROW_MAJOR
 
 	bonenode.offset = Transpose(bonenode.offset);
 
 #endif
+
+#endif
+
+
 
 	list->PushBack(bonenode);
 
@@ -1133,7 +1157,7 @@ _intern void GLTFFillBoneNodeList(cgltf_node* node,BonenodeList* list){
 
 
 
-_intern void GLTFBuildSkeleton(cgltf_node* node,BonenodeList* list,cgltf_node** bones_array,u32 bones_count){
+_intern void GLTFBuildSkeleton(cgltf_node* node,BonenodeList* list){
 	GLTFFillBoneNodeList(node,list);
 	GLTFMatchIndex(node,list);
 }
@@ -1311,10 +1335,9 @@ void GLTFLoadAnimations(cgltf_animation* array,u32 count,AssimpAnimationList* li
 
 		//TODO: maybe we should just do everything in ms??
 		//NOTE: gltf records anim time in seconds
-		anim_base.duration = max_time * 1000.0f; //this is in ticks (ms)
-		anim_base.tps = 1000.0f; //(1000ms in a s)
+		anim_base.duration = max_time; 
+		anim_base.tps = 1.0f; 
 
-		_breakpoint();
 		list->PushBack(anim_base);
 
 #if 1
@@ -1363,6 +1386,26 @@ void GLTFLoadAnimations(cgltf_animation* array,u32 count,AssimpAnimationList* li
 
 
 
+
+	}
+}
+
+
+
+_intern void GLTFMatchOffsetMatrix(BonenodeList* list,cgltf_node** bone_array,Mat4* offset_array){
+
+	for(u32 i = 0; i < list->count; i++){
+		auto node = &list->container[i];
+
+		u32 index = FindIndex(node->name,bone_array,list->count);
+
+		_kill("Error: index not found\n", index == (u32)-1);
+
+		node->offset =  offset_array[index];// I feel like this needs to be transposed
+
+#ifdef MATRIX_ROW_MAJOR
+		node->offset = TransposeMat4(node->offset);
+#endif
 
 	}
 }
@@ -1534,14 +1577,19 @@ AssimpData GLTFLoad(const s8* filepath){
 
 		//TODO:This assumes one skeleton only (we should be getting the node from skins array)
 		
-		//JOINTS_0 refers to ->skins[0].joints
 
 		auto root = gdata->skins[0].skeleton; // assuming one skin
 		auto bone_array = gdata->skins[0].joints;
 		auto bone_count = gdata->skins[0].joints_count;
 
-		GLTFBuildSkeleton(root,&bonenode_list,bone_array,bone_count);
+		auto matrixoffset_data = GLTFGetBufferData(gdata->skins[0].inverse_bind_matrices);
 
+		GLTFBuildSkeleton(root,&bonenode_list);
+
+		_kill("Error: non matching count\n", bonenode_list.count != bone_count);
+		_kill("Error: non matching count\n", matrixoffset_data.count != bone_count);
+
+		GLTFMatchOffsetMatrix(&bonenode_list,bone_array,(Mat4*)matrixoffset_data.data);
 
 		_kill("Erorr: exceeds max bone limit\n",bonenode_list.count > _max_bones);
 
@@ -1629,9 +1677,9 @@ AssimpData GLTFLoad(const s8* filepath){
 		data.animation_count = animation_list.count;
 	}
 
+	_breakpoint();
 
 
-	exit(0);
 
 	return data;
 #else
@@ -1639,6 +1687,17 @@ AssimpData GLTFLoad(const s8* filepath){
 #endif
 }
 
+
+_intern void AssimpMapStringRef(VertexBoneDataList* v_list,aiBone** j_array){
+	for(u32 i = 0; i < v_list->count;i++){
+		auto v = &(*v_list)[i];
+
+		for(u32 n = 0; n < 4; n++){
+			v->string_ref[n] = j_array[v->bone_index[n]]->mName.data;
+			//v->hash_ref[n] = PHashString(v->string_ref[n]);
+		}
+	}
+}
 
 AssimpData AssimpLoad(const s8* filepath){
 
@@ -1781,6 +1840,9 @@ AssimpData AssimpLoad(const s8* filepath){
 		printf("%d: %d %d %d %d\n",i,bonedatalist[i].bone_index[0],bonedatalist[i].bone_index[1],bonedatalist[i].bone_index[2],
 				bonedatalist[i].bone_index[3]);
 	}
+
+
+	AssimpMapStringRef(&bonedatalist,mesh->mBones);
 
 
 
@@ -2236,7 +2298,7 @@ void Import(s8** files,u32 count){
 
 
 			//TODO: PENDING REMOVAL
-#if 0 
+#if 0
 			auto assimp = AssimpLoad(string);
 #else
 			auto assimp = GLTFLoad(string);
