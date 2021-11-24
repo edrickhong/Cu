@@ -655,7 +655,7 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
                 
                 aiQuatKey q = node->mRotationKeys[k];
                 AnimationKey key =
-                {(f32)q.mTime,{q.mValue.w,q.mValue.x,q.mValue.y,q.mValue.z}};
+                {(f32)q.mTime,{q.mValue.x,q.mValue.y,q.mValue.z,q.mValue.w}};
                 
                 memcpy(data.rotationkey_array + k,&key,sizeof(AnimationKey));
             }
