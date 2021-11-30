@@ -62,12 +62,42 @@ _ainline s8* PNewStringCopy(s8* string){
 
 	u32 len = strlen(string) + 1;
 
+	if(len == 1){
+		return 0;
+	}
+
 	s8* nstring = (s8*)alloc(len);
 
 	memcpy(nstring,string,len);
 
 	return nstring;
 }
+
+
+struct TAnimChannel{
+	u32 positionkey_count;
+	u32 rotationkey_count;
+	u32 scalekey_count;
+	AnimationKey* positionkey_array;
+	AnimationKey* rotationkey_array;
+	AnimationKey* scalekey_array;
+};
+
+
+_declare_list(TAnimChannelList,TAnimChannel);
+
+struct TAnim{
+	f32 tps;
+	f32 duration;
+
+
+	s8* name;
+	u32 name_hash;
+
+
+	TAnimChannelList channels;
+};
+
 
 
 //TODO: these ultimately have to be stored SOA style
@@ -78,7 +108,14 @@ struct TBone{
 	u32 name_hash;
 };
 
+struct TBoneWInd{
+	u32 index[4];
+	f32 weight[4];
+};
+
 _declare_list(TBoneList,TBone);
+_declare_list(TAnimList,TAnim);
+_declare_list(TBoneWIndList,TBoneWInd);
 
 //TODO: handle non pow2, non uniform sizes
 void NextMipDim(u32* w,u32* h){
@@ -624,6 +661,7 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
         // printf("Total animation channels %d\n",anim->mNumChannels);
         
         u32 len = strlen(anim->mName.data);
+
         
         if(len){
             
@@ -640,6 +678,8 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
             
             AssimpAnimationData data;
             data.bone_hash = PHashString(node->mNodeName.data);
+
+	    printf("Anim node:%s\n",node->mNodeName.data);
             
             _kill("too large\n",node->mNumPositionKeys >
                   _unsigned_max(AAnimationData::positionkey_count));
@@ -795,14 +835,24 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
         
         auto node_index = FindIndex(bone->mName.data,*bonenodelist);
         auto bonenode = &(*bonenodelist)[node_index];
+
+
+
+
+	//NOTE: ok so we actually need to do this replacement
+#if 1
         
         
+	//PrintMat4(bonenode->offset);
         memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
+	PrintMat4(bonenode->offset);
+	//printf("------------------------------------");
         
 #if !MATRIX_ROW_MAJOR
-        
         bonenode->offset = Transpose(bonenode->offset);
-        
+#endif
+
+
 #endif
         
         for(u32 j = 0; j < bone->mNumWeights;j++){
@@ -816,6 +866,141 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
                               node_index,bone->mWeights[j].mWeight);
         }
     }
+}
+
+
+_intern void LoadTBoneWIndex(aiMesh* mesh,TBoneWIndList* list,TBoneList skel){
+
+
+
+	auto get_index = [](const s8* string,TBoneList skel) -> u32 {
+		for(u32 i = 0; i < skel.count;i++){
+
+			if(PStringCmp(skel[i].name,string)){
+				return i;
+			}
+		}
+
+		return -1;
+	};
+
+	auto addvert = [](TBoneWInd* vert, u32 index, f32 weight)-> void {
+		for(u32 i = 0; i < 4; i++){
+
+			if(vert->weight[i] == 0.0f){
+				vert->index[i] = index;
+				vert->weight[i] = weight;
+
+				return;
+			}
+		}
+
+		printf("WARNING: Vertes has more than 4 weights!\n");
+	};
+
+	for(u32 i = 0; i < mesh->mNumBones; i++){
+		auto bone = mesh->mBones[i];
+		auto bone_index = get_index(bone->mName.data,skel);
+
+		_kill("Not Found\n", bone_index == (u32)-1);
+
+		auto bonenode = &skel[bone_index];
+
+
+		memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
+
+#if !MATRIX_ROW_MAJOR
+		bonenode->offset = Transpose(bonenode->offset);
+#endif
+
+		for(u32 j = 0; j < bone->mNumWeights; j++){
+			u32 vertindex = bone->mWeights[j].mVertexId;
+			f32 weight = bone->mWeights[j].mWeight;
+
+			addvert(&list->container[vertindex],bone_index,weight);
+		}
+	}
+}
+
+
+
+//we are gonna store this soa style too
+_intern void LoadTAnim(aiScene* scene,TAnimList* anims,TBoneList skel){
+
+	for(u32 i = 0; i  < scene->mNumAnimations; i++){
+
+		TAnim animation = {};
+		auto  anim = scene->mAnimations[i];
+
+		animation.duration = anim->mDuration;
+		animation.tps = anim->mTicksPerSecond;
+		animation.name = PNewStringCopy(anim->mName.data);
+		animation.name_hash = animation.name? PHashString(animation.name) : 0;
+
+		animation.channels.Init(skel.count);
+		animation.channels.count = skel.count;
+		memset(&animation.channels[0],0,skel.count * sizeof(TAnimChannel));
+
+		auto get_index = [](u32 hash,TBoneList skel) -> u32 {
+			for(u32 i = 0; i < skel.count; i++){
+				if(hash == skel[i].name_hash){
+					return i;
+				}
+			}
+
+
+			_kill("Bone not found\n",true);
+
+			return (u32)-1;
+		};
+
+		for(u32 j = 0; j < anim->mNumChannels; j++){
+
+			auto node = anim->mChannels[j];
+			auto channel = &animation.channels[(u32)get_index(PHashString(node->mNodeName.data),skel)];
+
+			channel->positionkey_count = node->mNumPositionKeys;
+			channel->rotationkey_count = node->mNumRotationKeys;
+			channel->scalekey_count = node->mNumScalingKeys;
+
+			//NOTE: we can store these interleaved because cmoves don't count as branches
+
+			channel-> positionkey_array =
+				(AnimationKey*)alloc(sizeof(AnimationKey) *
+						(node->mNumPositionKeys + node->mNumRotationKeys +
+						 node->mNumScalingKeys));
+
+			channel-> rotationkey_array = channel-> positionkey_array + node->mNumPositionKeys;
+			channel-> scalekey_array = channel-> rotationkey_array + node->mNumRotationKeys;
+
+			for(u32 k = 0; k < node->mNumPositionKeys;k++){
+
+				aiVectorKey vec = node->mPositionKeys[k];
+				AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+
+				memcpy(channel->positionkey_array + k,&key,sizeof(AnimationKey));
+			}
+
+			for(u32 k = 0; k < node->mNumRotationKeys;k++){
+
+				aiQuatKey q = node->mRotationKeys[k];
+				AnimationKey key =
+				{(f32)q.mTime,{q.mValue.x,q.mValue.y,q.mValue.z,q.mValue.w}};
+
+				memcpy(channel->rotationkey_array + k,&key,sizeof(AnimationKey));
+			}
+
+			for(u32 k = 0; k < node->mNumScalingKeys;k++){
+				aiVectorKey vec = node->mScalingKeys[k];
+				AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+
+				memcpy(channel->scalekey_array + k,&key,sizeof(AnimationKey));
+			}
+		}
+
+		anims->PushBack(animation);
+
+	}
 }
 
 
@@ -853,8 +1038,6 @@ _intern void BuildTSkel(aiNode* root,TBoneList* bone_list){
 		bone.name_hash = PHashString(bone.name);
 
 		bone_list->PushBack(bone);
-
-		printf("%s\n",bone.name);
 
 		for(u32 j = 0; j < n->mNumChildren; j++){
 			push(node_array,&count,n->mChildren[j]);
@@ -1088,9 +1271,6 @@ AssimpData AssimpLoad(const s8* filepath){
 
 
 
-    TBoneList bones;
-    bones.Init();
-
 
     if(mesh->mNumBones){
 
@@ -1124,7 +1304,35 @@ AssimpData AssimpLoad(const s8* filepath){
 
 
 #if 1
-	    BuildTSkel(scene->mRootNode,&bones);
+	TBoneList bones;
+	TAnimList anims;
+	TBoneWIndList wi;
+
+	bones.Init();
+	anims.Init();
+
+	wi.Init(mesh->mNumVertices);
+	memset(wi.container,0,sizeof(TBoneWInd) * mesh->mNumVertices);
+
+	BuildTSkel(scene->mRootNode,&bones);
+
+#if 0
+
+	printf("---------START----------------\n");
+	for(u32 i = 0; i < bones.count; i++){
+		printf("%s\n",bones[i].name);
+	}
+
+	printf("---------END----------------\n");
+
+#endif
+
+	LoadTAnim(scene,&anims,bones);
+
+	LoadTBoneWIndex(mesh,&wi,bones);
+
+	_breakpoint();
+	u32 a = 1;
 #endif
     }
     
@@ -1401,7 +1609,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             //skeleton
             if(blendtype == BLEND_LINEAR){
                 
-                header = TAG_SKEL;
+                header = TAG_BLEND_LINEAR;
                 datasize = data.bone_count;
                 
                 _kill("too many bones (signed bit is reserved)\n",
