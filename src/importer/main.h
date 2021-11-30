@@ -108,14 +108,14 @@ struct TBone{
 	u32 name_hash;
 };
 
-struct TBoneWInd{
+struct TSkin{
 	u32 index[4];
 	f32 weight[4];
 };
 
 _declare_list(TBoneList,TBone);
 _declare_list(TAnimList,TAnim);
-_declare_list(TBoneWIndList,TBoneWInd);
+_declare_list(TSkinList,TSkin);
 
 //TODO: handle non pow2, non uniform sizes
 void NextMipDim(u32* w,u32* h){
@@ -869,7 +869,7 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
 }
 
 
-_intern void LoadTBoneWIndex(aiMesh* mesh,TBoneWIndList* list,TBoneList skel){
+_intern void LoadTSkin(aiMesh* mesh,TSkinList* list,TBoneList skel){
 
 
 
@@ -884,7 +884,7 @@ _intern void LoadTBoneWIndex(aiMesh* mesh,TBoneWIndList* list,TBoneList skel){
 		return -1;
 	};
 
-	auto addvert = [](TBoneWInd* vert, u32 index, f32 weight)-> void {
+	auto addvert = [](TSkin* vert, u32 index, f32 weight)-> void {
 		for(u32 i = 0; i < 4; i++){
 
 			if(vert->weight[i] == 0.0f){
@@ -1306,13 +1306,13 @@ AssimpData AssimpLoad(const s8* filepath){
 #if 1
 	TBoneList bones;
 	TAnimList anims;
-	TBoneWIndList wi;
+	TSkinList skins;
 
 	bones.Init();
 	anims.Init();
 
-	wi.Init(mesh->mNumVertices);
-	memset(wi.container,0,sizeof(TBoneWInd) * mesh->mNumVertices);
+	skins.Init(mesh->mNumVertices);
+	memset(skins.container,0,sizeof(TSkin) * mesh->mNumVertices);
 
 	BuildTSkel(scene->mRootNode,&bones);
 
@@ -1329,7 +1329,7 @@ AssimpData AssimpLoad(const s8* filepath){
 
 	LoadTAnim(scene,&anims,bones);
 
-	LoadTBoneWIndex(mesh,&wi,bones);
+	LoadTSkin(mesh,&skins,bones);
 
 	_breakpoint();
 	u32 a = 1;
