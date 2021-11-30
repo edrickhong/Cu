@@ -268,9 +268,13 @@ enum MDFTags{
     TAG_MDF = _encode('M','D','F',' '),
     TAG_VERTEX = _encode('V','E','R','T'),
     TAG_INDEX = _encode('I','N','D','X'),
+
+    //TODO:these two should not be here because they describe operation
     TAG_BLEND_LINEAR = _encode('B','L','I','N'),
     TAG_BLEND_DQ = _encode('B','D','Q',' '),
+
     TAG_ANIM = _encode('A','N','I','M'),
+    TAG_SKEL = _encode('S','K','E','L'),
 };
 
 struct MDFLinearBoneData{

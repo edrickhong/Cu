@@ -56,7 +56,29 @@
 #define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
 
 
+//TODO: we should have a notion of a string pool to allocation string from and to delete all strings
 
+_ainline s8* PNewStringCopy(s8* string){
+
+	u32 len = strlen(string) + 1;
+
+	s8* nstring = (s8*)alloc(len);
+
+	memcpy(nstring,string,len);
+
+	return nstring;
+}
+
+
+//TODO: these ultimately have to be stored SOA style
+struct TBone{
+	Mat4 offset;
+	u32 children_count;
+	s8* name;
+	u32 name_hash;
+};
+
+_declare_list(TBoneList,TBone);
 
 //TODO: handle non pow2, non uniform sizes
 void NextMipDim(u32* w,u32* h){
@@ -735,6 +757,33 @@ _intern u32 FindIndex(const s8* string,BonenodeList bonenodelist){
     
 }
 
+
+_intern u32 FindIndex(const s8* string,TBoneList bonenodelist){
+    
+    
+    for(u32 i = 0; i < bonenodelist.count;i++){
+        
+        if(PStringCmp(bonenodelist[i].name,string)){
+            return i;
+        }
+    }
+    
+    //_kill("bone not found\n",1);
+    
+    return -1;
+    
+}
+
+#if 0
+_declare_list(VertexBoneDataList,VertexBoneData);
+
+_declare_list(BonenodeList,AssimpBoneNode);
+_declare_list(AssimpAnimationList,AssimpAnimation);
+
+#endif
+
+
+
 void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
                               BonenodeList* bonenodelist){
     
@@ -771,6 +820,49 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
 
 
 
+//TODO: Some bones are not bound to the same mesh eg: camera diff mesh etc
+_intern void BuildTSkel(aiNode* root,TBoneList* bone_list){
+
+#define _max_nodes 1024
+
+	aiNode* node_array[1024];
+	u32 count = 0;
+
+	auto push = [](aiNode** array,u32* count,aiNode* node) -> void{
+
+		_kill("array full\n",*count >= _max_nodes);
+		array[*count] = node;
+		(*count)++;
+	};
+
+	push(node_array,&count,root);
+
+	for(u32 i = 0; i < count; i++){
+		auto n = node_array[i];
+
+		TBone bone = {};
+		memcpy(&bone.offset,&(n->mTransformation),sizeof(Mat4));
+
+#if !MATRIX_ROW_MAJOR
+		bone.offset = Transpose(bone.offset);
+#endif
+
+
+		bone.children_count = n->mNumChildren;
+		bone.name = PNewStringCopy(n->mName.data);
+		bone.name_hash = PHashString(bone.name);
+
+		bone_list->PushBack(bone);
+
+		printf("%s\n",bone.name);
+
+		for(u32 j = 0; j < n->mNumChildren; j++){
+			push(node_array,&count,n->mChildren[j]);
+		}
+	}
+
+}
+
 _intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBone** aibones_array,u32 aibones_count){
     
 #if 0
@@ -781,7 +873,7 @@ _intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
 #else
     
-#if 1
+#if 0
     
     
     
@@ -826,6 +918,7 @@ _intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     
 }
 
+
 _intern void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
     
     u32 index = FindIndex(node->mName.data,(*bonenodelist));
@@ -841,6 +934,10 @@ _intern void AssimpBuildSkeleton(aiNode* node,BonenodeList* bonenodelist){
             bnode->childrenindex_array[i] = FindIndex(node->mChildren[i]->mName.data,*bonenodelist);
         }
         
+    }
+
+    else{
+	    printf("Not attached node %s\n",node->mName.data);
     }
     
     
@@ -988,13 +1085,21 @@ AssimpData AssimpLoad(const s8* filepath){
     bonenodelist.Init(mesh->mNumBones + _max_bones);
     bonedatalist.Init(mesh->mNumVertices);
     animationlist.Init();
-    
+
+
+
+    TBoneList bones;
+    bones.Init();
+
+
     if(mesh->mNumBones){
+
         
         bonedatalist.count = mesh->mNumVertices;
         
         //build skeleton from the bones
         AssimpBuildSkeleton(scene->mRootNode,&bonenodelist,mesh->mBones,mesh->mNumBones);
+
         
         
 #if 0
@@ -1006,16 +1111,21 @@ AssimpData AssimpLoad(const s8* filepath){
         PrintNodeHeirarchy(bonenodelist[0],bonenodelist);
         
 #endif
-        
+
         
         //MARK: max bones check
         //this is the effective bone count
         _kill("Erorr: exceeds max bone limit\n",bonenodelist.count > _max_bones);
         
-        AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist);
+        AssimpLoadBoneVertexData(mesh,&bonedatalist,&bonenodelist); //this loads the weights + indices
         
         //get animation data
         AssimpLoadAnimations(scene,&animationlist);
+
+
+#if 1
+	    BuildTSkel(scene->mRootNode,&bones);
+#endif
     }
     
     {
@@ -1154,7 +1264,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 (data.vertexbonedata_count * sizeof(VertexBoneData)) +
                 data.index_count * sizeof(u32);
             
-            u32 animbonesize = AnimBoneSize(data,bones);
+            u32 animbonesize = AnimBoneSize(data,bones); //FIXME: this is wrong pretty sure
             
 #if _print_log
             
@@ -1264,7 +1374,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
             u32 header;
             u32 datasize;
             
-            //animations
+            //animation set + keys
             {
                 header = TAG_ANIM;
                 datasize = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
@@ -1287,12 +1397,11 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                 }
                 
             }
-            
-            
+
             //skeleton
             if(blendtype == BLEND_LINEAR){
                 
-                header = _encode('B','L','I','N');
+                header = TAG_SKEL;
                 datasize = data.bone_count;
                 
                 _kill("too many bones (signed bit is reserved)\n",
@@ -1458,6 +1567,8 @@ void Import(s8** files,u32 count){
 #endif
             
             auto assimp = AssimpLoad(string);
+
+	    exit(0);
             
             buffer[len - 3] = 'm';
             buffer[len - 2] = 'd';
