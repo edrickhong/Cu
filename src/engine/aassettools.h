@@ -35,6 +35,10 @@ struct AssimpBoneNode{
     
     u32 children_count;
     u32 childrenindex_array[10];
+
+#if 1
+    Mat4 result = {0};
+#endif
 };
 
 //this is for mapping vertices to bones
