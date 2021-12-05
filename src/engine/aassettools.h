@@ -37,7 +37,6 @@ struct AssimpBoneNode{
 
 #if 1
 	s8* name;
-	AssimpBoneNode* children_array;
 	Mat4 res = {0};
 #endif
 };

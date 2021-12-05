@@ -1,5 +1,6 @@
 
 #include "main.h"
+#include "pprint.h"
 
 /*
 FIXME:
@@ -21,6 +22,8 @@ s32 main(s32 argc,s8** argv){
     }
     
     Import(&argv[1],(u32)(argc - 1));
+
+    PPrint(0.5);
     
     return 0;
 }

@@ -897,12 +897,11 @@ _intern void LoadTSkin(aiMesh* mesh,TSkinList* list,TBoneList skel){
 			if(vert->weight[i] == 0.0f){
 				vert->index[i] = index;
 				vert->weight[i] = weight;
-
 				return;
 			}
 		}
 
-		printf("WARNING: Vertes has more than 4 weights!\n");
+		//printf("WARNING: Vertes has more than 4 weights!\n");
 	};
 
 	for(u32 i = 0; i < mesh->mNumBones; i++){
@@ -1208,10 +1207,10 @@ VectorTransform _ainline IdentityVectorTransform(){
 
 
 #if 1
-Vec4 _ainline ALerpAnimation(AAnimationKey* key_array,u32 key_count,f32 animationtime){
+Vec4 _ainline ALerpAnimation(AnimationKey* key_array,u32 key_count,f32 animationtime){
     
     if(key_count ==1){
-        return key_array[0].value;
+        return key_array[0].key;
     }
     
     u32 frameindex = 0;
@@ -1226,24 +1225,24 @@ Vec4 _ainline ALerpAnimation(AAnimationKey* key_array,u32 key_count,f32 animatio
     }
     
     //we need to align the data
-    AAnimationKey current = key_array[frameindex];
+    auto current = key_array[frameindex];
     
     
-    AAnimationKey next =
+    auto next =
         key_array[(frameindex + 1) % key_count];
     
     f32 step = (animationtime - current.time)/(next.time - current.time);
     
-    return LerpVec4(current.value,next.value,step);
+    return LerpVec4(current.key,next.key,step);
 }
 
 
-Quat _ainline  ALerpAnimationQuat(AAnimationKey* key_array,u32 key_count,
+Quat _ainline  ALerpAnimationQuat(AnimationKey* key_array,u32 key_count,
                                                      f32 animationtime){
 
     if(key_count ==1){
         
-        Quat ret = Vec4ToQuat(key_array[0].value);
+        Quat ret = Vec4ToQuat(key_array[0].key);
         return ret;
     }
     
@@ -1258,14 +1257,14 @@ Quat _ainline  ALerpAnimationQuat(AAnimationKey* key_array,u32 key_count,
         
     }
     
-    AAnimationKey current = key_array[frameindex];
-    AAnimationKey next =
+    auto current = key_array[frameindex];
+    auto next =
         key_array[(frameindex + 1) % key_count];
     
     
     f32 step = (animationtime - current.time)/(next.time - current.time);
 
-    return NLerpQuat(Vec4ToQuat(current.value),Vec4ToQuat(next.value),step);
+    return NLerpQuat(Vec4ToQuat(current.key),Vec4ToQuat(next.key),step);
 
 }
 
@@ -1278,11 +1277,11 @@ void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
     Mat4 matrix;
     VectorTransform transform = IdentityVectorTransform();
 
-    auto get_channel = [](u32 name_hash,AssimpAnimation* channels) -> TAnimChannel* {
+    auto get_channel = [](u32 name_hash,AssimpAnimation channels) -> AssimpAnimationData* {
 
-	    for(u32 i = 0; i < channels->data_count; i++){
+	    for(u32 i = 0; i < channels.data_count; i++){
 
-		    auto c = &channels->container[i];
+		    auto c = &channels.data[i];
 
 		    if(c->name_hash == name_hash){
 			    return c;
@@ -1294,7 +1293,7 @@ void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
 
     auto create_children = [](AssimpBoneNode* parent,BonenodeList list) -> AssimpBoneNode** {
 
-	    if(parent->children_count){
+	    if(!parent->children_count){
 		    return 0;
 	    }
 	    
@@ -1308,7 +1307,7 @@ void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
 	    return arr;
     };
 
-    auto channel = get_channel(node->name_hash,&channels);
+    auto channel = get_channel(node->name_hash,channels);
     
     
     if(channel){
@@ -1344,11 +1343,15 @@ void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
     matrix * node->offset;
     
 #endif
-    
+
+    printf("%s:",node->name);
+    PrintMat4(node->res);
+
     
     for(u32 i = 0; i < node->children_count;i++){
         
-        AssimpBoneNode* child = node->children_array[i];
+        auto child_array = create_children(node,list);
+	auto child = child_array[i];
         
         AssimpTransformSkel(channels,animationtime,child,matrix,list);
     }
@@ -1356,22 +1359,20 @@ void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
 }
 
 
-void AssimpBlend(f32 time_ms,u32 animation_index,AssimpAnimationList* animation,
-                  AssimpBoneNode* root){
+void AssimpBlend(f32 time_ms,u32 animation_index,AssimpAnimationList* anim,
+		BonenodeList list){
     
-    TIMEBLOCK(DarkViolet);
-
     
-    AAnimationSet animation = animation[animation_index];
+    AssimpAnimation animation = anim->container[animation_index];
     
     f32 tps =  _either(animation.tps != 0.0f,animation.tps,25.0f);
     f32 ticks = tps * _ms2s(time_ms);
     
     //returns the remainder of x divided by y
     f32 animationtime = fmodf(ticks,animation.duration);
-    
-    AssimpTransformSkel(animation->channels,animationtime,root,
-                                   IdentityMat4());
+
+    AssimpTransformSkel(animation,animationtime,&list.container[0],
+                                   IdentityMat4(),list);
 }
 
 #endif
@@ -1533,8 +1534,19 @@ AssimpData AssimpLoad(const s8* filepath){
 #endif
 
 	LoadTAnim(scene,&anims,bones);
-
 	LoadTSkin(mesh,&skins,bones);
+
+	//testing animations
+	{
+		f32 time = 0.5f;
+		u32 anim_index = 0;
+
+		printf("---------START------------\n");
+		
+		AssimpBlend(time,anim_index,&animationlist,bonenodelist);
+
+		printf("---------END------------\n");
+	}
 
 	_breakpoint();
 	u32 a = 1;
@@ -1593,7 +1605,7 @@ u32 AnimBoneSize(AssimpData data,AssimpBoneNode* bones){
             for(u32 k = 0; k < set.data_count; k++){
                 AssimpAnimationData keydata = set.data[k];
                 
-                if(keydata.bone_hash == bone.bone_hash){
+                if(keydata.name_hash == bone.name_hash){
                     array[array_count] = keydata;
                     array_count++;
                     _kill("",array_count > 100);
@@ -1840,7 +1852,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                     
                     AssimpBoneNode bone = bones[i];
                     
-                    MDFLinearBoneData lbd = {bone.bone_hash,bone.children_count,bone.offset};
+                    MDFLinearBoneData lbd = {bone.name_hash,bone.children_count,bone.offset};
                     PtrCopy(&ptr,&lbd,sizeof(MDFLinearBoneData));
                     
                     PtrCopy(&ptr,bone.childrenindex_array,sizeof(u32) * bone.children_count);
@@ -1855,7 +1867,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,AssimpData data,
                         for(u32 k = 0; k < set.data_count; k++){
                             AssimpAnimationData keydata = set.data[k];
                             
-                            if(keydata.bone_hash == bone.bone_hash){
+                            if(keydata.name_hash == bone.name_hash){
                                 array[array_count] = keydata;
                                 array_count++;
                                 _kill("",array_count > 100);
