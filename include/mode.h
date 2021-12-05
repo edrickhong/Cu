@@ -71,6 +71,10 @@
 
 #ifdef __clang__
 
+#pragma GCC diagnostic warning "-Wunknown-warning-option"
+#pragma GCC diagnostic error "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+
 #pragma GCC diagnostic warning "-Wnull-dereference"
 #pragma GCC diagnostic error "-Wnull-dereference"
 #pragma GCC diagnostic ignored "-Wnull-dereference"

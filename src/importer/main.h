@@ -81,6 +81,9 @@ struct TAnimChannel{
 	AnimationKey* positionkey_array;
 	AnimationKey* rotationkey_array;
 	AnimationKey* scalekey_array;
+
+	s8* name;
+	u32 name_hash;
 };
 
 
@@ -106,6 +109,10 @@ struct TBone{
 	u32 children_count;
 	s8* name;
 	u32 name_hash;
+
+#if 1
+	Mat4 res = {};
+#endif
 };
 
 struct TSkin{
@@ -677,141 +684,141 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
             aiNodeAnim* node = anim->mChannels[j];
             
             AssimpAnimationData data;
-            data.bone_hash = PHashString(node->mNodeName.data);
+	    data.name_hash = PHashString(node->mNodeName.data);
 
 	    printf("Anim node:%s\n",node->mNodeName.data);
-            
-            _kill("too large\n",node->mNumPositionKeys >
-                  _unsigned_max(AAnimationData::positionkey_count));
-            
-            _kill("too large\n",node->mNumRotationKeys >
-                  _unsigned_max(AAnimationData::rotationkey_count));
-            
-            _kill("too large\n",node->mNumScalingKeys >
-                  _unsigned_max(AAnimationData::scalekey_count));
-            
-            data.positionkey_count = node->mNumPositionKeys;
-            data.rotationkey_count = node->mNumRotationKeys;
-            data.scalekey_count = node->mNumScalingKeys;
-            
-            data. positionkey_array =
-                (AnimationKey*)alloc(sizeof(AnimationKey) *
-                                     (node->mNumPositionKeys + node->mNumRotationKeys +
-                                      node->mNumScalingKeys));
-            
-            data. rotationkey_array = data. positionkey_array + node->mNumPositionKeys;
-            data. scalekey_array = data. rotationkey_array + node->mNumRotationKeys;
-            
-            data.prestate = (AnimationBehaviour)node->mPreState;
-            data.poststate = (AnimationBehaviour)node->mPostState;
-            
-            for(u32 k = 0; k < node->mNumPositionKeys;k++){
-                
-                aiVectorKey vec = node->mPositionKeys[k];
-                AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
-                
-                memcpy(data.positionkey_array + k,&key,sizeof(AnimationKey));
-            }
-            
-            for(u32 k = 0; k < node->mNumRotationKeys;k++){
-                
-                aiQuatKey q = node->mRotationKeys[k];
-                AnimationKey key =
-                {(f32)q.mTime,{q.mValue.x,q.mValue.y,q.mValue.z,q.mValue.w}};
-                
-                memcpy(data.rotationkey_array + k,&key,sizeof(AnimationKey));
-            }
-            
-            for(u32 k = 0; k < node->mNumScalingKeys;k++){
-                aiVectorKey vec = node->mScalingKeys[k];
-                AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
-                
-                memcpy(data.scalekey_array + k,&key,sizeof(AnimationKey));
-            }
-            
-            memcpy(animation.data + j,&data,sizeof(AssimpAnimationData));
-        }
-        
-        list->PushBack(animation);
-        
+
+	    _kill("too large\n",node->mNumPositionKeys >
+			    _unsigned_max(AAnimationData::positionkey_count));
+
+	    _kill("too large\n",node->mNumRotationKeys >
+			    _unsigned_max(AAnimationData::rotationkey_count));
+
+	    _kill("too large\n",node->mNumScalingKeys >
+			    _unsigned_max(AAnimationData::scalekey_count));
+
+	    data.positionkey_count = node->mNumPositionKeys;
+	    data.rotationkey_count = node->mNumRotationKeys;
+	    data.scalekey_count = node->mNumScalingKeys;
+
+	    data. positionkey_array =
+		    (AnimationKey*)alloc(sizeof(AnimationKey) *
+				    (node->mNumPositionKeys + node->mNumRotationKeys +
+				     node->mNumScalingKeys));
+
+	    data. rotationkey_array = data. positionkey_array + node->mNumPositionKeys;
+	    data. scalekey_array = data. rotationkey_array + node->mNumRotationKeys;
+
+	    data.prestate = (AnimationBehaviour)node->mPreState;
+	    data.poststate = (AnimationBehaviour)node->mPostState;
+
+	    for(u32 k = 0; k < node->mNumPositionKeys;k++){
+
+		    aiVectorKey vec = node->mPositionKeys[k];
+		    AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+
+		    memcpy(data.positionkey_array + k,&key,sizeof(AnimationKey));
+	    }
+
+	    for(u32 k = 0; k < node->mNumRotationKeys;k++){
+
+		    aiQuatKey q = node->mRotationKeys[k];
+		    AnimationKey key =
+		    {(f32)q.mTime,{q.mValue.x,q.mValue.y,q.mValue.z,q.mValue.w}};
+
+		    memcpy(data.rotationkey_array + k,&key,sizeof(AnimationKey));
+	    }
+
+	    for(u32 k = 0; k < node->mNumScalingKeys;k++){
+		    aiVectorKey vec = node->mScalingKeys[k];
+		    AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+
+		    memcpy(data.scalekey_array + k,&key,sizeof(AnimationKey));
+	    }
+
+	    memcpy(animation.data + j,&data,sizeof(AssimpAnimationData));
+	}
+
+	list->PushBack(animation);
+
     }
-    
+
 }
 
 void DestroyAssimpData(AssimpData data){
-    
-    unalloc(data.vertex_array);
-    unalloc(data.texcoord_array);
-    unalloc(data.normal_array);
-    unalloc(data.index_array);
-    unalloc(data.vertexbonedata_array);
-    unalloc(data.bone_array);
-    
-    for(u32 i = 0; i < data.animation_count;i++){
-        
-        for(u32 j = 0; j < data.animation_array[i].data_count;j++){
-            unalloc(data.animation_array[i].data[j].positionkey_array);
-        }
-        
-        unalloc(data.animation_array[i].data);
-        
-    }
-    
-    unalloc(data.animation_array);
-    
+
+	unalloc(data.vertex_array);
+	unalloc(data.texcoord_array);
+	unalloc(data.normal_array);
+	unalloc(data.index_array);
+	unalloc(data.vertexbonedata_array);
+	unalloc(data.bone_array);
+
+	for(u32 i = 0; i < data.animation_count;i++){
+
+		for(u32 j = 0; j < data.animation_array[i].data_count;j++){
+			unalloc(data.animation_array[i].data[j].positionkey_array);
+		}
+
+		unalloc(data.animation_array[i].data);
+
+	}
+
+	unalloc(data.animation_array);
+
 }
 
 void AssimpAddBoneData(VertexBoneData* bonedata,u32 index,f32 weight){
-    
-    
-    for(u32 i = 0; i < 4;i++){
-        
-        if(bonedata->bone_weight[i] == 0.0f){
-            bonedata->bone_weight[i] = weight;
-            bonedata->bone_index[i] = index;
-            /* printf("bindex:%d\n",index); */
-            return;
-        }
-        
-    }
+
+
+	for(u32 i = 0; i < 4;i++){
+
+		if(bonedata->bone_weight[i] == 0.0f){
+			bonedata->bone_weight[i] = weight;
+			bonedata->bone_index[i] = index;
+			/* printf("bindex:%d\n",index); */
+			return;
+		}
+
+	}
 #if 0
-    printf("Vertice is influenced by more than 4 bones\n");
+	printf("Vertice is influenced by more than 4 bones\n");
 #endif
-    
-    // _kill("Vertice is influenced by more than 4 bones\n",1);
+
+	// _kill("Vertice is influenced by more than 4 bones\n",1);
 }
 
 _intern u32 FindIndex(const s8* string,BonenodeList bonenodelist){
-    
-    
-    for(u32 i = 0; i < bonenodelist.count;i++){
-        
-        if(PStringCmp(bonenodelist[i].name,string)){
-            return i;
-        }
-    }
-    
-    //_kill("bone not found\n",1);
-    
-    return -1;
-    
+
+
+	for(u32 i = 0; i < bonenodelist.count;i++){
+
+		if(PStringCmp(bonenodelist[i].name,string)){
+			return i;
+		}
+	}
+
+	//_kill("bone not found\n",1);
+
+	return -1;
+
 }
 
 
 _intern u32 FindIndex(const s8* string,TBoneList bonenodelist){
-    
-    
-    for(u32 i = 0; i < bonenodelist.count;i++){
-        
-        if(PStringCmp(bonenodelist[i].name,string)){
-            return i;
-        }
-    }
-    
-    //_kill("bone not found\n",1);
-    
-    return -1;
-    
+
+
+	for(u32 i = 0; i < bonenodelist.count;i++){
+
+		if(PStringCmp(bonenodelist[i].name,string)){
+			return i;
+		}
+	}
+
+	//_kill("bone not found\n",1);
+
+	return -1;
+
 }
 
 #if 0
@@ -825,47 +832,47 @@ _declare_list(AssimpAnimationList,AssimpAnimation);
 
 
 void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
-                              BonenodeList* bonenodelist){
-    
-    memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
-    
-    for(u32 i = 0; i < mesh->mNumBones;i++){
-        
-        aiBone* bone = mesh->mBones[i];
-        
-        auto node_index = FindIndex(bone->mName.data,*bonenodelist);
-        auto bonenode = &(*bonenodelist)[node_index];
+		BonenodeList* bonenodelist){
+
+	memset(bonedatalist->container,0,mesh->mNumVertices * sizeof(VertexBoneData));
+
+	for(u32 i = 0; i < mesh->mNumBones;i++){
+
+		aiBone* bone = mesh->mBones[i];
+
+		auto node_index = FindIndex(bone->mName.data,*bonenodelist);
+		auto bonenode = &(*bonenodelist)[node_index];
 
 
 
 
-	//NOTE: ok so we actually need to do this replacement
+		//NOTE: ok so we actually need to do this replacement
 #if 1
-        
-        
-	//PrintMat4(bonenode->offset);
-        memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
-	PrintMat4(bonenode->offset);
-	//printf("------------------------------------");
-        
+
+
+		//PrintMat4(bonenode->offset);
+		memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
+		PrintMat4(bonenode->offset);
+		//printf("------------------------------------");
+
 #if !MATRIX_ROW_MAJOR
-        bonenode->offset = Transpose(bonenode->offset);
+		bonenode->offset = Transpose(bonenode->offset);
 #endif
 
 
 #endif
-        
-        for(u32 j = 0; j < bone->mNumWeights;j++){
-            
-            //which vertex it influences
-            u32 vertexid = bone->mWeights[j].mVertexId;
-            
-            
-            //MARK:
-            AssimpAddBoneData(&((*bonedatalist)[vertexid]),
-                              node_index,bone->mWeights[j].mWeight);
-        }
-    }
+
+		for(u32 j = 0; j < bone->mNumWeights;j++){
+
+			//which vertex it influences
+			u32 vertexid = bone->mWeights[j].mVertexId;
+
+
+			//MARK:
+			AssimpAddBoneData(&((*bonedatalist)[vertexid]),
+					node_index,bone->mWeights[j].mWeight);
+		}
+	}
 }
 
 
@@ -957,7 +964,12 @@ _intern void LoadTAnim(aiScene* scene,TAnimList* anims,TBoneList skel){
 		for(u32 j = 0; j < anim->mNumChannels; j++){
 
 			auto node = anim->mChannels[j];
-			auto channel = &animation.channels[(u32)get_index(PHashString(node->mNodeName.data),skel)];
+			auto name = node->mNodeName.data;
+			auto name_hash = PHashString(name);
+			auto channel = &animation.channels[(u32)get_index(name_hash,skel)];
+
+			channel->name = PNewStringCopy(name);
+			channel->name_hash = name_hash;
 
 			channel->positionkey_count = node->mNumPositionKeys;
 			channel->rotationkey_count = node->mNumRotationKeys;
@@ -1076,7 +1088,7 @@ _intern void AssimpFillBoneNodeList(aiNode* node,BonenodeList* bonenodelist,aiBo
     AssimpBoneNode bonenode = {};
     
     bonenode.name = node->mName.data;
-    bonenode.bone_hash = PHashString(node->mName.data);
+    bonenode.name_hash = PHashString(node->mName.data);
     bonenode.children_count = node->mNumChildren;
     
     
@@ -1151,7 +1163,7 @@ void AssimpRemapBones(AssimpBoneNode* dst,AssimpBoneNode* src,
     u32 oldindex;
     
     for(u32 i = 0;;i++){
-        if(node.bone_hash == src[i].bone_hash){
+        if(node.name_hash == src[i].name_hash){
             oldindex = i;
             break;
         }
@@ -1173,7 +1185,6 @@ void AssimpRemapBones(AssimpBoneNode* dst,AssimpBoneNode* src,
 
 
 //MARK: Test animations
-#if 1
 
 
 #define _ms2s(ms)  ((f32)ms/1000.0f)
@@ -1196,6 +1207,7 @@ VectorTransform _ainline IdentityVectorTransform(){
 }
 
 
+#if 1
 Vec4 _ainline ALerpAnimation(AAnimationKey* key_array,u32 key_count,f32 animationtime){
     
     if(key_count ==1){
@@ -1257,33 +1269,62 @@ Quat _ainline  ALerpAnimationQuat(AAnimationKey* key_array,u32 key_count,
 
 }
 
-void AssimpTransformSkel(u32 animation_index,f32 animationtime,
-                                    ALinearBone* _restrict node,Mat4 parent_matrix,
-                                    DBGPTR(Mat4) result,
-                                    u32* _restrict result_count){
+void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
+                                    AssimpBoneNode* _restrict node,Mat4 parent_matrix,
+				    BonenodeList list){
     
     //hand optimize this. the compiler has no idea wtf it's doing
     
     Mat4 matrix;
     VectorTransform transform = IdentityVectorTransform();
+
+    auto get_channel = [](u32 name_hash,AssimpAnimation* channels) -> TAnimChannel* {
+
+	    for(u32 i = 0; i < channels->data_count; i++){
+
+		    auto c = &channels->container[i];
+
+		    if(c->name_hash == name_hash){
+			    return c;
+		    }
+	    }
+
+	    return 0;
+    };
+
+    auto create_children = [](AssimpBoneNode* parent,BonenodeList list) -> AssimpBoneNode** {
+
+	    if(parent->children_count){
+		    return 0;
+	    }
+	    
+	    auto arr = (AssimpBoneNode**)alloc(sizeof(AssimpBoneNode*) * parent->children_count);
+	    for(u32 i = 0; i < parent->children_count;i++){
+		    auto index = parent->childrenindex_array[i];
+		    arr[i] = &list[index];
+	    }
+
+
+	    return arr;
+    };
+
+    auto channel = get_channel(node->name_hash,&channels);
     
-    AAnimationData* animationdata = node->animationdata_array;
     
-    if(animationdata){
+    if(channel){
         
-        animationdata += animation_index;
         
         transform.translation = 
-            ALerpAnimation(animationdata->positionkey_array,
-                                  animationdata->positionkey_count,animationtime);
+            ALerpAnimation(channel->positionkey_array,
+                                  channel->positionkey_count,animationtime);
         
         transform.scale =
-            ALerpAnimation(animationdata->scalekey_array,
-                                  animationdata->scalekey_count,animationtime);
+            ALerpAnimation(channel->scalekey_array,
+                                  channel->scalekey_count,animationtime);
         
         transform.rotation = 
-            ALerpAnimationQuat(animationdata->rotationkey_array,
-                                            animationdata->rotationkey_count,animationtime);
+            ALerpAnimationQuat(channel->rotationkey_array,
+                                            channel->rotationkey_count,animationtime);
     }
     
     matrix =
@@ -1293,7 +1334,7 @@ void AssimpTransformSkel(u32 animation_index,f32 animationtime,
     
     matrix = parent_matrix * matrix;
     
-    result[*result_count] = 
+    node->res = 
 #if _row_major
     
         TransposeMat4(matrix * node->offset);
@@ -1305,26 +1346,23 @@ void AssimpTransformSkel(u32 animation_index,f32 animationtime,
 #endif
     
     
-    (*result_count)++;
-    
     for(u32 i = 0; i < node->children_count;i++){
         
-        ALinearBone* child = node->children_array[i];
+        AssimpBoneNode* child = node->children_array[i];
         
-        AssimpTransformSkel(animation_index,animationtime,child,matrix,result,
-                                       result_count);
+        AssimpTransformSkel(channels,animationtime,child,matrix,list);
     }
     
 }
 
 
-void AssimpBlend(f32 time_ms,u32 animation_index,AAnimationSet* animation_array,
-                  ALinearBone* root,DBGPTR(Mat4) result){
+void AssimpBlend(f32 time_ms,u32 animation_index,AssimpAnimationList* animation,
+                  AssimpBoneNode* root){
     
     TIMEBLOCK(DarkViolet);
 
     
-    AAnimationSet animation = animation_array[animation_index];
+    AAnimationSet animation = animation[animation_index];
     
     f32 tps =  _either(animation.tps != 0.0f,animation.tps,25.0f);
     f32 ticks = tps * _ms2s(time_ms);
@@ -1332,10 +1370,8 @@ void AssimpBlend(f32 time_ms,u32 animation_index,AAnimationSet* animation_array,
     //returns the remainder of x divided by y
     f32 animationtime = fmodf(ticks,animation.duration);
     
-    u32 result_count = 0;
-    
-    AssimpTransformSkel(animation_index,animationtime,root,
-                                   IdentityMat4(),result,&result_count);
+    AssimpTransformSkel(animation->channels,animationtime,root,
+                                   IdentityMat4());
 }
 
 #endif
