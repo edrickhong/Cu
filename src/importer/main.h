@@ -51,6 +51,7 @@
 
 #include "pparse.h"
 
+#include "pprint.h"
 
 #define _hash(a,b,c) (a * 1) + (b * 2) + (c * 3)
 #define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
@@ -1344,10 +1345,7 @@ void AssimpTransformSkel(AssimpAnimation channels,f32 animationtime,
     
 #endif
 
-    printf("%s:",node->name);
-    PrintMat4(node->res);
 
-    
     for(u32 i = 0; i < node->children_count;i++){
         
         auto child_array = create_children(node,list);
@@ -1373,6 +1371,79 @@ void AssimpBlend(f32 time_ms,u32 animation_index,AssimpAnimationList* anim,
 
     AssimpTransformSkel(animation,animationtime,&list.container[0],
                                    IdentityMat4(),list);
+}
+
+void TLinearBlend(u32 index,f32 time_ms,TBoneList skel,TAnimList anims,
+		Mat4* _restrict res){
+
+	u32 res_count = 0; 
+
+	auto anim = anims[index];
+	auto tps = anim.tps != 0.0f ? anim.tps : 25.0f;
+	auto ticks = tps * _ms2s(time_ms);
+
+	auto anim_time = fmodf(ticks,anim.duration);
+
+	auto channels = anim.channels;
+
+	auto add_res = [](Mat4* _restrict res,u32* _restrict count,Mat4 node)-> void{
+		res[*count] =  node;
+		(*count)++;
+	};
+
+	add_res(res,&res_count, IdentityMat4());
+
+	for(u32 i = 0; i < skel.count; i++){
+		auto bone = skel[i];
+		auto channel = channels[i];
+
+		_kill("Not matching nodes!\n",bone.name_hash != channel.name_hash &&
+				channel.name);
+
+		Mat4 matrix = {};
+		auto transform = IdentityVectorTransform();
+
+		auto total_keys = channel.positionkey_count + 
+			channel.rotationkey_count + channel.scalekey_count;
+
+		if(total_keys){
+			transform.translation = 
+				ALerpAnimation(channel.positionkey_array,
+						channel.positionkey_count,anim_time);
+
+			transform.scale =
+				ALerpAnimation(channel.scalekey_array,
+						channel.scalekey_count,anim_time);
+
+			transform.rotation = 
+				ALerpAnimationQuat(channel.rotationkey_array,
+						channel.rotationkey_count,anim_time);
+		}
+
+
+		matrix =
+			WorldMat4Q(Vec4ToVec3(transform.translation),
+					transform.rotation,
+					Vec4ToVec3(transform.scale));
+
+		auto parent_matrix = res[i];
+
+		matrix = parent_matrix * matrix;
+		res[i] = 
+#if _row_major
+
+			TransposeMat4(matrix * bone.offset);
+
+#else
+
+		matrix * bone.offset;
+
+#endif
+
+		for(u32 j = 0; j < bone.children_count; j++){
+			add_res(res,&res_count,matrix);
+		}
+	}
 }
 
 #endif
@@ -1541,11 +1612,13 @@ AssimpData AssimpLoad(const s8* filepath){
 		f32 time = 0.5f;
 		u32 anim_index = 0;
 
-		printf("---------START------------\n");
-		
 		AssimpBlend(time,anim_index,&animationlist,bonenodelist);
 
-		printf("---------END------------\n");
+		auto res = (Mat4*)alloc(sizeof(Mat4) * bones.count);
+
+		TLinearBlend(anim_index,time,bones,anims,res);
+
+
 	}
 
 	_breakpoint();
