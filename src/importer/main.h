@@ -110,10 +110,6 @@ struct TBone{
 	u32 children_count;
 	s8* name;
 	u32 name_hash;
-
-#if 1
-	Mat4 res = {};
-#endif
 };
 
 struct TSkin{
@@ -687,8 +683,6 @@ void AssimpLoadAnimations(aiScene* scene,AssimpAnimationList* list){
 			AssimpAnimationData data;
 			data.name_hash = PHashString(node->mNodeName.data);
 
-			printf("Anim node:%s\n",node->mNodeName.data);
-
 			_kill("too large\n",node->mNumPositionKeys >
 					_unsigned_max(AAnimationData::positionkey_count));
 
@@ -853,7 +847,6 @@ void AssimpLoadBoneVertexData(aiMesh* mesh,VertexBoneDataList* bonedatalist,
 
 		//PrintMat4(bonenode->offset);
 		memcpy(&bonenode->offset,&bone->mOffsetMatrix,sizeof(Mat4));
-		PrintMat4(bonenode->offset);
 		//printf("------------------------------------");
 
 #if !MATRIX_ROW_MAJOR
@@ -1607,6 +1600,18 @@ AssimpData AssimpLoad(const s8* filepath){
 		LoadTAnim(scene,&anims,bones);
 		LoadTSkin(mesh,&skins,bones);
 
+		auto get_res = [](u32 name_hash,BonenodeList list)-> Mat4{
+
+			for(u32 i = 0; i < list.count; i++){
+				auto e = list[i];
+
+				if(e.name_hash == name_hash){
+					return e.res;
+				}
+			}
+			return IdentityMat4();
+		};
+
 		//testing animations
 		{
 			f32 time = 0.5f;
@@ -1618,6 +1623,27 @@ AssimpData AssimpLoad(const s8* filepath){
 
 			TLinearBlend(anim_index,time,bones,anims,res);
 
+			u32 c = 0;
+
+			for(u32 i = 0; i < bones.count; i++){
+				auto r1 = res[i];
+				auto name_hash = bones[i].name_hash;
+
+				auto r2 = get_res(name_hash,bonenodelist);
+
+				auto acc  = memcmp(&r1,&r2,sizeof(Mat4));
+
+				if(acc){
+					PPrintln("These do not match:",
+							r1,r2);
+				}
+
+				c += acc;
+			}
+
+			if(!c){
+				PPrintln("Full match!");
+			}
 
 		}
 
