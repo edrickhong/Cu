@@ -57,7 +57,6 @@ struct MDFData{
 		AAnimationKey* keys;
 	};
 
-	//replace with these instead
 	/*
 	   TBoneList bones;
 	   TAnimList anims;
@@ -212,9 +211,9 @@ enum MDFTags{
 	TAG_BLEND_LINEAR = _encode('B','L','I','N'),
 	TAG_BLEND_DQ = _encode('B','D','Q',' '),
 
+	TAG_SKEL = _encode('S','K','E','L'),
 	TAG_ANIM = _encode('A','N','I','M'),
 	TAG_CHANNELS = _encode('C','H','N','L'),
-	TAG_SKEL = _encode('S','K','E','L'),
 };
 
 struct MDFLinearBoneData{

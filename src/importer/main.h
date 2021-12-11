@@ -1195,8 +1195,8 @@ void _ainline PtrCopy(s8** ptr,void* data,u32 size){
 u32 AnimBoneSize(InterMDF data){
 
 	_breakpoint();
-#if 0
 
+#if 0
 	u32 size = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
 
 	for(u32 i = 0; i < data.bone_count;i++){
@@ -1249,16 +1249,38 @@ u32 AnimBoneSize(InterMDF data){
 
 #define _print_log 1
 
+_intern u32 ProcessIndices(InterMDF data){
+	u32 size = sizeof(u32);
+	if(data.index_count <= 65535){
 
-void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,InterMDF data,
+		printf("using 16 bit indices\n");
+
+		size = sizeof(u16);
+
+		auto u16_ptr = (u16*)data.index_array;
+		auto u32_ptr = (u32*)data.index_array;
+
+		//collapse indices
+		for(u32 i = 0; i < data.index_count; i++){
+			u16_ptr[i] = (u16)u32_ptr[i];
+		}
+	}
+
+	else{
+		printf("using 32 bit indices\n");
+	}
+
+	return size;
+}
+
+
+void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 		AnimationBlendType blendtype = BLEND_LINEAR){
 
-#if 0
 	s8* buffer = (s8*)alloc(_megabytes(30));
-
 	s8* ptr = buffer;
-
 	TBone* bones = 0;
+	u32 index_size = ProcessIndices(data);
 
 	//write the header and vertex component
 	{
@@ -1298,18 +1320,20 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 			PtrCopy(&ptr,&vertex_component,sizeof(u16));
 
+			//TODO: this needs to be split into --
+			// _aligned(vert_size) + ind_size
 			u32 indversize = (data.vertex_count * sizeof(AVec3)) +
 				(data.texcoord_count * sizeof(Vec2)) +
 				(data.normal_count * sizeof(AVec3)) +
-				(data.vertexbonedata_count * sizeof(VertexBoneData)) +
-				data.index_count * sizeof(u32);
+				(data.skin_count * sizeof(TSkin)) +
+				data.index_count * index_size;
 
-			u32 animbonesize = AnimBoneSize(data,bones); //FIXME: this is wrong pretty sure
+			u32 animbonesize = AnimBoneSize(data); 
 
 #if _print_log
 
-			printf("animbone size %d\n",(animbonesize));//MARK:Not exact but will do
-			printf("vertindex size %d\n",(indversize));//MARK:Not exact but will do
+			printf("animbone size %d\n",(animbonesize));
+			printf("vertindex size %d\n",(indversize));
 
 #endif
 
@@ -1322,7 +1346,7 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			(data.vertex_count * sizeof(AVec3)) + //positions
 			(data.texcoord_count * sizeof(Vec2)) + //texcoords
 			(data.normal_count * sizeof(AVec3)) + //normals
-			(data.vertexbonedata_count * sizeof(VertexBoneData)); //boneid and weight
+			(data.skin_count * sizeof(TSkin)); //boneid and weight
 
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&datasize,sizeof(u32));
@@ -1348,8 +1372,8 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,InterMDF data,
 				// printf("texcoord%f %f\n",data.texcoord_array[i].x,data.texcoord_array[i].y);
 			}
 
-			if(data.vertexbonedata_count){
-				PtrCopy(&ptr,&data.vertexbonedata_array[i],sizeof(VertexBoneData));
+			if(data.skin_count){
+				PtrCopy(&ptr,&data.skin_array[i],sizeof(TSkin));
 			}
 
 		}
@@ -1358,61 +1382,62 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,InterMDF data,
 	//write indices
 	{
 		u32 header = TAG_INDEX;
-		u32 datasize = data.index_count;
-
-
-		//optimization - save as u16 if allowed
-
-		if(data.index_count <= 65535){
-
-#if _print_log
-
-			printf("using 16 bit indices\n");
-
-#endif
-
-			datasize *= sizeof(u16);
-
-			auto u16_ptr = (u16*)data.index_array;
-			auto u32_ptr = (u32*)data.index_array;
-
-			//collapse indices
-			for(u32 i = 0; i < data.index_count; i++){
-
-				u16_ptr[i] = (u16)u32_ptr[i];
-			}
-		}
-
-		else{
-
-#if _print_log
-
-			printf("using 32 bit indices\n");
-
-#endif
-
-			datasize *= sizeof(u32);
-		}
+		u32 datasize = data.index_count * index_size;
 
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&datasize,sizeof(u32));
 		PtrCopy(&ptr,data.index_array,datasize);
 
 #if _print_log
-
 		printf("Index size %d\n",datasize);
-
 #endif
-
 	}
 
 	//write skeleton and animation data if any
 	//MARK: rewrite
 	{
 
+#define _string_block 16
+		//u32* bones_ch;
+		//Mat4 bones_offsets;
+		//u32 bones_count;
+
+		u32 header = TAG_SKEL;
+		u32 datasize = data.bone_count;
+
+		PtrCopy(&ptr,&header,sizeof(header));
+		PtrCopy(&ptr,&datasize,sizeof(u32));
+
+		// children count first. this is essentially the tree structure
+		for(u32 i = 0; i < data.bone_count; i++){
+			auto c = data.bone_array[i].children_count;
+			PtrCopy(&ptr,&c,sizeof(c));
+		}
+
+		// offsets
+		for(u32 i = 0; i < data.bone_count; i++){
+			auto off = data.bone_array[i].offset;
+			PtrCopy(&ptr,&off,sizeof(off));
+		}
+
+		//name of the nodes. limit these to 16 char buffs
+		for(u32 i = 0; i < data.bone_count; i++){
+			auto s = data.bone_array[i].name;
+			s8 buffer[_string_block] = {};
+
+			u32 cpy_size = strlen(s) > (_string_block - 1) ? (_string_block - 1) : strlen(s);
+			memcpy(buffer,s,cpy_size);
+
+			PtrCopy(&ptr,buffer,sizeof(buffer));
+		}
+
+		//Anim* anim_array;
+		//u32 anim_count;
+
+		//AnimChannel* channels; //[anim_count][bones_count]
+		//s8** bones_names;
+		//u32* bones_namehash;
 	}
-
-
 
 	//write material data if any
 
@@ -1420,7 +1445,6 @@ void CreateAssimpToMDF(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 	*out_buffer = buffer;
 	*out_buffer_size = (((s8*)ptr) - ((s8*)buffer));
-#endif
 }
 
 //smaller footprint
@@ -1430,7 +1454,7 @@ void AssimpWriteMDF(InterMDF data,const s8* filepath,
 	s8* buffer;
 	u32 buffer_size;
 
-	CreateAssimpToMDF((void**)&buffer,&buffer_size,data,blendtype);
+	CreateMDFContent((void**)&buffer,&buffer_size,data,blendtype);
 
 
 	FileHandle file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
