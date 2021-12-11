@@ -75,20 +75,14 @@ _ainline s8* PNewStringCopy(s8* string){
 }
 
 
-struct AnimationKey{
-	f32 time;
-
-	//this is perfect to SOA
-	Vec4 key;
-};
-
+//when writing, we will seprate the counts from the data
 struct TAnimChannel{
 	u32 positionkey_count;
 	u32 rotationkey_count;
 	u32 scalekey_count;
-	AnimationKey* positionkey_array;
-	AnimationKey* rotationkey_array;
-	AnimationKey* scalekey_array;
+	AAnimationKey* positionkey_array;
+	AAnimationKey* rotationkey_array;
+	AAnimationKey* scalekey_array;
 
 	s8* name;
 	u32 name_hash;
@@ -1279,7 +1273,6 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 	s8* buffer = (s8*)alloc(_megabytes(30));
 	s8* ptr = buffer;
-	TBone* bones = 0;
 	u32 index_size = ProcessIndices(data);
 
 	//write the header and vertex component
@@ -1311,7 +1304,6 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 			if(data.skin_array){
 				vertex_component |= VERTEX_BONEID_WEIGHT;
-				bones = data.bone_array;
 			}
 
 #if _print_log
@@ -1395,9 +1387,9 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 	//write skeleton and animation data if any
 	//MARK: rewrite
-	{
-
 #define _string_block 16
+	if(data.bone_count){
+
 		//u32* bones_ch;
 		//Mat4 bones_offsets;
 		//u32 bones_count;
@@ -1438,6 +1430,55 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 		//s8** bones_names;
 		//u32* bones_namehash;
 	}
+
+	if(data.anim_count){
+		u32 header = TAG_ANIM;
+		u32 datasize = data.animation_count;
+
+		PtrCopy(&ptr,&header,sizeof(header));
+		PtrCopy(&ptr,&datasize,sizeof(u32));
+
+		for(u32 i = 0; i < data.anim_count; i++){
+			struct {
+				f32 tps;
+				f32 duration;
+			} an;
+			auto a = data.anim_array[i];
+			an.tps = a.tps;
+			an.duration = a.duration;
+
+			PtrCopy(&ptr,&an,sizeof(an));
+		}
+
+		for(u32 i = 0; i < data.anim_count; i++){
+			auto s = data.anim_array[i].name;
+			s8 buffer[_string_block] = {};
+
+			u32 cpy_size = strlen(s) > (_string_block - 1) ? (_string_block - 1) : strlen(s);
+			memcpy(buffer,s,cpy_size);
+
+			PtrCopy(&ptr,buffer,sizeof(buffer));
+		}
+
+		//write the channel sets
+		u32 header = TAG_CHANNELS;
+		u32 anim_count = data.anim_count;
+		u32 bone_count = data.bone_count;
+
+		PtrCopy(&ptr,&header,sizeof(header));
+		PtrCopy(&ptr,&anim_count,sizeof(u32));
+		PtrCopy(&ptr,&bone_count,sizeof(u32));
+
+		//this will used to offset and access each of the channels
+		//should this be part of anim???
+		struct KeyCount{
+			u16 offset;
+			u16 pos_count;
+			u16 rot_count;
+			u16 scale_count;
+		};
+	}
+
 
 	//write material data if any
 
