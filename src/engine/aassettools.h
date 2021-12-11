@@ -16,113 +16,7 @@
   framework. Loading will be implicitly handled by the asset memory allocator*/
 
 //actual vector3 (not vec4 acting as vec3)
-union AVec3{
 
-	float ar[3];
-
-	struct{
-		f32 x;
-		f32 y;
-		f32 z;  
-	};
-
-};
-
-struct AssimpBoneNode{
-	u32 name_hash;
-	Mat4 offset;
-
-	u32 children_count;
-	u32 childrenindex_array[10];
-
-#if 1
-	s8* name;
-	Mat4 res = {0};
-#endif
-};
-
-//this is for mapping vertices to bones
-struct VertexBoneData{
-	u32 bone_index[4];
-	f32 bone_weight[4];
-};
-
-//We might not even use these
-enum AnimationBehaviour{
-	ANIMATION_DEFAULT = 0,
-	ANIMATION_CONSTANT = 1,
-	ANIMATION_LINEAR = 2,
-	ANIMATION_REPEAT = 3,
-	ANIMATION_FORCE32BIT = 0x8fffffff,
-};
-
-struct AnimationKey{
-	f32 time;
-
-	//this is perfect to SOA
-	Vec4 key;
-};
-
-
-//we will only support skeletal animation
-struct AssimpAnimationData{
-	s8* name;
-	u32 name_hash;
-	u32 positionkey_count;
-	u32 rotationkey_count;
-	u32 scalekey_count;
-	AnimationKey* positionkey_array;
-	AnimationKey* rotationkey_array;
-	AnimationKey* scalekey_array;
-	AnimationBehaviour prestate;
-	AnimationBehaviour poststate;
-};
-
-struct AssimpAnimation{
-	//main data
-	AssimpAnimationData* data;//this should be contiguous
-
-	//header data
-	u32 data_count;
-	f32 duration;
-	f32 tps;//ticks per second
-	s8* name;
-};
-
-
-
-struct AssimpData{
-	Vec4* vertex_array;
-	u32 vertex_count;
-	Vec2* texcoord_array;
-	u32 texcoord_count;
-	Vec4* normal_array;
-	u32 normal_count;
-
-	void* index_array;
-	u32 index_count;
-
-	//skinning info
-	VertexBoneData* vertexbonedata_array;
-	u32 vertexbonedata_count;
-
-	//boneinfo - bone nodes rest position
-	AssimpBoneNode* bone_array;
-	u32 bone_count;
-
-	//animation data
-	AssimpAnimation* animation_array;
-	u32 animation_count;
-};
-
-
-AssimpData AssimpLoad(const s8* filepath);
-
-enum AnimationBlendType{
-	BLEND_LINEAR = 0,
-	BLEND_DQ,
-	BLEND_NONE
-};
 
 struct MDFData{
 	u16 vertex_component;//TODO: replace this with a vertext hash. 
@@ -144,6 +38,46 @@ struct MDFData{
 	u32 indexdata_offset;
 	u32 animdata_offset;
 	u32 bonedata_offset;
+
+
+	struct Anim{
+		f32 tps;
+		f32 duration;
+#if 1
+		s8* name;
+#endif
+	};
+
+	struct AnimChannel{
+		//keys are interleavedS
+		u16 scalekey_count;
+		u16 positionkey_count;
+		u32 rotationkey_count;
+
+		AAnimationKey* keys;
+	};
+
+	//replace with these instead
+	/*
+	   TBoneList bones;
+	   TAnimList anims;
+	   TSkinList skins;
+
+	   for an anim_array of N elements and a skel of M bones
+	   there are N sets of anim channels. each set contains M channels
+	 * */
+
+	u32* bones_ch;
+	Mat4 bones_offsets;
+	u32 bones_count;
+
+	Anim* anim_array;
+	u32 anim_count;
+
+	AnimChannel* channels; //[anim_count][bones_count]
+	s8** bones_names;
+	u32* bones_namehash;
+
 };
 
 //#define VERTEX_POSITION is implied
@@ -279,6 +213,7 @@ enum MDFTags{
 	TAG_BLEND_DQ = _encode('B','D','Q',' '),
 
 	TAG_ANIM = _encode('A','N','I','M'),
+	TAG_CHANNELS = _encode('C','H','N','L'),
 	TAG_SKEL = _encode('S','K','E','L'),
 };
 
