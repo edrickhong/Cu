@@ -53,6 +53,8 @@
 
 #include "pprint.h"
 
+#include "aanimation.h"
+
 #define _hash(a,b,c) (a * 1) + (b * 2) + (c * 3)
 #define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
 
@@ -72,6 +74,10 @@ _ainline s8* PNewStringCopy(s8* string){
 	memcpy(nstring,string,len);
 
 	return nstring;
+}
+
+constexpr u32 max(u32 a, u32 b){
+	return a > b ? a : b;
 }
 
 
@@ -817,7 +823,7 @@ _intern void LoadTAnim(aiScene* scene,TAnimList* anims,TBoneList skel){
 			//NOTE: we can store these interleaved because cmoves don't count as branches
 
 			channel-> positionkey_array =
-				(AnimationKey*)alloc(sizeof(AnimationKey) *
+				(AAnimationKey*)alloc(sizeof(AAnimationKey) *
 						(node->mNumPositionKeys + node->mNumRotationKeys +
 						 node->mNumScalingKeys));
 
@@ -827,25 +833,25 @@ _intern void LoadTAnim(aiScene* scene,TAnimList* anims,TBoneList skel){
 			for(u32 k = 0; k < node->mNumPositionKeys;k++){
 
 				aiVectorKey vec = node->mPositionKeys[k];
-				AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+				AAnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
 
-				memcpy(channel->positionkey_array + k,&key,sizeof(AnimationKey));
+				memcpy(channel->positionkey_array + k,&key,sizeof(AAnimationKey));
 			}
 
 			for(u32 k = 0; k < node->mNumRotationKeys;k++){
 
 				aiQuatKey q = node->mRotationKeys[k];
-				AnimationKey key =
+				AAnimationKey key =
 				{(f32)q.mTime,{q.mValue.x,q.mValue.y,q.mValue.z,q.mValue.w}};
 
-				memcpy(channel->rotationkey_array + k,&key,sizeof(AnimationKey));
+				memcpy(channel->rotationkey_array + k,&key,sizeof(AAnimationKey));
 			}
 
 			for(u32 k = 0; k < node->mNumScalingKeys;k++){
 				aiVectorKey vec = node->mScalingKeys[k];
-				AnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
+				AAnimationKey key = {(f32)vec.mTime,{vec.mValue.x,vec.mValue.y,vec.mValue.z,1.0f}};
 
-				memcpy(channel->scalekey_array + k,&key,sizeof(AnimationKey));
+				memcpy(channel->scalekey_array + k,&key,sizeof(AAnimationKey));
 			}
 		}
 
@@ -918,10 +924,10 @@ VectorTransform _ainline IdentityVectorTransform(){
 
 
 #if 1
-Vec4 _ainline ALerpAnimation(AnimationKey* key_array,u32 key_count,f32 animationtime){
+Vec4 _ainline ALerpAnimation(AAnimationKey* key_array,u32 key_count,f32 animationtime){
 
 	if(key_count ==1){
-		return key_array[0].key;
+		return key_array[0].value;
 	}
 
 	u32 frameindex = 0;
@@ -944,16 +950,16 @@ Vec4 _ainline ALerpAnimation(AnimationKey* key_array,u32 key_count,f32 animation
 
 	f32 step = (animationtime - current.time)/(next.time - current.time);
 
-	return LerpVec4(current.key,next.key,step);
+	return LerpVec4(current.value,next.value,step);
 }
 
 
-Quat _ainline  ALerpAnimationQuat(AnimationKey* key_array,u32 key_count,
+Quat _ainline  ALerpAnimationQuat(AAnimationKey* key_array,u32 key_count,
 		f32 animationtime){
 
 	if(key_count ==1){
 
-		Quat ret = Vec4ToQuat(key_array[0].key);
+		Quat ret = Vec4ToQuat(key_array[0].value);
 		return ret;
 	}
 
@@ -975,7 +981,7 @@ Quat _ainline  ALerpAnimationQuat(AnimationKey* key_array,u32 key_count,
 
 	f32 step = (animationtime - current.time)/(next.time - current.time);
 
-	return NLerpQuat(Vec4ToQuat(current.key),Vec4ToQuat(next.key),step);
+	return NLerpQuat(Vec4ToQuat(current.value),Vec4ToQuat(next.value),step);
 
 }
 
@@ -1433,7 +1439,7 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 	if(data.anim_count){
 		u32 header = TAG_ANIM;
-		u32 datasize = data.animation_count;
+		u32 datasize = data.anim_count;
 
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&datasize,sizeof(u32));
@@ -1461,9 +1467,9 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 		}
 
 		//write the channel sets
-		u32 header = TAG_CHANNELS;
-		u32 anim_count = data.anim_count;
-		u32 bone_count = data.bone_count;
+		header = TAG_CHANNELS;
+		u32 anim_count = data.anim_count; // this is the number of channel sets
+		u32 bone_count = data.bone_count; // this is the number of channels
 
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&anim_count,sizeof(u32));
@@ -1477,6 +1483,67 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			u16 rot_count;
 			u16 scale_count;
 		};
+
+
+		u32 offset = 0;
+
+		for(u32 i = 0; i < anim_count; i++){
+
+			auto a = data.anim_array[i];
+			auto ch = a.channels;
+
+			for(u32 j = 0; j < bone_count; j++){
+				auto c = ch[j];
+				auto p = c.positionkey_count;
+				auto r = c.rotationkey_count;
+				auto s = c.scalekey_count;
+
+				_kill("Cannot narrow\n", p > 65535);
+				_kill("Cannot narrow\n", r > 65535);
+				_kill("Cannot narrow\n", s > 65535);
+
+				KeyCount k = {
+					(u16)offset,
+					(u16)p,
+					(u16)r,
+					(u16)s
+				};
+				PtrCopy(&ptr,&k,sizeof(k));
+
+				offset += p + r + s;
+			}
+		}
+
+		u32 data_size = offset;
+		PtrCopy(&ptr,&data_size,sizeof(u32));
+
+		for(u32 i = 0; i < anim_count; i++){
+
+			auto a = data.anim_array[i];
+			auto ch = a.channels;
+
+			for(u32 j = 0; j < bone_count; j++){
+				auto c = ch[j];
+				auto p = c.positionkey_count;
+				auto r = c.rotationkey_count;
+				auto s = c.scalekey_count;
+
+				auto m = max(max(p,s),r);
+
+				for(u32 k = 0; k < m; k++){
+					if(k < p){
+						PtrCopy(&ptr,&c.positionkey_array[k],sizeof(AAnimationKey));
+					}
+					if(k < r){
+						PtrCopy(&ptr,&c.rotationkey_array[k],sizeof(AAnimationKey));
+					}
+					if(k < s){
+						PtrCopy(&ptr,&c.scalekey_array[k],sizeof(AAnimationKey));
+					}
+				}
+
+			}
+		}
 	}
 
 

@@ -43,19 +43,17 @@ struct MDFData{
 	struct Anim{
 		f32 tps;
 		f32 duration;
+
+
+		u16 offset;
+		u16 pos_count;
+		u16 rot_count;
+		u16 scale_count;
 #if 1
 		s8* name;
 #endif
 	};
 
-	struct AnimChannel{
-		//keys are interleavedS
-		u16 scalekey_count;
-		u16 positionkey_count;
-		u32 rotationkey_count;
-
-		AAnimationKey* keys;
-	};
 
 	/*
 	   TBoneList bones;
@@ -73,9 +71,9 @@ struct MDFData{
 	Anim* anim_array;
 	u32 anim_count;
 
-	AnimChannel* channels; //[anim_count][bones_count]
-	s8** bones_names;
+	AAnimationKey* keys; //[anim_count][bones_count]
 	u32* bones_namehash;
+	s8** bones_names;
 
 };
 
