@@ -39,7 +39,7 @@
 #include "stb/stb_dxt.h"
 
 #include <assimp/Importer.hpp> 
-#include <assimp/scene.h>     
+#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
@@ -61,6 +61,15 @@
 
 //TODO: we should have a notion of a string pool to allocation string from and to delete all strings
 
+//TODO:this will used to offset and access each of the channels
+//should this be part of anim???
+struct KeyCount{
+	u16 offset;
+	u16 pos_count;
+	u16 rot_count;
+	u16 scale_count;
+};
+
 _ainline s8* PNewStringCopy(s8* string){
 
 	u32 len = strlen(string) + 1;
@@ -76,9 +85,6 @@ _ainline s8* PNewStringCopy(s8* string){
 	return nstring;
 }
 
-constexpr u32 max(u32 a, u32 b){
-	return a > b ? a : b;
-}
 
 
 //when writing, we will seprate the counts from the data
@@ -1192,55 +1198,37 @@ void _ainline PtrCopy(s8** ptr,void* data,u32 size){
 	*ptr += size;
 }
 
-u32 AnimBoneSize(InterMDF data){
+#define _string_block 16
+u32 AnimBoneSize(InterMDF data,b32 use_names = true){
 
-	_breakpoint();
+	u32 string_block = use_names? _string_block : 0;
 
-#if 0
-	u32 size = data.animation_count * (sizeof(u32) + (sizeof(f32) * 2));
+	auto bone_count = data.bone_count;
+	auto anim_count = data.anim_count;
 
-	for(u32 i = 0; i < data.bone_count;i++){
+	auto skel_size = bone_count * 
+		(
+		 sizeof(TBone::offset) + sizeof(TBone::children_count)
+		 + string_block
+		 );
 
-		size = _align16(size);
+	auto anim_size = anim_count * 
+		(sizeof(TAnim::tps) + sizeof(TAnim::duration) + string_block);
 
-		auto bone = bones[i];
+	anim_size += anim_count * bone_count * sizeof(KeyCount);
 
-		size += sizeof(ALinearBone);
-		size += bone.children_count * sizeof(u32);
-		size += sizeof(AAnimationData);
+	for(u32 i = 0; i < anim_count; i++){
+		auto a = data.anim_array[i];
 
-		AssimpAnimationData array[100];
-		u32 array_count = 0;
+		for(u32 j = 0; j < a.channels.count; i++){
+			auto c = a.channels[j];
+			//this is technically wrong`
+			anim_size += ((c.positionkey_count + c.rotationkey_count + 
+					c.scalekey_count) * sizeof(AAnimationKey));		}
 
-		for(u32 j = 0; j < data.animation_count; j++){
-			AssimpAnimation set = data.animation_array[j];
-
-			for(u32 k = 0; k < set.data_count; k++){
-				AssimpAnimationData keydata = set.data[k];
-
-				if(keydata.name_hash == bone.name_hash){
-					array[array_count] = keydata;
-					array_count++;
-					_kill("",array_count > 100);
-					break;
-				}
-			}
-		}
-
-		size += sizeof(MDFKeyCount) * data.animation_count;
-
-		for(u32 b = 0; b < array_count;b++){
-			auto anim = array[b];
-
-			size += sizeof(AAnimationKey) * anim.positionkey_count;
-			size += sizeof(AAnimationKey) * anim.rotationkey_count;
-			size += sizeof(AAnimationKey) * anim.scalekey_count;
-		}
 	}
 
-	return _align16(size);
-#endif
-	return 0;
+	return skel_size + anim_size;
 }
 
 
@@ -1393,7 +1381,6 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 	//write skeleton and animation data if any
 	//MARK: rewrite
-#define _string_block 16
 	if(data.bone_count){
 
 		//u32* bones_ch;
@@ -1475,14 +1462,6 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 		PtrCopy(&ptr,&anim_count,sizeof(u32));
 		PtrCopy(&ptr,&bone_count,sizeof(u32));
 
-		//this will used to offset and access each of the channels
-		//should this be part of anim???
-		struct KeyCount{
-			u16 offset;
-			u16 pos_count;
-			u16 rot_count;
-			u16 scale_count;
-		};
 
 
 		u32 offset = 0;
@@ -1528,7 +1507,7 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 				auto r = c.rotationkey_count;
 				auto s = c.scalekey_count;
 
-				auto m = max(max(p,s),r);
+				auto m = Max(Max(p,s),r);
 
 				for(u32 k = 0; k < m; k++){
 					if(k < p){

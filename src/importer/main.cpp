@@ -9,10 +9,7 @@ Problem files:
 LOW_barbarian_rig_051.dae too many bones 65
 new_thin_zombie.dae file cannot load
 Spider.dae  file cannot load
-
 */
-
-
 
 s32 main(s32 argc,s8** argv){
     
@@ -22,8 +19,6 @@ s32 main(s32 argc,s8** argv){
     
     Import(&argv[1],(u32)(argc - 1));
 
-    PPrint(0.5);
-    
     return 0;
 }
 
