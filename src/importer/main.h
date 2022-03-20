@@ -101,7 +101,7 @@ struct KeyCount{
 
 _ainline s8* PNewStringCopy(s8* string){
 
-	u32 len = strlen(string) + 1;
+	u32 len =  PStrLen(string) + 1;
 
 	if(len == 1){
 		return 0;
@@ -1249,9 +1249,8 @@ u32 AnimBoneSize(InterMDF data,b32 use_names = true){
 	for(u32 i = 0; i < anim_count; i++){
 		auto a = data.anim_array[i];
 
-		for(u32 j = 0; j < a.channels.count; i++){
+		for(u32 j = 0; j < a.channels.count; j++){
 			auto c = a.channels[j];
-			//this is technically wrong`
 			anim_size += ((c.positionkey_count + c.rotationkey_count + 
 					c.scalekey_count) * sizeof(AAnimationKey));		}
 
@@ -1408,9 +1407,12 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 #endif
 	}
 
+
 	//write skeleton and animation data if any
 	//MARK: rewrite
 	if(data.bone_count){
+
+
 
 		//u32* bones_ch;
 		//Mat4 bones_offsets;
@@ -1439,7 +1441,7 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			auto s = data.bone_array[i].name;
 			s8 buffer[_string_block] = {};
 
-			u32 cpy_size = strlen(s) > (_string_block - 1) ? (_string_block - 1) : strlen(s);
+			u32 cpy_size = PStrLen(s) > (_string_block - 1) ? (_string_block - 1) : PStrLen(s);
 			memcpy(buffer,s,cpy_size);
 
 			PtrCopy(&ptr,buffer,sizeof(buffer));
@@ -1456,9 +1458,11 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 	if(data.anim_count){
 		u32 header = TAG_ANIM;
 		u32 datasize = data.anim_count;
-
+ 
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&datasize,sizeof(u32));
+
+
 
 		for(u32 i = 0; i < data.anim_count; i++){
 			struct {
@@ -1476,11 +1480,12 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			auto s = data.anim_array[i].name;
 			s8 buffer[_string_block] = {};
 
-			u32 cpy_size = strlen(s) > (_string_block - 1) ? (_string_block - 1) : strlen(s);
+			u32 cpy_size = PStrLen(s) > (_string_block - 1) ? (_string_block - 1) : PStrLen(s);
 			memcpy(buffer,s,cpy_size);
 
 			PtrCopy(&ptr,buffer,sizeof(buffer));
 		}
+
 
 		//write the channel sets
 		header = TAG_CHANNELS;
@@ -1495,6 +1500,7 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 		u32 offset = 0;
 
+		// NOTE: channel keys
 		for(u32 i = 0; i < anim_count; i++){
 
 			auto a = data.anim_array[i];
@@ -1522,8 +1528,11 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			}
 		}
 
+
+		//NOTE: channel data
 		u32 data_size = offset;
 		PtrCopy(&ptr,&data_size,sizeof(u32));
+
 
 		for(u32 i = 0; i < anim_count; i++){
 
@@ -1552,6 +1561,8 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 			}
 		}
+
+
 	}
 
 
@@ -1572,6 +1583,8 @@ void AssimpWriteMDF(InterMDF data,const s8* filepath,
 
 	CreateMDFContent((void**)&buffer,&buffer_size,data,blendtype);
 
+	_breakpoint();
+
 
 	FileHandle file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
 			F_FLAG_TRUNCATE);
@@ -1591,7 +1604,7 @@ void Import(s8** files,u32 count){
 	for(u32 i = 0; i < count; i++){
 
 		s8* string = files[i];
-		u32 len = strlen(string);
+		u32 len = PStrLen(string);
 
 		s8 buffer[2048] = {};
 		memcpy(buffer,string,len);
@@ -1628,8 +1641,6 @@ void Import(s8** files,u32 count){
 #endif
 
 			auto assimp = AssimpLoad(string);
-
-			exit(0);
 
 			buffer[len - 3] = 'm';
 			buffer[len - 2] = 'd';
