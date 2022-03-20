@@ -55,6 +55,35 @@
 
 #include "aanimation.h"
 
+
+struct WriteSizeBlock{
+	void** ptr = 0;
+	s8* start = 0;
+	s8* name = 0;
+	s8* file = 0;
+	s8* function = 0;
+	u32 line = 0;
+	WriteSizeBlock(void** ptr,const s8* name,const s8* file,const s8* function,u32 line){
+		this->ptr = ptr;
+		start = (s8*)(*ptr);
+		this->name = (s8*)name;
+		this->function = (s8*)function;
+		this->line = line;
+		this->file = (s8*)file;
+	}
+	~WriteSizeBlock(){
+		auto end = (s8*)(*ptr);
+		u32 size = end - start;
+		auto name = this->name ? this->name : "";
+		printf("%s %s %d (%s): Written %d bytes\n",file,function,line,name,size);
+	}
+};
+
+
+#define WRITEBLOCK(ptr) WriteSizeBlock t_##__LINE__((void**)ptr,0,__FILE__,__FUNCTION__,__LINE__)
+
+#define WRITEBLOCKTAGGED(ptr,name) WriteSizeBlock t_##__LINE__((void**)ptr,name,__FILE__,__FUNCTION__,__LINE__)
+
 #define _hash(a,b,c) (a * 1) + (b * 2) + (c * 3)
 #define _encode(a,b,c,d) (u32)  (((u32)(a << 0)) | ((u32)(b << 8)) | ((u32)(c << 16)) | ((u32)(d << 24)))
 
