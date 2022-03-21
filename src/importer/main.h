@@ -216,6 +216,8 @@ struct InterMDF{
 	TSkin* skin_array;
 	u32 skin_count;
 };
+
+
 //TODO: handle non pow2, non uniform sizes
 void NextMipDim(u32* w,u32* h){
 	(*w) >>= 1;
@@ -1336,23 +1338,32 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 			//TODO: this needs to be split into --
 			// _aligned(vert_size) + ind_size
-			u32 indversize = (data.vertex_count * sizeof(AVec3)) +
+			u32 vert_size = (data.vertex_count * sizeof(AVec3)) +
 				(data.texcoord_count * sizeof(Vec2)) +
 				(data.normal_count * sizeof(AVec3)) +
-				(data.skin_count * sizeof(TSkin)) +
-				data.index_count * index_size;
+				(data.skin_count * sizeof(TSkin));
+
+			u32 ind_size = data.index_count * index_size;
+
+			u32 anim_size = 0;
+			u32 skel_size = 0;
+			u32 channels_size = 0;
 
 			u32 animbonesize = AnimBoneSize(data); 
 
 #if _print_log
 
-			printf("animbone size %d\n",(animbonesize));
-			printf("vertindex size %d\n",(indversize));
+			printf("animbone size %d\n",(anim_size + skel_size + channels_size));
+			printf("vertindex size %d\n",(vert_size + ind_size));
 
 #endif
 
-			PtrCopy(&ptr,&indversize,sizeof(indversize));
-			PtrCopy(&ptr,&animbonesize,sizeof(animbonesize));
+			PtrCopy(&ptr,&vert_size,sizeof(vert_size));
+			PtrCopy(&ptr,&ind_size,sizeof(ind_size));
+
+			PtrCopy(&ptr,&anim_size,sizeof(anim_size));
+			PtrCopy(&ptr,&skel_size,sizeof(skel_size));
+			PtrCopy(&ptr,&channels_size,sizeof(channels_size));
 		}
 
 		u32 header = TAG_VERTEX;
