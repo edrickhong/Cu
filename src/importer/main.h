@@ -1674,3 +1674,103 @@ void Import(s8** files,u32 count){
 	}
 
 }
+
+
+
+struct MDF{
+};
+
+b32 InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind, animbone,u32* vertind_size, 
+		u32* animbone_size){
+
+	MDf mdf = {};
+
+	auto file = FOpenFile(path, F_FLAG_READONLY);
+	auto end = FGetFileSize(file);
+
+	u32 header = 0;
+	u32 version = 0;
+
+	FRead(file,&header,sizeof(header));
+	FRead(file,&version,sizeof(version));
+
+	if(header != TAG_MDF){
+		goto __exit;
+	}
+	u16 comp = 0;
+	u32 vert_size = 0, ind_size = 0, anim_size = 0, skel_size = 0, channels_size = 0;
+
+	FRead(file,&comp,sizeof(comp));
+	FRead(file,&vert_size,sizeof(vert_size));
+	FRead(file,&ind_size,sizeof(ind_size));
+	FRead(file,&anim_size,sizeof(anim_size));
+	FRead(file,&skel_size,sizeof(skel_size));
+	FRead(file,&channels_size,sizeof(channels_size));
+
+	if(vertcomp){
+		*vertcomp = comp;
+	}
+
+	//TODO: split these into many parts
+	if(vertind_size){
+		*vertind_size = vert_size + ind_size;
+	}
+
+	if(animbone_size){
+		*animbone_size = anim_size + skel_size + channels_size;
+	}
+
+	s8* vert = 0, ind = 0, bone = 0, anim = 0, channels = 0;
+
+	if(vertindex){
+		vert = (s8*)vertindex;
+		ind = vert_size + (s8*)vertindex;
+	}
+
+	else{
+		goto __exit;
+	}
+
+	if(animbone){
+		bone = (s8*)animbone;
+		anim = (s8*)animbone;
+	}
+
+	while(FCurFilePosition(file) < end){
+		u32 tag = 0;
+		FRead(file,&tag,sizeof(tag));
+
+		switch(tag){
+			case TAG_VERTEX: {
+						 u32 size = 0;
+						 FRead(file,&size,sizeof(size));
+						 FRead(file,vert,size);
+					 }break;
+
+			case TAG_INDEX: {
+						 u32 size = 0;
+						 FRead(file,&size,sizeof(size));
+						 FRead(file,ind,size);
+					 }break;
+
+			case TAG_SKEL: {
+						 u32 count = 0;
+						 FRead(file,&count,sizeof(count));
+						 FRead(file,ind,size);
+					 }break;
+			case TAG_ANIM: {
+					 }break;
+
+			case TAG_CHANNELS:
+					 }break;
+
+			default:{
+					_kill("",1);
+				}break;
+		}
+	}
+
+__exit:
+
+	FCloseFile(file);
+}
