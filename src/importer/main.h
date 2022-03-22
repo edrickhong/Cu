@@ -1241,7 +1241,7 @@ u32 AnimBoneSize(InterMDF data,b32 use_names = true){
 		(
 		 sizeof(TBone::offset) + sizeof(TBone::children_count)
 		 + string_block
-		 );
+		);
 
 	auto anim_size = anim_count * 
 		(sizeof(TAnim::tps) + sizeof(TAnim::duration) + string_block);
@@ -1254,7 +1254,7 @@ u32 AnimBoneSize(InterMDF data,b32 use_names = true){
 		for(u32 j = 0; j < a.channels.count; j++){
 			auto c = a.channels[j];
 			anim_size += ((c.positionkey_count + c.rotationkey_count + 
-					c.scalekey_count) * sizeof(AAnimationKey));		}
+						c.scalekey_count) * sizeof(AAnimationKey));		}
 
 	}
 
@@ -1435,27 +1435,31 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&datasize,sizeof(u32));
 
-		// children count first. this is essentially the tree structure
-		for(u32 i = 0; i < data.bone_count; i++){
-			auto c = data.bone_array[i].children_count;
-			PtrCopy(&ptr,&c,sizeof(c));
-		}
+		{
+			WRITEBLOCKTAGGED(&ptr,"SKEL");
 
-		// offsets
-		for(u32 i = 0; i < data.bone_count; i++){
-			auto off = data.bone_array[i].offset;
-			PtrCopy(&ptr,&off,sizeof(off));
-		}
+			// children count first. this is essentially the tree structure
+			for(u32 i = 0; i < data.bone_count; i++){
+				auto c = data.bone_array[i].children_count;
+				PtrCopy(&ptr,&c,sizeof(c));
+			}
 
-		//name of the nodes. limit these to 16 char buffs
-		for(u32 i = 0; i < data.bone_count; i++){
-			auto s = data.bone_array[i].name;
-			s8 buffer[_string_block] = {};
+			// offsets
+			for(u32 i = 0; i < data.bone_count; i++){
+				auto off = data.bone_array[i].offset;
+				PtrCopy(&ptr,&off,sizeof(off));
+			}
 
-			u32 cpy_size = PStrLen(s) > (_string_block - 1) ? (_string_block - 1) : PStrLen(s);
-			memcpy(buffer,s,cpy_size);
+			//name of the nodes. limit these to 16 char buffs
+			for(u32 i = 0; i < data.bone_count; i++){
+				auto s = data.bone_array[i].name;
+				s8 buffer[_string_block] = {};
 
-			PtrCopy(&ptr,buffer,sizeof(buffer));
+				u32 cpy_size = PStrLen(s) > (_string_block - 1) ? (_string_block - 1) : PStrLen(s);
+				memcpy(buffer,s,cpy_size);
+
+				PtrCopy(&ptr,buffer,sizeof(buffer));
+			}
 		}
 
 		//Anim* anim_array;
@@ -1469,33 +1473,37 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 	if(data.anim_count){
 		u32 header = TAG_ANIM;
 		u32 datasize = data.anim_count;
- 
+
 		PtrCopy(&ptr,&header,sizeof(header));
 		PtrCopy(&ptr,&datasize,sizeof(u32));
 
+		{
+			WRITEBLOCKTAGGED(&ptr,"ANIM");
+			for(u32 i = 0; i < data.anim_count; i++){
+				struct {
+					f32 tps;
+					f32 duration;
+				} an;
+				auto a = data.anim_array[i];
+				an.tps = a.tps;
+				an.duration = a.duration;
 
+				PtrCopy(&ptr,&an,sizeof(an));
+			}
 
-		for(u32 i = 0; i < data.anim_count; i++){
-			struct {
-				f32 tps;
-				f32 duration;
-			} an;
-			auto a = data.anim_array[i];
-			an.tps = a.tps;
-			an.duration = a.duration;
+			for(u32 i = 0; i < data.anim_count; i++){
+				auto s = data.anim_array[i].name;
+				s8 buffer[_string_block] = {};
 
-			PtrCopy(&ptr,&an,sizeof(an));
+				u32 cpy_size = PStrLen(s) > (_string_block - 1) ? (_string_block - 1) : PStrLen(s);
+				memcpy(buffer,s,cpy_size);
+
+				PtrCopy(&ptr,buffer,sizeof(buffer));
+			}
 		}
 
-		for(u32 i = 0; i < data.anim_count; i++){
-			auto s = data.anim_array[i].name;
-			s8 buffer[_string_block] = {};
 
-			u32 cpy_size = PStrLen(s) > (_string_block - 1) ? (_string_block - 1) : PStrLen(s);
-			memcpy(buffer,s,cpy_size);
 
-			PtrCopy(&ptr,buffer,sizeof(buffer));
-		}
 
 
 		//write the channel sets
@@ -1507,71 +1515,75 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 		PtrCopy(&ptr,&anim_count,sizeof(u32));
 		PtrCopy(&ptr,&bone_count,sizeof(u32));
 
+		{
+			WRITEBLOCKTAGGED(&ptr,"CHANNELS");
+			u32 offset = 0;
 
+			// NOTE: channel keys
+			for(u32 i = 0; i < anim_count; i++){
 
-		u32 offset = 0;
+				auto a = data.anim_array[i];
+				auto ch = a.channels;
 
-		// NOTE: channel keys
-		for(u32 i = 0; i < anim_count; i++){
+				for(u32 j = 0; j < bone_count; j++){
+					auto c = ch[j];
+					auto p = c.positionkey_count;
+					auto r = c.rotationkey_count;
+					auto s = c.scalekey_count;
 
-			auto a = data.anim_array[i];
-			auto ch = a.channels;
+					_kill("Cannot narrow\n", p > 65535);
+					_kill("Cannot narrow\n", r > 65535);
+					_kill("Cannot narrow\n", s > 65535);
 
-			for(u32 j = 0; j < bone_count; j++){
-				auto c = ch[j];
-				auto p = c.positionkey_count;
-				auto r = c.rotationkey_count;
-				auto s = c.scalekey_count;
+					KeyCount k = {
+						(u16)offset,
+						(u16)p,
+						(u16)r,
+						(u16)s
+					};
+					PtrCopy(&ptr,&k,sizeof(k));
 
-				_kill("Cannot narrow\n", p > 65535);
-				_kill("Cannot narrow\n", r > 65535);
-				_kill("Cannot narrow\n", s > 65535);
-
-				KeyCount k = {
-					(u16)offset,
-					(u16)p,
-					(u16)r,
-					(u16)s
-				};
-				PtrCopy(&ptr,&k,sizeof(k));
-
-				offset += p + r + s;
-			}
-		}
-
-
-		//NOTE: channel data
-		u32 data_size = offset;
-		PtrCopy(&ptr,&data_size,sizeof(u32));
-
-
-		for(u32 i = 0; i < anim_count; i++){
-
-			auto a = data.anim_array[i];
-			auto ch = a.channels;
-
-			for(u32 j = 0; j < bone_count; j++){
-				auto c = ch[j];
-				auto p = c.positionkey_count;
-				auto r = c.rotationkey_count;
-				auto s = c.scalekey_count;
-
-				auto m = Max(Max(p,s),r);
-
-				for(u32 k = 0; k < m; k++){
-					if(k < p){
-						PtrCopy(&ptr,&c.positionkey_array[k],sizeof(AAnimationKey));
-					}
-					if(k < r){
-						PtrCopy(&ptr,&c.rotationkey_array[k],sizeof(AAnimationKey));
-					}
-					if(k < s){
-						PtrCopy(&ptr,&c.scalekey_array[k],sizeof(AAnimationKey));
-					}
+					offset += p + r + s;
 				}
+			}
 
+
+			//NOTE: channel data
+			u32 data_size = offset;
+			PtrCopy(&ptr,&data_size,sizeof(u32));
+
+
+			for(u32 i = 0; i < anim_count; i++){
+
+				auto a = data.anim_array[i];
+				auto ch = a.channels;
+
+				for(u32 j = 0; j < bone_count; j++){
+					auto c = ch[j];
+					auto p = c.positionkey_count;
+					auto r = c.rotationkey_count;
+					auto s = c.scalekey_count;
+
+					auto m = Max(Max(p,s),r);
+
+					for(u32 k = 0; k < m; k++){
+						if(k < p){
+							PtrCopy(&ptr,&c.positionkey_array[k],sizeof(AAnimationKey));
+						}
+						if(k < r){
+							PtrCopy(&ptr,&c.rotationkey_array[k],sizeof(AAnimationKey));
+						}
+						if(k < s){
+							PtrCopy(&ptr,&c.scalekey_array[k],sizeof(AAnimationKey));
+						}
+					}
+
+				}
 			}
 		}
+
+
+
 
 
 	}
@@ -1680,10 +1692,10 @@ void Import(s8** files,u32 count){
 struct MDF{
 };
 
-b32 InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind, animbone,u32* vertind_size, 
-		u32* animbone_size){
+void InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind,void* animbone,
+		u32* vertind_size, u32* animbone_size){
 
-	MDf mdf = {};
+	MDF mdf = {};
 
 	auto file = FOpenFile(path, F_FLAG_READONLY);
 	auto end = FGetFileSize(file);
@@ -1694,11 +1706,23 @@ b32 InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind, animbone,u32* v
 	FRead(file,&header,sizeof(header));
 	FRead(file,&version,sizeof(version));
 
-	if(header != TAG_MDF){
-		goto __exit;
-	}
 	u16 comp = 0;
-	u32 vert_size = 0, ind_size = 0, anim_size = 0, skel_size = 0, channels_size = 0;
+
+	u32 vert_size = 0;
+	u32 ind_size = 0;
+	u32 anim_size = 0;
+	u32 skel_size = 0;
+	u32 channels_size = 0;
+
+	s8* vert = 0;
+	s8* ind = 0;
+	s8* bone = 0;
+	s8* anim = 0;
+	s8* channels = 0;
+
+	if(header != TAG_MDF){
+		goto __fin;
+	}
 
 	FRead(file,&comp,sizeof(comp));
 	FRead(file,&vert_size,sizeof(vert_size));
@@ -1720,15 +1744,14 @@ b32 InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind, animbone,u32* v
 		*animbone_size = anim_size + skel_size + channels_size;
 	}
 
-	s8* vert = 0, ind = 0, bone = 0, anim = 0, channels = 0;
 
-	if(vertindex){
-		vert = (s8*)vertindex;
-		ind = vert_size + (s8*)vertindex;
+	if(vertind){
+		vert = (s8*)vertind;
+		ind = (s8*)(vertind) + vert_size;
 	}
 
 	else{
-		goto __exit;
+		goto __fin;
 	}
 
 	if(animbone){
@@ -1748,21 +1771,21 @@ b32 InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind, animbone,u32* v
 					 }break;
 
 			case TAG_INDEX: {
-						 u32 size = 0;
-						 FRead(file,&size,sizeof(size));
-						 FRead(file,ind,size);
-					 }break;
+						u32 size = 0;
+						FRead(file,&size,sizeof(size));
+						FRead(file,ind,size);
+					}break;
 
 			case TAG_SKEL: {
-						 u32 count = 0;
-						 FRead(file,&count,sizeof(count));
-						 FRead(file,ind,size);
-					 }break;
+					       u32 count = 0;
+					       FRead(file,&count,sizeof(count));
+				       }break;
 			case TAG_ANIM: {
-					 }break;
+				       }break;
 
 			case TAG_CHANNELS:
-					 }break;
+				       {
+				       }break;
 
 			default:{
 					_kill("",1);
@@ -1770,7 +1793,7 @@ b32 InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind, animbone,u32* v
 		}
 	}
 
-__exit:
+__fin:
 
 	FCloseFile(file);
 }
