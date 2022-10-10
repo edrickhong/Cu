@@ -11,7 +11,34 @@ new_thin_zombie.dae file cannot load
 Spider.dae  file cannot load
 */
 
+
+void TestAnim(){
+
+	//TODO: once mdf is written, load the mdf file and test JUST the animations.
+	//Look thru the old archives, load the tree as DFS ready
+	//load the asset in the new way BSF read
+	//run animation and compare results w error
+	
+	s8* files[] = {(s8*)"../rsrc/models/goblin.dae"};
+	Import(files,_arraycount(files));
+
+	u16 vertcomp = 0;
+	u32 vertindex_size = 0, animbone_size = 0;
+
+	InternalLoadMDF("../rsrc/models/goblin.mdf",&vertcomp,0,0,&vertindex_size,&animbone_size);
+
+	void* vertind = alloc(vertindex_size);
+	void* animbone = alloc(animbone_size);
+
+	InternalLoadMDF("../rsrc/models/goblin.mdf",&vertcomp,vertind,animbone,&vertindex_size,&animbone_size);
+
+	exit(0);
+
+}
+
 s32 main(s32 argc,s8** argv){
+
+	TestAnim();
     
     if(argc == 1){
         printf("please provide files\n");  

@@ -55,6 +55,8 @@
 
 #include "aanimation.h"
 
+//FIXME: I think the write is wrong somewhere. The allocator is failing because it is trying to allocated a 4GB block
+
 
 struct WriteSizeBlock{
 	void** ptr = 0;
@@ -557,7 +559,9 @@ void CreateTextureAssetTDF(const s8* inputfile,const s8* outputfile,TexFormat fo
 
 u32 isModel(s8 a,s8 b,s8 c){
 	return (_hash(a,b,c) == _hash('d','a','e')) || (_hash(a,b,c) == _hash('o','b','j')) ||
-		(_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x'));
+		(_hash(a,b,c) == _hash('3','d','s')) || (_hash(a,b,c) == _hash('f','b','x')) || 
+		(_hash(a,b,c) == _hash('l','t','f'))
+		;
 }
 
 u32 isAudio(s8 a,s8 b,s8 c){
@@ -585,7 +589,7 @@ struct WavHeader{
 	u32 wave_id;
 };
 
-struct WavChunk{
+ struct WavChunk{
 	u32 id;
 	u32 size;
 };
@@ -1230,8 +1234,7 @@ void _ainline PtrCopy(s8** ptr,void* data,u32 size){
 }
 
 #define _string_block 16
-u32 AnimBoneSize(InterMDF data,b32 use_names = true){
-
+void GetAnimBoneSize(InterMDF data,u32* animsize,u32* skelsize,u32* channelssize,b32 use_names = true){
 	u32 string_block = use_names? _string_block : 0;
 
 	auto bone_count = data.bone_count;
@@ -1246,24 +1249,24 @@ u32 AnimBoneSize(InterMDF data,b32 use_names = true){
 	auto anim_size = anim_count * 
 		(sizeof(TAnim::tps) + sizeof(TAnim::duration) + string_block);
 
-	anim_size += anim_count * bone_count * sizeof(KeyCount);
+	auto channels_size = anim_count * bone_count * sizeof(KeyCount);
 
 	for(u32 i = 0; i < anim_count; i++){
 		auto a = data.anim_array[i];
 
 		for(u32 j = 0; j < a.channels.count; j++){
 			auto c = a.channels[j];
-			anim_size += ((c.positionkey_count + c.rotationkey_count + 
+			channels_size += ((c.positionkey_count + c.rotationkey_count + 
 						c.scalekey_count) * sizeof(AAnimationKey));		}
 
 	}
 
-	return skel_size + anim_size;
+	*animsize = anim_size;
+	*skelsize = skel_size;
+	*channelssize = channels_size;
 }
 
 
-
-//TODO: Consider compressing the data
 
 #define _print_log 1
 
@@ -1293,7 +1296,7 @@ _intern u32 ProcessIndices(InterMDF data){
 
 
 void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
-		AnimationBlendType blendtype = BLEND_LINEAR){
+		AnimationBlendType blendtype = BLEND_LINEAR,b32 use_names = true){
 
 	s8* buffer = (s8*)alloc(_megabytes(30));
 	s8* ptr = buffer;
@@ -1336,12 +1339,11 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 			PtrCopy(&ptr,&vertex_component,sizeof(u16));
 
-			//TODO: this needs to be split into --
-			// _aligned(vert_size) + ind_size
 			u32 vert_size = (data.vertex_count * sizeof(AVec3)) +
 				(data.texcoord_count * sizeof(Vec2)) +
 				(data.normal_count * sizeof(AVec3)) +
 				(data.skin_count * sizeof(TSkin));
+			vert_size = _devicealign(vert_size);
 
 			u32 ind_size = data.index_count * index_size;
 
@@ -1349,7 +1351,8 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			u32 skel_size = 0;
 			u32 channels_size = 0;
 
-			u32 animbonesize = AnimBoneSize(data); 
+			GetAnimBoneSize(data,&anim_size,&skel_size,&channels_size,use_names);
+
 
 #if _print_log
 
@@ -1364,6 +1367,7 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 			PtrCopy(&ptr,&anim_size,sizeof(anim_size));
 			PtrCopy(&ptr,&skel_size,sizeof(skel_size));
 			PtrCopy(&ptr,&channels_size,sizeof(channels_size));
+
 		}
 
 		u32 header = TAG_VERTEX;
@@ -1531,6 +1535,9 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 					auto r = c.rotationkey_count;
 					auto s = c.scalekey_count;
 
+					//NOTE: we are assuming given any of the members, the members either can be 0
+					//or if it is non-zero, it would have the same value as the other non-zero fields
+
 					_kill("Cannot narrow\n", p > 65535);
 					_kill("Cannot narrow\n", r > 65535);
 					_kill("Cannot narrow\n", s > 65535);
@@ -1549,7 +1556,7 @@ void CreateMDFContent(void** out_buffer,u32* out_buffer_size,InterMDF data,
 
 
 			//NOTE: channel data
-			u32 data_size = offset;
+			u32 data_size = offset; // NOTE: this would be the total keys
 			PtrCopy(&ptr,&data_size,sizeof(u32));
 
 
@@ -1605,9 +1612,6 @@ void AssimpWriteMDF(InterMDF data,const s8* filepath,
 	u32 buffer_size;
 
 	CreateMDFContent((void**)&buffer,&buffer_size,data,blendtype);
-
-	_breakpoint();
-
 
 	FileHandle file = FOpenFile(filepath,F_FLAG_WRITEONLY | F_FLAG_CREATE |
 			F_FLAG_TRUNCATE);
@@ -1735,7 +1739,6 @@ void InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind,void* animbone,
 		*vertcomp = comp;
 	}
 
-	//TODO: split these into many parts
 	if(vertind_size){
 		*vertind_size = vert_size + ind_size;
 	}
@@ -1755,8 +1758,10 @@ void InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind,void* animbone,
 	}
 
 	if(animbone){
+		//TODO: actually set this
 		bone = (s8*)animbone;
 		anim = (s8*)animbone;
+		channels = (s8*)animbone;
 	}
 
 	while(FCurFilePosition(file) < end){
@@ -1779,12 +1784,46 @@ void InternalLoadMDF(const s8* path,u16* vertcomp, void* vertind,void* animbone,
 			case TAG_SKEL: {
 					       u32 count = 0;
 					       FRead(file,&count,sizeof(count));
+					       u32 * children = 0;
+					       Mat4* offset = 0;
+					       s8* names = 0;
+
+					       FRead(file,children,sizeof(TBone::children_count) * count);
+					       FRead(file,offset,sizeof(TBone::offset) * count);
+					       FRead(file,names,_string_block * count);
+
 				       }break;
 			case TAG_ANIM: {
+					       u32 count = 0;
+					       FRead(file,&count,sizeof(count));
+
+					       //TODO: make this a proper struct
+					       struct An{
+						       f32 t,d;
+					       };
+
+					       An* anim = 0;
+					       s8* names = 0;
+
+					       FRead(file,anim,sizeof(An) * count);
+					       FRead(file,names,_string_block * count);
+
 				       }break;
 
 			case TAG_CHANNELS:
 				       {
+					       u32 anim_count = 0, bone_count = 0;
+					       FRead(file,&anim_count,sizeof(anim_count));
+					       FRead(file,&bone_count,sizeof(bone_count));
+
+					       KeyCount* keycounts = 0;
+					       FRead(file,keycounts,sizeof(KeyCount) * anim_count * bone_count);
+
+					       u32 key_count = 0;
+					       FRead(file,&key_count,sizeof(key_count));
+
+					       AAnimationKey* keys = 0;
+					       FRead(file,keys,sizeof(AAnimationKey) * key_count);
 				       }break;
 
 			default:{
