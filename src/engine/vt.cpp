@@ -225,7 +225,7 @@ _intern void TraverseMipTree(TPageQuadNode* node,TCoord src_coord,
         
         GetPageCoord(&fetch->dst_coord.x,&fetch->dst_coord.y,evict_list);
         list->count++;
-        node->page_value = _encode_rgba(fetch->dst_coord.x,fetch->dst_coord.y,0,255);
+        node->page_value = Encode_RGBA(fetch->dst_coord.x,fetch->dst_coord.y,0,255);
     }
     
 #ifdef DEBUG
@@ -386,7 +386,7 @@ void FetchTextureTiles(ThreadFetchBatch* batch,VkCommandBuffer fetch_cmdbuffer){
                     auto x = fetch_data->dst_coord.x;
                     auto y = fetch_data->dst_coord.y;
                     
-                    *cur = _encode_rgba(x,y,0,255);
+                    *cur = Encode_RGBA(x,y,0,255);
                 }
             }
             

@@ -100,7 +100,7 @@ _global MemoryState global_memstate = {};
 _global GPUMemState global_gpumemstate = {};
 
 _global TIMESTAMP global_timestamp = 0xFFFFFFFF;
-
+//TODO: make all this into templates
 #define _DAddBlocksFn(type,state) type* AddBlocks##type(){		\
     if(state.checkmemoryblock_count){					\
         state.checkmemoryblock_count--;					\
@@ -699,6 +699,8 @@ _intern void GPUAllocateAsset(ModelAssetHandle* handle,u32 size){
             global_gpumemstate.asset_count++; 
         }
     }
+
+    _kill("",!slot.block);
     
     handle->gpuid = slot.id;
     
@@ -1105,7 +1107,7 @@ void DebugRenderFeedbackBuffer(){
         if(a->texture_id && (a->texture_id - 1) >= _arraycount(texturehandle_array)){
             
             printf("hit invalid %d\n",a->texture_id);
-            a->value = _encode_rgba(255,0,0,255);
+            a->value = Encode_RGBA(255,0,0,255);
         }
         
         else if(a->texture_id)
