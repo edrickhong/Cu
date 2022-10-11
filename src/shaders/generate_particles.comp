@@ -1,0 +1,96 @@
+layout (set = 0, binding = 0) buffer Emitter{
+	ParticleEmitterInfo emitters[4];
+	f32 time;
+	uint count;
+} emitter;
+
+layout (set = 0, binding = 1) buffer Particle{
+	ParticleInfo particles[2048];
+	uint cur;
+	uint count;
+} particle;
+
+
+
+layout (set = 1, binding = 0) buffer Vert{
+	vec4 verts[2048 * 6];
+	uint count;
+} vert;
+
+
+
+//TODO:
+float Random(){
+	return 0.0f;
+}
+
+//TODO: look at dispatch sizes to better delegate these
+////I think it is better to just update the entire buffer by workgroup then selectively filling the vert buffer later
+
+
+void UpdateEmitters(){
+	while(emitter.count){
+		uint count = emitter.count;
+		uint actual = atomicCounterCompSwap(emitter.count,count,count--);
+
+		if(actual == count){
+			uint cur_index = count - 1;
+			ParticleEmitterInfo em = emitter.emitters[cur_index];
+			em.timer += emitter.time;
+
+			if(em.timer > em.freq){
+				
+				em.timer = 0;
+
+				while(particle.count < 2048){
+					uint count = particle.count;
+					uint actual = atomicCounterCompSwap(particle.count,count,count + 1);
+
+					if(actual == count){
+						uint particle_index = count - 1;
+						//MARK: is this a copy or a ref??
+						ParticleEmitterInfo p = particle.particles[particle_index];
+						p.pos = em.pos;
+						p.dir = vec3(Random(),Random(),Random());
+						p.lifetime = Random();
+						break;
+					}
+				}
+			}
+
+		}
+	}
+}
+
+void UpdateParticles(){
+	while(particle.cur != particle.count){
+		uint cur = particle.cur;
+		uint actual = atomicCounterCompSwap(particle.cur,cur,cur + 1);
+
+		if(cur == actual){
+
+			ParticleEmitterInfo p = particle.particles[particle_index];
+			p.pos += p.dir;
+			p.lifetime -= emitter.time;
+
+			//Fill vert buffer
+			uint vert_count = vert.count;
+			uint actual_vert_count = atomicCounterCompSwap(actual_vert_count,vert_count,vert_count + 6);
+			
+			if(actual_vert_count == vert_count){
+				vert.verts[vert_count] = p.pos;
+				vert.verts[vert_count + 1] = p.pos + vec3(1,0,0);
+				vert.verts[vert_count + 2] = p.pos + vec3(0,-1,0);
+				vert.verts[vert_count + 3] = p.pos + vec3(1,0,0);
+				vert.verts[vert_count + 4] = p.pos + vec3(1,-1,0);
+				vert.verts[vert_count + 5] = p.pos + vec3(0,-1,0);
+			}
+		}
+	}
+}
+
+
+void main(){
+	UpdateEmitters();
+	UpdateParticles();
+}

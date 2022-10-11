@@ -13,7 +13,34 @@ REFDOC(Settings,ParseSettings,{
 		\end{document}
 		});
 
+
+void TestParticles(){
+
+#define _max_emitters 4
+#define _max_particles 2048
+
+	//for now we will only have sphere particles
+	struct ParticleEmitterInfo{
+		Vec4 pos;
+		f32 timer;
+		f32 freq;
+	};
+	struct ParticleInfo{
+		Vec4 pos;
+		Vec4 dir;
+		f32 lifetime;
+	};
+
+	//TODO: we need another buffer to output the draw data to
+
+	auto particle_ubo = VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleEmitterInfo[_max_emitters]) + sizeof(Vec4));
+	auto particle_sbo =  VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleEmitterInfo[_max_particles] + sizeof(Vec4),VBLOCK_DEVICE);
+
+	exit(0);
+}
+
 s32 main(s32 argc, s8** argv) {
+
 #if 0
 	TestSW();
 
@@ -28,6 +55,8 @@ s32 main(s32 argc, s8** argv) {
 #endif
 
 	InitAllSystems();
+
+	TestParticles();
 
 #ifdef DEBUG
 
