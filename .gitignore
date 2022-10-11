@@ -6,7 +6,7 @@ FIXME.txt
 MARK.txt
 NOTE.txt
 TODO.txt
-*.comp
+OBJ.comp
 *.zip
 *.sh
 *.bat
