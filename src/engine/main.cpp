@@ -16,7 +16,7 @@ REFDOC(Settings,ParseSettings,{
 
 void TestParticles(){
 
-#define _max_emitters 4
+ #define _max_emitters 16
 #define _max_particles 2048
 
 	//for now we will only have sphere particles
@@ -33,9 +33,43 @@ void TestParticles(){
 
 	//TODO: we need another buffer to output the draw data to
 
-	auto particle_ubo = VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleEmitterInfo[_max_emitters]) + sizeof(Vec4));
-	auto particle_sbo =  VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleEmitterInfo[_max_particles] + sizeof(Vec4),VBLOCK_DEVICE);
+	auto emitter_sbo = VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleEmitterInfo[_max_emitters]) + sizeof(Vec4));
+	auto particle_sbo =  VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleInfo[_max_particles]) + sizeof(Vec4),VBLOCK_DEVICE);
 
+	//create compute pipeline
+	SPXData comp_shader[] = {
+		LoadSPX(SHADER_PATH(generate_particles.comp.spx)),
+	};
+	auto shader_obj = VMakeShaderObjSPX(comp_shader,1);
+
+	VDescriptorPoolSpec poolspec;
+
+	VDescPushBackPoolSpec(&poolspec,&shader_obj);
+	auto pool = VCreateDescriptorPoolX(&pdata->vdevice,poolspec);
+	VkDescriptorSetLayout layouts[] = {
+		VCreateDescriptorSetLayout(&pdata->vdevice,&shader_obj,0)
+	};
+
+	VkDescriptorSet set = 0;
+
+	VAllocDescriptorSetArray(&pdata->vdevice,pool,_arraycount(layouts),layouts,&set);
+
+	auto pipeline_layout = VCreatePipelineLayout(&pdata->vdevice,layouts,_arraycount(layouts),&shader_obj);
+
+	auto emitter_binfo = VGetBufferInfo(&emitter_sbo);
+	auto particle_binfo = VGetBufferInfo(&particle_sbo);
+
+	VDescriptorWriteSpec writespec;
+	VDescPushBackWriteSpecBuffer(&writespec,set,0,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&emitter_binfo);
+	VDescPushBackWriteSpecBuffer(&writespec,set,1,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&particle_binfo);
+
+	VUpdateDescriptorSets(&pdata->vdevice,writespec);
+
+	VComputePipelineSpec spec = {};
+	VGenerateComputePipelineSpec(&spec,pipeline_layout);
+	VSetComputePipelineSpecShader(&spec,comp_shader[0].spv,comp_shader[0].spv_size);
+	VkPipeline pipeline = 0;
+	VCreateComputePipelineArray(&pdata->vdevice,0,&spec,1,&pipeline);
 	exit(0);
 }
 

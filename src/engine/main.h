@@ -1916,6 +1916,7 @@ we can get this value in VkPhysicalDeviceLimits.bufferImageGranularity
 
 
 
+	//FIXME: this is a duplicate of the above
 	VkDescriptorSetLayout desc_layout[] = {
 		pdata->dynuniform_descriptorlayout,
 		pdata->vt_descriptorlayout,
