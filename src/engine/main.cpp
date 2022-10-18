@@ -56,6 +56,7 @@ void TestParticles(){
 
 	auto pipeline_layout = VCreatePipelineLayout(&pdata->vdevice,layouts,_arraycount(layouts),&shader_obj);
 
+	//TODO: I think we need to set the actual size range
 	auto emitter_binfo = VGetBufferInfo(&emitter_sbo);
 	auto particle_binfo = VGetBufferInfo(&particle_sbo);
 

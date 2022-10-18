@@ -1769,6 +1769,7 @@ void InitSceneContext(PlatformData* pdata,VkCommandBuffer cmdbuffer,
 
 	pdata->proj = ProjectionMat4(_radians(90.0f),aspectratio,0.1f,256.0f);
 
+#if 0
 	{
 
 		VStartCommandBuffer(cmdbuffer,
@@ -1878,6 +1879,7 @@ we can get this value in VkPhysicalDeviceLimits.bufferImageGranularity
 
 		vkQueueWaitIdle(queue);
 	}
+#endif
 
 
 	SPXData shader_data[] = {
