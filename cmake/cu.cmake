@@ -156,7 +156,7 @@ function(compileallshaders OUT_LIST)
               --target-env=vulkan ../src/shaders/${SHADERNAME} -o
                                   ../rsrc/shaders/pp_${SHADERNAME}
                                   # compile
-      COMMAND glslc -I ../include/shader_include -std=450
+      COMMAND glslc -g -I ../include/shader_include -std=450
               --target-env=vulkan ../src/shaders/${SHADERNAME} -o
                                   ../rsrc/shaders/${SHADERNAME}.spv
                                   # reflect
@@ -188,7 +188,7 @@ function(compileshadercase DEF IN OUT OUT_VAR)
                              ../include/shader_include -std=450
                              --target-env=vulkan ../src/shaders/${IN} -o
                                                  ../rsrc/shaders/pp_${OUT}
-                     COMMAND glslc -I ../include/shader_include -std=450
+                     COMMAND glslc -g -I ../include/shader_include -std=450
                              --target-env=vulkan -D${DEF} ../src/shaders/${IN}
                                                  -o ../rsrc/shaders/${OUT}.spv
                      COMMAND glslparser -D${DEF} ../rsrc/shaders/pp_${OUT}
