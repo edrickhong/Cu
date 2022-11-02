@@ -281,6 +281,8 @@ _intern void _ainline PushRenderEntry(RenderContext* context,u32 group_index,
 }
 
 
+
+
 _intern void _ainline Draw(VkCommandBuffer commandbuffer,
 		VBufferContext vertex_buffer,VBufferContext index_buffer,
 		VBufferContext instance_buffer = {},u32 instance_count = 1,
@@ -788,6 +790,181 @@ void GUISingleEntryProc(void* in_args,void*){
 				cmdbuffer);
 	}
 }
+#if 0
+_global EntryMutex particles_is_locked = 0;
+
+void TestParticlesSingleEntry(void* in_args,void*){
+	auto args = (GUIDrawArgs*)in_args;
+
+	auto cmdbuffer =
+		args->render->cmdbuffer[_arraycount(args->context->rendergroup) * args->context->swap_index +
+		args->group_index];
+
+	VStartCommandBuffer(cmdbuffer,
+			VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
+			args->context->renderpass,args->context->subpass_index,args->context->framebuffer,VK_FALSE,0,0);
+
+	TestParticles(cmdbuffer,pushconst);
+
+	VEndCommandBuffer(cmdbuffer);
+
+	{
+		TIMEBLOCKTAGGED("VThreadEndRender::Submit",Turquoise);
+		VPushThreadCommandbufferList(&args->context->rendergroup[args->group_index].cmdbufferlist,
+				cmdbuffer);
+	}
+}
+
+#endif
+
+
+#define _max_emitters 4
+#define _max_particles 256
+
+	//for now we will only have sphere particles
+	struct ParticleEmitterInfo{
+		Vec4 pos;
+		f32 timer;
+		f32 freq;
+	};
+	struct ParticleInfo{
+		Vec4 pos;
+		Vec4 dir;
+		f32 lifetime;
+	};
+
+	struct Emitters{
+	ParticleEmitterInfo emitters[_max_emitters];
+	uint emitter_use[_max_emitters];
+	uint particle_count;
+	float time;
+	uint tri_count;
+	};
+
+	struct Particles{
+		ParticleInfo particles[_max_particles];
+	};
+
+
+struct TestData{
+	VBufferContext emitter_sbo;
+	VBufferContext particle_sbo;
+	VBufferContext particle_vbo;
+	VBufferContext particle_ibo;
+	VkDescriptorSet sets[2];
+	VkPipelineLayout layout;
+	VkPipeline pipeline;
+
+
+	VkPipelineLayout draw_layout;
+	VkPipeline draw_pipeline;
+};
+
+_global TestData tdata = {};
+
+void TestParticlesStart(VkCommandBuffer cmdbuffer){
+	VkBufferMemoryBarrier r_barrier []= {
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			0,
+			VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_HOST_READ_BIT,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			tdata.emitter_sbo.buffer,
+			0,
+			tdata.emitter_sbo.size
+		},
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			0,
+			VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			tdata.particle_vbo.buffer,
+			0,
+			tdata.particle_vbo.size
+		},
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			0,
+			VK_ACCESS_INDEX_READ_BIT,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			tdata.particle_ibo.buffer,
+			0,
+			tdata.particle_ibo.size
+		},
+	};
+
+	vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,0,1,r_barrier,0,0);
+	vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,0,2,&r_barrier[1],0,0);
+
+	vkCmdBindPipeline(cmdbuffer,VK_PIPELINE_BIND_POINT_COMPUTE,tdata.pipeline);
+	vkCmdBindDescriptorSets(cmdbuffer,VK_PIPELINE_BIND_POINT_COMPUTE,tdata.layout,0,2,tdata.sets,0,0);
+	vkCmdDispatch(cmdbuffer,16,1,1);
+
+	VkBufferMemoryBarrier w_barrier []= {
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			0,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_HOST_READ_BIT,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			tdata.emitter_sbo.buffer,
+			0,
+			tdata.emitter_sbo.size
+		},
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			0,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			tdata.particle_vbo.buffer,
+			0,
+			tdata.particle_vbo.size
+		},
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			0,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_ACCESS_INDEX_READ_BIT,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			tdata.particle_ibo.buffer,
+			0,
+			tdata.particle_ibo.size
+		},
+	};
+
+
+	vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,0,0,1,w_barrier,0,0);
+	vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,0,0,0,2,&w_barrier[1],0,0);
+}
+
+void TestParticles(VkCommandBuffer cmdbuffer,void* pushconst){
+
+	VkDeviceSize vb_offset = 0;
+	VkDeviceSize ind_offset = 0;
+
+	vkCmdBindPipeline(cmdbuffer,VK_PIPELINE_BIND_POINT_GRAPHICS,tdata.draw_pipeline);
+	vkCmdBindVertexBuffers(cmdbuffer,0,1,&tdata.particle_vbo.buffer,&vb_offset);
+	vkCmdBindIndexBuffer(cmdbuffer,tdata.particle_ibo.buffer,0,VK_INDEX_TYPE_UINT32);
+
+	vkCmdPushConstants(cmdbuffer,tdata.draw_layout,
+			VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(PushConst),
+			pushconst);
+	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+
+	printf("count %d\n",ptr->particle_count);
+
+	vkCmdDrawIndexed(cmdbuffer,ptr->particle_count * 6,1,0,0,0);
+}
 
 
 void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
@@ -836,6 +1013,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
 	VStartCommandBuffer(cmdbuffer,0);
 
+	TestParticlesStart(cmdbuffer);
 
 	VBufferContext* gui_vertbuffer = 0;
 
@@ -933,12 +1111,24 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 	clearvalue[1].color = {};
 	clearvalue[1].depthStencil = {1.0f,0};
 
+#if 1
+	VStartRenderpass(cmdbuffer,
+			VK_SUBPASS_CONTENTS_INLINE,renderpass,
+			framebuffer,
+			{{0,0},{pdata->swapchain.width,
+			pdata->swapchain.height}},
+			&clearvalue[0],_arraycount(clearvalue));
+
+	TestParticles(cmdbuffer,pushconst);
+#else
+
 	VStartRenderpass(cmdbuffer,
 			VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,renderpass,
 			framebuffer,
 			{{0,0},{pdata->swapchain.width,
 			pdata->swapchain.height}},
 			&clearvalue[0],_arraycount(clearvalue));
+
 
 #if _enable_gui
 
@@ -976,7 +1166,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 	}
 
 
-
+#endif
 	VEndRenderPass(cmdbuffer);
 
 	VTEnd(cmdbuffer);  
@@ -1968,11 +2158,14 @@ we can get this value in VkPhysicalDeviceLimits.bufferImageGranularity
 			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			&image_info[0]);
 
+	if(pdata->scenecontext.textureasset_count){
+		VDescPushBackWriteSpecImage(&writespec,pdata->vt_descriptorset,1,0,
+				pdata->scenecontext.textureasset_count,
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				&image_info[1]);
+	}
 
-	VDescPushBackWriteSpecImage(&writespec,pdata->vt_descriptorset,1,0,
-			pdata->scenecontext.textureasset_count,
-			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			&image_info[1]);
+
 
 
 	VkDescriptorImageInfo vt_readbackbufferinfo = {
@@ -2194,7 +2387,7 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 
 	pdata->window = WCreateWindow("Cu",flags,settings.window_x,settings.window_y,settings.window_width,settings.window_height);
 
-	auto loaded_version = VCreateInstance("eengine",false,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+	auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
 
 	_kill("requested vulkan version not found\n",loaded_version == (u32)-1);
 

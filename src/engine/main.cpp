@@ -14,27 +14,22 @@ REFDOC(Settings,ParseSettings,{
 		});
 
 
-void TestParticles(){
 
- #define _max_emitters 16
-#define _max_particles 2048
 
-	//for now we will only have sphere particles
-	struct ParticleEmitterInfo{
-		Vec4 pos;
-		f32 timer;
-		f32 freq;
-	};
-	struct ParticleInfo{
-		Vec4 pos;
-		Vec4 dir;
-		f32 lifetime;
-	};
 
-	//TODO: we need another buffer to output the draw data to
 
-	auto emitter_sbo = VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleEmitterInfo[_max_emitters]) + sizeof(Vec4));
-	auto particle_sbo =  VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(ParticleInfo[_max_particles]) + sizeof(Vec4),VBLOCK_DEVICE);
+void InitParticles(){
+
+
+	tdata.emitter_sbo = VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(Emitters),VBLOCK_READWRITE);
+	tdata.particle_sbo =  VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(Particles),VBLOCK_DEVICE);
+
+	tdata.particle_vbo = TCreateStaticVertexBuffer(&pdata->vdevice,sizeof(Vec3) * _max_particles * 4,0,VBLOCK_DEVICE);
+	tdata.particle_ibo = TCreateStaticIndexBuffer(&pdata->vdevice,sizeof(u32) * _max_particles * 6,sizeof(u32),VBLOCK_DEVICE);
+
+	auto ptr = VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+
+	memset(ptr,0,sizeof(Emitters));
 
 	//create compute pipeline
 	SPXData comp_shader[] = {
@@ -47,31 +42,68 @@ void TestParticles(){
 	VDescPushBackPoolSpec(&poolspec,&shader_obj);
 	auto pool = VCreateDescriptorPoolX(&pdata->vdevice,poolspec);
 	VkDescriptorSetLayout layouts[] = {
-		VCreateDescriptorSetLayout(&pdata->vdevice,&shader_obj,0)
+		VCreateDescriptorSetLayout(&pdata->vdevice,&shader_obj,0),
+		VCreateDescriptorSetLayout(&pdata->vdevice,&shader_obj,1),
 	};
 
-	VkDescriptorSet set = 0;
+	VAllocDescriptorSetArray(&pdata->vdevice,pool,_arraycount(layouts),layouts,tdata.sets);
 
-	VAllocDescriptorSetArray(&pdata->vdevice,pool,_arraycount(layouts),layouts,&set);
+	tdata.layout = VCreatePipelineLayout(&pdata->vdevice,layouts,_arraycount(layouts),&shader_obj);
 
-	auto pipeline_layout = VCreatePipelineLayout(&pdata->vdevice,layouts,_arraycount(layouts),&shader_obj);
+	auto emitter_binfo = VGetBufferInfo(&tdata.emitter_sbo,0,tdata.emitter_sbo.size);
+	auto particle_binfo = VGetBufferInfo(&tdata.particle_sbo,0,tdata.particle_sbo.size);
 
-	//TODO: I think we need to set the actual size range
-	auto emitter_binfo = VGetBufferInfo(&emitter_sbo);
-	auto particle_binfo = VGetBufferInfo(&particle_sbo);
+	auto vbo_binfo = VGetBufferInfo(&tdata.particle_vbo,0,tdata.particle_vbo.size);
+	auto ibo_binfo = VGetBufferInfo(&tdata.particle_ibo,0,tdata.particle_ibo.size);
 
 	VDescriptorWriteSpec writespec;
-	VDescPushBackWriteSpecBuffer(&writespec,set,0,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&emitter_binfo);
-	VDescPushBackWriteSpecBuffer(&writespec,set,1,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&particle_binfo);
+	VDescPushBackWriteSpecBuffer(&writespec,tdata.sets[0],0,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&emitter_binfo);
+	VDescPushBackWriteSpecBuffer(&writespec,tdata.sets[0],1,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&particle_binfo);
+
+
+	VDescPushBackWriteSpecBuffer(&writespec,tdata.sets[1],0,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&vbo_binfo);
+	VDescPushBackWriteSpecBuffer(&writespec,tdata.sets[1],1,0,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,&ibo_binfo);
 
 	VUpdateDescriptorSets(&pdata->vdevice,writespec);
 
 	VComputePipelineSpec spec = {};
-	VGenerateComputePipelineSpec(&spec,pipeline_layout);
+	VGenerateComputePipelineSpec(&spec,tdata.layout);
 	VSetComputePipelineSpecShader(&spec,comp_shader[0].spv,comp_shader[0].spv_size);
-	VkPipeline pipeline = 0;
-	VCreateComputePipelineArray(&pdata->vdevice,0,&spec,1,&pipeline);
-	exit(0);
+	VCreateComputePipelineArray(&pdata->vdevice,0,&spec,1,&tdata.pipeline);
+
+	VkCommandBuffer cmdbuffer = pdata->rendercmdbuffer_array[0].buffer;
+
+	VStartCommandBuffer(cmdbuffer,VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	vkCmdFillBuffer(cmdbuffer,tdata.particle_sbo.buffer,0,tdata.particle_sbo.size,0);
+	vkCmdFillBuffer(cmdbuffer,tdata.particle_vbo.buffer,0,tdata.particle_vbo.size,0);
+	vkCmdFillBuffer(cmdbuffer,tdata.particle_ibo.buffer,0,tdata.particle_ibo.size,0);
+
+	VEndCommandBuffer(cmdbuffer);
+
+	VkQueue queue = pdata->root_queue;
+	VSubmitCommandBuffer(queue,cmdbuffer);
+
+	vkQueueWaitIdle(queue);
+
+	//TODO:create draw pipeline
+	{
+		SPXData shader_data[] = {
+			LoadSPX(SHADER_PATH(particles.vert.spx)),
+			LoadSPX(SHADER_PATH(particles.frag.spx))
+		};
+		auto shader_obj = VMakeShaderObjSPX(shader_data,_arraycount(shader_data));
+		tdata.draw_layout = VCreatePipelineLayout(&pdata->vdevice,0,0,&shader_obj);
+
+		auto spec = VMakeGraphicsPipelineSpecObj(&pdata->vdevice,&shader_obj,tdata.draw_layout,pdata->renderpass,0,&pdata->swapchain);
+		VSetDepthStencilGraphicsPipelineSpec(&spec,
+				VK_TRUE,
+				VK_TRUE,VK_COMPARE_OP_LESS_OR_EQUAL,
+				VK_TRUE);
+
+		VCreateGraphicsPipelineArray(&pdata->vdevice,&spec,1,&tdata.draw_pipeline,0);
+	}
+
 }
 
 s32 main(s32 argc, s8** argv) {
@@ -91,7 +123,7 @@ s32 main(s32 argc, s8** argv) {
 
 	InitAllSystems();
 
-	TestParticles();
+	InitParticles();
 
 #ifdef DEBUG
 
