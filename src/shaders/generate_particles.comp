@@ -19,6 +19,7 @@ layout (set = 0, binding = 0) buffer Emitter{
 	ParticleEmitterInfo emitters[max_emitters];
 	uint emitter_use[max_emitters];
 	uint particle_count;
+	//TODO: we need a separate val for the draw buffer
 	float time;
 } emitter;
 
