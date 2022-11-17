@@ -45,7 +45,7 @@ layout (set = 1, binding = 1) buffer Ind{
 
 float Random(vec2 co){
 	co += vec2(0.2,-0.7);
-	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453) - 0.5f;
+	return (fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453) - 0.5f) * 2.0f;
 }
 
 vec3 RandomVec3(vec2 co){
