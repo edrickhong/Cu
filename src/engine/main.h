@@ -836,9 +836,8 @@ void TestParticlesSingleEntry(void* in_args,void*){
 	struct Emitters{
 	ParticleEmitterInfo emitters[_max_emitters];
 	uint emitter_use[_max_emitters];
-	uint particle_count;
+	uint draw_count;
 	float time;
-	uint tri_count;
 	};
 
 	struct Particles{
@@ -863,6 +862,10 @@ struct TestData{
 _global TestData tdata = {};
 
 void TestParticlesStart(VkCommandBuffer cmdbuffer){
+
+	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+	ptr->draw_count = 0;
+
 	VkBufferMemoryBarrier r_barrier []= {
 		{
 			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -961,9 +964,8 @@ void TestParticles(VkCommandBuffer cmdbuffer,void* pushconst){
 			pushconst);
 	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
 
-	printf("count %d\n",ptr->particle_count);
-
-	vkCmdDrawIndexed(cmdbuffer,ptr->particle_count * 6,1,0,0,0);
+	//vkCmdDrawIndexed(cmdbuffer,ptr->draw_count * 6,1,0,0,0);
+	vkCmdDrawIndexed(cmdbuffer,256 * 6,1,0,0,0);
 }
 
 

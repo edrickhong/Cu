@@ -1,3 +1,5 @@
+#version 450
+
 layout(constant_id = 0) const  uint max_emitters = 4;
 layout(constant_id = 1) const  uint max_particles = 256;
 
@@ -18,8 +20,7 @@ struct ParticleInfo{
 layout (set = 0, binding = 0) buffer Emitter{
 	ParticleEmitterInfo emitters[max_emitters];
 	uint emitter_use[max_emitters];
-	uint particle_count;
-	//TODO: we need a separate val for the draw buffer
+	uint draw_count;
 	float time;
 } emitter;
 
@@ -43,6 +44,7 @@ layout (set = 1, binding = 1) buffer Ind{
 
 
 float Random(vec2 co){
+	co += vec2(0.2,-0.7);
 	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
@@ -61,26 +63,30 @@ void main(){
 		particle.particles[particle_index].pos += particle.particles[particle_index].dir;
 		//particle.particles[particle_index].lifetime -= emitter.time;
 
-		uint count = emitter.particle_count;
-		uint actual = atomicCompSwap(emitter.particle_count,count, count + 1);
 
-		if(count == actual){
-			uint vert_index = count * 4;
-			uint ind_index = count * 6;
-			vec3 pos = particle.particles[particle_index].pos.xyz;
+		uint count = 0;
+		uint actual = 0;
 
-			vert.verts[vert_index] = pos;
-			vert.verts[vert_index + 1] = pos + vec3(0,1,0);
-			vert.verts[vert_index + 2] = pos + vec3(1,1,0);
-			vert.verts[vert_index + 3] = pos + vec3(1,0,0);
+		do{
+			count = emitter.draw_count;
+			actual = atomicCompSwap(emitter.draw_count,count, count + 1);
+		}while(count != actual);
 
-			ind.indices[ind_index] = vert_index;
-			ind.indices[ind_index + 1] = vert_index + 1;
-			ind.indices[ind_index + 2] = vert_index + 2;
-			ind.indices[ind_index + 3] = vert_index + 2;
-			ind.indices[ind_index + 4] = vert_index + 3;
-			ind.indices[ind_index + 5] = vert_index;
-		}
+		uint vert_index = count * 4;
+		uint ind_index = count * 6;
+		vec3 pos = particle.particles[particle_index].pos.xyz;
+
+		vert.verts[vert_index] = pos;
+		vert.verts[vert_index + 1] = pos + vec3(0,1,0);
+		vert.verts[vert_index + 2] = pos + vec3(1,1,0);
+		vert.verts[vert_index + 3] = pos + vec3(1,0,0);
+
+		ind.indices[ind_index] = vert_index;
+		ind.indices[ind_index + 1] = vert_index + 1;
+		ind.indices[ind_index + 2] = vert_index + 2;
+		ind.indices[ind_index + 3] = vert_index + 2;
+		ind.indices[ind_index + 4] = vert_index + 3;
+		ind.indices[ind_index + 5] = vert_index;
 	}
 
 	else{
