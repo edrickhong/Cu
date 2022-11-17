@@ -857,6 +857,8 @@ struct TestData{
 
 	VkPipelineLayout draw_layout;
 	VkPipeline draw_pipeline;
+
+	u32 draw_count;
 };
 
 _global TestData tdata = {};
@@ -864,6 +866,7 @@ _global TestData tdata = {};
 void TestParticlesStart(VkCommandBuffer cmdbuffer){
 
 	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+	tdata.draw_count = ptr->draw_count;
 	ptr->draw_count = 0;
 
 	VkBufferMemoryBarrier r_barrier []= {
@@ -964,8 +967,7 @@ void TestParticles(VkCommandBuffer cmdbuffer,void* pushconst){
 			pushconst);
 	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
 
-	//vkCmdDrawIndexed(cmdbuffer,ptr->draw_count * 6,1,0,0,0);
-	vkCmdDrawIndexed(cmdbuffer,256 * 6,1,0,0,0);
+	vkCmdDrawIndexed(cmdbuffer,tdata.draw_count * 6,1,0,0,0);
 }
 
 

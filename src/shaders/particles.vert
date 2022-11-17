@@ -1,9 +1,9 @@
-layout(location = 0) in vec3 aPos;
+layout(location = 0) in vec4 aPos;
 
 
 layout(push_constant) uniform PushConsts{
     mat4 viewproj;
-    vec4 camerapos;
+    vec4 camerapos; //TODO: we need to rotate the billboard towards the camera
 }pushconst;
 
 out gl_PerVertex {

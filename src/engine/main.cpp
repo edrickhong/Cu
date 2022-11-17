@@ -24,7 +24,7 @@ void InitParticles(){
 	tdata.emitter_sbo = VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(Emitters),VBLOCK_READWRITE);
 	tdata.particle_sbo =  VCreateShaderStorageBufferContext(&pdata->vdevice,sizeof(Particles),VBLOCK_DEVICE);
 
-	tdata.particle_vbo = TCreateStaticVertexBuffer(&pdata->vdevice,sizeof(Vec3) * _max_particles * 4,0,VBLOCK_DEVICE);
+	tdata.particle_vbo = TCreateStaticVertexBuffer(&pdata->vdevice,sizeof(Vec4) * _max_particles * 4,0,VBLOCK_DEVICE);
 	tdata.particle_ibo = TCreateStaticIndexBuffer(&pdata->vdevice,sizeof(u32) * _max_particles * 6,sizeof(u32),VBLOCK_DEVICE);
 
 	auto ptr = VGetReadWriteBlockPtr(&tdata.emitter_sbo);

@@ -30,7 +30,7 @@ layout (set = 0, binding = 1) buffer Particle{
 
 
 layout (set = 1, binding = 0) buffer Vert{
-	vec3 verts[max_particles * 4];
+	vec4 verts[max_particles * 4];
 } vert;
 
 
@@ -45,7 +45,7 @@ layout (set = 1, binding = 1) buffer Ind{
 
 float Random(vec2 co){
 	co += vec2(0.2,-0.7);
-	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453) - 0.5f;
 }
 
 vec3 RandomVec3(vec2 co){
@@ -74,12 +74,12 @@ void main(){
 
 		uint vert_index = count * 4;
 		uint ind_index = count * 6;
-		vec3 pos = particle.particles[particle_index].pos.xyz;
+		vec4 pos = particle.particles[particle_index].pos;
 
 		vert.verts[vert_index] = pos;
-		vert.verts[vert_index + 1] = pos + vec3(0,1,0);
-		vert.verts[vert_index + 2] = pos + vec3(1,1,0);
-		vert.verts[vert_index + 3] = pos + vec3(1,0,0);
+		vert.verts[vert_index + 1] = pos + vec4(0,1,0,0);
+		vert.verts[vert_index + 2] = pos + vec4(1,1,0,0);
+		vert.verts[vert_index + 3] = pos + vec4(1,0,0,0);
 
 		ind.indices[ind_index] = vert_index;
 		ind.indices[ind_index + 1] = vert_index + 1;
