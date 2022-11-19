@@ -908,8 +908,21 @@ void TestParticlesStart(VkCommandBuffer cmdbuffer){
 	vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,0,1,r_barrier,0,0);
 	vkCmdPipelineBarrier(cmdbuffer,VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,0,2,&r_barrier[1],0,0);
 
+	struct PushConst2{
+		Vec4 camera_side;
+		Vec4 camera_up;
+	};
+
+	PushConst2 p = {
+		{_rc4(pdata->view,0,0),_rc4(pdata->view,1,0),_rc4(pdata->view,2,0)},
+		{_rc4(pdata->view,0,1),_rc4(pdata->view,1,1),_rc4(pdata->view,2,1)},
+	};
+
+	p.camera_up = p.camera_up * -1.0f;
+
 	vkCmdBindPipeline(cmdbuffer,VK_PIPELINE_BIND_POINT_COMPUTE,tdata.pipeline);
 	vkCmdBindDescriptorSets(cmdbuffer,VK_PIPELINE_BIND_POINT_COMPUTE,tdata.layout,0,2,tdata.sets,0,0);
+	vkCmdPushConstants(cmdbuffer,tdata.layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(p),(void*)&p);
 	vkCmdDispatch(cmdbuffer,16,1,1);
 
 	VkBufferMemoryBarrier w_barrier []= {
@@ -1122,6 +1135,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 			{{0,0},{pdata->swapchain.width,
 			pdata->swapchain.height}},
 			&clearvalue[0],_arraycount(clearvalue));
+
 
 	TestParticles(cmdbuffer,pushconst);
 #else

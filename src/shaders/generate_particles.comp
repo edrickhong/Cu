@@ -1,5 +1,3 @@
-#version 450
-
 layout(constant_id = 0) const  uint max_emitters = 4;
 layout(constant_id = 1) const  uint max_particles = 256;
 
@@ -38,7 +36,10 @@ layout (set = 1, binding = 1) buffer Ind{
 	uint indices[max_particles * 6];
 } ind;
 
-
+layout(push_constant) uniform PushConsts{
+	vec3 camera_side;
+	vec3 camera_up;
+} pushconst;
 
 
 
@@ -77,9 +78,9 @@ void main(){
 		vec4 pos = particle.particles[particle_index].pos;
 
 		vert.verts[vert_index] = pos;
-		vert.verts[vert_index + 1] = pos + vec4(0,1,0,0);
-		vert.verts[vert_index + 2] = pos + vec4(1,1,0,0);
-		vert.verts[vert_index + 3] = pos + vec4(1,0,0,0);
+		vert.verts[vert_index + 1] = pos + vec4(pushconst.camera_up,0);
+		vert.verts[vert_index + 2] = pos + vec4(pushconst.camera_side,0) + vec4(pushconst.camera_up,0);
+		vert.verts[vert_index + 3] = pos + vec4(pushconst.camera_side,0);
 
 		ind.indices[ind_index] = vert_index;
 		ind.indices[ind_index + 1] = vert_index + 1;
