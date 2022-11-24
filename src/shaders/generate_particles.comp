@@ -62,7 +62,7 @@ void main(){
 
 	if(particle.particles[particle_index].lifetime > 0){
 		particle.particles[particle_index].pos += particle.particles[particle_index].dir;
-		//particle.particles[particle_index].lifetime -= emitter.time;
+		particle.particles[particle_index].lifetime -= emitter.time;
 
 
 		uint count = 0;
@@ -90,48 +90,21 @@ void main(){
 		ind.indices[ind_index + 5] = vert_index;
 	}
 
-	else{
-				vec3 pos = 
-					emitter.emitters[emitter_index].pos.xyz + RandomVec3(vec2(gl_GlobalInvocationID.x,gl_LocalInvocationID.x));
-				vec3 dir = RandomVec3(vec2(gl_LocalInvocationID.x,gl_GlobalInvocationID.x));
-				float lifetime = abs(Random(vec2(pos.x,dir.z)));
+	else if(emitter.emitter_use[emitter_index] != 0){
 
-				particle.particles[particle_index].pos = vec4(pos.xyz,1);
-				particle.particles[particle_index].dir = vec4(dir.xyz,0);
-				particle.particles[particle_index].lifetime = 1.0f;
-				emitter.emitters[emitter_index].timer = 0;
-	}
+		if(emitter.emitters[emitter_index].timer >= emitter.emitters[emitter_index].freq){
+			vec3 pos = 
+				emitter.emitters[emitter_index].pos.xyz + RandomVec3(vec2(gl_GlobalInvocationID.x,gl_LocalInvocationID.x));
+			vec3 dir = RandomVec3(vec2(gl_LocalInvocationID.x,gl_GlobalInvocationID.x));
+			float lifetime = abs(Random(vec2(pos.x,dir.z))) * 500.0f;
 
-#if 0
-
-	else if(emitter.emitter_use[emitter_index] == 0){
-
-		uint emitter_use = emitter.emitter_use[emitter_index];
-		uint actual = atomicCompSwap(emitter.emitter_use[emitter_index],emitter_use, emitter_use + 1);
-
-#if 0
-
-		float timer = emitter.emitters[emitter_index].timer;
-		float freq = emitter.emitters[emitter_index].timer;
-
-		if(emitter_use == actual){
-			if(timer > freq){
-				vec3 pos = emitter.emitters[emitter_index].pos + RandomVec3(vec2(gl_GlobalInvocationID.x,gl_LocalInvocationID.x));
-				vec3 dir = RandomVec3(vec2(gl_LocalInvocationID.x,gl_GlobalInvocationID.x));
-				float lifetime = abs(Random(vec2(pos.x,dir.z)));
-
-				particle.particles[particle_index].pos = pos;
-				particle.particles[particle_index].dir = dir;
-				particle.particles[particle_index].lifetime = lifetime;
-				emitter.emitters[emitter_index].timer = 0;
-			}
-			emitter.emitters[emitter_index].timer += emitter.time;
+			particle.particles[particle_index].pos = vec4(pos.xyz,1);
+			particle.particles[particle_index].dir = vec4(dir.xyz,0);
+			particle.particles[particle_index].lifetime = lifetime;
+			emitter.emitters[emitter_index].timer = 0;
 		}
 
-#endif
-
-
 	}
-#endif
+
 
 }

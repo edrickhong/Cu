@@ -27,9 +27,11 @@ void InitParticles(){
 	tdata.particle_vbo = TCreateStaticVertexBuffer(&pdata->vdevice,sizeof(Vec4) * _max_particles * 4,0,VBLOCK_DEVICE);
 	tdata.particle_ibo = TCreateStaticIndexBuffer(&pdata->vdevice,sizeof(u32) * _max_particles * 6,sizeof(u32),VBLOCK_DEVICE);
 
-	auto ptr = VGetReadWriteBlockPtr(&tdata.emitter_sbo);
-
+	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
 	memset(ptr,0,sizeof(Emitters));
+
+	ptr->emitters[0] = {{},0.0f,100.0f};
+	ptr->emitter_use[0] = true;
 
 	//create compute pipeline
 	SPXData comp_shader[] = {
@@ -304,6 +306,9 @@ s32 main(s32 argc, s8** argv) {
 			GetTime(&end);
 
 			pdata->deltatime = GetTimeDifferenceMS(start, end);
+			auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+			ptr->emitters[0].timer += pdata->deltatime;
+			ptr->time = pdata->deltatime;
 		}
 	}
 

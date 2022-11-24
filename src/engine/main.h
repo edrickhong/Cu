@@ -821,28 +821,28 @@ void TestParticlesSingleEntry(void* in_args,void*){
 #define _max_emitters 4
 #define _max_particles 256
 
-	//for now we will only have sphere particles
-	struct ParticleEmitterInfo{
-		Vec4 pos;
-		f32 timer;
-		f32 freq;
-	};
-	struct ParticleInfo{
-		Vec4 pos;
-		Vec4 dir;
-		f32 lifetime;
-	};
+//for now we will only have sphere particles
+struct ParticleEmitterInfo{
+	Vec4 pos;
+	f32 timer;
+	f32 freq;
+};
+struct ParticleInfo{
+	Vec4 pos;
+	Vec4 dir;
+	f32 lifetime;
+};
 
-	struct Emitters{
+struct Emitters{
 	ParticleEmitterInfo emitters[_max_emitters];
-	uint emitter_use[_max_emitters];
-	uint draw_count;
-	float time;
-	};
+	u32 emitter_use[_max_emitters];
+	u32 draw_count;
+	f32 time;
+};
 
-	struct Particles{
-		ParticleInfo particles[_max_particles];
-	};
+struct Particles{
+	ParticleInfo particles[_max_particles];
+};
 
 
 struct TestData{
