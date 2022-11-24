@@ -1364,6 +1364,9 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
 }
 
 void EditorGUI(SceneContext* context){
+
+	//particles stuff
+        GUIDrawAxisSphere(Vec3{},1.0f);
     
     EditorWidget(context,data->obj_id,data->widget_type);
     

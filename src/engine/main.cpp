@@ -16,8 +16,6 @@ REFDOC(Settings,ParseSettings,{
 
 
 
-
-
 void InitParticles(){
 
 
@@ -30,7 +28,7 @@ void InitParticles(){
 	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
 	memset(ptr,0,sizeof(Emitters));
 
-	ptr->emitters[0] = {{},0.0f,100.0f};
+	ptr->emitters[0] = {{0.0f,-8.0f,0.0f},0.0f,100.0f};
 	ptr->emitter_use[0] = true;
 
 	//create compute pipeline

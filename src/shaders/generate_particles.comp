@@ -54,6 +54,58 @@ vec3 RandomVec3(vec2 co){
 }
 
 
+//simulates collision of a sphere radius 1 and centered at the origin
+vec3 SphereCollision(vec3 pos,vec3 dir){
+	vec3 s_pos = vec3(0,0,0);
+	float r = 1.0f;
+	vec3 d = pos - s_pos;
+
+	if(length(d) <= r){
+		float k = length(dir);
+		return reflect(normalize(dir),normalize(d)) * k;
+	}
+
+	return dir;
+}
+
+vec3 LineSphereIntersect(vec3 pos,vec3 dir){
+
+	vec3 s_pos = vec3(0,0,0);
+	float r = 1.0f;
+
+	vec3 line_to_sphere = s_pos - pos;
+
+	float a = dot(dir,dir);
+	float b = -2.0f * dot(dir,line_to_sphere);
+	float c = dot(line_to_sphere,line_to_sphere) - (r * r);
+
+	float discriminant = (b * b) - (4.0f * a * c);
+
+	if(discriminant < 0.0f){
+		return pos;
+	}
+
+	float root = sqrt(discriminant);
+
+	float t0 = ((-1.0f * b) + root) / (2.0f * a);
+	float t1 = ((-1.0f * b) - root) / (2.0f * a);
+
+	float abs_t0 = abs(t0);
+	float abs_t1 = abs(t1);
+
+	float err = 0.0001f;
+
+	return abs_t0 < abs_t1 ? (pos + (dir * t0)) : (pos + (dir * t1));
+}
+
+vec3 IsParticleOnSphere(vec3 pos,vec3 dir){
+	vec3 s_pos = vec3(0,0,0);
+	float r = 1.0f;
+
+	vec3 p = length(s_pos - pos) <= r ? LineSphereIntersect(pos,dir) : pos;
+
+	return p;
+}
 
 
 void main(){
@@ -61,8 +113,19 @@ void main(){
 	uint emitter_index = gl_LocalInvocationID.x;
 
 	if(particle.particles[particle_index].lifetime > 0){
-		particle.particles[particle_index].pos += particle.particles[particle_index].dir;
-		particle.particles[particle_index].lifetime -= emitter.time;
+
+		{
+			vec3 dir = particle.particles[particle_index].dir.xyz;
+			vec3 pos = particle.particles[particle_index].pos.xyz;
+
+			pos = IsParticleOnSphere(pos,dir);
+			dir = SphereCollision(pos,dir);
+
+			particle.particles[particle_index].dir = vec4(dir,0);
+			particle.particles[particle_index].pos = vec4(pos + dir * emitter.time * 0.04,1);
+			particle.particles[particle_index].lifetime -= emitter.time;
+		}
+
 
 
 		uint count = 0;
@@ -94,12 +157,13 @@ void main(){
 
 		if(emitter.emitters[emitter_index].timer >= emitter.emitters[emitter_index].freq){
 			vec3 pos = 
-				emitter.emitters[emitter_index].pos.xyz + RandomVec3(vec2(gl_GlobalInvocationID.x,gl_LocalInvocationID.x));
+				emitter.emitters[emitter_index].pos.xyz;
 			vec3 dir = RandomVec3(vec2(gl_LocalInvocationID.x,gl_GlobalInvocationID.x));
-			float lifetime = abs(Random(vec2(pos.x,dir.z))) * 500.0f;
+			float lifetime = abs(Random(vec2(pos.x,dir.z))) * 800.0f;
 
 			particle.particles[particle_index].pos = vec4(pos.xyz,1);
-			particle.particles[particle_index].dir = vec4(dir.xyz,0);
+			//particle.particles[particle_index].dir = vec4(dir.xyz,0);
+			particle.particles[particle_index].dir = normalize(vec4(0,5,0,0) + vec4(dir.xyz,0));
 			particle.particles[particle_index].lifetime = lifetime;
 			emitter.emitters[emitter_index].timer = 0;
 		}

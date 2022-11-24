@@ -1138,6 +1138,7 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
 
 	TestParticles(cmdbuffer,pushconst);
+	GUIDraw(cmdbuffer);
 #else
 
 	VStartRenderpass(cmdbuffer,
