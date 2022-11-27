@@ -106,6 +106,80 @@ void InitParticles(){
 
 }
 
+
+struct MouseKey{
+	Vec3 pos;
+	union{
+		TimeSpec timestamp;
+		f32 time;
+	};
+};
+
+_global MouseKey mousekey_array[1024 * 1024] = {};
+_global u32 mousekey_count = 0;
+
+
+_ainline
+void TestPixelCoordToNormalizedCoord(f32 r_w,f32 r_h,f32 p_x,f32 p_y,
+		f32* x,f32* y){
+
+	auto h_width = r_w/2.0f;
+	auto h_height = r_h/2.0f;
+
+	*x = (p_x - h_width)/h_width;
+	*y = (h_height - p_y)/h_height;
+}
+
+void CreateDirVectors(){
+	auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+	u32 count = mousekey_count - 1;
+	auto keys = ptr->keys_array;
+	ptr->keys_count = count;
+
+	f32 elapsed_time = 0.0f;
+
+	for(u32 i = 0; i < count; i++){
+		auto k = &keys[i];
+
+		auto m1 = mousekey_array[i];
+		auto m2 = mousekey_array[i + 1];
+
+		auto dir = m2.pos - m1.pos;
+		dir.y *= -1.0f;// up is -1.0f
+		elapsed_time += GetTimeDifferenceMS(m2.timestamp,m1.timestamp);
+
+		k->dir = Vec3ToDir4(dir);
+		k->time = elapsed_time;
+
+		//printf("%f %f %f | %f\n",
+				//(f64)dir.x,(f64)dir.y,(f64)dir.z,(f64)elapsed_time);
+	}
+
+}
+
+void ParticleFunction(Mat4 viewproj){
+
+	if(IsMouseDown(&pdata->mousestate,MOUSEBUTTON_LEFT)){
+		auto key = &mousekey_array[mousekey_count];
+		mousekey_count ++;
+
+		Vec3 mpos = {};
+
+		TestPixelCoordToNormalizedCoord(pdata->swapchain.width,pdata->swapchain.height,
+				pdata->mousestate.x,pdata->mousestate.y,&mpos.x,&mpos.y);
+
+		key->pos = ClipSpaceToWorldSpaceVec3(mpos,viewproj);
+		GetTime(&key->timestamp);
+	}
+	
+
+	if(OnMouseUp(&pdata->mousestate,MOUSEBUTTON_LEFT)){
+		CreateDirVectors();
+		mousekey_count = 0;
+		printf("Created dir function\n");
+	}
+}
+
 s32 main(s32 argc, s8** argv) {
 
 #if 0
@@ -142,6 +216,8 @@ s32 main(s32 argc, s8** argv) {
 
 			Clear(&pdata->rendercontext);
 			ClearLightList();
+
+			ParticleFunction(pdata->proj * pdata->view);
 
 #if _enable_gui
 

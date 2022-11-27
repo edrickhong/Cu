@@ -831,6 +831,12 @@ struct ParticleInfo{
 	Vec4 pos;
 	Vec4 dir;
 	f32 lifetime;
+	f32 time;
+};
+
+struct MKeys{
+	Vec4 dir;
+	f32 time;
 };
 
 struct Emitters{
@@ -838,6 +844,9 @@ struct Emitters{
 	u32 emitter_use[_max_emitters];
 	u32 draw_count;
 	f32 time;
+
+	u32 keys_count;
+	MKeys keys_array[1024 * 8];
 };
 
 struct Particles{

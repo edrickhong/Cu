@@ -13,6 +13,13 @@ struct ParticleInfo{
 	vec4 pos;
 	vec4 dir;
 	float lifetime;
+	float time;
+};
+
+
+struct MKey{
+	vec4 dir;
+	float time;
 };
 
 layout (set = 0, binding = 0) buffer Emitter{
@@ -20,6 +27,9 @@ layout (set = 0, binding = 0) buffer Emitter{
 	uint emitter_use[max_emitters];
 	uint draw_count;
 	float time;
+
+	uint keys_count;
+	MKey keys_array[1024 * 8];
 } emitter;
 
 layout (set = 0, binding = 1) buffer Particle{
@@ -107,23 +117,38 @@ vec3 IsParticleOnSphere(vec3 pos,vec3 dir){
 	return p;
 }
 
+vec3 FunctionDir(float time){
+
+	vec3 dir = vec3(0,0,0);
+
+	for(uint i = 0; i < emitter.keys_count; i++){
+		if(time < emitter.keys_array[i].time){
+			dir = vec3(emitter.keys_array[i].dir.xyz) * 20.0f;
+			break;
+		}
+	}
+
+	return dir;
+}
+
 
 void main(){
 	uint particle_index = gl_GlobalInvocationID.x;
 	uint emitter_index = gl_LocalInvocationID.x;
 
-	if(particle.particles[particle_index].lifetime > 0){
+	if(particle.particles[particle_index].time < particle.particles[particle_index].lifetime){
 
 		{
 			vec3 dir = particle.particles[particle_index].dir.xyz;
 			vec3 pos = particle.particles[particle_index].pos.xyz;
+			vec3 f_dir = FunctionDir(particle.particles[particle_index].time);
 
-			pos = IsParticleOnSphere(pos,dir);
-			dir = SphereCollision(pos,dir);
+			//pos = IsParticleOnSphere(pos,dir);
+			//dir = SphereCollision(pos,dir);
 
 			particle.particles[particle_index].dir = vec4(dir,0);
-			particle.particles[particle_index].pos = vec4(pos + dir * emitter.time * 0.04,1);
-			particle.particles[particle_index].lifetime -= emitter.time;
+			particle.particles[particle_index].pos = vec4(f_dir + pos + dir * emitter.time * 0.01,1);
+			particle.particles[particle_index].time += emitter.time;
 		}
 
 
@@ -153,18 +178,20 @@ void main(){
 		ind.indices[ind_index + 5] = vert_index;
 	}
 
-	else if(emitter.emitter_use[emitter_index] != 0){
+	else if(emitter.emitter_use[emitter_index] == 1){
 
 		if(emitter.emitters[emitter_index].timer >= emitter.emitters[emitter_index].freq){
 			vec3 pos = 
 				emitter.emitters[emitter_index].pos.xyz;
 			vec3 dir = RandomVec3(vec2(gl_LocalInvocationID.x,gl_GlobalInvocationID.x));
-			float lifetime = abs(Random(vec2(pos.x,dir.z))) * 800.0f;
+			float lifetime = abs(Random(vec2(pos.x,dir.z))) * 2000.0f;
 
 			particle.particles[particle_index].pos = vec4(pos.xyz,1);
+			particle.particles[particle_index].dir = vec4(0,1,0,0);
 			//particle.particles[particle_index].dir = vec4(dir.xyz,0);
-			particle.particles[particle_index].dir = normalize(vec4(0,5,0,0) + vec4(dir.xyz,0));
+			//particle.particles[particle_index].dir = normalize(vec4(0,5,0,0) + vec4(dir.xyz,0));
 			particle.particles[particle_index].lifetime = lifetime;
+			particle.particles[particle_index].time = 0.0f;
 			emitter.emitters[emitter_index].timer = 0;
 		}
 
