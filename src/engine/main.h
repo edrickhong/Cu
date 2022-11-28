@@ -2415,7 +2415,7 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 
 	pdata->window = WCreateWindow("Cu",flags,settings.window_x,settings.window_y,settings.window_width,settings.window_height);
 
-	auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,0,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
+	auto loaded_version = VCreateInstance("eengine",true,VK_MAKE_VERSION(1,1,0),&pdata->window,V_INSTANCE_FLAGS_SINGLE_VKDEVICE);
 
 	_kill("requested vulkan version not found\n",loaded_version == (u32)-1);
 
