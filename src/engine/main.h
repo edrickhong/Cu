@@ -1733,7 +1733,7 @@ void SetActiveCameraOrientation(Vec3 pos,Vec3 lookdir){
 
 	pdata->camerapos = Vec3ToVec4(pos);
 
-	pdata->view = ViewMat4(pos,pos + lookdir,Vec3{0.0f,-1.0f,0.0f});
+	pdata->view = ViewMat4(pos,pos +  lookdir,Vec3{0.0f,-1.0f,0.0f});
 }
 
 void SetObjectOrientation(u32 obj_id,Vec3 pos,Quat rot,f32 scale){
