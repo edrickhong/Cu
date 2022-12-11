@@ -2434,11 +2434,7 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 
 			auto phys = phys_array[i];
 
-			VkPhysicalDeviceProperties prop;
-
-			vkGetPhysicalDeviceProperties(phys,
-					&prop);
-
+			VkPhysicalDeviceProperties prop = VGetPhysicalDeviceProperties(phys);
 			auto hash = GenGPUHash(&prop);
 
 			printf("GPUHASH %d\n",(u32)hash);
