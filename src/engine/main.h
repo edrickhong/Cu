@@ -400,7 +400,6 @@ _intern b32 _ainline DoExecuteRenderBatch(RenderContext* context,
 		if(batch->viewport_count & batch->scissor_count){
 
 			vkCmdSetViewport(cmdbuffer,0,batch->viewport_count,batch->viewport_array);
-
 			vkCmdSetScissor(cmdbuffer,0,batch->scissor_count,batch->scissor_array);
 		}
 
@@ -926,8 +925,6 @@ void TestParticlesStart(VkCommandBuffer cmdbuffer){
 		{_rc4(pdata->view,0,0),_rc4(pdata->view,1,0),_rc4(pdata->view,2,0)},
 		{_rc4(pdata->view,0,1),_rc4(pdata->view,1,1),_rc4(pdata->view,2,1)},
 	};
-
-	p.camera_up = p.camera_up * -1.0f;
 
 	vkCmdBindPipeline(cmdbuffer,VK_PIPELINE_BIND_POINT_COMPUTE,tdata.pipeline);
 	vkCmdBindDescriptorSets(cmdbuffer,VK_PIPELINE_BIND_POINT_COMPUTE,tdata.layout,0,2,tdata.sets,0,0);
@@ -1730,10 +1727,8 @@ Vec3 TranslateClipSpaceToWorldSpace(Vec3 pos){
 
 
 void SetActiveCameraOrientation(Vec3 pos,Vec3 lookdir){  
-
 	pdata->camerapos = Vec3ToVec4(pos);
-
-	pdata->view = ViewMat4(pos,pos +  lookdir,Vec3{0.0f,-1.0f,0.0f});
+	pdata->view = ViewMat4(pos,pos +  lookdir,Vec3{0.0f,1.0f,0.0f});
 }
 
 void SetObjectOrientation(u32 obj_id,Vec3 pos,Quat rot,f32 scale){

@@ -145,13 +145,6 @@ void CreateDirVectors(){
 
 }
 
-Vec3 PixelCoordToNDC(Vec3 p,Dim2 dim){
-	auto x = (2.0f * p.x)/dim.w - 1.0f;
-	auto y = (1.0f - (2.0f * p.y) / dim.h) * -1.0f; // -1 is up. use a #define to change as needed
-	auto z = p.z;
-
-	return {x,y,z};
-}
 
 
 _persist Ray3 r = {};
