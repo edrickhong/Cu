@@ -146,10 +146,6 @@ void CreateDirVectors(){
 }
 
 
-
-_persist Ray3 r = {};
-_persist Vec3 in = {};
-
 void ParticleFunction(Mat4 viewproj){
 
 	//particles stuff
@@ -176,8 +172,6 @@ void ParticleFunction(Mat4 viewproj){
 		IntersectOutRay3Plane(ray,ConstructPlaneD({0,0,-1},0.0f),&key->pos);
 		GetTime(&key->timestamp);
 
-		r = ray;
-		in = key->pos;
 
 #endif
 	}
@@ -197,7 +191,10 @@ void ParticleFunction(Mat4 viewproj){
 
 }
 
+
+
 s32 main(s32 argc, s8** argv) {
+
 
 #if 0
 	TestSW();
