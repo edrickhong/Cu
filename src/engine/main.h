@@ -2414,6 +2414,23 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 
 	_kill("requested vulkan version not found\n",loaded_version == (u32)-1);
 
+	//TODO: do group creation
+#if 1
+	{
+		u32 count = 0;
+		auto array = (VkPhysicalDeviceGroupProperties*)alloc(sizeof(VkPhysicalDeviceGroupProperties) * 1024);
+		memset(array,0,sizeof(VkPhysicalDeviceGroupProperties) * 1024);
+
+		VEnumeratePhysicalDeviceGroups(0,&count,&pdata->window);
+		_kill("",count >= 1024);
+		VEnumeratePhysicalDeviceGroups(array,&count,&pdata->window);
+		
+		u32 a = 1;
+		_breakpoint();
+		exit(0);
+	}
+#else
+
 	{
 
 		VkPhysicalDevice phys_array[16] = {};
@@ -2444,6 +2461,8 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 		pdata->vdevice = VCreateDeviceContext(&phys_array[0]);
 
 	}
+
+#endif
 
 	VInitDeviceBlockAllocator(&pdata->vdevice);
 
