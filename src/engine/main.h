@@ -2424,9 +2424,13 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 		VEnumeratePhysicalDeviceGroups(0,&count,&pdata->window);
 		_kill("",count >= 1024);
 		VEnumeratePhysicalDeviceGroups(array,&count,&pdata->window);
-		
-		u32 a = 1;
+
+		//TODO: hash groups
+
+		pdata->vdevice = VCreateDeviceContext(array[0]);
 		_breakpoint();
+		auto a = 0;
+		
 		exit(0);
 	}
 #else
