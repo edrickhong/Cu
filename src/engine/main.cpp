@@ -280,14 +280,8 @@ s32 main(s32 argc, s8** argv) {
 				// FIXME: turning on vsync has frame hitches
 				{
 					TIMEBLOCKTAGGED("AcquireImage", Orange);
-					vkAcquireNextImageKHR(
-					    pdata->vdevice.device,
-					    pdata->swapchain.swap,
-					    0xFFFFFFFFFFFFFFFF,
-					    pdata->waitacquireimage_semaphore,
-					    0,
-					    (u32*)&pdata->swapchain
-						.image_index);
+					VGetNextImage(&pdata->vdevice,&pdata->swapchain,pdata->waitacquireimage_semaphore,0,
+							(u32*)&pdata->swapchain.image_index);
 				}
 
 				UpdateAllocatorTimeStamp();
