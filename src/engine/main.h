@@ -2426,8 +2426,8 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 		VEnumeratePhysicalDeviceGroups(array,&count,&pdata->window);
 
 		//TODO: hash groups
-
 		pdata->vdevice = VCreateDeviceContext(array[0]);
+		_breakpoint();
 	}
 #else
 
