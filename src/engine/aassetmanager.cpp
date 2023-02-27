@@ -1173,7 +1173,7 @@ void InitAssetAllocator(ptrsize size,VkDeviceSize device_size,
     //this part is for device memory
     
     auto typeindex =
-        VGetMemoryTypeIndex(vdevice->phys_info->memoryproperties_array[0],0xFFFFFFFF,
+        VGetMemoryTypeIndex(*vdevice->phys_info->memoryproperties,0xFFFFFFFF,
                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
     _allocprint("allocator typeindex %d\n",typeindex);
