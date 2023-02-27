@@ -789,33 +789,9 @@ void GUISingleEntryProc(void* in_args,void*){
 				cmdbuffer);
 	}
 }
+
+
 #if 0
-_global EntryMutex particles_is_locked = 0;
-
-void TestParticlesSingleEntry(void* in_args,void*){
-	auto args = (GUIDrawArgs*)in_args;
-
-	auto cmdbuffer =
-		args->render->cmdbuffer[_arraycount(args->context->rendergroup) * args->context->swap_index +
-		args->group_index];
-
-	VStartCommandBuffer(cmdbuffer,
-			VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-			args->context->renderpass,args->context->subpass_index,args->context->framebuffer,VK_FALSE,0,0);
-
-	TestParticles(cmdbuffer,pushconst);
-
-	VEndCommandBuffer(cmdbuffer);
-
-	{
-		TIMEBLOCKTAGGED("VThreadEndRender::Submit",Turquoise);
-		VPushThreadCommandbufferList(&args->context->rendergroup[args->group_index].cmdbufferlist,
-				cmdbuffer);
-	}
-}
-
-#endif
-
 
 #define _max_emitters 4
 #define _max_particles 256
@@ -870,6 +846,7 @@ struct TestData{
 };
 
 _global TestData tdata = {};
+
 
 void TestParticlesStart(VkCommandBuffer cmdbuffer){
 
@@ -989,6 +966,7 @@ void TestParticles(VkCommandBuffer cmdbuffer,void* pushconst){
 	vkCmdDrawIndexed(cmdbuffer,tdata.draw_count * 6,1,0,0,0);
 }
 
+#endif
 
 void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
@@ -1035,8 +1013,6 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 
 
 	VStartCommandBuffer(cmdbuffer,0);
-
-	TestParticlesStart(cmdbuffer);
 
 	VBufferContext* gui_vertbuffer = 0;
 
@@ -1143,7 +1119,6 @@ void _ainline BuildRenderCommandBuffer(PlatformData* pdata){
 			&clearvalue[0],_arraycount(clearvalue));
 
 
-	TestParticles(cmdbuffer,pushconst);
 	GUIDraw(cmdbuffer);
 #else
 
@@ -2415,7 +2390,7 @@ FIXME: for some reason auto prop = AGetAudioDeviceProperties(logical_name); is b
 	_kill("requested vulkan version not found\n",loaded_version == (u32)-1);
 
 	//TODO: do group creation
-#if 1
+#if 0
 	{
 		u32 count = 0;
 		auto array = (VkPhysicalDeviceGroupProperties*)alloc(sizeof(VkPhysicalDeviceGroupProperties) * 1024);

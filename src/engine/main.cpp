@@ -15,7 +15,7 @@ REFDOC(Settings,ParseSettings,{
 
 
 
-
+#if 0
 void InitParticles(){
 
 
@@ -191,7 +191,23 @@ void ParticleFunction(Mat4 viewproj){
 
 }
 
+#endif
 
+
+void Sim(){
+
+	u8 grid[16][16] = {0};
+
+	Vec3 origin = {-5,-5,5};
+
+	f32 w = 2;
+
+	for(u32 y = 0; y < 16; y++){
+		for(u32 x = 0; x < 16; x++){
+			GUIDrawPosMarker(origin + (Vec3{(f32)x,(f32)y} * w),Green);
+		}
+	}
+}
 
 s32 main(s32 argc, s8** argv) {
 
@@ -211,7 +227,7 @@ s32 main(s32 argc, s8** argv) {
 
 	InitAllSystems();
 
-	InitParticles();
+	//InitParticles();
 
 #ifdef DEBUG
 
@@ -261,7 +277,8 @@ s32 main(s32 argc, s8** argv) {
 
 			GUIBegin();
 
-			ParticleFunction(pdata->proj * pdata->view);
+			Sim();
+			//ParticleFunction(pdata->proj * pdata->view);
 #endif
 
 			BUILDGUIGRAPH(gdata->draw_profiler);
@@ -280,8 +297,14 @@ s32 main(s32 argc, s8** argv) {
 				// FIXME: turning on vsync has frame hitches
 				{
 					TIMEBLOCKTAGGED("AcquireImage", Orange);
-					VGetNextImage(&pdata->vdevice,&pdata->swapchain,pdata->waitacquireimage_semaphore,0,
-							(u32*)&pdata->swapchain.image_index);
+					vkAcquireNextImageKHR(
+							pdata->vdevice.device,
+							pdata->swapchain.swap,
+							0xFFFFFFFFFFFFFFFF,
+							pdata->waitacquireimage_semaphore,
+							0,
+							(u32*)&pdata->swapchain
+							.image_index);
 				}
 
 				UpdateAllocatorTimeStamp();
@@ -388,9 +411,9 @@ s32 main(s32 argc, s8** argv) {
 			GetTime(&end);
 
 			pdata->deltatime = GetTimeDifferenceMS(start, end);
-			auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
-			ptr->emitters[0].timer += pdata->deltatime;
-			ptr->time = pdata->deltatime;
+			//auto ptr = (Emitters*)VGetReadWriteBlockPtr(&tdata.emitter_sbo);
+			//ptr->emitters[0].timer += pdata->deltatime;
+			//ptr->time = pdata->deltatime;
 
 			//printf("delta time %f\n",(f64)ptr->time);
 
