@@ -1278,7 +1278,7 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
             };
             
             
-            GUIDrawPosMarker(pos,White);
+            //GUIDrawPosMarker(pos,White);
         }
     }
     
@@ -1317,7 +1317,7 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
                 data->orientation.scale[obj_id] = scale;
                 to_update = true;
             }
-            GUIDrawPosMarker(pos,Red);
+            //GUIDrawPosMarker(pos,Red);
         }break;
         
         case 3:{
@@ -1351,7 +1351,7 @@ b32 EditorWidget(SceneContext* context,u32 obj_id,u32 widget_type){
         }break;
         
         default:{
-            GUIDrawPosMarker(pos,Red);
+            //GUIDrawPosMarker(pos,Red);
         }break;
         
     }

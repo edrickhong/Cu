@@ -194,22 +194,211 @@ void ParticleFunction(Mat4 viewproj){
 #endif
 
 
-void Sim(){
+#define _grid_dim 16
 
-	u8 grid[16][16] = {0};
+struct Nome{
+	struct Coord{
+		u16 x,y;
+	};
 
-	Vec3 origin = {-5,-5,5};
+	Coord pos;
+	Coord path[24];
+	u32 i;
+	Coord target;
+	b32 is_dead;
+	f32 time;
+};
 
-	f32 w = 2;
+_global Nome nomes_a[8] = {};
+_global Nome nomes_b[8] = {};
 
-	for(u32 y = 0; y < 16; y++){
-		for(u32 x = 0; x < 16; x++){
-			GUIDrawPosMarker(origin + (Vec3{(f32)x,(f32)y} * w),Green);
+_global Nome::Coord camp_a = {};
+_global Nome::Coord camp_b = {};
+
+_global u8 grid[_grid_dim][_grid_dim] = {
+	{0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,'a'},
+	{0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0},
+	{0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1},
+	{0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1},
+	{0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0},
+	{0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0},
+	{0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,0},
+	{0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
+	{0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
+	{0,0,0,0,1,0,0,1,1,0,0,0,0,0,0,0},
+	{0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0},
+	{0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0},
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+	{0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0},
+	{0,0,0,0,1,'b',0,0,0,0,0,0,0,0,0,0},
+};
+
+
+_global Vec3 origin = {-5,-5,5};
+_global f32 w = 2;
+
+Vec3 CoordToVec3(Nome::Coord coord){
+	auto x = coord.x;
+	auto y = coord.y;
+	return origin + (Vec3{(f32)x,(f32)y} * w);
+}
+
+void AStarGetNeighbors(Nome::Coord tile,Nome::Coord* neighbors,u32* count,u8 map[_grid_dim][_grid_dim]){
+	//up down left right
+	u32 c = 0;
+
+	if(tile.x + 1 < _grid_dim && !map[tile.y][tile.x + 1]){
+		neighbors[c] = {(u16)(tile.x + 1),tile.y};
+		c++;
+	}
+
+
+	if(tile.x != 0 && !map[tile.y][tile.x - 1]){
+		neighbors[c] = {(u16)(tile.x - 1),tile.y};
+		c++;
+	}
+
+	if(tile.y < _grid_dim && !map[tile.y + 1][tile.x]){
+		neighbors[c] = {tile.x,(u16)(tile.y + 1)};
+		c++;
+	}
+
+	if(tile.y != 0 && !map[tile.y - 1][tile.x]){
+		neighbors[c] = {tile.x,(u16)(tile.y - 1)};
+		c++;
+	}
+
+	*count = c;
+}
+
+f32 GetCost(Nome::Coord tile,Nome::Coord start,Nome::Coord goal){
+	f32 dist1 = sqrtf((tile.x - goal.x) * (tile.x - goal.x) + (tile.y - goal.y) * (tile.y - goal.y));
+	f32 dist2 = sqrtf((tile.x - start.x) * (tile.x - start.x) + (tile.y - start.y) * (tile.y - start.y));
+	return dist1 + dist2;
+}
+
+void AStarPath(Nome::Coord start,Nome::Coord goal){
+	u8 map[_grid_dim][_grid_dim] = {};
+	memcpy(map,grid,sizeof(grid));
+	map[start.y][start.x] = 1;
+
+	Nome::Coord activetiles_array[128] = {
+		start,
+	};
+
+
+	u32 activetiles_count = 1;
+
+	for(u32 i = activetiles_count - 1; i != (u32)-1; i++){
+		auto tile = activetiles_array[i];
+
+		Nome::Coord neighbors[4] = {};
+		f32 costs[4] = {};
+		u32 count = 0;
+
+		AStarGetNeighbors(tile,neighbors,&count,map);
+
+		for(u32 j = 0; j < count; j++){
+			costs[j] = GetCost(neighbors[j],start,goal);
+		}
+
+		f32 min = 1024.0f * 1024.0f;
+		u32 min_index = (u32)-1;
+
+		for(u32 j = 0; j < count; j++){
+			auto n = neighbors[j];
+			if(n.x == goal.x && n.y == goal.y){
+				//reach goal!
+				return;
+			}
+
+			if(costs[j] < min){
+				min = costs[j];
+				min_index = j;
+			}
+		}
+
+		if(min_index == (u32)-1){
+			//no path
+			return;
 		}
 	}
 }
 
+void UpdatePath(){
+
+	for(u32 i = 0; i < _arraycount(nomes_a); i++){
+		auto nome = nomes_a[i];
+		AStarPath(nome.pos,camp_b);
+	}
+}
+
+void InitSim(){
+
+	for(u32 y = 0; y < _grid_dim; y++){
+		for(u32 x = 0; x < _grid_dim; x++){
+			if(grid[y][x] == 'a'){
+				camp_a = {(u16)x,(u16)y};
+				for(u32 i = 0; i < _arraycount(nomes_a); i++){
+					nomes_a[i].pos = {(u16)x,(u16)y};
+				}
+			}
+
+			else if(grid[y][x] == 'b'){
+				camp_b = {(u16)x,(u16)y};
+				for(u32 i = 0; i < _arraycount(nomes_b); i++){
+					nomes_b[i].pos = {(u16)x,(u16)y};
+				}
+			}
+		}
+	}
+
+	UpdatePath();
+}
+
+void Sim(f32 delta){
+
+
+	for(u32 y = 0; y < _grid_dim; y++){
+		for(u32 x = 0; x < _grid_dim; x++){
+			auto color = grid[y][x] ? Red : Green;
+			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * w),color);
+		}
+	}
+
+	auto update_nome = [](Nome* nome,Color4 color,f32 delta) -> void {
+		if(!nome->is_dead){
+
+			nome->time += delta;
+
+			if(nome->time > 1.0f){
+				nome->time = 0.0f;
+				nome->i++;
+				nome->pos = nome->path[nome->i];
+
+				nome->is_dead = nome->i >= 24;
+			}
+
+			auto pos = CoordToVec3(nome->pos);
+			GUIDrawPosRect(pos,color);
+		}
+	};
+
+
+	for(u32 i = 0; i < _arraycount(nomes_a); i++){
+		update_nome(nomes_a + i,Red,delta);
+	}
+
+
+	for(u32 i = 0; i < _arraycount(nomes_b); i++){
+		update_nome(nomes_b + i,Coral,delta);
+	}
+}
+
 s32 main(s32 argc, s8** argv) {
+
+	InitSim();
 
 
 #if 0
@@ -277,7 +466,7 @@ s32 main(s32 argc, s8** argv) {
 
 			GUIBegin();
 
-			Sim();
+			Sim(pdata->deltatime);
 			//ParticleFunction(pdata->proj * pdata->view);
 #endif
 
