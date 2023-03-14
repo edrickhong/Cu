@@ -278,52 +278,93 @@ f32 GetCost(Nome::Coord tile,Nome::Coord start,Nome::Coord goal){
 	return dist1 + dist2;
 }
 
+void PrintMap(u8 map[_grid_dim][_grid_dim],Nome::Coord goal){
+	for(int y = 0; y < _grid_dim; y++){
+		for(int x = 0; x < _grid_dim; x++){
+			if(x == goal.x && y == goal.y){
+				printf("g ");
+			}
+			else{
+				printf("%d ",map[y][x]);
+			}
+		}
+		printf("\n");
+	}
+}
+
+void PrintTile(Nome::Coord tile){
+	printf("%d %d\n",(u32)tile.x,(u32)tile.y);
+}
+
 void AStarPath(Nome::Coord start,Nome::Coord goal){
 	u8 map[_grid_dim][_grid_dim] = {};
 	memcpy(map,grid,sizeof(grid));
-	map[start.y][start.x] = 1;
+	map[start.y][start.x] = 2;
+	map[goal.y][goal.x] = 0;
 
-	Nome::Coord activetiles_array[128] = {
+	Nome::Coord activetiles_array[_grid_dim * _grid_dim] = {
 		start,
 	};
-
-
 	u32 activetiles_count = 1;
 
-	for(u32 i = activetiles_count - 1; i != (u32)-1; i++){
-		auto tile = activetiles_array[i];
+	u32 tag = 3;
 
-		Nome::Coord neighbors[4] = {};
-		f32 costs[4] = {};
-		u32 count = 0;
 
-		AStarGetNeighbors(tile,neighbors,&count,map);
 
-		for(u32 j = 0; j < count; j++){
-			costs[j] = GetCost(neighbors[j],start,goal);
-		}
+	while(true){
+		PrintMap(map,goal);
+		_breakpoint();
+		for(u32 i = activetiles_count - 1; i != (u32)-1; i--){
+			auto tile = activetiles_array[i];
 
-		f32 min = 1024.0f * 1024.0f;
-		u32 min_index = (u32)-1;
+			Nome::Coord neighbors[4] = {};
+			f32 costs[4] = {};
+			u32 count = 0;
 
-		for(u32 j = 0; j < count; j++){
-			auto n = neighbors[j];
-			if(n.x == goal.x && n.y == goal.y){
-				//reach goal!
+			AStarGetNeighbors(tile,neighbors,&count,map);
+
+			if(!count){
+				continue;
+			}
+
+			for(u32 j = 0; j < count; j++){
+				costs[j] = GetCost(neighbors[j],start,goal);
+			}
+
+			f32 min = 1024.0f * 1024.0f;
+			u32 min_index = (u32)-1;
+
+			for(u32 j = 0; j < count; j++){
+				auto n = neighbors[j];
+				if(n.x == goal.x && n.y == goal.y){
+					//reach goal!
+					return;
+				}
+
+				if(costs[j] < min){
+					min = costs[j];
+					min_index = j;
+				}
+			}
+
+			auto n_tile = neighbors[min_index];
+
+			if(n_tile.x == goal.x && n_tile.y == goal.y){
 				return;
 			}
 
-			if(costs[j] < min){
-				min = costs[j];
-				min_index = j;
-			}
-		}
+			activetiles_array[activetiles_count] = n_tile;
+			activetiles_count++;
 
-		if(min_index == (u32)-1){
-			//no path
-			return;
+			map[n_tile.y][n_tile.x] = tag;
+			tag++;
+
+			printf("added tile:"); PrintTile(n_tile);
+
 		}
 	}
+
+
 }
 
 void UpdatePath(){
