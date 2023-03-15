@@ -202,7 +202,8 @@ struct Nome{
 	};
 
 	Coord pos;
-	Coord path[24];
+	Coord path[_grid_dim * _grid_dim];
+	u32 count;
 	u32 i;
 	Coord target;
 	b32 is_dead;
@@ -238,33 +239,42 @@ _global u8 grid[_grid_dim][_grid_dim] = {
 _global Vec3 origin = {-5,-5,5};
 _global f32 w = 2;
 
+
+struct Path{
+	Nome::Coord pos;
+	Path* parent = 0;
+};
+
 Vec3 CoordToVec3(Nome::Coord coord){
 	auto x = coord.x;
 	auto y = coord.y;
 	return origin + (Vec3{(f32)x,(f32)y} * w);
 }
 
-void AStarGetNeighbors(Nome::Coord tile,Nome::Coord* neighbors,u32* count,u8 map[_grid_dim][_grid_dim]){
+
+#define _rd_map(map,x,y)  map[x + ((y) * _grid_dim)]
+
+void AStarGetNeighbors(Nome::Coord tile,Path* neighbors,u32* count,u8* map){
 	//up down left right
 	u32 c = 0;
 
-	if(tile.x + 1 < _grid_dim && !map[tile.y][tile.x + 1]){
-		neighbors[c] = {(u16)(tile.x + 1),tile.y};
+	if(tile.x + 1 < _grid_dim && ! _rd_map(map,tile.x + 1,tile.y)){
+		neighbors[c] = Path{(u16)(tile.x + 1),tile.y};
 		c++;
 	}
 
 
-	if(tile.x != 0 && !map[tile.y][tile.x - 1]){
+	if(tile.x != 0 && !_rd_map(map,tile.x - 1,tile.y)){
 		neighbors[c] = {(u16)(tile.x - 1),tile.y};
 		c++;
 	}
 
-	if(tile.y < _grid_dim && !map[tile.y + 1][tile.x]){
+	if(tile.y + 1 < _grid_dim && !_rd_map(map,tile.x,tile.y + 1)){
 		neighbors[c] = {tile.x,(u16)(tile.y + 1)};
 		c++;
 	}
 
-	if(tile.y != 0 && !map[tile.y - 1][tile.x]){
+	if(tile.y != 0 && !_rd_map(map,tile.x,tile.y - 1)){
 		neighbors[c] = {tile.x,(u16)(tile.y - 1)};
 		c++;
 	}
@@ -278,14 +288,14 @@ f32 GetCost(Nome::Coord tile,Nome::Coord start,Nome::Coord goal){
 	return dist1 + dist2;
 }
 
-void PrintMap(u8 map[_grid_dim][_grid_dim],Nome::Coord goal){
+void PrintMap(u8* map,Nome::Coord goal){
 	for(int y = 0; y < _grid_dim; y++){
 		for(int x = 0; x < _grid_dim; x++){
 			if(x == goal.x && y == goal.y){
 				printf("g ");
 			}
 			else{
-				printf("%d ",map[y][x]);
+				printf("%d ",_rd_map(map,x,y));
 			}
 		}
 		printf("\n");
@@ -296,39 +306,46 @@ void PrintTile(Nome::Coord tile){
 	printf("%d %d\n",(u32)tile.x,(u32)tile.y);
 }
 
-void AStarPath(Nome::Coord start,Nome::Coord goal){
-	u8 map[_grid_dim][_grid_dim] = {};
-	memcpy(map,grid,sizeof(grid));
-	map[start.y][start.x] = 2;
-	map[goal.y][goal.x] = 0;
+void AddPath(Path* path,Nome::Coord* coords,u32* count){
 
-	Nome::Coord activetiles_array[_grid_dim * _grid_dim] = {
-		start,
-	};
+	if(path->parent){
+		AddPath(path->parent,coords,count);
+	}
+	coords[*count] = path->pos;
+	(*count)++;
+	//printf("%d\n",*count);
+}
+
+
+void AStarPath(Nome::Coord start,Nome::Coord goal,Nome::Coord* out,u32* out_count){
+	auto map = TAlloc(u8,sizeof(grid));
+	memcpy(map,grid,sizeof(grid));
+	_rd_map(map,start.x,start.y) = 2;
+	_rd_map(map,goal.x,goal.y) = 0;
+
+	//auto activetiles_array = TAlloc(Path, _grid_dim * _grid_dim);
+	Path activetiles_array[_grid_dim * _grid_dim] = {};
+	activetiles_array [0] = {start};
 	u32 activetiles_count = 1;
 
-	u32 tag = 3;
-
-
-
 	while(true){
-		PrintMap(map,goal);
-		_breakpoint();
+		//PrintMap(map,goal);
+		//_breakpoint();
 		for(u32 i = activetiles_count - 1; i != (u32)-1; i--){
-			auto tile = activetiles_array[i];
+			const auto tile = &activetiles_array[i];
 
-			Nome::Coord neighbors[4] = {};
+			Path neighbors[4] = {};
 			f32 costs[4] = {};
 			u32 count = 0;
 
-			AStarGetNeighbors(tile,neighbors,&count,map);
+			AStarGetNeighbors(tile->pos,neighbors,&count,map);
 
 			if(!count){
 				continue;
 			}
 
 			for(u32 j = 0; j < count; j++){
-				costs[j] = GetCost(neighbors[j],start,goal);
+				costs[j] = GetCost(neighbors[j].pos,start,goal);
 			}
 
 			f32 min = 1024.0f * 1024.0f;
@@ -336,9 +353,10 @@ void AStarPath(Nome::Coord start,Nome::Coord goal){
 
 			for(u32 j = 0; j < count; j++){
 				auto n = neighbors[j];
-				if(n.x == goal.x && n.y == goal.y){
+				if(n.pos.x == goal.x && n.pos.y == goal.y){
 					//reach goal!
-					return;
+					min_index = j;
+					break;
 				}
 
 				if(costs[j] < min){
@@ -348,30 +366,38 @@ void AStarPath(Nome::Coord start,Nome::Coord goal){
 			}
 
 			auto n_tile = neighbors[min_index];
+			n_tile.parent = tile;
 
-			if(n_tile.x == goal.x && n_tile.y == goal.y){
+			if(n_tile.pos.x == goal.x && n_tile.pos.y == goal.y){
+				//found path
+				AddPath(&n_tile,out,out_count);
 				return;
 			}
 
 			activetiles_array[activetiles_count] = n_tile;
 			activetiles_count++;
 
-			map[n_tile.y][n_tile.x] = tag;
-			tag++;
+			_rd_map(map,n_tile.pos.x,n_tile.pos.y) = 2;
 
-			printf("added tile:"); PrintTile(n_tile);
+			//printf("added tile:"); PrintTile(n_tile);
 
 		}
 	}
 
 
+	_kill("should never reach here\n",1);
 }
 
 void UpdatePath(){
 
 	for(u32 i = 0; i < _arraycount(nomes_a); i++){
-		auto nome = nomes_a[i];
-		AStarPath(nome.pos,camp_b);
+		auto nome = &nomes_a[i];
+		AStarPath(nome->pos,camp_b,nome->path,&nome->count);
+	}
+
+	for(u32 i = 0; i < _arraycount(nomes_b); i++){
+		auto nome = &nomes_b[i];
+		AStarPath(nome->pos,camp_a,nome->path,&nome->count);
 	}
 }
 
@@ -395,6 +421,7 @@ void InitSim(){
 		}
 	}
 
+
 	UpdatePath();
 }
 
@@ -403,7 +430,7 @@ void Sim(f32 delta){
 
 	for(u32 y = 0; y < _grid_dim; y++){
 		for(u32 x = 0; x < _grid_dim; x++){
-			auto color = grid[y][x] ? Red : Green;
+			auto color = grid[y][x] ? Red : White;
 			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * w),color);
 		}
 	}
@@ -413,20 +440,20 @@ void Sim(f32 delta){
 
 			nome->time += delta;
 
-			if(nome->time > 1.0f){
+			if(nome->time > 1000.0f){
 				nome->time = 0.0f;
 				nome->i++;
 				nome->pos = nome->path[nome->i];
 
-				nome->is_dead = nome->i >= 24;
+				nome->is_dead = nome->i >= nome->count;
 			}
 
-			auto pos = CoordToVec3(nome->pos);
-			GUIDrawPosRect(pos,color);
+			GUIDrawPosRect(CoordToVec3(nome->pos),color);
 		}
 	};
 
 
+#if 1
 	for(u32 i = 0; i < _arraycount(nomes_a); i++){
 		update_nome(nomes_a + i,Red,delta);
 	}
@@ -435,11 +462,11 @@ void Sim(f32 delta){
 	for(u32 i = 0; i < _arraycount(nomes_b); i++){
 		update_nome(nomes_b + i,Coral,delta);
 	}
+#endif
 }
 
 s32 main(s32 argc, s8** argv) {
 
-	InitSim();
 
 
 #if 0
@@ -456,6 +483,7 @@ s32 main(s32 argc, s8** argv) {
 #endif
 
 	InitAllSystems();
+	InitSim();
 
 	//InitParticles();
 
