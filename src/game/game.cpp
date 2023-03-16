@@ -1232,20 +1232,41 @@ void EditorKeyboard(SceneContext* context,u32* widget_type){
     
     auto f = data->camera_lookdir;
     auto s = CrossVec3(data->camera_lookdir,Vec3{0,-1});
+    auto u = CrossVec3(f,s);
     
     Vec3 dir = {};
-    
+
+#if 1
     if(IsKeyDown(keyboardstate,KCODE_KEY_W)){
+        dir = dir + (u * _speed * delta_time);
+    }
+    
+    if(IsKeyDown(keyboardstate,KCODE_KEY_S)){
+        dir = dir - (u * _speed * delta_time);
+    }
+
+    if(IsKeyDown(keyboardstate,KCODE_KEY_Q)){
         dir = dir + (f * _speed * delta_time);
     }
     
-    if(IsKeyDown(keyboardstate,KCODE_KEY_A)){
-        dir = dir - (s * _speed * delta_time);
+    if(IsKeyDown(keyboardstate,KCODE_KEY_E)){
+        dir = dir - (f * _speed * delta_time);
+    }
+#else
+    if(IsKeyDown(keyboardstate,KCODE_KEY_W)){
+        dir = dir + (f * _speed * delta_time);
     }
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_S)){
         dir = dir - (f * _speed * delta_time);
     }
+#endif
+
+    if(IsKeyDown(keyboardstate,KCODE_KEY_A)){
+        dir = dir - (s * _speed * delta_time);
+    }
+    
+    
     
     if(IsKeyDown(keyboardstate,KCODE_KEY_D)){
         dir = dir + (s * _speed * delta_time);
