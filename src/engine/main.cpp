@@ -208,6 +208,17 @@ struct Nome{
 	Coord target;
 	b32 is_dead;
 	f32 time;
+	f32 move_time;
+};
+
+enum TileState : u8{
+	FREE_TILE = 0,
+	WALL_TILE = 1,
+	CAMPA_TILE = 'a',
+	CAMPB_TILE = 'b',
+	A_TILE,
+	B_TILE,
+	RESERVED_TILE,
 };
 
 _global Nome nomes_a[8] = {};
@@ -377,7 +388,7 @@ void AStarPath(Nome::Coord start,Nome::Coord goal,Nome::Coord* out,u32* out_coun
 			activetiles_array[activetiles_count] = n_tile;
 			activetiles_count++;
 
-			_rd_map(map,n_tile.pos.x,n_tile.pos.y) = 2;
+			_rd_map(map,n_tile.pos.x,n_tile.pos.y) = RESERVED_TILE;
 
 			//printf("added tile:"); PrintTile(n_tile);
 
@@ -401,6 +412,28 @@ void UpdatePath(){
 	}
 }
 
+f32 NRand(){
+	return ((f32)rand() / (f32)RAND_MAX);
+}
+
+enum NomeState{
+	DEFAULT_NOME_STATE,
+	SAD_NOME_STATE,
+	ANRGY_NOME_STATE,
+};
+
+
+void AddWall(u8 x,u8 y){
+	grid[y][x] = WALL_TILE;
+	UpdatePath();
+}
+void MakeAngry(){}
+void MakeSad(){}
+void MakeAfraid(){}
+
+
+#define _default_time 1000.0f
+
 void InitSim(){
 
 	for(u32 y = 0; y < _grid_dim; y++){
@@ -409,6 +442,10 @@ void InitSim(){
 				camp_a = {(u16)x,(u16)y};
 				for(u32 i = 0; i < _arraycount(nomes_a); i++){
 					nomes_a[i].pos = {(u16)x,(u16)y};
+					nomes_a[i].time = NRand() * _default_time * 1.1f;
+					nomes_a[i].move_time = _default_time - (NRand() * _default_time/2.0f);
+
+					printf("a %d %f %f\n",i,(f64)nomes_a[i].time,(f64)nomes_a[i].move_time);
 				}
 			}
 
@@ -416,6 +453,11 @@ void InitSim(){
 				camp_b = {(u16)x,(u16)y};
 				for(u32 i = 0; i < _arraycount(nomes_b); i++){
 					nomes_b[i].pos = {(u16)x,(u16)y};
+					nomes_b[i].time = NRand() * _default_time * 1.1f;
+					nomes_b[i].move_time = _default_time - (NRand() * _default_time/2.0f);
+
+
+					printf("b %d %f %f\n",i,(f64)nomes_b[i].time,(f64)nomes_b[i].move_time);
 				}
 			}
 		}
@@ -425,27 +467,53 @@ void InitSim(){
 	UpdatePath();
 }
 
+#define _a_color Green
+#define _b_color Coral
+
+
+
 void Sim(f32 delta){
+
+	static u32 a_dead_count = 0;
+	static u32 b_dead_count = 0;
+
+
+	static NomeState a_state = DEFAULT_NOME_STATE;
+	static NomeState b_state = DEFAULT_NOME_STATE;
 
 
 	for(u32 y = 0; y < _grid_dim; y++){
 		for(u32 x = 0; x < _grid_dim; x++){
 			auto color = grid[y][x] ? Red : White;
+			color = camp_a.x == x && camp_a.y == y ?  _a_color : color;
+			color = camp_b.x == x && camp_b.y == y ?  _b_color : color;
 			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * w),color);
 		}
 	}
 
-	auto update_nome = [](Nome* nome,Color4 color,f32 delta) -> void {
+	auto update_nome = [](Nome* nome,Color4 color,f32 delta,NomeState state,u32* count) -> void {
 		if(!nome->is_dead){
 
 			nome->time += delta;
 
-			if(nome->time > 1000.0f){
+			if(nome->time > nome->move_time){
 				nome->time = 0.0f;
 				nome->i++;
+
+				switch(state){}
+
+				auto prev_pos = nome->pos;
 				nome->pos = nome->path[nome->i];
 
+				grid[prev_pos.y][prev_pos.x] = 
+					grid[prev_pos.y][prev_pos.x] == A_TILE || grid[prev_pos.y][prev_pos.x] == B_TILE ?
+					0 : grid[prev_pos.y][prev_pos.x];
+
+				grid[nome->pos.y][nome->pos.y] = (color == _a_color) ? A_TILE : B_TILE;
+
 				nome->is_dead = nome->i >= nome->count;
+
+				*count = nome->is_dead ? (*count) + 1 : *count;
 			}
 
 			GUIDrawPosRect(CoordToVec3(nome->pos),color);
@@ -453,21 +521,22 @@ void Sim(f32 delta){
 	};
 
 
-#if 1
 	for(u32 i = 0; i < _arraycount(nomes_a); i++){
-		update_nome(nomes_a + i,Red,delta);
+		update_nome(nomes_a + i,_a_color,delta,a_state,&a_dead_count);
 	}
 
 
 	for(u32 i = 0; i < _arraycount(nomes_b); i++){
-		update_nome(nomes_b + i,Coral,delta);
+		update_nome(nomes_b + i,_b_color,delta,b_state,&b_dead_count);
 	}
-#endif
+
+	if(a_dead_count == _arraycount(nomes_a) || b_dead_count == _arraycount(nomes_b)){
+		printf("Game Ended\n");
+		exit(0);
+	}
 }
 
 s32 main(s32 argc, s8** argv) {
-
-
 
 #if 0
 	TestSW();
@@ -481,6 +550,14 @@ s32 main(s32 argc, s8** argv) {
 	return 0;
 
 #endif
+
+	{
+		TimeSpec s;
+		GetTime(&s);
+		srand(TimeSpecAsInt(s));
+	}
+
+
 
 	InitAllSystems();
 	InitSim();
