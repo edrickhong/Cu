@@ -419,7 +419,8 @@ f32 NRand(){
 enum NomeState{
 	DEFAULT_NOME_STATE,
 	SAD_NOME_STATE,
-	ANRGY_NOME_STATE,
+	ANGRY_NOME_STATE,
+	AFRAID_NOME_STATE,
 };
 
 
@@ -445,7 +446,7 @@ void InitSim(){
 					nomes_a[i].time = NRand() * _default_time * 1.1f;
 					nomes_a[i].move_time = _default_time - (NRand() * _default_time/2.0f);
 
-					printf("a %d %f %f\n",i,(f64)nomes_a[i].time,(f64)nomes_a[i].move_time);
+					//printf("a %d %f %f\n",i,(f64)nomes_a[i].time,(f64)nomes_a[i].move_time);
 				}
 			}
 
@@ -456,8 +457,7 @@ void InitSim(){
 					nomes_b[i].time = NRand() * _default_time * 1.1f;
 					nomes_b[i].move_time = _default_time - (NRand() * _default_time/2.0f);
 
-
-					printf("b %d %f %f\n",i,(f64)nomes_b[i].time,(f64)nomes_b[i].move_time);
+					//printf("b %d %f %f\n",i,(f64)nomes_b[i].time,(f64)nomes_b[i].move_time);
 				}
 			}
 		}
@@ -478,18 +478,10 @@ void Sim(f32 delta){
 	static u32 b_dead_count = 0;
 
 
-	static NomeState a_state = DEFAULT_NOME_STATE;
+	static NomeState a_state = ANGRY_NOME_STATE;
 	static NomeState b_state = DEFAULT_NOME_STATE;
 
 
-	for(u32 y = 0; y < _grid_dim; y++){
-		for(u32 x = 0; x < _grid_dim; x++){
-			auto color = grid[y][x] ? Red : White;
-			color = camp_a.x == x && camp_a.y == y ?  _a_color : color;
-			color = camp_b.x == x && camp_b.y == y ?  _b_color : color;
-			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * w),color);
-		}
-	}
 
 	auto update_nome = [](Nome* nome,Color4 color,f32 delta,NomeState state,u32* count) -> void {
 		if(!nome->is_dead){
@@ -498,27 +490,118 @@ void Sim(f32 delta){
 
 			if(nome->time > nome->move_time){
 				nome->time = 0.0f;
-				nome->i++;
 
-				switch(state){}
+				auto move = [](Nome* n,Nome::Coord dst,Color4 color) ->void {
 
-				auto prev_pos = nome->pos;
-				nome->pos = nome->path[nome->i];
+					auto prev_pos = n->pos;
+					n->pos = dst;
 
-				grid[prev_pos.y][prev_pos.x] = 
-					grid[prev_pos.y][prev_pos.x] == A_TILE || grid[prev_pos.y][prev_pos.x] == B_TILE ?
-					0 : grid[prev_pos.y][prev_pos.x];
+					grid[prev_pos.y][prev_pos.x] = 
+						grid[prev_pos.y][prev_pos.x] == A_TILE || grid[prev_pos.y][prev_pos.x] == B_TILE ?
+						0 : grid[prev_pos.y][prev_pos.x];
 
-				grid[nome->pos.y][nome->pos.y] = (color == _a_color) ? A_TILE : B_TILE;
+					grid[n->pos.y][n->pos.x] = (color == _a_color) ? A_TILE : B_TILE;
+				};
 
-				nome->is_dead = nome->i >= nome->count;
+				switch(state){
+					case ANGRY_NOME_STATE:{
+								      //get neighbors
+								      auto tile = nome->pos;
+								      auto enemy = (color == _a_color) ? B_TILE : A_TILE;
+								      auto list = (color == _a_color) ? nomes_b : nomes_a;
+								      auto count = (color == _a_color) ? &b_dead_count : &a_dead_count;
+								      auto camp = (color == _a_color) ? camp_a : camp_b;
 
-				*count = nome->is_dead ? (*count) + 1 : *count;
+								      auto kill_enemy = [](Nome::Coord tile,Nome* list,u32* count) -> b32 {
+
+									      for(u32 i = 0; i < _arraycount(nomes_a); i++){
+										      auto n = &list[i];
+										      if(tile.x == n->pos.x && tile.y == n->pos.y && !n->is_dead){
+											      n->is_dead = true;
+											      (*count)++;
+											      return true;
+										      }
+
+									      }
+									      return false;
+								      };
+
+								      if(tile.x + 1 < _grid_dim && grid[tile.y][tile.x + 1] == enemy){
+									      auto t = Nome::Coord{(u16)(tile.x + 1),tile.y};
+									      if(kill_enemy(t,list,count)){
+										      move(nome,t,color);
+										      AStarPath(nome->pos,camp,nome->path,&nome->count);
+									      }
+
+								      }
+								      else if(tile.x != 0 && grid[tile.y][tile.x - 1] == enemy){
+									      auto t = Nome::Coord{(u16)(tile.x - 1),tile.y};
+									      if(kill_enemy(t,list,count)){
+										      move(nome,t,color);
+										      AStarPath(nome->pos,camp,nome->path,&nome->count);
+									      }
+								      }
+								      else if(tile.y + 1 < _grid_dim && grid[tile.y + 1][tile.x] == enemy){
+									      auto t = Nome::Coord{tile.x,(u16)(tile.y + 1)};
+									      if(kill_enemy(t,list,count)){
+										      move(nome,t,color);
+										      AStarPath(nome->pos,camp,nome->path,&nome->count);
+									      }
+								      }
+								      else if(tile.y != 0 && grid[tile.y - 1][tile.x] == enemy){
+									      auto t = Nome::Coord{tile.x,(u16)(tile.y - 1)};
+									      if(kill_enemy(t,list,count)){
+										      move(nome,t,color);
+										      AStarPath(nome->pos,camp,nome->path,&nome->count);
+									      }
+								      }
+
+								      else{
+									      nome->i++;
+									      move(nome,nome->path[nome->i],color);
+									      nome->is_dead = nome->i >= nome->count;
+
+									      *count = nome->is_dead ? (*count) + 1 : *count;
+								      }
+
+							      }break;
+					case SAD_NOME_STATE:{
+							      }break;
+					case AFRAID_NOME_STATE:{
+							      }break;
+					default:{
+							nome->i++;
+							move(nome,nome->path[nome->i],color);
+							nome->is_dead = nome->i >= nome->count;
+
+							*count = nome->is_dead ? (*count) + 1 : *count;
+						}break;
+				}
+
 			}
 
 			GUIDrawPosRect(CoordToVec3(nome->pos),color);
 		}
+
+		else{
+			GUIDrawPosRect(CoordToVec3(nome->pos),White);
+		}
 	};
+
+
+	for(u32 y = 0; y < _grid_dim; y++){
+		for(u32 x = 0; x < _grid_dim; x++){
+
+			if(grid[y][x] == A_TILE || grid[y][x] == B_TILE){
+				continue;
+			}
+
+			auto color = grid[y][x] ? Red : White;
+			color = camp_a.x == x && camp_a.y == y ?  _a_color : color;
+			color = camp_b.x == x && camp_b.y == y ?  _b_color : color;
+			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * w),color);
+		}
+	}
 
 
 	for(u32 i = 0; i < _arraycount(nomes_a); i++){
