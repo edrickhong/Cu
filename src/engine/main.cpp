@@ -428,9 +428,11 @@ void AddWall(u8 x,u8 y){
 	grid[y][x] = WALL_TILE;
 	UpdatePath();
 }
-void MakeAngry(){}
-void MakeSad(){}
-void MakeAfraid(){}
+void MakeAngry(NomeState* state){
+	*state = ANGRY_NOME_STATE;
+}
+void MakeSad(NomeState* state){}
+void MakeAfraid(NomeState* state){}
 
 
 #define _default_time 1000.0f
@@ -487,6 +489,8 @@ void Sim(f32 delta){
 		if(!nome->is_dead){
 
 			nome->time += delta;
+
+			auto move_time = state == SAD_NOME_STATE ? nome->move_time * 1.8f : nome->move_time;
 
 			if(nome->time > nome->move_time){
 				nome->time = 0.0f;
@@ -564,8 +568,6 @@ void Sim(f32 delta){
 									      *count = nome->is_dead ? (*count) + 1 : *count;
 								      }
 
-							      }break;
-					case SAD_NOME_STATE:{
 							      }break;
 					case AFRAID_NOME_STATE:{
 							      }break;
