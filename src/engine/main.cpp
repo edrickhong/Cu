@@ -480,7 +480,7 @@ void Sim(f32 delta){
 	static u32 b_dead_count = 0;
 
 
-	static NomeState a_state = ANGRY_NOME_STATE;
+	static NomeState a_state = AFRAID_NOME_STATE;
 	static NomeState b_state = DEFAULT_NOME_STATE;
 
 
@@ -570,7 +570,66 @@ void Sim(f32 delta){
 
 							      }break;
 					case AFRAID_NOME_STATE:{
-							      }break;
+								       //get neighbors
+								       auto tile = nome->pos;
+								       auto enemy = (color == _a_color) ? B_TILE : A_TILE;
+								       auto list = (color == _a_color) ? nomes_b : nomes_a;
+								       auto count = (color == _a_color) ? &b_dead_count : &a_dead_count;
+								       Nome::Coord enemy_pos = {(u16)-1,(u16)-1};
+
+								       //if enemy is within these tiles, start fleeing in the opposite direction (runs in the opposite direction of the enemy placement)
+								       if(tile.x + 1 < _grid_dim && grid[tile.y][tile.x + 1] == enemy){
+									       enemy_pos = { .x = (u16)(tile.x + 1), .y = (u16)(tile.y)};
+								       }
+								       else if(tile.x != 0 && grid[tile.y][tile.x - 1] == enemy){
+									       enemy_pos = { .x = (u16)(tile.x - 1), .y = (u16)(tile.y)};
+								       }
+								       else if(tile.y + 1 < _grid_dim && grid[tile.y + 1][tile.x] == enemy){
+									       enemy_pos = { .x = (u16)(tile.x), .y = (u16)(tile.y + 1)};
+								       }
+								       else if(tile.y != 0 && grid[tile.y - 1][tile.x] == enemy){
+									       enemy_pos = { .x = (u16)(tile.x), .y = (u16)(tile.y - 1)};
+								       }
+
+								       if(enemy_pos.x != (u16)-1 && enemy_pos.y != (u16)-1 ){
+
+									       Nome::Coord dir = {.x = (u16)(enemy_pos.x - nome->pos.x), .y = (u16)(enemy_pos.y - nome->pos.y)};
+									       dir.x *= -1;
+									       dir.y *= -1;
+
+									       auto new_pos = nome->pos;
+									       new_pos.x += (dir.x * 5);
+									       new_pos.y += (dir.y * 5);
+
+									       while((new_pos.x >= _grid_dim || new_pos.y >= _grid_dim) || grid[new_pos.y][new_pos.x] == WALL_TILE){
+										       new_pos.x -= dir.x;
+										       new_pos.y -= dir.y;
+
+										       if(new_pos.x == nome->pos.x && new_pos.y == nome->pos.y){
+											       //we could try running somewhere else but we are just gonna give up
+											       return;
+										       }
+									       }
+
+									       AStarPath(nome->pos,new_pos,nome->path,&nome->count);// Flee path. We should mark the fleeing tile
+								       }
+
+								       else{
+									       auto camp = (color == _a_color) ? camp_a : camp_b;
+									       nome->i++;
+									       move(nome,nome->path[nome->i],color);
+									       auto is_end = nome->i >= nome->count;
+									       nome->is_dead = is_end && (nome->pos.x == camp.x && nome->pos.y == camp.y);
+
+									       *count = nome->is_dead ? (*count) + 1 : *count;
+
+									       if(!nome->is_dead && is_end){
+										       AStarPath(nome->pos,camp,nome->path,&nome->count);
+									       }
+								       }
+
+
+							       }break;
 					default:{
 							nome->i++;
 							move(nome,nome->path[nome->i],color);
