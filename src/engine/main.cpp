@@ -218,7 +218,7 @@ enum TileState : u8{
 	CAMPB_TILE = 'b',
 	A_TILE,
 	B_TILE,
-	RESERVED_TILE,
+	RESERVED_TILE = WALL_TILE,
 };
 
 _global Nome nomes_a[8] = {};
@@ -247,8 +247,9 @@ _global u8 grid[_grid_dim][_grid_dim] = {
 };
 
 
-_global Vec3 origin = {-5,-5,5};
-_global f32 w = 2;
+const _global Vec3 origin = {-5,-5,5};
+const _global f32 grid_w = 2;
+
 
 
 struct Path{
@@ -259,7 +260,12 @@ struct Path{
 Vec3 CoordToVec3(Nome::Coord coord){
 	auto x = coord.x;
 	auto y = coord.y;
-	return origin + (Vec3{(f32)x,(f32)y} * w);
+	return origin + (Vec3{(f32)x,(f32)y} * grid_w);
+}
+
+Nome::Coord Vec3ToCoord(Vec3 pos){
+	pos = (pos - origin)  * (1/grid_w);
+	return {.x = (u16)pos.x, .y = (u16)pos.y};
 }
 
 
@@ -269,23 +275,23 @@ void AStarGetNeighbors(Nome::Coord tile,Path* neighbors,u32* count,u8* map){
 	//up down left right
 	u32 c = 0;
 
-	if(tile.x + 1 < _grid_dim && ! _rd_map(map,tile.x + 1,tile.y)){
+	if(tile.x + 1 < _grid_dim &&  _rd_map(map,tile.x + 1,tile.y) != WALL_TILE){
 		neighbors[c] = Path{(u16)(tile.x + 1),tile.y};
 		c++;
 	}
 
 
-	if(tile.x != 0 && !_rd_map(map,tile.x - 1,tile.y)){
+	if(tile.x != 0 && _rd_map(map,tile.x - 1,tile.y) != WALL_TILE){
 		neighbors[c] = {(u16)(tile.x - 1),tile.y};
 		c++;
 	}
 
-	if(tile.y + 1 < _grid_dim && !_rd_map(map,tile.x,tile.y + 1)){
+	if(tile.y + 1 < _grid_dim && _rd_map(map,tile.x,tile.y + 1) != WALL_TILE){
 		neighbors[c] = {tile.x,(u16)(tile.y + 1)};
 		c++;
 	}
 
-	if(tile.y != 0 && !_rd_map(map,tile.x,tile.y - 1)){
+	if(tile.y != 0 && _rd_map(map,tile.x,tile.y - 1) != WALL_TILE){
 		neighbors[c] = {tile.x,(u16)(tile.y - 1)};
 		c++;
 	}
@@ -424,15 +430,20 @@ enum NomeState{
 };
 
 
-void AddWall(u8 x,u8 y){
-	grid[y][x] = WALL_TILE;
-	UpdatePath();
+void ToggleWall(u8 x,u8 y){
+	//printf("Toggle wall!\n");
+	grid[y][x] = grid[y][x] == WALL_TILE ? 0 : WALL_TILE;
+	//UpdatePath();
 }
 void MakeAngry(NomeState* state){
 	*state = ANGRY_NOME_STATE;
 }
 void MakeSad(NomeState* state){}
 void MakeAfraid(NomeState* state){}
+
+b32 _ainline OnMouseClick(MouseState* state,MouseButton mousekey){
+	return state->curstate[mousekey] && !state->prevstate[mousekey];
+}
 
 
 #define _default_time 1000.0f
@@ -480,8 +491,44 @@ void Sim(f32 delta){
 	static u32 b_dead_count = 0;
 
 
-	static NomeState a_state = AFRAID_NOME_STATE;
+	//static NomeState a_state = AFRAID_NOME_STATE; //FIXME: Afraid pattern has bugs
+	static NomeState a_state = DEFAULT_NOME_STATE; 
 	static NomeState b_state = DEFAULT_NOME_STATE;
+
+	//TODO: adding walls dynamically
+	{
+
+		auto viewproj = pdata->proj * pdata->view;
+
+		auto mpos = PixelCoordToNDC({(f32)pdata->mousestate.x,(f32)pdata->mousestate.y},
+				{(f32)pdata->swapchain.width,(f32)pdata->swapchain.height});
+
+
+		auto mforward = PixelCoordToNDC({(f32)pdata->mousestate.x,(f32)pdata->mousestate.y,1.0f},
+				{(f32)pdata->swapchain.width,(f32)pdata->swapchain.height});
+
+
+		auto pos = ClipSpaceToWorldSpaceVec3(mpos,viewproj);
+		auto forward = ClipSpaceToWorldSpaceVec3(mforward,viewproj);
+
+
+		forward = NormalizeVec3(forward - pos);
+
+
+		Vec3 out_pos = {};
+
+
+		auto ray = ConstructRay3(pos,forward);
+		IntersectOutRay3Plane(ray,ConstructPlanePos({0,0,-1},origin),&out_pos);
+
+		auto mcoord = Vec3ToCoord(out_pos);
+
+		//PrintTile(mcoord);
+		if(mcoord.x < _grid_dim && mcoord.y < _grid_dim && OnMouseUp(&pdata->mousestate,MOUSEBUTTON_LEFT)){
+			ToggleWall(mcoord.x,mcoord.y);
+		}
+
+	}
 
 
 
@@ -660,7 +707,7 @@ void Sim(f32 delta){
 			auto color = grid[y][x] ? Red : White;
 			color = camp_a.x == x && camp_a.y == y ?  _a_color : color;
 			color = camp_b.x == x && camp_b.y == y ?  _b_color : color;
-			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * w),color);
+			GUIDrawPosMarkerX(origin + (Vec3{(f32)x,(f32)y} * grid_w),color);
 		}
 	}
 
