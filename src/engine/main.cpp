@@ -492,7 +492,7 @@ void Sim(f32 delta){
 
 
 	//static NomeState a_state = AFRAID_NOME_STATE; //FIXME: Afraid pattern has bugs
-	static NomeState a_state = DEFAULT_NOME_STATE; 
+	static NomeState a_state = ANGRY_NOME_STATE; 
 	static NomeState b_state = DEFAULT_NOME_STATE;
 
 	//TODO: adding walls dynamically
